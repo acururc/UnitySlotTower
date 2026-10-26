@@ -2,11 +2,12 @@
 
 ## 現在の作業
 
-更新: 2026-10-26 Asia/Tokyo / 状態: ゲーム企画spec承認済み、計画・実装は未着手
+更新: 2026-10-26 Asia/Tokyo / 状態: spec承認済み、plan.md 確定、tasks.md 作成済み、実装は未着手
+
+- 計画: [`plan.md`](../../specs/001-slot-tower-defense/plan.md)（C-1〜C-5 回答済み: CSVデータ、準備フェーズ、ストック規則、グレーボックス先行、実機寄りスロット）。[`tasks.md`](../../specs/001-slot-tower-defense/tasks.md) は M0〜M5 の T001〜T505。
+- 次の一手: ユーザーが実装開始を依頼したら M0（T001〜T008）から着手する。依頼前に実装しない。
 
 - 対象: [`specs/001-slot-tower-defense/spec.md`](../../specs/001-slot-tower-defense/spec.md)（原案 `gameplan.txt`）。D-01〜D-42、FR-001〜FR-050、AC を 2026-10-26 にユーザーが明示承認（承認欄に範囲と版のハッシュ）。spec を変えたら再承認が必要。
-- ユーザーの指示は「企画だけ、Unity実装はまだ」。plan/tasks/実装は、ユーザーが計画に進むよう依頼してから始める。
-- 次の一手（依頼後）: plan.md で spec の「実装計画で決めること」（キー割り当て案、データテーブル形式と初期値、5マップと敵出現、リール制御、解像度、アート/サウンド方針、最初に遊べる版の範囲）を決め、tasks.md に分解する。
 - 基盤: Unity 6000.6.7f1 URP 3D、エージェント設定・ハーネス・Unity自動化は検証済み（`PROJECT_CONTEXT.md`）。ゲームのコード・テストはまだない。
 
 ## 再開のしかた
