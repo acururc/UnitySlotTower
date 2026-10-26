@@ -14,6 +14,6 @@ pwsh -NoProfile -File scripts/harness/Test-ProjectHarness.ps1   # 構成チェ�
 ## AIエージェント
 
 - ルール: `AGENTS.md`（正本）、`CLAUDE.md`（Claude Code用、AGENTSを読込）
-- スキル: `unity-verify` / `unity-editor` / `spec` / `handoff`（`.agents/skills/`、Claude用入口は `.claude/skills/`）
+- スキル: `unity-verify` / `unity-editor` / `spec` / `handoff` / `tdd` / `diagnosing-bugs` / `writing-for-agents`（`.agents/skills/`、Claude用入口は `.claude/skills/`）
 - 専用エージェント: `claude --agent unity-check`（読み取り専用の接続確認）、`claude --agent code-task`（既知パスの小修正）
 - 資料: `docs/ai/`（PROJECT_CONTEXT, HANDOFF, UNITY_AUTOMATION, UNITY_CHECKS, SPEC_WORKFLOW）

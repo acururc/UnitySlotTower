@@ -11,7 +11,7 @@ description: UnitySlotTowerのコード・アセット・パッケージ・設�
 2. UnityのC#、アセット、`Packages/`、`ProjectSettings/` を変更した場合だけ `docs/ai/UNITY_CHECKS.md` の該当節を読む。
 3. コンパイル・Console・テスト・シーン確認が必要なら `docs/ai/UNITY_AUTOMATION.md` に従い、`scripts/unity/Invoke-UnityMcp.ps1` で対象インスタンスとsceneを確認してから行う。
    - コンパイル確認: `editor console --type error --count 10`（リコンパイル後に再接続を待つ）
-   - テスト: `editor tests --mode EditMode --async` → `editor poll-test <job_id> --wait 5`。`summary.total/passed/failed` を報告し、0件を機能検証と呼ばない。
+   - テスト: `editor tests --mode EditMode --async` → `editor poll-test <job_id> --wait 5 --failed-only`（失敗・スキップの詳細だけ返す）。`summary.total/passed/failed` を報告し、0件を機能検証と呼ばない。
    - 表示に関わる変更は実画像を保存して開く。成功メッセージだけで判断しない。
 4. Windowsプレイヤーの挙動に関わる場合だけ `Build-UnityPlayer.ps1` → `Test-UnityPlayer.ps1 -ShowWindow` を使い、ジョブ最終状態・終了コード・画像を確認する。
 5. Unity操作が終わったら結果と保存を確認し `Stop-UnityAutomation.ps1` で停止、8080が閉じたことを確認する。

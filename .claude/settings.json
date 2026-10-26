@@ -16,6 +16,9 @@
       "Read(./Temp/**)",
       "Read(./Obj/**)",
       "Read(./.tools/**)",
+      "Read(./Logs/**)",
+      "Read(./UserSettings/**)",
+      "Read(./Builds/**)",
       "Read(./*.csproj)",
       "Read(./*.sln)"
     ]

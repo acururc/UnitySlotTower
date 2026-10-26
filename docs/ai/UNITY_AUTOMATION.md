@@ -54,7 +54,7 @@ Select the target instance before operating. Wrapper selects UnitySlotTower; dis
 ## Tests
 ```powershell
 ./scripts/unity/Invoke-UnityMcp.ps1 editor tests --mode EditMode --async
-./scripts/unity/Invoke-UnityMcp.ps1 editor poll-test <job_id> --wait 5
+./scripts/unity/Invoke-UnityMcp.ps1 editor poll-test <job_id> --wait 5 --failed-only
 # Select PlayMode when applicable.
 ```
 Check `summary.total`, `passed`, `failed`. Zero tests verifies the execution path, not feature behavior.
