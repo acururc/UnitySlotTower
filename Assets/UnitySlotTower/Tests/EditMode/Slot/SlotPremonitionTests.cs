@@ -111,6 +111,27 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         }
 
         [Test]
+        [Description("FR-044, AC-042: プロジェクトの表は 7揃いのボーナス（BIG・REG）を含むフラグでだけ先バレする")]
+        public void Project_Table_Premonishes_Only_Seven_Bonuses()
+        {
+            var payouts = ProjectPayouts();
+            var premonition = SlotPremonition.Load(ProjectTable(SlotPremonition.FileName), payouts);
+            var probabilities = SlotProbabilities.Load(ProjectTable(SlotProbabilities.FileName), payouts);
+            var wrong = new System.Collections.Generic.List<string>();
+
+            foreach (var flag in probabilities.Flags)
+            {
+                var isSevenBonus = flag.Has(SlotFlag.BigRole) || flag.Has(SlotFlag.RegRole);
+                if (premonition.Rate(flag) > 0 != isSevenBonus)
+                {
+                    wrong.Add(flag.Id);
+                }
+            }
+
+            Assert.That(wrong, Is.Empty);
+        }
+
+        [Test]
         [Description("FR-050: 払い出し表にない役は読み込みエラー")]
         public void Unknown_Role_Is_A_Load_Error()
         {

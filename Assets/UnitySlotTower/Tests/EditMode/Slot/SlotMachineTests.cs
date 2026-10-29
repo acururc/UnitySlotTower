@@ -38,11 +38,11 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         }
 
         [Test]
-        [Description("FR-044, AC-042: レバーオンで、成立役の発生率（ここでは100%）で先バレが起きる")]
-        public void Lever_Premonishes_A_Rare_Role_At_Its_Rate()
+        [Description("FR-044, AC-042: レバーオンで、成立役の発生率（ここでは BIG 100%）で先バレが起きる")]
+        public void Lever_Premonishes_A_Bonus_At_Its_Rate()
         {
-            var machine = Machine(new CoinWallet(30), "watermelon,normal,1,1,1,1,1,1\n", ProjectTable(SlotRules.FileName),
-                "watermelon,1\n");
+            var machine = Machine(new CoinWallet(30), "big,normal,1,1,1,1,1,1\n", ProjectTable(SlotRules.FileName),
+                "big,1\n");
 
             machine.TryLever();
 
@@ -53,7 +53,7 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         [Description("FR-044, AC-042: 表にない成立役（ここではハズレ、ガセの行なし）では先バレしない")]
         public void Lever_Does_Not_Premonish_An_Unlisted_Role()
         {
-            var machine = Machine(new CoinWallet(30), "", ProjectTable(SlotRules.FileName), "watermelon,1\n");
+            var machine = Machine(new CoinWallet(30), "", ProjectTable(SlotRules.FileName), "big,1\n");
 
             machine.TryLever();
 
