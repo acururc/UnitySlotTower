@@ -1,0 +1,95 @@
+using System;
+using UnitySlotTower.Core.Economy;
+using UnitySlotTower.Core.Simulation;
+
+namespace UnitySlotTower.Core.Slot
+{
+    /// <summary>
+    /// 1台のスロットのゲーム進行（plan 5章）。レバーで掛け金を投入して内部抽選し、3本止めたら揃った役を払い出す。
+    /// リプレイが揃うと次のゲームは掛け金なしで回せる。
+    /// </summary>
+    public sealed class SlotMachine
+    {
+        public const string ReplayRole = "replay";
+
+        private readonly SlotReels _reels;
+        private readonly SlotPayouts _payouts;
+        private readonly SlotProbabilities _probabilities;
+        private readonly SlotReelControl _control;
+        private readonly CoinWallet _wallet;
+        private readonly IRandom _random;
+        private readonly int _bet;
+        private readonly int _setting;
+
+        public SlotMachine(SlotReels reels, SlotPayouts payouts, SlotProbabilities probabilities, SlotReelControl control,
+            CoinWallet wallet, int bet, int setting, IRandom random)
+        {
+            _reels = reels;
+            _payouts = payouts;
+            _probabilities = probabilities;
+            _control = control;
+            _wallet = wallet;
+            _bet = bet;
+            _setting = setting;
+            _random = random;
+        }
+
+        /// <summary>レバーオン。回転中か、リプレイでなく所持コインが掛け金未満なら何もせず false（FR-040）。</summary>
+        public bool TryLever()
+        {
+            if (Spin != null || (!IsReplay && !_wallet.TrySpend(_bet)))
+            {
+                return false;
+            }
+
+            IsReplay = false;
+            Flag = _probabilities.Draw(_random, SlotState.Normal, _setting);
+            Spin = _control.Start(Flag);
+            return true;
+        }
+
+        /// <summary>リールを押した位置で止める。3本目を止めたら揃った役を払い出してゲームを終える。停止位置を返す。</summary>
+        public int Stop(int reel, int pressPosition)
+        {
+            if (Spin == null)
+            {
+                throw new InvalidOperationException("回転中ではない");
+            }
+
+            var stop = Spin.Stop(reel, pressPosition);
+            for (var i = 0; i < SlotReels.ReelCount; i++)
+            {
+                if (!Spin.IsStopped(i))
+                {
+                    return stop;
+                }
+            }
+
+            Finish();
+            return stop;
+        }
+
+        // 払い出しは役ごとに1ゲーム1回（plan 5章）。
+        private void Finish()
+        {
+            var payout = 0;
+            foreach (var role in SlotLines.Aligned(_reels, _payouts, Spin.Stops))
+            {
+                payout += _payouts.Get(role).Payout;
+                IsReplay |= role == ReplayRole;
+            }
+
+            _wallet.Add(payout);
+            Spin = null;
+        }
+
+        /// <summary>前のゲームでリプレイが揃い、次のレバーで掛け金を取らない。</summary>
+        public bool IsReplay { get; private set; }
+
+        /// <summary>今のゲームの成立フラグ（レバーオン前は null）。</summary>
+        public SlotFlag Flag { get; private set; }
+
+        /// <summary>回転中のゲーム（止まっていれば null）。</summary>
+        public SlotSpin Spin { get; private set; }
+    }
+}

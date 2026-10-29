@@ -2,13 +2,16 @@
 
 ## 現在の作業
 
-更新: 2026-10-29 Asia/Tokyo / 状態: M0 完了（25cac48）。M1 の T101〜T103 完了。次は T104
+更新: 2026-10-29 Asia/Tokyo / 状態: M0 完了（25cac48）。M1 の T101〜T104 完了。次は T105
 
 ### M1 の進み（2026-10-29）
+- T104: `Core/Economy/CoinWallet.cs`（TrySpend・Add。召喚でも共有する想定）と `Core/Slot/SlotMachine.cs`（`TryLever()` が掛け金投入→抽選→`SlotReelControl.Start`、`Stop(reel, press)` で3本目を止めると `SlotLines.Aligned` の役を1回ずつ払い出し、リプレイが揃えば `IsReplay` で次のレバーは掛け金なし）。状態はまだ Normal 固定、持ち越しボーナスは未対応（T105）。テストは `SlotMachineTests`（抽選表を「役1つが確率1」の CSV 文字列で渡す）。
+- 検証（T104）: red→green 3周、最終 EditMode 139/139、Console エラー0、ハーネス 8/8。Unity 接続は停止済み（8080 閉）。
+- 注意: Editor が非フォーカスだと EditMode 全体が10分以上かかることがある。`poll-test` は同じ job_id で繰り返し待つ（再実行しない）。コンパイル直後の最初の MCP 呼び出しはドメインリロードで切断されることがある（読み取り系は再試行してよい）。
+- 次の一手: T105（BIG/REG フラグの持ち越しと、揃えたときのボーナス開始）を `tdd` で。`SlotMachine` に持ち越し役を持たせ `SlotReelControl.Start(flag, carriedBonus)` に渡す。
 - T103: `Core/Slot/SlotLines.cs`（5ラインの揃い判定。cherry は左リール上下段のラインのみ、center_cherry は中段のみ）と `Core/Slot/SlotReelControl.cs`（`Start(flag, carriedBonus)` → `SlotSpin.Stop(reel, press)` が停止位置を返す）。制御は1フラグ（＋持ち越し）ごとに全状態 22^3 を先読み評価してキャッシュ: 非成立役が揃う出目・必ず揃える役（全押し方で揃えられる最大の組＝リプレイ・ベル）の取りこぼしを禁止し、残りの押し方を一様とみなした「揃う成立役の数」の期待値が最大の滑りを選ぶ（同点は滑りが少ない方）。ボーナスと小役の優先度はまだ同じ重み（T105 で決める）。
 - 検証（T103）: `SlotReelControlTests` red→green 2周、EditMode 133/133、Console エラー0、ハーネス 8/8。Unity 接続は停止済み（8080 閉）。
 - 注意: `editor refresh` は成功しても CLI が JSON の前に文字を出すため、ラッパーが exit 1 を返す（中身は `success: true`）。
-- 次の一手: T104（ベット＋レバー、コイン不足の拒否、リプレイ、払い出し）を `tdd` で。払い出しは `SlotLines.Aligned` の役を `SlotPayouts` で1ゲーム1回。
 - T101: `Core/Slot/`（SlotSymbol・SlotReels・SlotPayouts・SlotRules）と `Tests/EditMode/Slot/SlotTableTests.cs`。`slot_reels.csv`・`slot_payouts.csv` に中身を入れた（`slot_premonition.csv` はまだ見出しのみ）。
 - T102: `Core/Slot/SlotProbabilities.cs`（SlotState Normal/Kakuhen/Bonus、SlotFlag、`Draw(IRandom, state, setting)` は乱数1回）と `Tests/EditMode/Slot/SlotLotteryTests.cs`。重複当選は role 列で `big+center_cherry` のようにつなぐ（plan 5章に追記）。各行は排他、残りがハズレ（Flags[0]）。表検証は `TableValidator.ValidateListReference` で `+` を分けて参照確認。`slot_probabilities.csv` の値は仮（T109 で機械割に合わせて調整）。ボーナス中は big/reg なし。
 - 検証（T102）: EditMode red 15件（新規14＋表検証）→ green 118/118、Console エラー0、ハーネス 8/8。
