@@ -30,6 +30,9 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>経路の終点（ゴールのマス中心）に着いた。</summary>
         public bool ReachedGoal => Distance >= Path.Cells.Count - 1 - Epsilon;
 
+        /// <summary>この敵をブロックしている味方。ブロックされていなければ null。</summary>
+        public BattleUnit BlockedBy { get; internal set; }
+
         /// <summary>次に攻撃できるまでの残りステップ数。</summary>
         internal int AttackCooldownSteps { get; set; }
 

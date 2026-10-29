@@ -140,7 +140,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("近距離雑魚はブロックした味方だけを攻撃する（ブロックは T205）")]
+        [Description("近距離雑魚はブロックした味方だけを攻撃する")]
         public void Melee_Enemy_Does_Not_Attack_Units_It_Passes()
         {
             var field = Create("1,0,melee,S1,g,0\n");
@@ -160,6 +160,113 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             field.Advance(1);
 
             Assert.That(archer.Hp, Is.EqualTo(700 - (150 - 50)));
+        }
+
+        [Test]
+        [Description("FR-027: ブロックされた地上の敵は味方のマスの手前の境界で止まる")]
+        public void Blocked_Ground_Enemy_Stops_At_The_Edge_Of_The_Unit_Cell()
+        {
+            var field = Create("1,0,melee,S1,g,0\n");
+            Place(field, "tank", 2, 0);
+
+            field.Advance(240);
+
+            Assert.That(Position(field.Enemies[0]), Is.EqualTo(new[] { 1.5, 0.0 }).Within(1e-6));
+        }
+
+        [Test]
+        [Description("plan 5章: 遠距離雑魚はブロックされると停止する")]
+        public void Blocked_Ranged_Enemy_Stops()
+        {
+            var field = Create("1,0,ranged,S1,g,0\n");
+            Place(field, "tank", 1, 0);
+
+            field.Advance(180);
+
+            Assert.That(Position(field.Enemies[0]), Is.EqualTo(new[] { 0.5, 0.0 }).Within(1e-6));
+        }
+
+        [Test]
+        [Description("AC-021: タンクはブロック数3まで止め、4体目は通す")]
+        public void Unit_Blocks_No_More_Enemies_Than_Its_Block_Count()
+        {
+            var field = Create("1,0,melee,S1,g,0\n1,0.5,melee,S1,g,0\n1,1,melee,S1,g,0\n1,1.5,melee,S1,g,0\n");
+            Place(field, "tank", 2, 0);
+
+            field.Advance(300);
+
+            Assert.That((field.Enemies.Count, field.ArrivedCount), Is.EqualTo((3, 1)));
+        }
+
+        [Test]
+        [Description("FR-027: ブロック消費2の敵はブロック数を2使う")]
+        public void Heavy_Enemy_Uses_Two_Of_The_Block_Count()
+        {
+            var field = Create("1,0,heavy,S1,g,0\n1,0.5,melee,S1,g,0\n1,1,melee,S1,g,0\n");
+            Place(field, "tank", 2, 0);
+
+            field.Advance(300);
+
+            Assert.That((field.Enemies.Count, field.ArrivedCount), Is.EqualTo((2, 1)));
+        }
+
+        [Test]
+        [Description("FR-027: 空きが消費に足りない敵は通し、後から来た足りる敵は止める")]
+        public void Enemy_Costing_More_Than_The_Free_Block_Passes()
+        {
+            var field = Create("1,0,heavy,S1,g,0\n1,0.5,melee,S1,g,0\n");
+            Place(field, "sword", 2, 0);
+
+            field.Advance(240);
+
+            Assert.That((field.Enemies.Count, field.ArrivedCount), Is.EqualTo((1, 1)));
+        }
+
+        [Test]
+        [Description("FR-031: 空中の敵はブロックされない")]
+        public void Air_Enemy_Is_Not_Blocked()
+        {
+            var field = Create("1,0,air,S2,a,0\n");
+            Place(field, "tank", 2, 0);
+
+            field.Advance(150);
+
+            Assert.That(field.ArrivedCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        [Description("plan 5章: 近距離雑魚はブロックされると、ブロックした味方を攻撃する")]
+        public void Blocked_Melee_Enemy_Attacks_The_Blocking_Unit()
+        {
+            var field = Create("1,0,melee,S1,g,0\n");
+            var sword = Place(field, "sword", 1, 0);
+
+            field.Advance(31);
+
+            Assert.That(sword.Hp, Is.EqualTo(1200 - (200 - 50)));
+        }
+
+        [Test]
+        public void Blocked_Melee_Enemy_Attacks_Again_After_Its_Interval()
+        {
+            var field = Create("1,0,melee,S1,g,0\n");
+            var sword = Place(field, "sword", 1, 0);
+
+            field.Advance(125);
+
+            Assert.That(sword.Hp, Is.EqualTo(1200 - 2 * (200 - 50)));
+        }
+
+        [Test]
+        public void Enemy_Already_Inside_A_Newly_Placed_Unit_Cell_Is_Blocked()
+        {
+            var field = Create("1,0,melee,S1,g,0\n");
+            field.Advance(60);
+            Place(field, "tank", 1, 0);
+
+            field.Advance(60);
+
+            Assert.That(Position(field.Enemies[0]), Is.EqualTo(new[] { 1.0, 0.0 }).Within(1e-6));
         }
     }
 }

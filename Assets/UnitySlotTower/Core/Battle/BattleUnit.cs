@@ -17,6 +17,9 @@ namespace UnitySlotTower.Core.Battle
         public int Hp { get; private set; }
         public bool IsAlive => Hp > 0;
 
+        /// <summary>ブロック中の敵のブロック消費の合計。<see cref="UnitDefinition.Block"/> を超えない。</summary>
+        public int BlockUsed { get; internal set; }
+
         internal void TakeDamage(int damage)
         {
             Hp = Hp > damage ? Hp - damage : 0;

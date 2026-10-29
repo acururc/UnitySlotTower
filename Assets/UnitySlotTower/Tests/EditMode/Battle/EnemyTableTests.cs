@@ -33,11 +33,12 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Duplicate_Id_Is_A_Load_Error_At_Its_Line()
         {
-            var text = BattleFixtures.Enemies + "melee,1,1,1,1,1,0,0,1,1,0,0,0\n";
+            // 3 行目の ranged を melee に書き換えて、2 行目と重複させる。
+            var text = BattleFixtures.Enemies.Replace("ranged,", "melee,");
 
             var ex = Assert.Throws<CsvFormatException>(() => EnemyTable.Load(CsvParser.Parse(EnemyTable.FileName, text)));
 
-            Assert.That(ex.Error.Line, Is.EqualTo(5));
+            Assert.That(ex.Error.Line, Is.EqualTo(3));
         }
 
         [Test]
