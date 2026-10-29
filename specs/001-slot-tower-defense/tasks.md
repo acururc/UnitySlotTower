@@ -31,7 +31,7 @@
 ## M2 戦闘の核
 
 - [x] T201 (FR-023) `maps/w1.csv`・`map_paths.csv` からグリッドと経路を作り、戦闘フィールドに仮表示する — 検証: EditMode テスト、Editor 画像 — 結果: 2026-10-30 `Core/Battle/BattleMap`（座標は x=列・y=CSV の上の行から。経路は出現口で始まりゴールで終わり、地上経路は高台・通行不可を通れない。空中経路は通れる）。`GameDataValidator` が経路のあるマップを BattleMap で検証。`map_paths.csv` に w1 の地上経路 `w1_g1`（(0,2)→(8,2)）を追加（w2〜w5 の経路は M3）。`Runtime/Battle/BattleFieldView`（1マス=1単位の箱と経路線）、`Tools/UnitySlotTower/Setup/Build Battle Field` で仮の地面を置き換えた。テスト12件追加（red: Validator 未接続の1件が失敗→green）。EditMode 219/219、Editor の Play 画像確認、ハーネス 8/8
-- [ ] T202 (FR-020, FR-021, FR-022) `units.csv` と、召喚（コイン消費、配置上限、種類ごとの待ち時間）を作る — 検証: EditMode テスト（AC-020）
+- [x] T202 (FR-020, FR-021, FR-022) `units.csv` と、召喚（コイン消費、配置上限、種類ごとの待ち時間）を作る — 検証: EditMode テスト（AC-020） — 結果: 2026-10-30 `units.csv` に5種（id `tank`/`sword`/`archer`/`healer`/`buffer`）。コスト・待ち時間・配置マスは plan 5章どおり、ブロック 3/2/0/0/0、HP・攻撃・防御・攻撃間隔は仮値（M3 で調整。バッファーの atk は 0、強化倍率の列は未定）。`Core/Battle/UnitTable`、`Core/Battle/UnitSummoner`（判定順は 待ち時間→配置上限→コイン。拒否時は何も変えない。待ち時間は召喚時から 60 ステップ/秒で数える。撤退・死亡で配置数を減らす処理は T302 以降）。テスト16件追加（red→green 2サイクル）。EditMode 235/235、Console エラー0、ハーネス 8/8
 - [ ] T203 (FR-023) 配置マス種別の制限と、向き（4方向）による攻撃範囲の回転を作る — 検証: EditMode テスト（AC-021）
 - [ ] T204 (FR-030, FR-031, FR-032) `enemies.csv`・`waves.csv` と、敵3種の出現・経路移動・空中移動・攻撃を作る — 検証: EditMode テスト
 - [ ] T205 (FR-027) ブロック（ブロック数、ブロック消費、空中は不可）と、ブロックされた敵の攻撃を作る — 検証: EditMode テスト（AC-021）
