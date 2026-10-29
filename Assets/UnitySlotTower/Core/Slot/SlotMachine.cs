@@ -16,18 +16,20 @@ namespace UnitySlotTower.Core.Slot
         private readonly SlotPayouts _payouts;
         private readonly SlotProbabilities _probabilities;
         private readonly SlotReelControl _control;
+        private readonly SlotRules _rules;
         private readonly CoinWallet _wallet;
         private readonly IRandom _random;
         private readonly int _bet;
         private readonly int _setting;
 
         public SlotMachine(SlotReels reels, SlotPayouts payouts, SlotProbabilities probabilities, SlotReelControl control,
-            CoinWallet wallet, int bet, int setting, IRandom random)
+            SlotRules rules, CoinWallet wallet, int bet, int setting, IRandom random)
         {
             _reels = reels;
             _payouts = payouts;
             _probabilities = probabilities;
             _control = control;
+            _rules = rules;
             _wallet = wallet;
             _bet = bet;
             _setting = setting;
@@ -43,7 +45,7 @@ namespace UnitySlotTower.Core.Slot
             }
 
             IsReplay = false;
-            Flag = _probabilities.Draw(_random, SlotState.Normal, _setting);
+            Flag = _probabilities.Draw(_random, State, _setting);
             if (CarriedBonus != null)
             {
                 Flag = _probabilities.WithoutBonus(Flag);
@@ -75,8 +77,10 @@ namespace UnitySlotTower.Core.Slot
         }
 
         // 払い出しは役ごとに1ゲーム1回（plan 5章）。ボーナス役が揃えばボーナス開始、揃わなかったボーナス役は持ち越す。
+        // ボーナス中のゲームの払い出しは累計し、上限に達したゲームで終える（plan 5章）。
         private void Finish()
         {
+            var isBonusGame = State == SlotState.Bonus;
             var payout = 0;
             var aligned = SlotLines.Aligned(_reels, _payouts, Spin.Stops);
             foreach (var role in aligned)
@@ -99,9 +103,25 @@ namespace UnitySlotTower.Core.Slot
                 }
             }
 
+            if (isBonusGame)
+            {
+                BonusPayout += payout;
+                if (BonusPayout >= BonusPayoutLimit(ActiveBonus))
+                {
+                    State = SlotState.Normal;
+                    ActiveBonus = null;
+                    BonusPayout = 0;
+                }
+            }
+
             _wallet.Add(payout);
             Spin = null;
         }
+
+        private int BonusPayoutLimit(string bonus) => bonus == SlotFlag.BigRole ? _rules.BigPayoutLimit : _rules.RegPayoutLimit;
+
+        /// <summary>消化中のボーナスで払い出した枚数の累計（ボーナス中でなければ 0）。</summary>
+        public int BonusPayout { get; private set; }
 
         /// <summary>前のゲームでリプレイが揃い、次のレバーで掛け金を取らない。</summary>
         public bool IsReplay { get; private set; }

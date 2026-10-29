@@ -2,12 +2,14 @@
 
 ## 現在の作業
 
-更新: 2026-10-29 Asia/Tokyo / 状態: M0 完了（25cac48）。M1 の T101〜T105 完了。次は T106
+更新: 2026-10-29 Asia/Tokyo / 状態: M0 完了（25cac48）。M1 の T101〜T106 完了。次は T107
 
 ### M1 の進み（2026-10-29）
+- T106: `SlotMachine` のコンストラクタに `SlotRules` を追加（`control` の次）。抽選は `State` を使う。ボーナス中に始めたゲームの払い出しを `BonusPayout` に累計し、`BigPayoutLimit`/`RegPayoutLimit` 以上で Normal・`ActiveBonus` null・累計0に戻す。上限をまたぐゲームは全額払い（plan 5章に追記）。テストは `BigThenBellMachine`（通常 BIG・ボーナス中ベルが確率1）と、上限20の CSV 文字列で境界を確認。
+- 検証（T106）: red→green 2周（ボーナス表で抽選、240枚で終了）、ガード3件（29ゲームで継続、REG 12ゲーム、上限またぎ全額）は追加時点で green。EditMode 162/162、Console エラー0、ハーネス 8/8。Unity 接続は停止済み（8080 閉）。
+- 次の一手: T107（BIG 後の確変: `kakuhen_entry_rate` で突入、`kakuhen_games` ゲーム、確変中 BIG でリセット）を `tdd` で。T106 の終了処理で BIG 終了時は Normal 固定なので、そこを確変判定に置き換える。
 - T105: `SlotMachine` に `CarriedBonus`（揃わなかった BIG/REG を持ち越し）・`State`（ボーナス役が揃うと Bonus）・`ActiveBonus`。持ち越し中に引いたフラグは `SlotProbabilities.WithoutBonus` でボーナス役を外す（big+watermelon→watermelon、big→ハズレ）。`SlotReelControl` の評価は（ボーナス役の数, ほかの成立役の数）の期待値を辞書式で比べる（ボーナス優先、plan 5章に追記）。`SlotFlag.BigRole/RegRole/IsBonusRole` 追加。
-- 検証（T105）: red→green 4周（制御の優先度 8件、持ち越し、持ち越し中の抽選、ボーナス開始 2件）、`WithoutBonus` 5件は追加時点で green（特性テスト）、最終 EditMode 157/157、Console エラー0、ハーネス 8/8。Unity 接続は停止済み（8080 閉）。
-- 次の一手: T106（ボーナス中の抽選と上限枚数までの払い出し・終了）を `tdd` で。`TryLever` の抽選はまだ `SlotState.Normal` 固定なので `State` を使うようにし、ボーナス中の払い出し累計・上限（BIG 240 / REG 96 の例、`slot_rules.csv` か新しい列）で Normal（BIG 後は T107 の確変）に戻す。
+- 検証（T105）: EditMode 157/157、Console エラー0、ハーネス 8/8。
 - T104: `Core/Economy/CoinWallet.cs` と `Core/Slot/SlotMachine.cs`（`TryLever()` 掛け金→抽選→制御開始、`Stop` で3本目を止めると揃った役を1回ずつ払い出し、リプレイなら次は掛け金なし）。テストは `SlotMachineTests`（抽選表を「役1つが確率1」の CSV 文字列で渡し、`BonusPresses` で揃う/揃わない押し位置を別の制御で探す）。
 - T103: `Core/Slot/SlotLines.cs`（5ライン判定）と `SlotReelControl.cs`（1フラグ＋持ち越しごとに全状態 22^3 を先読み評価してキャッシュ。非成立役は揃えず、リプレイ・ベルは必ず揃える）。
 - 注意: `editor refresh` は成功しても CLI が JSON の前に文字を出すため、ラッパーが exit 1 を返す（中身は `success: true`。`try {} catch {}` で包む）。`poll-test --wait` は数秒で戻るので、同じ job_id でループして待つ（再実行しない）。今回は EditMode 全体が約25秒。
