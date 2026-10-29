@@ -81,6 +81,7 @@ namespace UnitySlotTower.Core.Slot
         private void Finish()
         {
             var isBonusGame = State == SlotState.Bonus;
+            var isKakuhenGame = State == SlotState.Kakuhen;
             var payout = 0;
             var aligned = SlotLines.Aligned(_reels, _payouts, Spin.Stops);
             foreach (var role in aligned)
@@ -103,12 +104,28 @@ namespace UnitySlotTower.Core.Slot
                 }
             }
 
+            // 確変中に始めたゲームを数える。ボーナスを揃えたゲームも1ゲームとし、ボーナス中は数えない（plan 5章）。
+            if (isKakuhenGame)
+            {
+                KakuhenGamesLeft--;
+                if (KakuhenGamesLeft == 0 && State == SlotState.Kakuhen)
+                {
+                    State = SlotState.Normal;
+                }
+            }
+
             if (isBonusGame)
             {
                 BonusPayout += payout;
                 if (BonusPayout >= BonusPayoutLimit(ActiveBonus))
                 {
-                    State = SlotState.Normal;
+                    // BIG 終了時は突入率で確変を抽選し、当たればゲーム数を数え直す（plan 5章）。
+                    if (ActiveBonus == SlotFlag.BigRole && _random.NextDouble() < _rules.KakuhenEntryRate)
+                    {
+                        KakuhenGamesLeft = _rules.KakuhenGames;
+                    }
+
+                    State = KakuhenGamesLeft > 0 ? SlotState.Kakuhen : SlotState.Normal;
                     ActiveBonus = null;
                     BonusPayout = 0;
                 }
@@ -122,6 +139,9 @@ namespace UnitySlotTower.Core.Slot
 
         /// <summary>消化中のボーナスで払い出した枚数の累計（ボーナス中でなければ 0）。</summary>
         public int BonusPayout { get; private set; }
+
+        /// <summary>確変の残りゲーム数（確変でなければ 0）。</summary>
+        public int KakuhenGamesLeft { get; private set; }
 
         /// <summary>前のゲームでリプレイが揃い、次のレバーで掛け金を取らない。</summary>
         public bool IsReplay { get; private set; }

@@ -59,14 +59,93 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         }
 
         [Test]
-        [Description("FR-042, AC-040: BIG の払い出し累計が上限 240枚（slot_rules.csv）に達したら通常に戻る。ベル8枚×30ゲーム")]
+        [Description("FR-042, AC-040: BIG の払い出し累計が上限 240枚（slot_rules.csv）に達したら終わる。ベル8枚×30ゲーム")]
         public void Big_Bonus_Ends_When_Its_Payout_Reaches_The_Limit()
         {
             var machine = BigThenBellMachine(new CoinWallet(1000), ProjectTable(SlotRules.FileName));
 
             PlayBigBonusGames(machine, 30);
 
-            Assert.That((machine.State, machine.ActiveBonus), Is.EqualTo((SlotState.Normal, (string)null)));
+            Assert.That((machine.State == SlotState.Bonus, machine.ActiveBonus), Is.EqualTo((false, (string)null)));
+        }
+
+        [Test]
+        [Description("FR-043, AC-040: BIG 終了後、突入率 100%（slot_rules.csv）で確変に入り、残りは 100 ゲーム")]
+        public void Big_End_Enters_Kakuhen_For_Its_Games()
+        {
+            var machine = BigThenBellMachine(new CoinWallet(1000), ProjectTable(SlotRules.FileName));
+
+            PlayBigBonusGames(machine, 30);
+
+            Assert.That((machine.State, machine.KakuhenGamesLeft), Is.EqualTo((SlotState.Kakuhen, 100)));
+        }
+
+        /// <summary>ボーナス上限 20枚（ベル8枚×3ゲーム）、確変 <paramref name="kakuhenGames"/> ゲーム・突入率 <paramref name="entryRate"/> の slot_rules.csv。</summary>
+        private static CsvTable ShortRules(int kakuhenGames, double entryRate) =>
+            CsvParser.Parse(SlotRules.FileName,
+                $"key,value\nbig_payout_limit,20\nreg_payout_limit,20\nkakuhen_games,{kakuhenGames}\nkakuhen_entry_rate,{entryRate}\nwait_seconds,2\nmax_slide,4\n");
+
+        [Test]
+        [Description("FR-043, AC-040: 確変は N ゲーム（ここでは3）消化したら通常に戻る")]
+        public void Kakuhen_Ends_After_Its_Games()
+        {
+            var machine = BigThenBellMachine(new CoinWallet(1000), ShortRules(3, 1));
+            PlayBigBonusGames(machine, 3);
+            PlayOneGame(machine);
+            PlayOneGame(machine);
+
+            var stateAfter2 = machine.State;
+            PlayOneGame(machine);
+
+            Assert.That((stateAfter2, machine.State), Is.EqualTo((SlotState.Kakuhen, SlotState.Normal)));
+        }
+
+        [Test]
+        [Description("FR-043: 突入率 0 なら BIG 終了後は通常に戻る")]
+        public void Big_End_Stays_Normal_When_The_Entry_Rate_Is_Zero()
+        {
+            var machine = BigThenBellMachine(new CoinWallet(1000), ShortRules(3, 0));
+
+            PlayBigBonusGames(machine, 3);
+
+            Assert.That((machine.State, machine.KakuhenGamesLeft), Is.EqualTo((SlotState.Normal, 0)));
+        }
+
+        /// <summary>
+        /// 通常時は BIG、確変中は <paramref name="kakuhenBonus"/>、ボーナス中はベルが確率1の台で、BIG を消化して確変に入り、
+        /// 確変1ゲーム目で <paramref name="kakuhenBonus"/> を揃えて消化する（ボーナスは各3ゲーム）。
+        /// </summary>
+        private static SlotMachine PlayBonusInKakuhen(string kakuhenBonus)
+        {
+            var machine = Machine(new CoinWallet(1000),
+                $"big,normal,1,1,1,1,1,1\n{kakuhenBonus},kakuhen,1,1,1,1,1,1\nbell,bonus,1,1,1,1,1,1\n", ShortRules(3, 1));
+            PlayBigBonusGames(machine, 3);
+            PlayOneGame(machine, BonusPresses(kakuhenBonus, null, kakuhenBonus, true));
+            for (var i = 0; i < 3; i++)
+            {
+                PlayOneGame(machine);
+            }
+
+            return machine;
+        }
+
+        [Test]
+        [Description("FR-043, AC-040 / plan 5章: 確変中の BIG は終了後に突入を抽選し直し、ゲーム数を N（ここでは3）から数え直す")]
+        public void Big_In_Kakuhen_Resets_The_Kakuhen_Games()
+        {
+            var machine = PlayBonusInKakuhen("big");
+
+            Assert.That((machine.State, machine.KakuhenGamesLeft), Is.EqualTo((SlotState.Kakuhen, 3)));
+        }
+
+        [Test]
+        [Description("plan 5章（2026-10-29 ユーザー決定）: 確変中の REG は確変のゲーム数を数えず、終了後は残りゲーム数で確変に戻る")]
+        public void Reg_In_Kakuhen_Resumes_The_Remaining_Kakuhen_Games()
+        {
+            var machine = PlayBonusInKakuhen("reg");
+
+            // 確変1ゲーム目（REG を揃えたゲーム）だけ数えて残り2。
+            Assert.That((machine.State, machine.KakuhenGamesLeft), Is.EqualTo((SlotState.Kakuhen, 2)));
         }
 
         [Test]
@@ -109,7 +188,7 @@ namespace UnitySlotTower.Tests.EditMode.Slot
             PlayBigBonusGames(machine, 3);
 
             // 1000 - 掛け金3×4ゲーム + ベル8×3。
-            Assert.That((machine.State, wallet.Coins), Is.EqualTo((SlotState.Normal, 1012)));
+            Assert.That((machine.ActiveBonus, wallet.Coins), Is.EqualTo(((string)null, 1012)));
         }
 
         [Test]

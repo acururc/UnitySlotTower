@@ -23,7 +23,7 @@
 - [x] T104 (FR-040) ベット＋レバー、所持コイン不足時の拒否、リプレイ、払い出しを作る — 検証: EditMode テスト — 結果: `Core/Economy/CoinWallet`、`Core/Slot/SlotMachine`（TryLever・Stop・IsReplay）、`SlotMachineTests` red→green 3周（掛け金・コイン不足、ベル払い出し、リプレイ）＋ハズレ・回転中のレバー拒否、EditMode 139/139
 - [x] T105 (FR-041) BIG/REG フラグの持ち越しと、揃えたときのボーナス開始を作る — 検証: EditMode テスト — 結果: 2026-10-29 `SlotReelControl` をボーナス優先の辞書式評価に（red 8件→green）、`SlotMachine`（CarriedBonus・State・ActiveBonus）、`SlotProbabilities.WithoutBonus`（持ち越し中のボーナス抽選を無効化）、red→green 4周、EditMode 157/157
 - [x] T106 (FR-042) ボーナス中の抽選と、上限枚数に達するまでの払い出し・終了を作る — 検証: EditMode テスト（AC-040） — 結果: 2026-10-29 `SlotMachine` が `State` で抽選し、ボーナス中の払い出しを `BonusPayout` に累計、上限（`SlotRules` の BIG/REG）到達で Normal に戻す（上限をまたぐゲームは全額払い）。red→green 2周＋ガード3件、EditMode 162/162
-- [ ] T107 (FR-043) BIG 後の確変（突入率、ゲーム数、確変中BIGでのリセット）を作る — 検証: EditMode テスト（AC-040）
+- [x] T107 (FR-043) BIG 後の確変（突入率、ゲーム数、確変中BIGでのリセット）を作る — 検証: EditMode テスト（AC-040） — 結果: EditMode 167/167、Console エラー0
 - [ ] T108 (FR-044) 先バレの抽選（`slot_premonition.csv`）を作る — 検証: EditMode テスト（AC-042）
 - [ ] T109 (FR-045) 理論機械割を計算する Editor ツールと、設定1〜6の大量シミュレーションテストを作り、目標値（100〜125%）に合うよう CSV を調整する — 検証: EditMode テスト（理論値と実測の差が許容範囲内: AC-040, AC-043）
 - [ ] T110 (FR-040, FR-044) 下部のスロット筐体の仮表示（リール回転・停止、ボタン、ランプ、クレジットの数字、先バレの光と音）とウェイト2秒 — 検証: Editor 画像、手動で目押し
