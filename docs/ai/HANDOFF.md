@@ -2,12 +2,14 @@
 
 ## 現在の作業
 
-更新: 2026-10-29 Asia/Tokyo / 状態: M0 完了（25cac48）。M1 の T101〜T107 完了。次は T108
+更新: 2026-10-29 Asia/Tokyo / 状態: M0 完了（25cac48）。M1 の T101〜T108 完了。次は T109
 
 ### M1 の進み（2026-10-29）
+- T108: `Core/Slot/SlotPremonition.cs`（`Rate(flag)`・`Draw(random, flag)`。表は単独役＋`hazure`（ガセ）、表にない役は0、重複当選は役の最大率で1回、率0なら乱数を使わない）。`SlotMachine` のコンストラクタに `SlotPremonition` を追加（probabilities の次）、`TryLever` で持ち越し処理後のフラグで抽選し `Premonition` に入れる。`slot_premonition.csv` は仮値（スイカ1/2・角チェ1/3・中段チェ1/2・ガセ0）。解釈は plan 5章「先バレ」に追記（ユーザー未確認の既定。変えたいと言われたら直す）。
+- 検証（T108）: red→green 2周（表: 新規6件失敗→175/175、台: 1件失敗→177/177）、Console エラー0、ハーネス 8/8。Unity 接続は停止済み（8080 閉）。
+- 次の一手: T109（理論機械割の Editor ツールと設定1〜6のシミュレーション、CSV 調整）。テスト実行は refresh→Console→開始1回→同じ job_id で poll をまとめたスクリプトで行った。
 - T107: `SlotMachine.KakuhenGamesLeft`。BIG 終了時に `_random.NextDouble() < KakuhenEntryRate` で当たれば `KakuhenGames` をセット。ボーナス終了後は残り>0なら Kakuhen、0なら Normal。確変中に始めたゲームを `Finish` で1減らす（ボーナスを揃えたゲームも数え、ボーナス中は数えない）。ユーザー決定: 確変中 REG は残りゲームで復帰、確変中 BIG は突入を抽選し直す（plan 5章に追記）。テストは `ShortRules(games, rate)`（上限20）と `PlayBonusInKakuhen`。
 - 検証（T107）: red→green 2周（BIG 後に確変100G、3G で終了）、ガード3件（突入率0、確変中 BIG で3に戻る、確変中 REG で残り2）は追加時点で green。EditMode 167/167、Console エラー0、ハーネス 8/8。Unity 接続は停止済み（8080 閉）。
-- 次の一手: T108（先バレの抽選、`slot_premonition.csv` はまだ見出しのみ）を `tdd` で。
 - T106: `SlotMachine` に `SlotRules`。ボーナス中の払い出しを `BonusPayout` に累計し上限で終了、上限またぎは全額払い（plan 5章）。テストヘルパー `BigThenBellMachine`。
 - テスト実行のヘルパー: refresh→Console→開始1回→同じ job_id で poll を1スクリプトにまとめると安全（開始の出力を切り捨てて job_id を失わないこと。今回それで開始を二重送信した）。
 - T105: `SlotMachine` に `CarriedBonus`（揃わなかった BIG/REG を持ち越し）・`State`（ボーナス役が揃うと Bonus）・`ActiveBonus`。持ち越し中に引いたフラグは `SlotProbabilities.WithoutBonus` でボーナス役を外す（big+watermelon→watermelon、big→ハズレ）。`SlotReelControl` の評価は（ボーナス役の数, ほかの成立役の数）の期待値を辞書式で比べる（ボーナス優先、plan 5章に追記）。`SlotFlag.BigRole/RegRole/IsBonusRole` 追加。

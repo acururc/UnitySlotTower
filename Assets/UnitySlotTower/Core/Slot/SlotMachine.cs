@@ -15,6 +15,7 @@ namespace UnitySlotTower.Core.Slot
         private readonly SlotReels _reels;
         private readonly SlotPayouts _payouts;
         private readonly SlotProbabilities _probabilities;
+        private readonly SlotPremonition _premonition;
         private readonly SlotReelControl _control;
         private readonly SlotRules _rules;
         private readonly CoinWallet _wallet;
@@ -22,12 +23,13 @@ namespace UnitySlotTower.Core.Slot
         private readonly int _bet;
         private readonly int _setting;
 
-        public SlotMachine(SlotReels reels, SlotPayouts payouts, SlotProbabilities probabilities, SlotReelControl control,
-            SlotRules rules, CoinWallet wallet, int bet, int setting, IRandom random)
+        public SlotMachine(SlotReels reels, SlotPayouts payouts, SlotProbabilities probabilities, SlotPremonition premonition,
+            SlotReelControl control, SlotRules rules, CoinWallet wallet, int bet, int setting, IRandom random)
         {
             _reels = reels;
             _payouts = payouts;
             _probabilities = probabilities;
+            _premonition = premonition;
             _control = control;
             _rules = rules;
             _wallet = wallet;
@@ -50,6 +52,8 @@ namespace UnitySlotTower.Core.Slot
             {
                 Flag = _probabilities.WithoutBonus(Flag);
             }
+
+            Premonition = _premonition.Draw(_random, Flag);
 
             Spin = _control.Start(Flag, CarriedBonus);
             return true;
@@ -154,6 +158,9 @@ namespace UnitySlotTower.Core.Slot
 
         /// <summary>成立したが揃えていないボーナス役（BIG・REG）。揃えるまで次ゲーム以降に持ち越す（なければ null）。</summary>
         public string CarriedBonus { get; private set; }
+
+        /// <summary>今のゲームのレバーオンで先バレが起きた（FR-044）。</summary>
+        public bool Premonition { get; private set; }
 
         /// <summary>今のゲームの成立フラグ（レバーオン前は null）。</summary>
         public SlotFlag Flag { get; private set; }

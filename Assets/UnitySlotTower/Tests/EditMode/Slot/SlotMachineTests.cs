@@ -22,14 +22,42 @@ namespace UnitySlotTower.Tests.EditMode.Slot
             Machine(wallet, role == null ? "" : $"{role},normal,1,1,1,1,1,1\n", ProjectTable(SlotRules.FileName));
 
         /// <summary>プロジェクトのリール・払い出し表と、行 <paramref name="probabilityRows"/> だけの抽選表、<paramref name="rules"/> の台。</summary>
-        private static SlotMachine Machine(CoinWallet wallet, string probabilityRows, CsvTable rules)
+        private static SlotMachine Machine(CoinWallet wallet, string probabilityRows, CsvTable rules) =>
+            Machine(wallet, probabilityRows, rules, "");
+
+        /// <summary>先バレ表が行 <paramref name="premonitionRows"/> だけの台。</summary>
+        private static SlotMachine Machine(CoinWallet wallet, string probabilityRows, CsvTable rules, string premonitionRows)
         {
             var reels = SlotReels.Load(ProjectTable(SlotReels.FileName));
             var payouts = SlotPayouts.Load(ProjectTable(SlotPayouts.FileName));
             var probabilities = SlotProbabilities.Load(CsvParser.Parse(SlotProbabilities.FileName, ProbabilityHeader + probabilityRows), payouts);
+            var premonition = SlotPremonition.Load(CsvParser.Parse(SlotPremonition.FileName, "role,rate\n" + premonitionRows), payouts);
             var slotRules = SlotRules.Load(rules);
             var control = new SlotReelControl(reels, payouts, slotRules.MaxSlide);
-            return new SlotMachine(reels, payouts, probabilities, control, slotRules, wallet, Bet, 1, new SeededRandom(1));
+            return new SlotMachine(reels, payouts, probabilities, premonition, control, slotRules, wallet, Bet, 1, new SeededRandom(1));
+        }
+
+        [Test]
+        [Description("FR-044, AC-042: レバーオンで、成立役の発生率（ここでは100%）で先バレが起きる")]
+        public void Lever_Premonishes_A_Rare_Role_At_Its_Rate()
+        {
+            var machine = Machine(new CoinWallet(30), "watermelon,normal,1,1,1,1,1,1\n", ProjectTable(SlotRules.FileName),
+                "watermelon,1\n");
+
+            machine.TryLever();
+
+            Assert.That(machine.Premonition, Is.True);
+        }
+
+        [Test]
+        [Description("FR-044, AC-042: 表にない成立役（ここではハズレ、ガセの行なし）では先バレしない")]
+        public void Lever_Does_Not_Premonish_An_Unlisted_Role()
+        {
+            var machine = Machine(new CoinWallet(30), "", ProjectTable(SlotRules.FileName), "watermelon,1\n");
+
+            machine.TryLever();
+
+            Assert.That(machine.Premonition, Is.False);
         }
 
         /// <summary>通常時は BIG、ボーナス中はベルが確率1の台。</summary>
