@@ -10,8 +10,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
     /// </summary>
     public sealed class UnitActionTests
     {
-        private static Battlefield Create(string waveRows) =>
-            new Battlefield(BattleFixtures.LoadWave(waveRows), BattleFixtures.LoadRanges());
+        private static Battlefield Create(string waveRows) => BattleFixtures.CreateField(waveRows);
 
         private static BattleUnit Place(Battlefield field, string unitId, int x, int y,
             Facing facing = Facing.Right) =>

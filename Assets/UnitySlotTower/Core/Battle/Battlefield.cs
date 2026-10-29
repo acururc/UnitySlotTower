@@ -5,14 +5,15 @@ using UnitySlotTower.Core.Simulation;
 namespace UnitySlotTower.Core.Battle
 {
     /// <summary>
-    /// 1 ウェーブの戦闘（FR-024, FR-027, FR-028, FR-030〜032）。<see cref="WaveSchedule"/> どおりに敵を出し、経路を進め、
-    /// 地上の敵を味方にブロックさせ、敵と味方を攻撃させ（回復・強化を含む）、HP0 になった側を消す。1/60 秒の固定ステップで進める。
-    /// ライフとドロップ（T207）はまだない。
+    /// 1 ウェーブの戦闘（FR-013, FR-024, FR-027, FR-028, FR-030〜033）。<see cref="WaveSchedule"/> どおりに敵を出し、経路を進め、
+    /// 地上の敵を味方にブロックさせ、敵と味方を攻撃させ（回復・強化を含む）、HP0 になった側を消す。ゴールに着いた敵はライフを減らし、
+    /// 倒された敵はコインを落とす。1/60 秒の固定ステップで進め、ライフ0（ゲームオーバー）で止まる。
     /// </summary>
     public sealed class Battlefield
     {
         private readonly WaveSchedule _wave;
         private readonly UnitRanges _ranges;
+        private readonly IRandom _random;
         private readonly List<BattleEnemy> _enemies = new List<BattleEnemy>();
         private readonly List<BattleUnit> _units = new List<BattleUnit>();
 
@@ -21,11 +22,24 @@ namespace UnitySlotTower.Core.Battle
 
         private int _nextSpawn;
 
-        public Battlefield(WaveSchedule wave, UnitRanges ranges)
+        /// <param name="life">ウェーブ開始時のライフ（満タン、FR-013）。</param>
+        /// <param name="random">撃破ドロップの抽選に使う（FR-033）。</param>
+        public Battlefield(WaveSchedule wave, UnitRanges ranges, int life, IRandom random)
         {
             _wave = wave;
             _ranges = ranges;
+            _random = random;
+            Life = life;
         }
+
+        /// <summary>残りライフ。</summary>
+        public int Life { get; private set; }
+
+        /// <summary>ライフが0になった（FR-013）。</summary>
+        public bool IsGameOver => Life <= 0;
+
+        /// <summary>撃破ドロップで落ちたコインの合計（FR-033。財布への加算は T301）。</summary>
+        public int DroppedCoins { get; private set; }
 
         /// <summary>戦闘開始から進めたステップ数。</summary>
         public long Tick { get; private set; }
@@ -36,7 +50,7 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>配置順。</summary>
         public IReadOnlyList<BattleUnit> Units => _units;
 
-        /// <summary>ゴールに着いた敵の数（ライフ減少は T207）。</summary>
+        /// <summary>ゴールに着いた敵の数。</summary>
         public int ArrivedCount { get; private set; }
 
         /// <summary>配置できるマスかは呼び出し側（<see cref="UnitPlacement"/>、T208）で判定する。</summary>
@@ -48,12 +62,12 @@ namespace UnitySlotTower.Core.Battle
         }
 
         /// <summary>
-        /// 1 ステップごとに 出現 → 移動（ゴール到着で退場） → 敵の攻撃 → HP0 の味方の消滅 → 味方の行動 → HP0 の敵の消滅
-        /// の順で処理する。
+        /// 1 ステップごとに 出現 → 移動（ゴール到着で退場・ライフ減少） → 敵の攻撃 → HP0 の味方の消滅 → 味方の行動
+        /// → HP0 の敵の消滅（ドロップ） の順で処理する。ゲームオーバーになったら残りのステップは進めない。
         /// </summary>
         public void Advance(int steps)
         {
-            for (var i = 0; i < steps; i++)
+            for (var i = 0; i < steps && !IsGameOver; i++)
             {
                 Spawn();
                 Move();
@@ -104,6 +118,7 @@ namespace UnitySlotTower.Core.Battle
             {
                 if (_enemies[i].ReachedGoal)
                 {
+                    Life = Math.Max(Life - _enemies[i].Definition.LifeDamage, 0);
                     _enemies.RemoveAt(i);
                     ArrivedCount++;
                 }
@@ -323,7 +338,9 @@ namespace UnitySlotTower.Core.Battle
             return (int)Math.Round(unit.Definition.Atk * rate, MidpointRounding.AwayFromZero);
         }
 
-        /// <summary>HP0 の敵を消し、使っていたブロックの空きを戻す（ドロップは T207）。</summary>
+        /// <summary>
+        /// HP0 の敵を消し、使っていたブロックの空きを戻す。ドロップ確率に当たれば、最小〜最大の量（両端を含む一様）を落とす（FR-033）。
+        /// </summary>
         private void RemoveDefeatedEnemies()
         {
             for (var i = _enemies.Count - 1; i >= 0; i--)
@@ -337,6 +354,12 @@ namespace UnitySlotTower.Core.Battle
                 if (enemy.BlockedBy != null)
                 {
                     enemy.BlockedBy.BlockUsed -= enemy.Definition.BlockCost;
+                }
+
+                var definition = enemy.Definition;
+                if (_random.NextDouble() < definition.DropRate)
+                {
+                    DroppedCoins += _random.NextInt(definition.DropMin, definition.DropMax + 1);
                 }
 
                 _enemies.RemoveAt(i);

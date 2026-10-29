@@ -1,5 +1,6 @@
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
+using UnitySlotTower.Core.Simulation;
 
 namespace UnitySlotTower.Tests.EditMode.Battle
 {
@@ -17,14 +18,17 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             "m,a,1,1,0,1\nm,a,1,2,1,1\nm,a,1,3,2,1\nm,a,1,4,2,0\nm,a,1,5,3,0\n";
 
         // melee: 射程なし・1マス/秒、ranged: 射程1.5・0.5マス/秒、air: 空中・射程1・2マス/秒、heavy: 射程なし・1マス/秒・ブロック消費2、
-        // brute: 射程なし・1マス/秒・HP100000・攻撃1000（味方を倒す役）
+        // brute: 射程なし・1マス/秒・HP100000・攻撃1000（味方を倒す役）、
+        // fodder: HP1・攻撃0・40%で1枚、rich: HP1・攻撃0・必ず2〜3枚（ドロップを見る役）
         public const string Enemies =
             "id,max_hp,atk,def,attack_interval,move_speed,range,is_air,block_cost,life_damage,drop_rate,drop_min,drop_max\n" +
             "melee,1000,200,50,1.5,1,0,0,1,1,0.4,1,1\n" +
             "ranged,700,300,30,2,0.5,1.5,0,1,1,0.5,1,2\n" +
             "air,600,150,20,1,2,1,1,1,1,0.5,1,2\n" +
             "heavy,2000,300,50,2,1,0,0,2,2,0.5,1,2\n" +
-            "brute,100000,1000,0,1,1,0,0,1,1,0.5,1,2\n";
+            "brute,100000,1000,0,1,1,0,0,1,1,0.5,1,2\n" +
+            "fodder,1,0,0,1,1,0,0,1,1,0.4,1,1\n" +
+            "rich,1,0,0,1,1,0,0,1,1,1,2,3\n";
 
         // tank: HP1800・防御300・ブロック3、sword: HP1200・防御50・ブロック1、archer: HP700・防御50
         public const string Units =
@@ -60,5 +64,9 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
         public static WaveSchedule LoadWave(string rows, int wave = 1) =>
             WaveSchedule.Load(CsvParser.Parse(WaveSchedule.FileName, WavesHeader + rows), wave, LoadMap(), LoadEnemies());
+
+        /// <summary>既定はライフ10・シード1の戦闘。</summary>
+        public static Battlefield CreateField(string waveRows, int life = 10, IRandom random = null) =>
+            new Battlefield(LoadWave(waveRows), LoadRanges(), life, random ?? new SeededRandom(1));
     }
 }

@@ -9,7 +9,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
     /// </summary>
     public sealed class BattlefieldTests
     {
-        private static Battlefield Create(string waveRows) => new Battlefield(BattleFixtures.LoadWave(waveRows), BattleFixtures.LoadRanges());
+        private static Battlefield Create(string waveRows) => BattleFixtures.CreateField(waveRows);
 
         private static BattleUnit Place(Battlefield field, string unitId, int x, int y) =>
             field.AddUnit(BattleFixtures.LoadUnits().Get(unitId), new GridPoint(x, y), Facing.Right);
