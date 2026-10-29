@@ -11,7 +11,7 @@ namespace UnitySlotTower.Slot
     {
         // 中段からのずれ -2〜+2 のコマ。子は SlotSymbol の順に1つずつ図柄を持つ。
         [SerializeField] private RectTransform[] cells;
-        [SerializeField] private float symbolsPerSecond = 28f;
+        [SerializeField] private float symbolsPerSecond = 16f;
 
         private SlotReels _reels;
         private int _reel;

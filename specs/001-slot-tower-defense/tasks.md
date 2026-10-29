@@ -26,7 +26,7 @@
 - [x] T107 (FR-043) BIG 後の確変（突入率、ゲーム数、確変中BIGでのリセット）を作る — 検証: EditMode テスト（AC-040） — 結果: EditMode 167/167、Console エラー0
 - [x] T108 (FR-044) 先バレの抽選（`slot_premonition.csv`）を作る — 検証: EditMode テスト（AC-042） — 結果: EditMode 178/178、Console エラー0（2026-10-29 先バレ対象を BIG・REG に変更）
 - [x] T109 (FR-045) 理論機械割を計算する Editor ツールと、設定1〜6の大量シミュレーションテストを作り、目標値（100〜125%）に合うよう CSV を調整する — 検証: EditMode テスト（理論値と実測の差が許容範囲内: AC-040, AC-043） — 結果: 2026-10-30 適当打ち基準（ユーザー決定）で `SlotTheory`・`Tools/UnitySlotTower/Slot/Theoretical Payout Rate`、ベル確率を設定別に調整し理論値 100.04/104.04/107.96/112.06/118.08/125.09%。100万G×6設定の実測が理論値の標準誤差4倍以内。EditMode 202/202。AC-043 の「敵・初期コインは変わらない」は該当コードができる段階で確認
-- [ ] T110 (FR-040, FR-044) 下部のスロット筐体の仮表示（リール回転・停止、ボタン、ランプ、クレジットの数字、先バレの光と音）とウェイト2秒 — 検証: Editor 画像、手動で目押し — 途中経過: 2026-10-30 `Core/Slot/SlotWait`（red 5件→green）、`Runtime/Slot`（SlotCabinet・SlotReelView）、`Tools/UnitySlotTower/Setup/Build Slot Cabinet` で Game シーンに組んだ。EditMode 207/207、Editor 画像（停止・回転中・停止後）確認。未確認: ユーザーの手動目押し、先バレの光と音
+- [x] T110 (FR-040, FR-044) 下部のスロット筐体の仮表示（リール回転・停止、ボタン、ランプ、クレジットの数字、先バレの光と音）とウェイト2秒 — 検証: Editor 画像、手動で目押し — 結果: 2026-10-30 `Core/Slot/SlotWait`（red 5件→green）、`Runtime/Slot`（SlotCabinet・SlotReelView）、`Tools/UnitySlotTower/Setup/Build Slot Cabinet` で Game シーンに組んだ。Editor 画像（停止・回転中・停止後）確認。ユーザーが手動で目押しと先バレの光と音を確認（先バレは CSV を一時的に上げて確認し、元に戻した）。リール速さはユーザーの指摘で毎秒28コマ→16コマ。EditMode 207/207
 
 ## M2 戦闘の核
 

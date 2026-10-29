@@ -5677,7 +5677,7 @@ MonoBehaviour:
   - {fileID: 1586274522}
   - {fileID: 148328207}
   - {fileID: 167711444}
-  symbolsPerSecond: 28
+  symbolsPerSecond: 16
 --- !u!114 &954019488
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7961,7 +7961,7 @@ MonoBehaviour:
   - {fileID: 1992064331}
   - {fileID: 1673043176}
   - {fileID: 1125510844}
-  symbolsPerSecond: 28
+  symbolsPerSecond: 16
 --- !u!114 &1362451177
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11861,7 +11861,7 @@ MonoBehaviour:
   - {fileID: 877921313}
   - {fileID: 75755550}
   - {fileID: 1793703917}
-  symbolsPerSecond: 28
+  symbolsPerSecond: 16
 --- !u!114 &1952855237
 MonoBehaviour:
   m_ObjectHideFlags: 0
