@@ -30,7 +30,7 @@
 
 ## M2 戦闘の核
 
-- [ ] T201 (FR-023) `maps/w1.csv`・`map_paths.csv` からグリッドと経路を作り、戦闘フィールドに仮表示する — 検証: EditMode テスト、Editor 画像
+- [x] T201 (FR-023) `maps/w1.csv`・`map_paths.csv` からグリッドと経路を作り、戦闘フィールドに仮表示する — 検証: EditMode テスト、Editor 画像 — 結果: 2026-10-30 `Core/Battle/BattleMap`（座標は x=列・y=CSV の上の行から。経路は出現口で始まりゴールで終わり、地上経路は高台・通行不可を通れない。空中経路は通れる）。`GameDataValidator` が経路のあるマップを BattleMap で検証。`map_paths.csv` に w1 の地上経路 `w1_g1`（(0,2)→(8,2)）を追加（w2〜w5 の経路は M3）。`Runtime/Battle/BattleFieldView`（1マス=1単位の箱と経路線）、`Tools/UnitySlotTower/Setup/Build Battle Field` で仮の地面を置き換えた。テスト12件追加（red: Validator 未接続の1件が失敗→green）。EditMode 219/219、Editor の Play 画像確認、ハーネス 8/8
 - [ ] T202 (FR-020, FR-021, FR-022) `units.csv` と、召喚（コイン消費、配置上限、種類ごとの待ち時間）を作る — 検証: EditMode テスト（AC-020）
 - [ ] T203 (FR-023) 配置マス種別の制限と、向き（4方向）による攻撃範囲の回転を作る — 検証: EditMode テスト（AC-021）
 - [ ] T204 (FR-030, FR-031, FR-032) `enemies.csv`・`waves.csv` と、敵3種の出現・経路移動・空中移動・攻撃を作る — 検証: EditMode テスト

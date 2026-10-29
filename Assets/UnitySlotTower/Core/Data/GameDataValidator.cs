@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnitySlotTower.Core.Battle;
 
 namespace UnitySlotTower.Core.Data
 {
@@ -161,6 +162,7 @@ namespace UnitySlotTower.Core.Data
 
             TableValidator.ValidateProbabilitySum(tables["slot_probabilities.csv"], "state", Settings, report);
             TableValidator.ValidatePathContinuity(tables["map_paths.csv"], report);
+            ValidateMapPaths(files, tables["map_paths.csv"], maps, report);
             return report;
         }
 
@@ -246,6 +248,34 @@ namespace UnitySlotTower.Core.Data
                 if (!maps.Contains(row.Get("map_id")))
                 {
                     report.Add(row.Error("map_id", $"マップ 'maps/{row.Get("map_id")}.csv' がない").Error);
+                }
+            }
+        }
+
+        /// <summary>経路のあるマップは、範囲・通行可否・出現口からゴールまでを <see cref="BattleMap"/> で確かめる。</summary>
+        private static void ValidateMapPaths(IReadOnlyDictionary<string, string> files, CsvTable paths, List<string> maps,
+            ValidationReport report)
+        {
+            foreach (var map in maps)
+            {
+                var hasPath = false;
+                foreach (var row in paths.Rows)
+                {
+                    hasPath |= row.Get("map_id") == map;
+                }
+
+                if (!hasPath)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    BattleMap.Load(map, files[BattleMap.MapFileName(map)], paths);
+                }
+                catch (CsvFormatException ex)
+                {
+                    report.Add(ex.Error);
                 }
             }
         }
