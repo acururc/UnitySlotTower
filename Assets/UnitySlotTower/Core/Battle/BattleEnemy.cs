@@ -30,6 +30,15 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>経路の終点（ゴールのマス中心）に着いた。</summary>
         public bool ReachedGoal => Distance >= Path.Cells.Count - 1 - Epsilon;
 
+        public bool IsAlive => Hp > 0;
+
+        /// <summary>ゴールまでの残りの道のり（マス）。味方はこれが最も短い敵を狙う。</summary>
+        public double RemainingDistance => Path.Cells.Count - 1 - Distance;
+
+        /// <summary>中心が入っているマス。境界ちょうどなら座標の大きい側。</summary>
+        public GridPoint Cell =>
+            new GridPoint((int)Math.Floor(X + 0.5 + Epsilon), (int)Math.Floor(Y + 0.5 + Epsilon));
+
         /// <summary>この敵をブロックしている味方。ブロックされていなければ null。</summary>
         public BattleUnit BlockedBy { get; internal set; }
 
@@ -50,6 +59,11 @@ namespace UnitySlotTower.Core.Battle
             var to = Path.Cells[index + 1];
             X = from.X + (to.X - from.X) * t;
             Y = from.Y + (to.Y - from.Y) * t;
+        }
+
+        internal void TakeDamage(int damage)
+        {
+            Hp = Hp > damage ? Hp - damage : 0;
         }
 
         internal double DistanceTo(GridPoint cell)

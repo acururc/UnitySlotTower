@@ -5,13 +5,14 @@ using UnitySlotTower.Core.Simulation;
 namespace UnitySlotTower.Core.Battle
 {
     /// <summary>
-    /// 1 ウェーブの戦闘（FR-027, FR-030〜032）。<see cref="WaveSchedule"/> どおりに敵を出し、経路を進め、
-    /// 地上の敵を味方にブロックさせ、敵に味方を攻撃させる。1/60 秒の固定ステップで進める。
-    /// 味方の攻撃と HP0 での消滅・ブロック解除（T206）、ライフとドロップ（T207）はまだない。
+    /// 1 ウェーブの戦闘（FR-024, FR-027, FR-028, FR-030〜032）。<see cref="WaveSchedule"/> どおりに敵を出し、経路を進め、
+    /// 地上の敵を味方にブロックさせ、敵と味方を攻撃させ（回復・強化を含む）、HP0 になった側を消す。1/60 秒の固定ステップで進める。
+    /// ライフとドロップ（T207）はまだない。
     /// </summary>
     public sealed class Battlefield
     {
         private readonly WaveSchedule _wave;
+        private readonly UnitRanges _ranges;
         private readonly List<BattleEnemy> _enemies = new List<BattleEnemy>();
         private readonly List<BattleUnit> _units = new List<BattleUnit>();
 
@@ -20,9 +21,10 @@ namespace UnitySlotTower.Core.Battle
 
         private int _nextSpawn;
 
-        public Battlefield(WaveSchedule wave)
+        public Battlefield(WaveSchedule wave, UnitRanges ranges)
         {
             _wave = wave;
+            _ranges = ranges;
         }
 
         /// <summary>戦闘開始から進めたステップ数。</summary>
@@ -40,12 +42,15 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>配置できるマスかは呼び出し側（<see cref="UnitPlacement"/>、T208）で判定する。</summary>
         public BattleUnit AddUnit(UnitDefinition definition, GridPoint cell, Facing facing)
         {
-            var unit = new BattleUnit(definition, cell, facing);
+            var unit = new BattleUnit(definition, cell, facing, _ranges.CellsFrom(definition.Id, cell, facing));
             _units.Add(unit);
             return unit;
         }
 
-        /// <summary>1 ステップごとに 出現 → 移動（ゴール到着で退場） → 攻撃 の順で処理する。</summary>
+        /// <summary>
+        /// 1 ステップごとに 出現 → 移動（ゴール到着で退場） → 敵の攻撃 → HP0 の味方の消滅 → 味方の行動 → HP0 の敵の消滅
+        /// の順で処理する。
+        /// </summary>
         public void Advance(int steps)
         {
             for (var i = 0; i < steps; i++)
@@ -53,6 +58,9 @@ namespace UnitySlotTower.Core.Battle
                 Spawn();
                 Move();
                 Attack();
+                RemoveFallenUnits();
+                Act();
+                RemoveDefeatedEnemies();
                 Tick++;
             }
         }
@@ -168,12 +176,184 @@ namespace UnitySlotTower.Core.Battle
             }
         }
 
+        /// <summary>HP0 の味方を消し（FR-024）、その味方がブロックしていた敵を再び進ませる。</summary>
+        private void RemoveFallenUnits()
+        {
+            for (var i = _units.Count - 1; i >= 0; i--)
+            {
+                var unit = _units[i];
+                if (unit.IsAlive)
+                {
+                    continue;
+                }
+
+                foreach (var enemy in _enemies)
+                {
+                    if (enemy.BlockedBy == unit)
+                    {
+                        enemy.BlockedBy = null;
+                    }
+                }
+
+                unit.BlockUsed = 0;
+                _units.RemoveAt(i);
+            }
+        }
+
+        /// <summary>
+        /// 攻撃間隔ごとに、範囲内の敵を攻撃する（ヒーラーは味方を回復する）。対象がなければ待たずに次のステップで探す。
+        /// バッファーは自分では行動せず、<see cref="AttackOf"/> で範囲内の味方の攻撃力を上げる。
+        /// </summary>
+        private void Act()
+        {
+            foreach (var unit in _units)
+            {
+                if (unit.Definition.Role == UnitRole.Buff)
+                {
+                    continue;
+                }
+
+                if (unit.AttackCooldownSteps > 0)
+                {
+                    unit.AttackCooldownSteps--;
+                }
+
+                if (unit.AttackCooldownSteps > 0)
+                {
+                    continue;
+                }
+
+                if (unit.Definition.Role == UnitRole.Heal)
+                {
+                    var patient = FindPatient(unit);
+                    if (patient == null)
+                    {
+                        continue;
+                    }
+
+                    patient.Heal(AttackOf(unit));
+                }
+                else
+                {
+                    var target = FindTarget(unit);
+                    if (target == null)
+                    {
+                        continue;
+                    }
+
+                    target.TakeDamage(Damage.Calculate(AttackOf(unit), target.Definition.Def));
+                }
+
+                unit.AttackCooldownSteps =
+                    (int)Math.Round(unit.Definition.AttackInterval * SimulationClock.StepsPerSecond);
+            }
+        }
+
+        /// <summary>
+        /// ブロック中の敵があればその中から、なければ範囲内の敵から、ゴールに最も近い敵（同じなら先に出た敵）を選ぶ。
+        /// 空中の敵は遠距離職（弓）だけが狙える（FR-031）。
+        /// </summary>
+        private BattleEnemy FindTarget(BattleUnit unit)
+        {
+            BattleEnemy target = null;
+            var targetBlocked = false;
+            foreach (var enemy in _enemies)
+            {
+                if (!enemy.IsAlive)
+                {
+                    continue;
+                }
+
+                var blocked = enemy.BlockedBy == unit;
+                if (!blocked && (!unit.InRange(enemy.Cell) ||
+                                 enemy.Definition.IsAir && unit.Definition.Role != UnitRole.Ranged))
+                {
+                    continue;
+                }
+
+                if (target == null || blocked && !targetBlocked ||
+                    blocked == targetBlocked && enemy.RemainingDistance < target.RemainingDistance)
+                {
+                    target = enemy;
+                    targetBlocked = blocked;
+                }
+            }
+
+            return target;
+        }
+
+        /// <summary>範囲内で HP が減っている味方のうち、HP 割合が最も低い味方（同じなら先に配置した味方）。</summary>
+        private BattleUnit FindPatient(BattleUnit healer)
+        {
+            BattleUnit patient = null;
+            foreach (var unit in _units)
+            {
+                if (!unit.IsAlive || unit.Hp >= unit.Definition.MaxHp || !healer.InRange(unit.Cell))
+                {
+                    continue;
+                }
+
+                // Hp / MaxHp の比較を整数の掛け算で行う。
+                if (patient == null ||
+                    (long)unit.Hp * patient.Definition.MaxHp < (long)patient.Hp * unit.Definition.MaxHp)
+                {
+                    patient = unit;
+                }
+            }
+
+            return patient;
+        }
+
+        /// <summary>
+        /// 範囲に自分を含む他のバッファーのうち、最も高い倍率だけをかけた攻撃力（重ねがけしない、FR-028）。
+        /// ヒーラーの回復量もこの値。端数は四捨五入する。
+        /// </summary>
+        private int AttackOf(BattleUnit unit)
+        {
+            var rate = 1.0;
+            foreach (var buffer in _units)
+            {
+                if (buffer != unit && buffer.IsAlive && buffer.Definition.Role == UnitRole.Buff &&
+                    buffer.Definition.BuffRate > rate && buffer.InRange(unit.Cell))
+                {
+                    rate = buffer.Definition.BuffRate;
+                }
+            }
+
+            return (int)Math.Round(unit.Definition.Atk * rate, MidpointRounding.AwayFromZero);
+        }
+
+        /// <summary>HP0 の敵を消し、使っていたブロックの空きを戻す（ドロップは T207）。</summary>
+        private void RemoveDefeatedEnemies()
+        {
+            for (var i = _enemies.Count - 1; i >= 0; i--)
+            {
+                var enemy = _enemies[i];
+                if (enemy.IsAlive)
+                {
+                    continue;
+                }
+
+                if (enemy.BlockedBy != null)
+                {
+                    enemy.BlockedBy.BlockUsed -= enemy.Definition.BlockCost;
+                }
+
+                _enemies.RemoveAt(i);
+            }
+        }
+
         private BattleUnit NearestUnitInRange(BattleEnemy enemy)
         {
             BattleUnit target = null;
             var nearest = double.MaxValue;
             foreach (var unit in _units)
             {
+                if (!unit.IsAlive)
+                {
+                    continue;
+                }
+
                 var distance = enemy.DistanceTo(unit.Cell);
                 if (distance <= enemy.Definition.Range + RangeEpsilon && distance < nearest)
                 {

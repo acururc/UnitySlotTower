@@ -10,12 +10,26 @@ namespace UnitySlotTower.Core.Battle
         High,
     }
 
+    /// <summary>
+    /// 戦闘での働き（plan 5章）。近距離はブロック中の敵を優先して攻撃し、遠距離だけが空中の敵も攻撃できる。
+    /// 回復は範囲内で HP 割合が最も低い味方を攻撃力ぶん回復し、強化は範囲内の他の味方の攻撃力に倍率をかける。
+    /// </summary>
+    public enum UnitRole
+    {
+        Melee,
+        Ranged,
+        Heal,
+        Buff,
+    }
+
     /// <summary>味方1種の基本ステータス（強化前）。</summary>
     public sealed class UnitDefinition
     {
         internal UnitDefinition(string id, int maxHp, int atk, int def, double attackInterval, int block, UnitTile tile,
-            int cost, double cooldown)
+            int cost, double cooldown, UnitRole role, double buffRate)
         {
+            Role = role;
+            BuffRate = buffRate;
             Id = id;
             MaxHp = maxHp;
             Atk = atk;
@@ -43,6 +57,11 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>召喚後、同じ種類を再び召喚できるまでの待ち時間（秒）。</summary>
         public double Cooldown { get; }
+
+        public UnitRole Role { get; }
+
+        /// <summary>役割が強化のとき、範囲内の味方の攻撃力にかける倍率。他の役割では使わない。</summary>
+        public double BuffRate { get; }
     }
 
     /// <summary>units.csv の味方一覧。</summary>
@@ -87,12 +106,29 @@ namespace UnitySlotTower.Core.Battle
 
                 var unit = new UnitDefinition(id, row.GetInt("max_hp"), row.GetInt("atk"), row.GetInt("def"),
                     row.GetDouble("attack_interval"), row.GetInt("block"), ParseTile(row), row.GetInt("cost"),
-                    row.GetDouble("cooldown"));
+                    row.GetDouble("cooldown"), ParseRole(row), row.GetDouble("buff_rate"));
                 units._units.Add(id, unit);
                 units._all.Add(unit);
             }
 
             return units;
+        }
+
+        private static UnitRole ParseRole(CsvRow row)
+        {
+            switch (row.Get("role"))
+            {
+                case "melee":
+                    return UnitRole.Melee;
+                case "ranged":
+                    return UnitRole.Ranged;
+                case "heal":
+                    return UnitRole.Heal;
+                case "buff":
+                    return UnitRole.Buff;
+                default:
+                    throw row.Error("role", $"役割は melee・ranged・heal・buff のどれか: '{row.Get("role")}'");
+            }
         }
 
         private static UnitTile ParseTile(CsvRow row)
