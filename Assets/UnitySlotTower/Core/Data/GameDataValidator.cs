@@ -151,8 +151,9 @@ namespace UnitySlotTower.Core.Data
             TableValidator.ValidateReference(tables["unit_upgrades.csv"], "unit_id", tables["units.csv"], "id", report);
             TableValidator.ValidateReference(tables["waves.csv"], "enemy_id", tables["enemies.csv"], "id", report);
             TableValidator.ValidateReference(tables["waves.csv"], "path_id", tables["map_paths.csv"], "path_id", report);
-            TableValidator.ValidateReference(tables["slot_probabilities.csv"], "role", tables["slot_payouts.csv"], "role",
-                report);
+            // 重複当選は役を '+' でつなぐ（例 big+center_cherry）。
+            TableValidator.ValidateListReference(tables["slot_probabilities.csv"], "role", '+',
+                tables["slot_payouts.csv"], "role", report);
             // ハズレは払い出し表にないが、先バレの「ガセ」として発生率を持てる（plan 5章）。
             TableValidator.ValidateReference(tables["slot_premonition.csv"], "role", tables["slot_payouts.csv"], "role",
                 report, "hazure");

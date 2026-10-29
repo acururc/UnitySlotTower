@@ -2,15 +2,17 @@
 
 ## 現在の作業
 
-更新: 2026-10-29 Asia/Tokyo / 状態: M0 完了・コミット済み（25cac48）。M1 の T101 完了。次は T102
+更新: 2026-10-29 Asia/Tokyo / 状態: M0 完了（25cac48）。M1 の T101・T102 完了。次は T103
 
 ### M1 の進み（2026-10-29）
-- T101: `Core/Slot/`（SlotSymbol・SlotReels・SlotPayouts・SlotRules）と `Tests/EditMode/Slot/SlotTableTests.cs`。`slot_reels.csv`・`slot_payouts.csv` に中身を入れた（`slot_probabilities.csv`・`slot_premonition.csv` はまだ見出しのみ）。
+- T101: `Core/Slot/`（SlotSymbol・SlotReels・SlotPayouts・SlotRules）と `Tests/EditMode/Slot/SlotTableTests.cs`。`slot_reels.csv`・`slot_payouts.csv` に中身を入れた（`slot_premonition.csv` はまだ見出しのみ）。
+- T102: `Core/Slot/SlotProbabilities.cs`（SlotState Normal/Kakuhen/Bonus、SlotFlag、`Draw(IRandom, state, setting)` は乱数1回）と `Tests/EditMode/Slot/SlotLotteryTests.cs`。重複当選は role 列で `big+center_cherry` のようにつなぐ（plan 5章に追記）。各行は排他、残りがハズレ（Flags[0]）。表検証は `TableValidator.ValidateListReference` で `+` を分けて参照確認。`slot_probabilities.csv` の値は仮（T109 で機械割に合わせて調整）。ボーナス中は big/reg なし。
+- 検証（T102）: EditMode red 15件（新規14＋表検証）→ green 118/118、Console エラー0、ハーネス 8/8。Unity 接続は停止済み（8080 閉）。
 - ユーザー決定（2026-10-29）: レア役（スイカ・角チェリー・中段チェリー）は取りこぼしあり。リプレイ・ベル・ハズレは必ず一致。plan 5章「リール制御」「払い出し」に反映済み。
 - リール配列の前提（T103 で守る）: 停止位置 s で上段 s-1・中段 s・下段 s+1。押した位置 p から p, p-1, …, p-4 に滑る（下向き回転）。この前提で、全押し順×全押し位置でリプレイ・ベル・ハズレが実現でき、BIG/REG は先読みあり制御で約16%/23%、スイカ/角チェ/中段チェは約47%/86%/71% の押し位置で揃う（使い捨て node スクリプトでの総当たり。プロジェクト内のテストではない）。
 - 払い出しは1ゲーム1回。cherry と center_cherry は同じ図柄（cherry,any,any）で、左リールの段で区別する。初期値 replay0/bell8/watermelon6/cherry2/center_cherry4/big0/reg0（T109 で調整）。
-- 検証: EditMode 104/104（新規6件の red 確認後 green）、Console エラー0、ハーネス 8/8。Unity 接続は停止済み（8080 閉）。
-- 次の一手: T102（`slot_probabilities.csv` と内部抽選）を `tdd` で。役ID は payouts と同じ＋hazure。重複当選（BIG＋中段チェリー等）を表でどう持つかは列設計を決めてから。
+- 検証（T101）: EditMode 104/104、Console エラー0、ハーネス 8/8。
+- 次の一手: T103（目押しのリール制御）を `tdd` で。入力は SlotFlag（重複当選は複数役）と各リールの押し位置・押し順、上の配列前提を守る。BIG/REG の持ち越し優先は T105 だが、制御の引数で持てる形にしておく。
 
 - 対象: [`spec.md`](../../specs/001-slot-tower-defense/spec.md)（2026-10-26 承認。変えたら再承認）、[`plan.md`](../../specs/001-slot-tower-defense/plan.md)、[`tasks.md`](../../specs/001-slot-tower-defense/tasks.md)（M0 は `[x]` と各行末に結果）。
 - 承認: 2026-10-29 にユーザーが「M0から実装を始めて」と依頼。M1 以降も実装依頼の範囲内と解釈してよいが、spec 変更は別途承認が要る。

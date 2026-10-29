@@ -160,7 +160,12 @@ namespace UnitySlotTower.Core.Data
         }
 
         public static void ValidateReference(CsvTable from, string column, CsvTable to, string toColumn,
-            ValidationReport report, params string[] extraAllowed)
+            ValidationReport report, params string[] extraAllowed) =>
+            ValidateListReference(from, column, null, to, toColumn, report, extraAllowed);
+
+        /// <summary>column の値を separator で区切った各 ID が to の toColumn にあることを確かめる（separator が null なら区切らない）。</summary>
+        public static void ValidateListReference(CsvTable from, string column, char? separator, CsvTable to,
+            string toColumn, ValidationReport report, params string[] extraAllowed)
         {
             if (!from.HasColumn(column) || !to.HasColumn(toColumn))
             {
@@ -175,10 +180,13 @@ namespace UnitySlotTower.Core.Data
 
             foreach (var row in from.Rows)
             {
-                var id = row.Get(column);
-                if (!ids.Contains(id))
+                var value = row.Get(column);
+                foreach (var id in separator.HasValue ? value.Split(separator.Value) : new[] { value })
                 {
-                    report.Add(row.Error(column, $"'{id}' が {to.FileName} の {toColumn} にない").Error);
+                    if (!ids.Contains(id))
+                    {
+                        report.Add(row.Error(column, $"'{id}' が {to.FileName} の {toColumn} にない").Error);
+                    }
                 }
             }
         }
