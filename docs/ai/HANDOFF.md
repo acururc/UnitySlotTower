@@ -2,13 +2,17 @@
 
 ## 現在の作業
 
-更新: 2026-10-30 Asia/Tokyo / 状態: M0 完了（25cac48）。M1 の T101〜T109 完了。次は T110
+更新: 2026-10-30 Asia/Tokyo / 状態: M0 完了（25cac48）。M1 の T101〜T109 完了。T110 は実装済みでユーザーの手動確認待ち
 
 ### M1 の進み（2026-10-29〜30）
+- T110: `Core/Slot/SlotWait.cs`（前のレバーオンから待ち、待ち中のレバーは予約）、`Runtime/Slot/SlotCabinet.cs`（CSV を TextAsset で読み SlotMachine を組む。Space/J/K/L とボタン、ランプ4つ、数字3つ、先バレは仮チャイム）、`Runtime/Slot/SlotReelView.cs`（5コマで下向き回転、押し位置＝中段へ下りてくる図柄）、`Editor/Setup/SlotCabinetSetup.cs`（一回限りのメニューで Slot Area に組み、Battle Camera に AudioListener 追加）。図柄は仮の形（7 だけ数字フォント）。設定は SlotCabinet の `setting`（既定1）。plan 5章にウェイトと筐体の解釈を追記。
+- 検証（T110）: red 5件→green、EditMode 207/207（筐体を組んだあとも）、ハーネス 8/8、Editor 画像 `Artifacts/Automation/Editor/t110-idle.png`・`t110-spin-2.png`・`t110-stop-2.png`（ハズレ2回で 30→24）。Unity 接続は停止済み（8080 閉）。
+- 未確認（T110）: ユーザーの手動目押し（Space→J/K/L）、先バレの光と音、最初のフラグごとの制御表作成で一瞬止まらないか。`NumericOnly SDF.asset` の _ScaleRatio 変化は TMP が Bold 用に自動で書いたもの。
+- 注意: Editor が非フォーカスだと Play のフレームが進まない。自動で動かすときは code execute で `Application.runInBackground = true`（Play 中だけ）にする。`code execute` は `Object` が曖昧なので `UnityEngine.Object` と書く。CLI はテスト失敗や poll 中に exit 1 を返すので try で包む。
+- 次の一手: ユーザーが Play で目押しを確認 → T110 を `[x]` にして M1 完了 → M2（T201）。
 - T109: `Core/Slot/SlotTheory.cs`（`Calculate`・`CalculateAllSettings`、`SlotPlayStyle.Random/Perfect`、`TargetPayoutRates`）。ユーザー決定（2026-10-30）: 機械割の目標は適当打ち基準（plan 5章に計算方法と併せて記録）。`Editor/Slot/SlotTheoryReport.cs` のメニューは Console と `Artifacts/Slot/slot-theory.txt` に出す。`slot_probabilities.csv` のベル（通常・確変）を設定別 1/4.51〜1/3.33 に調整。理論値（適当打ち）100.04/104.04/107.96/112.06/118.08/125.09%、完全攻略の参考値 104.86〜131.29%。
 - 検証（T109）: red（新規5件 NotImplemented）→green、`SlotSimulationTests` 100万G×6設定で機械割・BIG/REG 開始率が理論値の標準誤差4倍以内、目標 ±0.5pt。EditMode 202/202（約74秒）、ハーネス 8/8。Unity 接続は停止済み（8080 閉）。
 - 注意（T109）: `editor console` が Debug.Log もエラーも0件しか返さない状態だった（読み取り自体の不調の疑い。コンパイルはメニューの新コードが動いたことで確認）。ログを確認したいときはファイル出力を使う。refresh 直後はコンパイル中でテスト開始が失敗するので20秒ほど待つ。
-- 次の一手: T110（下部スロット筐体の仮表示とウェイト2秒）。
 - T108: `Core/Slot/SlotPremonition.cs`（`Rate(flag)`・`Draw(random, flag)`。表は単独役＋`hazure`（ガセ）、表にない役は0、重複当選は役の最大率で1回、率0なら乱数を使わない）。`SlotMachine` のコンストラクタに `SlotPremonition` を追加（probabilities の次）、`TryLever` で持ち越し処理後のフラグで抽選し `Premonition` に入れる。ユーザー決定（2026-10-29）: 先バレは 7揃いの BIG・REG だけ（spec D-31・FR-044・AC-042 を書き換え、spec 冒頭に変更承認を記録）。`slot_premonition.csv` は big 1/2・reg 1/2・ガセ0（率は仮）。重複当選・持ち越し・ボーナス中の扱いは plan 5章「先バレ」。
 - 検証（T108）: red→green 3周（表: 新規6件失敗→175/175、台: 1件失敗→177/177、7揃いのみ: 1件失敗→178/178）、Console エラー0、ハーネス 8/8。Unity 接続は停止済み（8080 閉）。
 - T107: `SlotMachine.KakuhenGamesLeft`。BIG 終了時に `_random.NextDouble() < KakuhenEntryRate` で当たれば `KakuhenGames` をセット。ボーナス終了後は残り>0なら Kakuhen、0なら Normal。確変中に始めたゲームを `Finish` で1減らす（ボーナスを揃えたゲームも数え、ボーナス中は数えない）。ユーザー決定: 確変中 REG は残りゲームで復帰、確変中 BIG は突入を抽選し直す（plan 5章に追記）。テストは `ShortRules(games, rate)`（上限20）と `PlayBonusInKakuhen`。
