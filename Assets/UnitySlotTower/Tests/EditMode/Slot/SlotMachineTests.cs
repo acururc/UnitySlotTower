@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using NUnit.Framework;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Economy;
@@ -93,6 +94,90 @@ namespace UnitySlotTower.Tests.EditMode.Slot
             PlayOneGame(Machine(wallet, null));
 
             Assert.That(wallet.Coins, Is.EqualTo(27));
+        }
+
+        /// <summary>
+        /// 左・中・右の順に止めたとき、<paramref name="bonus"/> が揃う（<paramref name="aligned"/> が false なら揃わない）押し位置。
+        /// 制御は成立フラグと持ち越しだけで決まるので、同じ表の別の制御で探せる。
+        /// </summary>
+        private static int[] BonusPresses(string flagId, string carried, string bonus, bool aligned)
+        {
+            var payouts = SlotPayouts.Load(ProjectTable(SlotPayouts.FileName));
+            var reels = SlotReels.Load(ProjectTable(SlotReels.FileName));
+            var flag = SlotProbabilities.Load(CsvParser.Parse(SlotProbabilities.FileName, ProbabilityHeader + "big,normal,0,0,0,0,0,0\n"), payouts)
+                .Flags.Single(candidate => candidate.Id == flagId);
+            var control = new SlotReelControl(reels, payouts, SlotRules.Load(ProjectTable(SlotRules.FileName)).MaxSlide);
+            for (var press = 0; press < SlotReels.StopCount * SlotReels.StopCount * SlotReels.StopCount; press++)
+            {
+                var presses = new[] { press % SlotReels.StopCount, press / SlotReels.StopCount % SlotReels.StopCount, press / (SlotReels.StopCount * SlotReels.StopCount) };
+                var spin = control.Start(flag, carried);
+                for (var reel = 0; reel < SlotReels.ReelCount; reel++)
+                {
+                    spin.Stop(reel, presses[reel]);
+                }
+
+                if (SlotLines.Aligned(reels, payouts, spin.Stops).Contains(bonus) == aligned)
+                {
+                    return presses;
+                }
+            }
+
+            throw new AssertionException($"{flagId}+{carried ?? "-"} で {bonus} が aligned={aligned} になる押し位置がない");
+        }
+
+        private static void PlayOneGame(SlotMachine machine, int[] presses)
+        {
+            machine.TryLever();
+            for (var reel = 0; reel < SlotReels.ReelCount; reel++)
+            {
+                machine.Stop(reel, presses[reel]);
+            }
+        }
+
+        [Test]
+        [Description("FR-041 / plan 5章: 成立したが揃えなかった BIG は次ゲームに持ち越す")]
+        public void Unaligned_Bonus_Is_Carried_To_The_Next_Game()
+        {
+            var machine = Machine(new CoinWallet(30), "big");
+
+            PlayOneGame(machine, BonusPresses("big", null, "big", false));
+
+            Assert.That(machine.CarriedBonus, Is.EqualTo("big"));
+        }
+
+        [Test]
+        [Description("plan 5章: 持ち越し中に引いたボーナス役は成立させない（ボーナス確率1の表でもハズレになる）")]
+        public void Bonus_Drawn_While_Carrying_Is_Not_Flagged()
+        {
+            var machine = Machine(new CoinWallet(30), "big");
+            PlayOneGame(machine, BonusPresses("big", null, "big", false));
+
+            machine.TryLever();
+
+            Assert.That(machine.Flag.Id, Is.EqualTo(SlotFlag.HazureId));
+        }
+
+        [Test]
+        [Description("FR-042: 成立したゲームで BIG を揃えるとボーナスが始まる")]
+        public void Aligned_Bonus_Starts_The_Bonus()
+        {
+            var machine = Machine(new CoinWallet(30), "big");
+
+            PlayOneGame(machine, BonusPresses("big", null, "big", true));
+
+            Assert.That((machine.State, machine.ActiveBonus), Is.EqualTo((SlotState.Bonus, "big")));
+        }
+
+        [Test]
+        [Description("FR-042 / plan 5章: 持ち越した BIG を後のゲームで揃えるとボーナスが始まり、持ち越しは消える")]
+        public void Carried_Bonus_Aligned_Later_Starts_The_Bonus()
+        {
+            var machine = Machine(new CoinWallet(30), "big");
+            PlayOneGame(machine, BonusPresses("big", null, "big", false));
+
+            PlayOneGame(machine, BonusPresses(SlotFlag.HazureId, "big", "big", true));
+
+            Assert.That((machine.State, machine.ActiveBonus, machine.CarriedBonus), Is.EqualTo((SlotState.Bonus, "big", (string)null)));
         }
 
         [Test]

@@ -173,6 +173,42 @@ namespace UnitySlotTower.Tests.EditMode.Slot
             Assert.That(pulledIn, Is.GreaterThan(0));
         }
 
+        private static int BonusAlignedGames(SlotFlag flag, string carried, string bonus)
+        {
+            var count = 0;
+            ForEachGame(ProjectControl(), flag, carried, (game, presses, stops, aligned) =>
+            {
+                if (aligned.Contains(bonus))
+                {
+                    count++;
+                }
+            });
+
+            return count;
+        }
+
+        [Test]
+        [Description("plan 5章: 持ち越し中のボーナスは小役より優先して引き込む（レア役が成立しても揃う回数はハズレのとき以上）")]
+        public void Carried_Bonus_Has_Priority_Over_Rare_Roles(
+            [Values("watermelon", "cherry", "center_cherry")] string flagId,
+            [Values("big", "reg")] string bonus)
+        {
+            var withRareRole = BonusAlignedGames(Flag(flagId), bonus, bonus);
+
+            Assert.That(withRareRole, Is.GreaterThanOrEqualTo(BonusAlignedGames(ProjectProbabilities().Hazure, bonus, bonus)));
+        }
+
+        [Test]
+        [Description("plan 5章: ボーナスとレア役の重複当選でも、ボーナスはボーナス単独のとき以上に揃う")]
+        public void Bonus_Has_Priority_Over_A_Rare_Role_Drawn_With_It(
+            [Values("big+center_cherry", "big+watermelon", "reg+watermelon")] string flagId)
+        {
+            var bonus = flagId.Split(SlotFlag.RoleSeparator)[0];
+            var together = BonusAlignedGames(Flag(flagId), null, bonus);
+
+            Assert.That(together, Is.GreaterThanOrEqualTo(BonusAlignedGames(Flag(bonus), null, bonus)));
+        }
+
         [Test]
         [Description("plan 5章: 左リール中段のチェリーは中段チェリー（左 4-5-6 = replay/cherry/bell）")]
         public void Cherry_On_Left_Middle_Is_Center_Cherry()

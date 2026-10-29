@@ -44,7 +44,12 @@ namespace UnitySlotTower.Core.Slot
 
             IsReplay = false;
             Flag = _probabilities.Draw(_random, SlotState.Normal, _setting);
-            Spin = _control.Start(Flag);
+            if (CarriedBonus != null)
+            {
+                Flag = _probabilities.WithoutBonus(Flag);
+            }
+
+            Spin = _control.Start(Flag, CarriedBonus);
             return true;
         }
 
@@ -69,14 +74,29 @@ namespace UnitySlotTower.Core.Slot
             return stop;
         }
 
-        // 払い出しは役ごとに1ゲーム1回（plan 5章）。
+        // 払い出しは役ごとに1ゲーム1回（plan 5章）。ボーナス役が揃えばボーナス開始、揃わなかったボーナス役は持ち越す。
         private void Finish()
         {
             var payout = 0;
-            foreach (var role in SlotLines.Aligned(_reels, _payouts, Spin.Stops))
+            var aligned = SlotLines.Aligned(_reels, _payouts, Spin.Stops);
+            foreach (var role in aligned)
             {
                 payout += _payouts.Get(role).Payout;
                 IsReplay |= role == ReplayRole;
+                if (SlotFlag.IsBonusRole(role))
+                {
+                    State = SlotState.Bonus;
+                    ActiveBonus = role;
+                    CarriedBonus = null;
+                }
+            }
+
+            foreach (var role in Flag.Roles)
+            {
+                if (SlotFlag.IsBonusRole(role) && !aligned.Contains(role))
+                {
+                    CarriedBonus = role;
+                }
             }
 
             _wallet.Add(payout);
@@ -85,6 +105,15 @@ namespace UnitySlotTower.Core.Slot
 
         /// <summary>前のゲームでリプレイが揃い、次のレバーで掛け金を取らない。</summary>
         public bool IsReplay { get; private set; }
+
+        /// <summary>抽選に使う状態。ボーナス役を揃えると Bonus になる。</summary>
+        public SlotState State { get; private set; } = SlotState.Normal;
+
+        /// <summary>消化中のボーナス役（BIG・REG。ボーナス中でなければ null）。</summary>
+        public string ActiveBonus { get; private set; }
+
+        /// <summary>成立したが揃えていないボーナス役（BIG・REG）。揃えるまで次ゲーム以降に持ち越す（なければ null）。</summary>
+        public string CarriedBonus { get; private set; }
 
         /// <summary>今のゲームの成立フラグ（レバーオン前は null）。</summary>
         public SlotFlag Flag { get; private set; }

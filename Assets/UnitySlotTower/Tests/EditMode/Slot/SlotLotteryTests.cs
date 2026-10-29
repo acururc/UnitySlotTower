@@ -127,6 +127,19 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         }
 
         [Test]
+        [Description("plan 5章: ボーナス持ち越し中は、重複当選からボーナス役を外した小役だけが成立する")]
+        public void Without_Bonus_Leaves_Only_The_Small_Role(
+            [Values("big+center_cherry:center_cherry", "big+watermelon:watermelon", "reg+watermelon:watermelon", "big:hazure", "bell:bell")] string pair)
+        {
+            var probabilities = ProjectProbabilities();
+            var ids = pair.Split(':');
+
+            var flag = probabilities.WithoutBonus(probabilities.Flags.Single(candidate => candidate.Id == ids[0]));
+
+            Assert.That(flag.Id, Is.EqualTo(ids[1]));
+        }
+
+        [Test]
         public void Duplicate_Role_And_State_Is_Reported()
         {
             var ex = Assert.Throws<CsvFormatException>(() =>

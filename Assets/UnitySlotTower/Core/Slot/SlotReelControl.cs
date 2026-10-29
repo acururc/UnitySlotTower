@@ -7,6 +7,7 @@ namespace UnitySlotTower.Core.Slot
     /// 目押しのリール制御（plan 5章）。押した位置 p から p, p-1, …, p-最大滑り のどこかで止める。
     /// 残りのリールをどの順・どの位置で押しても、成立していない役は揃わず、全押し方で揃えられる成立役は必ず揃う。
     /// そのうえで、揃う成立役の数の期待値（残りの押し方を一様とみなす）が最大になる停止位置を選ぶ（先読みあり）。
+    /// 期待値はボーナス役（BIG・REG）を先に比べ、同じならほかの成立役で比べる。
     /// </summary>
     public sealed class SlotReelControl
     {
@@ -96,7 +97,9 @@ namespace UnitySlotTower.Core.Slot
         private readonly List<string> _allowed;
         private readonly List<string> _required;
 
-        // 揃う成立役の数の期待値。NaN は未計算、負の無限大は成立していない役か取りこぼしを避けられない状態。
+        // 揃うボーナス役の数と、ほかの成立役の数の期待値。ボーナスを先に比べる（持ち越し中は小役より優先して引き込む）。
+        // NaN は未計算、負の無限大は成立していない役か取りこぼしを避けられない状態。
+        private readonly double[] _bonusValues = new double[Base * Base * Base];
         private readonly double[] _values = new double[Base * Base * Base];
 
         public SlotControlPlan(SlotReels reels, SlotPayouts payouts, int maxSlide, List<string> allowed, List<string> required)
@@ -111,22 +114,25 @@ namespace UnitySlotTower.Core.Slot
                 _values[i] = double.NaN;
             }
 
-            IsSafe = !double.IsNegativeInfinity(Value(new[] { -1, -1, -1 }));
+            IsSafe = !double.IsNegativeInfinity(Value(new[] { -1, -1, -1 }).Bonus);
         }
+
+        private static bool IsBetter((double Bonus, double Other) value, (double Bonus, double Other) best) =>
+            value.Bonus > best.Bonus || (value.Bonus == best.Bonus && value.Other > best.Other);
 
         public bool IsSafe { get; }
 
         /// <summary>未停止の状態 <paramref name="stops"/> で reel を pressPosition で押したときの停止位置。</summary>
         public int Choose(int[] stops, int reel, int pressPosition)
         {
-            var best = double.NegativeInfinity;
+            var best = (Bonus: double.NegativeInfinity, Other: double.NegativeInfinity);
             var bestStop = -1;
             for (var slide = 0; slide <= _maxSlide; slide++)
             {
                 var stop = SlotReels.Wrap(pressPosition - slide);
                 stops[reel] = stop;
                 var value = Value(stops);
-                if (value > best)
+                if (IsBetter(value, best))
                 {
                     best = value;
                     bestStop = stop;
@@ -142,19 +148,20 @@ namespace UnitySlotTower.Core.Slot
             return bestStop;
         }
 
-        private double Value(int[] stops)
+        private (double Bonus, double Other) Value(int[] stops)
         {
             var key = (stops[0] + 1) * Base * Base + (stops[1] + 1) * Base + stops[2] + 1;
-            if (!double.IsNaN(_values[key]))
+            if (double.IsNaN(_values[key]))
             {
-                return _values[key];
+                (_bonusValues[key], _values[key]) = Evaluate(stops);
             }
 
-            return _values[key] = Evaluate(stops);
+            return (_bonusValues[key], _values[key]);
         }
 
-        private double Evaluate(int[] stops)
+        private (double Bonus, double Other) Evaluate(int[] stops)
         {
+            var bonusSum = 0.0;
             var sum = 0.0;
             var count = 0;
             for (var reel = 0; reel < SlotReels.ReelCount; reel++)
@@ -166,35 +173,47 @@ namespace UnitySlotTower.Core.Slot
 
                 for (var press = 0; press < SlotReels.StopCount; press++)
                 {
-                    var best = double.NegativeInfinity;
+                    var best = (Bonus: double.NegativeInfinity, Other: double.NegativeInfinity);
                     for (var slide = 0; slide <= _maxSlide; slide++)
                     {
                         stops[reel] = SlotReels.Wrap(press - slide);
-                        best = Math.Max(best, Value(stops));
+                        var value = Value(stops);
+                        if (IsBetter(value, best))
+                        {
+                            best = value;
+                        }
                     }
 
                     stops[reel] = -1;
-                    if (double.IsNegativeInfinity(best))
+                    if (double.IsNegativeInfinity(best.Bonus))
                     {
                         return best;
                     }
 
-                    sum += best;
+                    bonusSum += best.Bonus;
+                    sum += best.Other;
                     count++;
                 }
             }
 
-            return count == 0 ? Score(stops) : sum / count;
+            return count == 0 ? Score(stops) : (bonusSum / count, sum / count);
         }
 
-        private double Score(int[] stops)
+        private (double Bonus, double Other) Score(int[] stops)
         {
+            var invalid = (double.NegativeInfinity, double.NegativeInfinity);
             var aligned = SlotLines.Aligned(_reels, _payouts, stops);
+            var bonus = 0;
             foreach (var role in aligned)
             {
                 if (!_allowed.Contains(role))
                 {
-                    return double.NegativeInfinity;
+                    return invalid;
+                }
+
+                if (SlotFlag.IsBonusRole(role))
+                {
+                    bonus++;
                 }
             }
 
@@ -202,11 +221,11 @@ namespace UnitySlotTower.Core.Slot
             {
                 if (!aligned.Contains(role))
                 {
-                    return double.NegativeInfinity;
+                    return invalid;
                 }
             }
 
-            return aligned.Count;
+            return (bonus, aligned.Count - bonus);
         }
     }
 

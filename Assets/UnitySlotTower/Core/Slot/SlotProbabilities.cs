@@ -22,6 +22,12 @@ namespace UnitySlotTower.Core.Slot
         /// <summary>CSV の role 列で重複当選の役をつなぐ文字（例 <c>big+center_cherry</c>）。</summary>
         public const char RoleSeparator = '+';
 
+        public const string BigRole = "big";
+        public const string RegRole = "reg";
+
+        /// <summary>BIG・REG（揃えるまで持ち越すボーナス役）。</summary>
+        public static bool IsBonusRole(string role) => role == BigRole || role == RegRole;
+
         private readonly string[] _roles;
 
         internal SlotFlag(string id, string[] roles)
@@ -88,6 +94,50 @@ namespace UnitySlotTower.Core.Slot
             }
 
             return Hazure;
+        }
+
+        /// <summary>
+        /// <paramref name="flag"/> からボーナス役を除いたフラグ（例 big+watermelon → watermelon）。表にない組ならハズレ。
+        /// ボーナス持ち越し中は新たなボーナスを成立させないために使う（plan 5章）。
+        /// </summary>
+        public SlotFlag WithoutBonus(SlotFlag flag)
+        {
+            var bonusCount = 0;
+            foreach (var role in flag.Roles)
+            {
+                if (SlotFlag.IsBonusRole(role))
+                {
+                    bonusCount++;
+                }
+            }
+
+            if (bonusCount == 0)
+            {
+                return flag;
+            }
+
+            foreach (var candidate in _flags)
+            {
+                if (candidate.Roles.Count == flag.Roles.Count - bonusCount && IsSmallRoleSubset(candidate, flag))
+                {
+                    return candidate;
+                }
+            }
+
+            return Hazure;
+        }
+
+        private static bool IsSmallRoleSubset(SlotFlag candidate, SlotFlag flag)
+        {
+            foreach (var role in candidate.Roles)
+            {
+                if (SlotFlag.IsBonusRole(role) || !flag.Has(role))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         public static SlotProbabilities Load(CsvTable table, SlotPayouts payouts)
