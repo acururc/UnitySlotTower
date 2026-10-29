@@ -162,7 +162,8 @@ namespace UnitySlotTower.Core.Data
 
             TableValidator.ValidateProbabilitySum(tables["slot_probabilities.csv"], "state", Settings, report);
             TableValidator.ValidatePathContinuity(tables["map_paths.csv"], report);
-            ValidateMapPaths(files, tables["map_paths.csv"], maps, report);
+            var battleMaps = ValidateMapPaths(files, tables["map_paths.csv"], maps, report);
+            ValidateWaves(tables["waves.csv"], tables["enemies.csv"], battleMaps, report);
             return report;
         }
 
@@ -253,9 +254,10 @@ namespace UnitySlotTower.Core.Data
         }
 
         /// <summary>経路のあるマップは、範囲・通行可否・出現口からゴールまでを <see cref="BattleMap"/> で確かめる。</summary>
-        private static void ValidateMapPaths(IReadOnlyDictionary<string, string> files, CsvTable paths, List<string> maps,
-            ValidationReport report)
+        private static Dictionary<string, BattleMap> ValidateMapPaths(IReadOnlyDictionary<string, string> files,
+            CsvTable paths, List<string> maps, ValidationReport report)
         {
+            var loaded = new Dictionary<string, BattleMap>();
             foreach (var map in maps)
             {
                 var hasPath = false;
@@ -271,7 +273,42 @@ namespace UnitySlotTower.Core.Data
 
                 try
                 {
-                    BattleMap.Load(map, files[BattleMap.MapFileName(map)], paths);
+                    loaded.Add(map, BattleMap.Load(map, files[BattleMap.MapFileName(map)], paths));
+                }
+                catch (CsvFormatException ex)
+                {
+                    report.Add(ex.Error);
+                }
+            }
+
+            return loaded;
+        }
+
+        /// <summary>ウェーブ n の行が、マップ w{n} の経路・出現口・空中フラグと合うかを <see cref="WaveSchedule"/> で確かめる。</summary>
+        private static void ValidateWaves(CsvTable waves, CsvTable enemyTable, Dictionary<string, BattleMap> maps,
+            ValidationReport report)
+        {
+            EnemyTable enemies;
+            try
+            {
+                enemies = EnemyTable.Load(enemyTable);
+            }
+            catch (CsvFormatException ex)
+            {
+                report.Add(ex.Error);
+                return;
+            }
+
+            for (var wave = 1; wave <= MapCount; wave++)
+            {
+                if (!maps.TryGetValue($"w{wave}", out var map))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    WaveSchedule.Load(waves, wave, map, enemies);
                 }
                 catch (CsvFormatException ex)
                 {

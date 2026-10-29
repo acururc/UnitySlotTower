@@ -157,5 +157,17 @@ namespace UnitySlotTower.Tests.EditMode.Data
 
             Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("maps/w1.csv", 1, 3)));
         }
+
+        [Test]
+        public void Wave_Spawn_Not_On_Its_Path_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["waves.csv"] += "1,0,melee,S2,w1_g1,0\n";
+            var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("waves.csv", line, 4)));
+        }
     }
 }

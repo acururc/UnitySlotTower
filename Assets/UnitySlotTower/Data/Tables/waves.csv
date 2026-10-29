@@ -1,1 +1,6 @@
 ﻿wave,time,enemy_id,spawn,path_id,is_boss
+1,0,melee,S1,w1_g1,0
+1,4,melee,S1,w1_g1,0
+1,8,melee,S1,w1_g1,0
+1,14,ranged,S1,w1_g1,0
+1,18,ranged,S1,w1_g1,0

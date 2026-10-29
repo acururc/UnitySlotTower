@@ -1,1 +1,4 @@
 ﻿id,max_hp,atk,def,attack_interval,move_speed,range,is_air,block_cost,life_damage,drop_rate,drop_min,drop_max
+melee,1000,200,50,1.5,1,0,0,1,1,0.4,1,1
+ranged,700,180,30,2,0.8,2.5,0,1,1,0.5,1,2
+air,600,150,20,2,1.2,2,1,1,1,0.5,1,2
