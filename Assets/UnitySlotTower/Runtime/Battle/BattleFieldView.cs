@@ -38,6 +38,19 @@ namespace UnitySlotTower.Battle
         /// <summary>マスの中心（地面の高さ 0）のワールド座標。</summary>
         public Vector3 CellToWorld(GridPoint point) => transform.TransformPoint(CellToLocal(point));
 
+        /// <summary>マスの箱の上面の中心（カーソルや味方を置く高さ）のワールド座標。</summary>
+        public Vector3 CellTopToWorld(GridPoint point) =>
+            transform.TransformPoint(CellToLocal(point) + Vector3.up * (TileHeight(Map.TileAt(point)) - groundHeight));
+
+        /// <summary>ワールド座標の真下（フィールドの水平面上）のマス。マップ外なら false。</summary>
+        public bool TryGetCell(Vector3 world, out GridPoint cell)
+        {
+            var local = transform.InverseTransformPoint(world);
+            cell = new GridPoint(Mathf.RoundToInt(local.x + (Map.Width - 1) * 0.5f),
+                Mathf.RoundToInt((Map.Height - 1) * 0.5f - local.z));
+            return Map.Contains(cell);
+        }
+
         private void Awake()
         {
             try
@@ -74,7 +87,7 @@ namespace UnitySlotTower.Battle
                 {
                     var point = new GridPoint(x, y);
                     var tile = Map.TileAt(point);
-                    var height = tile == MapTile.HighGround ? highGroundHeight : groundHeight;
+                    var height = TileHeight(tile);
                     // 隣のマスと見分けられるよう少し隙間をあける。
                     var cube = CreateCube($"Tile {x},{y} {tile}", root, TileColor(tile), true);
                     cube.localScale = new Vector3(0.94f, height, 0.94f);
@@ -102,6 +115,8 @@ namespace UnitySlotTower.Battle
                 }
             }
         }
+
+        private float TileHeight(MapTile tile) => tile == MapTile.HighGround ? highGroundHeight : groundHeight;
 
         private Color TileColor(MapTile tile)
         {

@@ -42,12 +42,11 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>フィールド上の味方の総数。</summary>
         public int DeployedCount { get; private set; }
 
-        /// <summary>拒否したときは何も変えない（コイン・待ち時間・配置数）。</summary>
-        public SummonResult TrySummon(string unitId)
+        /// <summary>いま召喚できるかだけを調べる（何も変えない）。召喚できるなら <see cref="SummonResult.Summoned"/>。</summary>
+        public SummonResult Check(string unitId)
         {
             var unit = _units.Get(unitId);
-            var index = _indices[unitId];
-            if (_cooldownSteps[index] > 0)
+            if (_cooldownSteps[_indices[unitId]] > 0)
             {
                 return SummonResult.CoolingDown;
             }
@@ -57,12 +56,21 @@ namespace UnitySlotTower.Core.Battle
                 return SummonResult.DeployLimitReached;
             }
 
-            if (!_wallet.TrySpend(unit.Cost))
+            return _wallet.Coins < unit.Cost ? SummonResult.NotEnoughCoins : SummonResult.Summoned;
+        }
+
+        /// <summary>拒否したときは何も変えない（コイン・待ち時間・配置数）。</summary>
+        public SummonResult TrySummon(string unitId)
+        {
+            var result = Check(unitId);
+            if (result != SummonResult.Summoned)
             {
-                return SummonResult.NotEnoughCoins;
+                return result;
             }
 
-            _cooldownSteps[index] = (int)Math.Round(unit.Cooldown * SimulationClock.StepsPerSecond);
+            var unit = _units.Get(unitId);
+            _wallet.TrySpend(unit.Cost);
+            _cooldownSteps[_indices[unitId]] = (int)Math.Round(unit.Cooldown * SimulationClock.StepsPerSecond);
             DeployedCount++;
             return SummonResult.Summoned;
         }
