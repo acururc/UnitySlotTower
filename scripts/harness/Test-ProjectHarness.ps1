@@ -48,12 +48,14 @@ try {
     })
     Add-CheckResult ($missingMeta.Count -eq 0) $(if ($missingMeta.Count -eq 0) { 'Unity .meta対応' } else { "対応する.metaなし: $($missingMeta -join ', ')" })
 
-    # Unity serializes YAML with trailing spaces; check hand-written text only.
-    $unityYaml = @(':(exclude)*.asset', ':(exclude)*.unity', ':(exclude)*.prefab', ':(exclude)*.mat', ':(exclude)*.anim', ':(exclude)*.controller')
+    # Unity serializes YAML with trailing spaces, and vendor resources are imported unchanged; check hand-written text only.
+    $vendorPrefix = 'Assets/TextMesh Pro/'
+    $unityYaml = @(':(exclude)*.asset', ':(exclude)*.unity', ':(exclude)*.prefab', ':(exclude)*.mat', ':(exclude)*.anim', ':(exclude)*.controller', ":(exclude)$vendorPrefix")
     $diffCheck = (& git -c core.safecrlf=false diff --check -- . @unityYaml 2>&1 | Out-String).Trim()
     $diffCheckExit = $LASTEXITCODE
     $untrackedTextFiles = @(& git ls-files --others --exclude-standard | Where-Object {
         $_ -match '\.(asmdef|cs|json|md|ps1|py|shader|toml|txt|xml|ya?ml)$' -and
+        -not $_.StartsWith($vendorPrefix) -and
         (Test-Path -LiteralPath $_ -PathType Leaf) -and
         (Get-Item -LiteralPath $_).Length -le 1MB
     })

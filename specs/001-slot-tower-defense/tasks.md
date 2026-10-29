@@ -6,14 +6,14 @@
 
 ## M0 基盤
 
-- [ ] T001 (plan 9章) `Assets/UnitySlotTower/` に Core / Runtime / Editor / Tests.EditMode / Tests.PlayMode の asmdef と参照関係を作る（Core は MonoBehaviour なし） — 検証: コンパイル、Console エラー0
-- [ ] T002 (FR-050) CSV パーサー（UTF-8/BOM、引用符、空行、`1/7.3` の分母表記）と、ファイル名・行・列つきのエラー報告をコアに作る — 検証: EditMode テスト
-- [ ] T003 (plan 1章) 固定ステップ（1/60秒）のシミュレーション時計、シード指定の乱数、一時停止フラグをコアに作る — 検証: EditMode テスト（同じシードで同じ結果、停止中は進まない）
-- [ ] T004 (FR-050) 全CSVの雛形を `Data/Tables/` に置き、`game_config.csv` を読み込むデータローダーと `PresentationCatalog` を作る — 検証: EditMode テスト
-- [ ] T005 (FR-050) 全CSV検証テスト（型・範囲・ID参照・確率合計・経路の連続性）の枠を作る — 検証: わざと壊したCSVで失敗し、正しいCSVで成功する
-- [ ] T006 (FR-001) `Game` シーンに縦長 9:16 のレイアウト（上38%戦闘カメラ、操作バー、下部スロット領域）と、ウィンドウ 720×1280・縦横比固定の設定を作る — 検証: Editor 画像、1080p/1440p 相当の解像度で黒帯表示を確認
-- [ ] T007 (FR-003) 数字・記号だけの TextMeshPro フォントアセットを作り、Title 以外のシーン・プレハブの文字を走査するテストを作る — 検証: 文字を入れると失敗するテスト
-- [ ] T008 (FR-002) InputActionAsset に plan 3章の操作をマウス・キーボード両方で定義する — 検証: アクション一覧とバインドの確認
+- [x] T001 (plan 9章) `Assets/UnitySlotTower/` に Core / Runtime / Editor / Tests.EditMode / Tests.PlayMode の asmdef と参照関係を作る（Core は MonoBehaviour なし） — 検証: コンパイル、Console エラー0 — 結果: 2026-10-29 5 asmdef 作成、コンパイル成功・Console エラー0
+- [x] T002 (FR-050) CSV パーサー（UTF-8/BOM、引用符、空行、`1/7.3` の分母表記）と、ファイル名・行・列つきのエラー報告をコアに作る — 検証: EditMode テスト — 結果: 2026-10-29 CsvParserTests 14件 green（red 確認後）
+- [x] T003 (plan 1章) 固定ステップ（1/60秒）のシミュレーション時計、シード指定の乱数、一時停止フラグをコアに作る — 検証: EditMode テスト（同じシードで同じ結果、停止中は進まない） — 結果: 2026-10-29 SimulationClockTests 6件・SeededRandomTests 5件 green（SplitMix64 参照値一致）
+- [x] T004 (FR-050) 全CSVの雛形を `Data/Tables/` に置き、`game_config.csv` を読み込むデータローダーと `PresentationCatalog` を作る — 検証: EditMode テスト — 結果: 2026-10-29 CSV 雛形17本、GameConfigTests 4件・PresentationCatalogTests 2件 green、`Data/PresentationCatalog.asset` 作成
+- [x] T005 (FR-050) 全CSV検証テスト（型・範囲・ID参照・確率合計・経路の連続性）の枠を作る — 検証: わざと壊したCSVで失敗し、正しいCSVで成功する — 結果: 2026-10-29 TableValidationTests 15件 green（壊したCSV・欠けたファイル・未知のマスで失敗を確認）
+- [x] T006 (FR-001) `Game` シーンに縦長 9:16 のレイアウト（上38%戦闘カメラ、操作バー、下部スロット領域）と、ウィンドウ 720×1280・縦横比固定の設定を作る — 検証: Editor 画像、1080p/1440p 相当の解像度で黒帯表示を確認 — 結果: 2026-10-29 PortraitLayoutTests 7件 green、Game シーン・プレイヤー設定 720×1280 可変ウィンドウ。プレイヤー画像 720×1080/1920×1080/2560×1080 で黒帯を確認（1080p モニターのため縦はクランプ。1440p は計算テストのみ）
+- [x] T007 (FR-003) 数字・記号だけの TextMeshPro フォントアセットを作り、Title 以外のシーン・プレハブの文字を走査するテストを作る — 検証: 文字を入れると失敗するテスト — 結果: 2026-10-29 TMP Essentials 導入、`Art/Fonts/NumericOnly SDF.asset`（静的・許可文字のみ、TMP 既定フォント）、NumericTextTests 14件・TextAuditTests 5件 green
+- [x] T008 (FR-002) InputActionAsset に plan 3章の操作をマウス・キーボード両方で定義する — 検証: アクション一覧とバインドの確認 — 結果: 2026-10-29 `InputSystem_Actions` に SlotTower マップ追加、SlotTowerInputActionsTests 23件 green（M0 終了時 EditMode 95/95）
 
 ## M1 スロット単体
 
