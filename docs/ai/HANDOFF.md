@@ -2,22 +2,15 @@
 
 ## 現在の作業
 
-更新: 2026-10-30 Asia/Tokyo / 状態: M0 完了（25cac48）、M1（T101〜T110）完了、M2 の T201〜T207 完了、T208 は自動検証まで済み（手動確認待ち）。次は T208 の手動確認 → T209
+更新: 2026-10-30 Asia/Tokyo / 状態: M0・M1・M2（T201〜T209）完了（M2 最終コミット 248472d）。次は M3 の T301
 
-- 対象: [`spec.md`](../../specs/001-slot-tower-defense/spec.md)（2026-10-26 承認。変えたら再承認）、[`plan.md`](../../specs/001-slot-tower-defense/plan.md)、[`tasks.md`](../../specs/001-slot-tower-defense/tasks.md)（完了タスクは `[x]` と行末に結果）。
-- 承認: 2026-10-29 にユーザーが「M0から実装を始めて」と依頼。M2 以降も実装依頼の範囲内と解釈してよいが、spec 変更は別途承認が要る（T108 で先バレ対象を BIG・REG に変えたときは承認済み）。
+- 対象: [`spec.md`](../../specs/001-slot-tower-defense/spec.md)（2026-10-26 承認。変えたら再承認）、[`plan.md`](../../specs/001-slot-tower-defense/plan.md)、[`tasks.md`](../../specs/001-slot-tower-defense/tasks.md)（完了タスクは `[x]` と行末に結果。M2 各タスクの成果・API はそこを見る）。
+- 承認: 2026-10-29 にユーザーが「M0から実装を始めて」と依頼。M3 以降も実装依頼の範囲内と解釈してよいが、spec 変更は別途承認が要る（T108 で先バレ対象を BIG・REG に変えたときは承認済み）。T208 は 2026-10-30 にユーザーが手動確認済み。
 - ブランチ: `feature/001-m0-foundation`（main に直接コミットしない）。
-- 画面比: 2026-10-30 にユーザー依頼で 9:16 → 3:4（基準 1440×1920、初期ウィンドウ 960×1280。plan 2章）。UI は割合アンカーなので横に広がるだけ。プレイヤービルドで戦闘マスがマゼンタ（シェーダー欠落、Editor 外の既存問題で未調査）。
-- 次の一手: ユーザーに T208 の手動確認（Game シーンを Play。1〜5／操作バーの色アイコンで選択、矢印＋Enter／ドラッグでマス、矢印＋Enter、またはポインターを向けてクリックで向き、Esc で戻る）を依頼し、問題なければ tasks.md の T208 を `[x]` にする。その後 T209（味方・敵・マスのグレーボックス表示。`UnitPlacementView` の配置済みの仮の目印は T209 で置き換える。`BattleUnit.RangeCells` が範囲表示に使える）。
-- T208 の成果: `Core/Battle/UnitDeployment`（`Select`・`MoveCursor`・`SetCursor`・`CanPlace`（占有込み）・`ChooseCell`・`SetFacing`・`PreviewRange`・`Confirm`・`Cancel`）、`UnitSummoner.Check`。Runtime `Battle/BattleController`（`Units`・`Wallet`〔戦闘専用、T301 で統合〕・`Summoner`・`Field`・`Deployment`。Start で組み立て、Update で進める。敵はまだ見えないので放置するとゲームオーバーで止まる）・`UnitPlacementInput`・`UnitPlacementView`・`UnitBarIcon`。Editor `Setup/BattlePlacementSetup`（実行済み、シーン保存済み）。操作の解釈は plan 3章。EditMode 331/331、PlayMode 5/5（`Tests/PlayMode/Battle/UnitPlacementInputTests`）、ハーネス 8/8、Console は 0 件取得（既知の不調で未確認）。
-- T207 の成果: `new Battlefield(wave, ranges, life, random)`。`Life`・`IsGameOver`（以降 `Advance` しない）・`DroppedCoins`（財布へは T301）。ライフ初期値は `GameConfig.Life` を呼び出し側で渡す。テスト `LifeAndDropTests`、共通生成は `BattleFixtures.CreateField(rows, life, random)`。EditMode 312/312、Console エラー0、ハーネス 8/8。途中1回だけ Console に原因不明の NullReferenceException 4件（スタックなし、テストは全通過、Console クリア後は再発せず）。
-- T201 の成果: `Core/Battle/BattleMap`（GridPoint は x=列・y=CSV の上の行。`MapTile`・`SpawnNumberAt`・`Paths`）、`Runtime/Battle/BattleFieldView`（グリッド中心が原点、上の行ほど +z、`CellToWorld`。マスの箱はコライダーあり＝T208 の配置で使える）、Editor `Setup/BattleFieldSetup`。経路 ID は全マップで一意にする（例 `w1_g1`）。
-- T202 の成果: `Core/Battle/UnitTable`（`UnitDefinition`・`UnitTile`）、`Core/Battle/UnitSummoner`（`TrySummon`→`SummonResult`、`CooldownRemaining`、`Advance(steps)`、`DeployedCount`）。撤退・死亡時に配置数を減らす API はまだない（T302 で追加）。`units.csv` の HP・攻撃などは仮値。EditMode 235/235、ハーネス 8/8。
-- T203 の成果: `Core/Battle/UnitPlacement.CanPlace`（マス種別だけ判定。占有は T208）、`Core/Battle/UnitRanges`（`Facing`、`CellsFrom(unitId, origin, facing)`。dx=前方・dy=右手側、時計回り回転、マップ外も返す）。`unit_ranges.csv` は仮値（M3 で調整）。EditMode 247/247（Console は 0 件取得＝既知の不調で未確認）、ハーネス 8/8。
-- T204 の成果: `Core/Battle/EnemyTable`・`WaveSchedule`（`Load(table, wave, map, enemies)`）・`Battlefield`（`AddUnit`・`Advance(steps)`・`Enemies`・`Units`・`ArrivedCount`）・`BattleEnemy`（`X`/`Y` はマス単位、`Distance`）・`BattleUnit`・`Damage`。テスト用の小さな地図と敵は `Tests/EditMode/Battle/BattleFixtures`。EditMode 279/279、ハーネス 8/8。
-- T205 の成果: `Battlefield` にブロック（マスの手前の境界で停止、出現順に優先、空きが消費以上のときだけ、空中は不可）と近距離敵のブロック相手への攻撃。`BattleEnemy.BlockedBy`・`BattleUnit.BlockUsed`。フィクスチャに `sword`（ブロック1）・`heavy`（消費2）を追加。EditMode 288/288、Console エラー0、ハーネス 8/8。
-- T206 の成果: `units.csv` に `role`（melee/ranged/heal/buff）・`buff_rate`（バッファー 1.3 は仮値）。`new Battlefield(wave, ranges)`。味方の攻撃・回復・強化と HP0 の味方・敵の消滅（解釈と1ステップの順序は plan 5章）。`BattleUnit.RangeCells`（T209 の範囲表示に使える）、`BattleEnemy.Cell`・`RemainingDistance`。テストは `Tests/EditMode/Battle/UnitActionTests`。EditMode 306/306、ハーネス 8/8（Console は 0 件取得で未確認）。
-
+- 画面比: 3:4（基準 1440×1920、初期ウィンドウ 960×1280。plan 2章）。プレイヤービルドで戦闘マスがマゼンタ（シェーダー欠落、Editor 外の既存問題で未調査）。
+- 次の一手: T301（スロットと戦闘の財布を統合し、戦闘中もスロットを回せるようにする。PlayMode テストで AC-011）。現状 `BattleController.Wallet` は戦闘専用で初期 30 枚、スロット側の `SlotCabinet` の財布とは別。`Battlefield.DroppedCoins` も財布へ未反映。
+- M2 の要点: Core/Battle に地図・味方/敵の表・召喚・配置可否と範囲・ウェーブ・ブロック・攻撃/回復/強化・ライフとドロップ・配置操作（`UnitDeployment`）。Runtime/Battle に `BattleFieldView`（`CellTopToWorld`・`PositionToWorld`）・`BattleController`（仮の進行。敵は W1 の5体だけ）・`UnitPlacementInput`/`UnitPlacementView`・`BattleActorsView`（T209 の味方・敵・HP ゲージ・範囲）。シーンへの追加は Editor `Setup/*Setup`（実行済み）。撤退時に配置数を減らす API はまだない（T302）。
+- 最終検証（T209）: Editor 画像 `Artifacts/Automation/Editor/t209-*.png`（味方5種・近距離/遠距離の敵・HP ゲージ・範囲）、PlayMode 5/5、ハーネス 8/8。EditMode は T208 時点 331/331（T209 は Core 変更なしのため未再実行）。空中の敵の見た目は W1 に空中敵がいないため未確認（W3 を作るときに見る）。タンクの色（青灰）が高台マスの色に近く見分けにくい — M3 のプレイ確認で必要なら色を変える（操作バーのアイコン色も揃える）。
 ### M1 の成果（詳細は tasks.md 各行と plan 5章）
 - Core/Slot: 表（SlotReels・SlotPayouts・SlotRules・SlotProbabilities・SlotPremonition）、SlotLines、SlotReelControl（フラグ＋持ち越しごとに 23^3 状態をメモ化評価）、SlotMachine（持ち越し・ボーナス上限・確変・先バレ）、SlotTheory、SlotWait。Core/Economy/CoinWallet。
 - Runtime/Slot: SlotCabinet（CSV を TextAsset で読む。`setting` 既定1）、SlotReelView（`symbolsPerSecond` 16。ユーザー確認で 28 から変更）。Editor: `Setup/SlotCabinetSetup`、`Slot/SlotTheoryReport`。
