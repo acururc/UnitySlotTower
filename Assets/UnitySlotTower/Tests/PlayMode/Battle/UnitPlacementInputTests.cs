@@ -15,6 +15,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
     {
         private Keyboard _keyboard;
         private Mouse _mouse;
+        private readonly System.Collections.Generic.List<InputDevice> _disabled = new System.Collections.Generic.List<InputDevice>();
         private bool _runInBackground;
         private InputSettings.EditorInputBehaviorInPlayMode _editorBehavior;
         private InputSettings.BackgroundBehavior _backgroundBehavior;
@@ -33,6 +34,20 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             InputSystem.settings.editorInputBehaviorInPlayMode =
                 InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            // 実機のマウス・キーボードが試験中のポインターやキーに混ざらないよう止める。
+            foreach (var device in InputSystem.devices)
+            {
+                if ((device is Mouse || device is Keyboard) && device.enabled)
+                {
+                    _disabled.Add(device);
+                }
+            }
+
+            foreach (var device in _disabled)
+            {
+                InputSystem.DisableDevice(device);
+            }
+
             _keyboard = InputSystem.AddDevice<Keyboard>("Test Keyboard");
             _mouse = InputSystem.AddDevice<Mouse>("Test Mouse");
 
@@ -57,6 +72,12 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         {
             InputSystem.RemoveDevice(_keyboard);
             InputSystem.RemoveDevice(_mouse);
+            foreach (var device in _disabled)
+            {
+                InputSystem.EnableDevice(device);
+            }
+
+            _disabled.Clear();
             InputSystem.settings.editorInputBehaviorInPlayMode = _editorBehavior;
             InputSystem.settings.backgroundBehavior = _backgroundBehavior;
             Application.runInBackground = _runInBackground;
@@ -103,7 +124,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        public IEnumerator Mouse_Alone_Drags_A_Unit_Onto_A_Cell_And_Drags_Its_Facing()
+        public IEnumerator Mouse_Alone_Drags_A_Unit_Onto_A_Cell_And_Clicks_Its_Facing()
         {
             var icon = Object.FindObjectsByType<UnitBarIcon>(FindObjectsSortMode.None);
             var firstIcon = System.Array.Find(icon, i => i.name == "Unit Icon 1").GetComponent<RectTransform>();
@@ -118,7 +139,10 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That((deployment.Phase, deployment.Cursor), Is.EqualTo((DeployPhase.ChoosingFacing, target)));
 
             var left = (Vector2)_camera.WorldToScreenPoint(_fieldView.CellTopToWorld(target) - _fieldView.transform.right * 1.5f);
-            yield return MouseAt(cellScreen, true);
+            yield return MouseAt(left, false);
+            Assert.That((deployment.Facing, _battle.Field.Units.Count), Is.EqualTo((Facing.Left, 0)),
+                "クリック前からポインターの方向を向く");
+
             yield return MouseAt(left, true);
             yield return MouseAt(left, false);
 
@@ -127,7 +151,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        public IEnumerator Releasing_The_Facing_Drag_Near_The_Cell_Returns_To_Choosing_A_Cell()
+        public IEnumerator Clicking_Near_The_Cell_While_Choosing_The_Facing_Returns_To_Choosing_A_Cell()
         {
             yield return Tap(Key.Digit1);
             var target = FirstPlaceableCell();

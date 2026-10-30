@@ -7,7 +7,7 @@
 - 対象: [`spec.md`](../../specs/001-slot-tower-defense/spec.md)（2026-10-26 承認。変えたら再承認）、[`plan.md`](../../specs/001-slot-tower-defense/plan.md)、[`tasks.md`](../../specs/001-slot-tower-defense/tasks.md)（完了タスクは `[x]` と行末に結果）。
 - 承認: 2026-10-29 にユーザーが「M0から実装を始めて」と依頼。M2 以降も実装依頼の範囲内と解釈してよいが、spec 変更は別途承認が要る（T108 で先バレ対象を BIG・REG に変えたときは承認済み）。
 - ブランチ: `feature/001-m0-foundation`（main に直接コミットしない）。
-- 次の一手: ユーザーに T208 の手動確認（Game シーンを Play。1〜5／操作バーの色アイコンで選択、矢印＋Enter／ドラッグでマス、矢印＋Enter／ドラッグで向き、Esc で戻る）を依頼し、問題なければ tasks.md の T208 を `[x]` にする。その後 T209（味方・敵・マスのグレーボックス表示。`UnitPlacementView` の配置済みの仮の目印は T209 で置き換える。`BattleUnit.RangeCells` が範囲表示に使える）。
+- 次の一手: ユーザーに T208 の手動確認（Game シーンを Play。1〜5／操作バーの色アイコンで選択、矢印＋Enter／ドラッグでマス、矢印＋Enter、またはポインターを向けてクリックで向き、Esc で戻る）を依頼し、問題なければ tasks.md の T208 を `[x]` にする。その後 T209（味方・敵・マスのグレーボックス表示。`UnitPlacementView` の配置済みの仮の目印は T209 で置き換える。`BattleUnit.RangeCells` が範囲表示に使える）。
 - T208 の成果: `Core/Battle/UnitDeployment`（`Select`・`MoveCursor`・`SetCursor`・`CanPlace`（占有込み）・`ChooseCell`・`SetFacing`・`PreviewRange`・`Confirm`・`Cancel`）、`UnitSummoner.Check`。Runtime `Battle/BattleController`（`Units`・`Wallet`〔戦闘専用、T301 で統合〕・`Summoner`・`Field`・`Deployment`。Start で組み立て、Update で進める。敵はまだ見えないので放置するとゲームオーバーで止まる）・`UnitPlacementInput`・`UnitPlacementView`・`UnitBarIcon`。Editor `Setup/BattlePlacementSetup`（実行済み、シーン保存済み）。操作の解釈は plan 3章。EditMode 331/331、PlayMode 5/5（`Tests/PlayMode/Battle/UnitPlacementInputTests`）、ハーネス 8/8、Console は 0 件取得（既知の不調で未確認）。
 - T207 の成果: `new Battlefield(wave, ranges, life, random)`。`Life`・`IsGameOver`（以降 `Advance` しない）・`DroppedCoins`（財布へは T301）。ライフ初期値は `GameConfig.Life` を呼び出し側で渡す。テスト `LifeAndDropTests`、共通生成は `BattleFixtures.CreateField(rows, life, random)`。EditMode 312/312、Console エラー0、ハーネス 8/8。途中1回だけ Console に原因不明の NullReferenceException 4件（スタックなし、テストは全通過、Console クリア後は再発せず）。
 - T201 の成果: `Core/Battle/BattleMap`（GridPoint は x=列・y=CSV の上の行。`MapTile`・`SpawnNumberAt`・`Paths`）、`Runtime/Battle/BattleFieldView`（グリッド中心が原点、上の行ほど +z、`CellToWorld`。マスの箱はコライダーあり＝T208 の配置で使える）、Editor `Setup/BattleFieldSetup`。経路 ID は全マップで一意にする（例 `w1_g1`）。
@@ -26,7 +26,7 @@
 ### Unity 自動化の注意
 - Unity 接続: 停止済み（8080 閉）。Editor は開いたまま。
 - テスト: refresh → 約20秒待つ → Console → `editor tests --mode EditMode --async` を1回だけ → 同じ job_id で `poll-test` をループ。1スクリプトにまとめ、開始出力から job_id を取りこぼさない（二重送信の前例あり）。EditMode 全体は約75秒。
-- PlayMode テスト: 仮想デバイスは `InputSystem.AddDevice` で足し、`editorInputBehaviorInPlayMode`・`backgroundBehavior` を一時的に変えて非フォーカスでも入力を通す（TearDown で戻す）。シーンは `LoadSceneAsync` の完了を待ってから探す（`LoadScene` 直後だと前のテストの古いオブジェクトを拾う）。実マウスを動かすと試験中のホバーに干渉しうる。
+- PlayMode テスト: 仮想デバイスは `InputSystem.AddDevice` で足し、`editorInputBehaviorInPlayMode`・`backgroundBehavior` を一時的に変えて非フォーカスでも入力を通す（TearDown で戻す）。シーンは `LoadSceneAsync` の完了を待ってから探す（`LoadScene` 直後だと前のテストの古いオブジェクトを拾う）。実機のマウス・キーボードは SetUp で無効化し TearDown で戻す（実機のポインター位置の変化が向きに反映されてしまうため）。
 - CLI はテスト失敗・poll 中・`editor refresh` 成功時でも exit 1 を返すことがあるので `try {} catch {}` で包み、中身の JSON で判断する。
 - `editor console` が0件しか返さない不調があった。ログ確認はファイル出力も併用する。`--stacktrace` を付けてもスタックが返らないことがある（`Logs/` はこのセッションの権限で読めなかった）。
 - Editor 非フォーカスだと Play のフレームが進まない。自動で動かすときは code execute で `Application.runInBackground = true`（Play 中だけ）。`code execute` では `UnityEngine.Object` と書く。

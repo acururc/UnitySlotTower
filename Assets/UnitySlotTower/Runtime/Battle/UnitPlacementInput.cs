@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 using UnitySlotTower.Core.Battle;
 
 namespace UnitySlotTower.Battle
@@ -7,7 +8,7 @@ namespace UnitySlotTower.Battle
     /// <summary>
     /// 召喚・配置・向き選びの入力（FR-002、plan 3章）。マウスとキーボードの操作を <see cref="UnitDeployment"/> の操作に変える。
     /// マウス: 操作バーのアイコンを押してフィールドのマスで離す（クリックで選んでからマスをクリックしてもよい）。
-    /// 向きは、マスを決めたあと押したまま上下左右へドラッグして離すと決まり、中心付近で離すとマス選びに戻る。
+    /// マスを決めたあとは、ポインターの方向（上下左右）を向き、フィールドをクリックすると決まる。マスの中心付近のクリックはマス選びに戻る。
     /// キーボード: 1〜5 で選び、矢印でカーソル移動と向き、Enter で決定、Esc で1段階戻る。
     /// </summary>
     public sealed class UnitPlacementInput : MonoBehaviour
@@ -19,8 +20,8 @@ namespace UnitySlotTower.Battle
         [SerializeField] private BattleController battle;
         [SerializeField] private BattleFieldView fieldView;
         [SerializeField] private Camera battleCamera;
-        [Tooltip("向きを決めるのに必要なドラッグの長さ（マス）。")]
-        [SerializeField] private float facingDragCells = 0.5f;
+        [Tooltip("向きを決めるのに必要な、マスの中心からポインターまでの距離（マス）。")]
+        [SerializeField, FormerlySerializedAs("facingDragCells")] private float facingMinCells = 0.5f;
 
         private readonly InputAction[] _selects = new InputAction[SlotCount];
         private InputAction _cursor;
@@ -30,7 +31,7 @@ namespace UnitySlotTower.Battle
         private InputAction _press;
         private Vector2 _lastCursorValue;
         private Vector2 _lastPointer;
-        private bool _facingDrag;
+        private bool _ignoreRelease;
 
         private void Awake()
         {
@@ -161,27 +162,31 @@ namespace UnitySlotTower.Battle
             var pointerMoved = pointer != _lastPointer;
             _lastPointer = pointer;
 
-            if (deployment.Phase != DeployPhase.ChoosingFacing)
-            {
-                _facingDrag = false;
-            }
-
-            // キーボードで動かしたカーソルを、止まっているマウスが上書きしないよう、動いたときだけ追う。
-            if (deployment.Phase == DeployPhase.ChoosingCell && pointerMoved && TryGetCell(pointer, out var hovered))
+            // キーボードで動かしたカーソル・向きを、止まっているマウスが上書きしないよう、動いたときだけ追う。
+            if (pointerMoved && deployment.Phase == DeployPhase.ChoosingCell && TryGetCell(pointer, out var hovered))
             {
                 deployment.SetCursor(hovered);
             }
-
-            if (_press.WasPressedThisFrame() && deployment.Phase == DeployPhase.ChoosingFacing)
-            {
-                _facingDrag = true;
-            }
-
-            var dragged = false;
-            if (_facingDrag && TryGetFacing(pointer, out var facing))
+            else if (pointerMoved && deployment.Phase == DeployPhase.ChoosingFacing && TryGetFacing(pointer, out var facing))
             {
                 deployment.SetFacing(facing);
-                dragged = true;
+            }
+
+            // 向き選びでフィールドをクリックしたら、向きを決めて置く。マスの中心付近ならマス選びに戻る。
+            // 操作バーなどフィールドの外のクリックは扱わない（ほかの味方の選び直しに使う）。
+            if (_press.WasPressedThisFrame() && deployment.Phase == DeployPhase.ChoosingFacing
+                && battleCamera.pixelRect.Contains(pointer))
+            {
+                _ignoreRelease = true;
+                if (TryGetFacing(pointer, out var clicked))
+                {
+                    deployment.SetFacing(clicked);
+                    deployment.Confirm();
+                }
+                else
+                {
+                    deployment.Cancel();
+                }
             }
 
             if (!_press.WasReleasedThisFrame())
@@ -189,17 +194,10 @@ namespace UnitySlotTower.Battle
                 return;
             }
 
-            if (_facingDrag)
+            // 向き選びのクリックを離したときに、戻ったマス選びでそのままマスが決まらないようにする。
+            if (_ignoreRelease)
             {
-                _facingDrag = false;
-                if (dragged)
-                {
-                    deployment.Confirm();
-                }
-                else
-                {
-                    deployment.Cancel();
-                }
+                _ignoreRelease = false;
             }
             else if (deployment.Phase == DeployPhase.ChoosingCell && TryGetCell(pointer, out var dropped))
             {
@@ -229,7 +227,7 @@ namespace UnitySlotTower.Battle
             }
 
             var local = fieldView.transform.InverseTransformVector(ray.GetPoint(distance) - origin);
-            if (new Vector2(local.x, local.z).magnitude < facingDragCells)
+            if (new Vector2(local.x, local.z).magnitude < facingMinCells)
             {
                 return false;
             }
