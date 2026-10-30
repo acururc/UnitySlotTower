@@ -9,8 +9,8 @@ using UnitySlotTower.Slot;
 namespace UnitySlotTower.Battle
 {
     /// <summary>
-    /// 1 ウェーブの戦闘を組み立てて実時間で進める（仮の進行）。財布はスロット筐体と共有し、撃破ドロップを加える（T301）。
-    /// スロット操作中も止まらない（FR-011）。ウェーブの準備フェーズと開始は T304 で扱う。
+    /// ウェーブの進行（<see cref="WaveRun"/>）を組み立てて実時間で進める。財布はスロット筐体と共有する（T301）。
+    /// スロット操作中も止まらない（FR-011）。▶ の入力ができるまでは準備に入るとすぐ戦闘を始める（autoStart）。
     /// </summary>
     [DefaultExecutionOrder(-10)]
     public sealed class BattleController : MonoBehaviour
@@ -26,18 +26,20 @@ namespace UnitySlotTower.Battle
         [SerializeField] private BattleFieldView fieldView;
         [Tooltip("所持コインを共有するスロット筐体。")]
         [SerializeField] private SlotCabinet slotCabinet;
-        [Tooltip("waves.csv の wave。M3 でウェーブ進行から渡す。")]
-        [SerializeField] private int wave = 1;
+        [Tooltip("最後のウェーブの番号。waves.csv にそのウェーブまでの行が要る（W2〜5 は T305）。")]
+        [SerializeField] private int waveCount = 1;
+        [Tooltip("準備に入ったらすぐ戦闘を始める（▶ の入力ができるまでの仮）。")]
+        [SerializeField] private bool autoStart = true;
 
         private SimulationClock _clock;
-        private int _collectedDrops;
 
         public UnitTable Units { get; private set; }
-        public CoinWallet Wallet { get; private set; }
-        public UnitSummoner Summoner { get; private set; }
-        public UnitUpgrades Upgrades { get; private set; }
-        public Battlefield Field { get; private set; }
-        public UnitDeployment Deployment { get; private set; }
+        public WaveRun Run { get; private set; }
+        public CoinWallet Wallet => Run?.Wallet;
+        public UnitSummoner Summoner => Run?.Summoner;
+        public UnitUpgrades Upgrades => Run?.Upgrades;
+        public Battlefield Field => Run?.Field;
+        public UnitDeployment Deployment => Run?.Deployment;
 
         private void Start()
         {
@@ -63,12 +65,13 @@ namespace UnitySlotTower.Battle
                 var ranges = UnitRanges.Load(Parse(UnitRanges.FileName, unitRangesTable), Units);
                 var upgradeTable = UnitUpgradeTable.Load(Parse(UnitUpgradeTable.FileName, unitUpgradesTable), Units);
                 var enemies = EnemyTable.Load(Parse(EnemyTable.FileName, enemiesTable));
-                var schedule = WaveSchedule.Load(Parse(WaveSchedule.FileName, wavesTable), wave, fieldView.Map, enemies);
-                Wallet = slotCabinet.Wallet;
-                Summoner = new UnitSummoner(Units, Wallet, config.DeployLimit, config.RetreatRefundRate);
-                Upgrades = new UnitUpgrades(upgradeTable, Wallet);
-                Field = new Battlefield(schedule, ranges, config.Life, new SeededRandom((ulong)DateTime.UtcNow.Ticks));
-                Deployment = new UnitDeployment(fieldView.Map, Units, ranges, Summoner, Field, Upgrades);
+                var waves = Parse(WaveSchedule.FileName, wavesTable);
+                var wallet = slotCabinet.Wallet;
+                // マップはまだ1枚だけ（ウェーブごとのマップは T305）。
+                var map = fieldView.Map;
+                Run = new WaveRun(config, Units, ranges, new UnitUpgrades(upgradeTable, wallet), wallet, waveCount,
+                    wave => new WaveStage(map, WaveSchedule.Load(waves, wave, map, enemies)),
+                    new SeededRandom((ulong)DateTime.UtcNow.Ticks));
             }
             catch (Exception e)
             {
@@ -82,17 +85,12 @@ namespace UnitySlotTower.Battle
 
         private void Update()
         {
-            var steps = _clock.Advance(Time.deltaTime);
-            Field.Advance(steps);
-            Summoner.Advance(steps);
-
-            // 撃破ドロップは落ちた時点で所持コインに入る（FR-033）。
-            var dropped = Field.DroppedCoins;
-            if (dropped > _collectedDrops)
+            if (autoStart)
             {
-                Wallet.Add(dropped - _collectedDrops);
-                _collectedDrops = dropped;
+                Run.Start();
             }
+
+            Run.Advance(_clock.Advance(Time.deltaTime));
         }
 
         private static CsvTable Parse(string fileName, TextAsset asset)

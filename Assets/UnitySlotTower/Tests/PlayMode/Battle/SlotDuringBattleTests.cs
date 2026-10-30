@@ -125,9 +125,15 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             var coinsBefore = _battle.Wallet.Coins;
             var droppedBefore = _battle.Field.DroppedCoins;
             _battle.Field.Advance(60 * 60);
-            yield return null;
+            // 進行が次のステップでウェーブの終わりに気づくまで待つ（ステップが0のフレームもある）。
+            for (var i = 0; i < 60 && _battle.Run.Phase == WavePhase.Fighting; i++)
+            {
+                yield return null;
+            }
 
-            Assert.That(_battle.Wallet.Coins - coinsBefore, Is.EqualTo(_battle.Field.DroppedCoins - droppedBefore));
+            // W1 を終えるとライフボーナスも入る（T304）。
+            Assert.That(_battle.Wallet.Coins - coinsBefore,
+                Is.EqualTo(_battle.Field.DroppedCoins - droppedBefore + _battle.Run.LastLifeBonus));
             Assert.That(_battle.Field.ArrivedCount, Is.LessThan(5), "1体も倒せていない");
         }
 

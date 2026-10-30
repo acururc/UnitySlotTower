@@ -23,18 +23,21 @@ namespace UnitySlotTower.Core.Battle
         private readonly CoinWallet _wallet;
         private readonly int _deployLimit;
         private readonly double _refundRate;
+        private readonly UnitStock _stock;
         private readonly Dictionary<string, int> _indices = new Dictionary<string, int>();
 
         // 種類ごとの残り待ちステップ数（UnitTable.All と同じ並び）。
         private readonly int[] _cooldownSteps;
 
         /// <param name="refundRate">撤退で召喚コストのうち返す割合（FR-025）。</param>
-        public UnitSummoner(UnitTable units, CoinWallet wallet, int deployLimit, double refundRate)
+        /// <param name="stock">無料ストック（FR-016）。ある種類はコインを使わずストックから出す。null ならストックなし。</param>
+        public UnitSummoner(UnitTable units, CoinWallet wallet, int deployLimit, double refundRate, UnitStock stock = null)
         {
             _units = units;
             _wallet = wallet;
             _deployLimit = deployLimit;
             _refundRate = refundRate;
+            _stock = stock ?? new UnitStock();
             _cooldownSteps = new int[units.All.Count];
             for (var i = 0; i < units.All.Count; i++)
             {
@@ -45,11 +48,14 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>フィールド上の味方の総数。</summary>
         public int DeployedCount { get; private set; }
 
+        /// <summary>準備中（plan C-3）。待ち時間で拒否せず、召喚しても待ち時間を始めない。</summary>
+        public bool IgnoresCooldown { get; set; }
+
         /// <summary>いま召喚できるかだけを調べる（何も変えない）。召喚できるなら <see cref="SummonResult.Summoned"/>。</summary>
         public SummonResult Check(string unitId)
         {
             var unit = _units.Get(unitId);
-            if (_cooldownSteps[_indices[unitId]] > 0)
+            if (!IgnoresCooldown && _cooldownSteps[_indices[unitId]] > 0)
             {
                 return SummonResult.CoolingDown;
             }
@@ -59,10 +65,12 @@ namespace UnitySlotTower.Core.Battle
                 return SummonResult.DeployLimitReached;
             }
 
-            return _wallet.Coins < unit.Cost ? SummonResult.NotEnoughCoins : SummonResult.Summoned;
+            return _stock.Count(unitId) == 0 && _wallet.Coins < unit.Cost
+                ? SummonResult.NotEnoughCoins
+                : SummonResult.Summoned;
         }
 
-        /// <summary>拒否したときは何も変えない（コイン・待ち時間・配置数）。</summary>
+        /// <summary>拒否したときは何も変えない（コイン・ストック・待ち時間・配置数）。ストックがあれば先に使う（plan 4章）。</summary>
         public SummonResult TrySummon(string unitId)
         {
             var result = Check(unitId);
@@ -72,8 +80,16 @@ namespace UnitySlotTower.Core.Battle
             }
 
             var unit = _units.Get(unitId);
-            _wallet.TrySpend(unit.Cost);
-            _cooldownSteps[_indices[unitId]] = (int)Math.Round(unit.Cooldown * SimulationClock.StepsPerSecond);
+            if (!_stock.TryTake(unitId))
+            {
+                _wallet.TrySpend(unit.Cost);
+            }
+
+            if (!IgnoresCooldown)
+            {
+                _cooldownSteps[_indices[unitId]] = (int)Math.Round(unit.Cooldown * SimulationClock.StepsPerSecond);
+            }
+
             DeployedCount++;
             return SummonResult.Summoned;
         }

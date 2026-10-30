@@ -53,6 +53,9 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>ゴールに着いた敵の数。</summary>
         public int ArrivedCount { get; private set; }
 
+        /// <summary>出現予定の敵がすべて出て、フィールドに敵が残っていない（ゲームオーバーでない）。</summary>
+        public bool IsCleared => !IsGameOver && _nextSpawn >= _wave.Spawns.Count && _enemies.Count == 0;
+
         /// <summary>配置できるマスかは呼び出し側（<see cref="UnitPlacement"/>、T208）で判定する。</summary>
         /// <param name="upgrade">その種類のいまの強化段階（FR-026）。null なら段階1。</param>
         public BattleUnit AddUnit(UnitDefinition definition, GridPoint cell, Facing facing,
