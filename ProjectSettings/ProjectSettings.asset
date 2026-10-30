@@ -41,7 +41,7 @@ PlayerSettings:
     height: 1
   m_SplashScreenLogos: []
   m_VirtualRealitySplashScreen: {fileID: 0}
-  defaultScreenWidth: 720
+  defaultScreenWidth: 960
   defaultScreenHeight: 1280
   defaultScreenWidthWeb: 960
   defaultScreenHeightWeb: 600

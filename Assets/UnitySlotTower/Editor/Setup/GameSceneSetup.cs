@@ -106,7 +106,7 @@ namespace UnitySlotTower.Editor.Setup
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 1f;
 
-            // 基準解像度の 9:16 領域。CanvasScaler が短い辺に合わせるため、常に黒帯の内側に収まる。
+            // 基準解像度の 3:4 領域。CanvasScaler が短い辺に合わせるため、常に黒帯の内側に収まる。
             root = new GameObject("Portrait Root", typeof(RectTransform)).GetComponent<RectTransform>();
             root.gameObject.layer = canvasObject.layer;
             root.SetParent(canvasObject.transform, false);
@@ -157,11 +157,11 @@ namespace UnitySlotTower.Editor.Setup
         {
             PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
             PlayerSettings.defaultIsNativeResolution = false;
-            PlayerSettings.defaultScreenWidth = 720;
+            PlayerSettings.defaultScreenWidth = 960;
             PlayerSettings.defaultScreenHeight = 1280;
             PlayerSettings.resizableWindow = true;
             AssetDatabase.SaveAssets();
-            Debug.Log("[SlotTower Setup] プレイヤー設定を縦長 720×1280 ウィンドウにした。");
+            Debug.Log("[SlotTower Setup] プレイヤー設定を縦長 960×1280 ウィンドウにした。");
         }
     }
 }

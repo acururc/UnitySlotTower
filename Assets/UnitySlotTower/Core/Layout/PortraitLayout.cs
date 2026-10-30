@@ -20,12 +20,12 @@ namespace UnitySlotTower.Core.Layout
     }
 
     /// <summary>
-    /// 縦長 9:16 の画面配置（plan 2章）。どの解像度でも 9:16 の領域を中央に置き、余白は黒帯にする。
-    /// 9:16 領域の上部 38% が戦闘カメラ、残りが操作バーとスロット筐体。
+    /// 縦長 3:4（12:16）の画面配置（plan 2章）。どの解像度でも 3:4 の領域を中央に置き、余白は黒帯にする。
+    /// 3:4 領域の上部 38% が戦闘カメラ、残りが操作バーとスロット筐体。
     /// </summary>
     public static class PortraitLayout
     {
-        public const int ReferenceWidth = 1080;
+        public const int ReferenceWidth = 1440;
         public const int ReferenceHeight = 1920;
         public const double BattleHeightRatio = 0.38;
 
@@ -55,7 +55,7 @@ namespace UnitySlotTower.Core.Layout
             return new NormalizedRect(box.X, box.Y + box.Height - height, box.Width, height);
         }
 
-        /// <summary>9:16 より横長なら高さ基準（CanvasScaler の match = 1）、縦長なら幅基準。</summary>
+        /// <summary>3:4 より横長なら高さ基準（CanvasScaler の match = 1）、縦長なら幅基準。</summary>
         public static bool MatchHeight(int screenWidth, int screenHeight) =>
             (double)screenWidth / Math.Max(1, screenHeight) >= Aspect;
     }
