@@ -8,16 +8,16 @@ namespace UnitySlotTower.Battle
     /// <summary>
     /// 上部の戦闘フィールドの仮表示（T201、plan 2・7章）。マップ CSV のマスを 1 単位の箱で並べ、経路を線で示す。
     /// グリッドの中心をこのオブジェクトの原点に置き、CSV の上の行ほど奥（+z）にする。
+    /// ウェーブ n のマップは maps/w{n}.csv（T305）。<see cref="Show"/> で表示を差し替える。
     /// </summary>
     public sealed class BattleFieldView : MonoBehaviour
     {
         private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
 
         [Header("Tables")]
-        [SerializeField] private TextAsset mapTable;
+        [Tooltip("ウェーブ順のマップ（maps/w1.csv, w2.csv, …）。最初のマップを起動時に表示する。")]
+        [SerializeField] private TextAsset[] mapTables;
         [SerializeField] private TextAsset pathsTable;
-        [Tooltip("maps/{id}.csv の id。M3 でウェーブ進行から渡す。")]
-        [SerializeField] private string mapId = "w1";
 
         [Header("View")]
         [SerializeField] private float groundHeight = 0.1f;
@@ -32,6 +32,9 @@ namespace UnitySlotTower.Battle
         [SerializeField] private Color airPathColor = new Color(0.4f, 0.95f, 1f);
 
         private MaterialPropertyBlock _block;
+        private CsvTable _paths;
+        private Transform _tilesRoot;
+        private Transform _pathsRoot;
 
         public BattleMap Map { get; private set; }
 
@@ -62,21 +65,49 @@ namespace UnitySlotTower.Battle
         {
             try
             {
-                if (mapTable == null || pathsTable == null)
+                if (pathsTable == null)
                 {
-                    throw new InvalidOperationException("マップか経路の表が設定されていない");
+                    throw new InvalidOperationException("経路の表が設定されていない");
                 }
 
-                Map = BattleMap.Load(mapId, mapTable.text, CsvParser.Parse(BattleMap.PathsFileName, pathsTable.text));
+                _paths = CsvParser.Parse(BattleMap.PathsFileName, pathsTable.text);
+                _block = new MaterialPropertyBlock();
+                Show(LoadWaveMap(1));
             }
             catch (Exception e)
             {
                 Debug.LogException(e, this);
                 enabled = false;
+            }
+        }
+
+        /// <summary>ウェーブ番号（1 から）のマップを読む。表示は変えない。</summary>
+        public BattleMap LoadWaveMap(int wave)
+        {
+            var index = wave - 1;
+            if (mapTables == null || index < 0 || index >= mapTables.Length || mapTables[index] == null)
+            {
+                throw new InvalidOperationException($"ウェーブ {wave} のマップの表が設定されていない");
+            }
+
+            return BattleMap.Load($"w{wave}", mapTables[index].text, _paths);
+        }
+
+        /// <summary>マップの表示を作り直す（ウェーブの切り替え）。</summary>
+        public void Show(BattleMap map)
+        {
+            if (map == Map)
+            {
                 return;
             }
 
-            _block = new MaterialPropertyBlock();
+            if (_tilesRoot != null)
+            {
+                Destroy(_tilesRoot.gameObject);
+                Destroy(_pathsRoot.gameObject);
+            }
+
+            Map = map;
             BuildTiles();
             BuildPaths();
         }
@@ -86,7 +117,7 @@ namespace UnitySlotTower.Battle
 
         private void BuildTiles()
         {
-            var root = new GameObject("Tiles").transform;
+            var root = _tilesRoot = new GameObject("Tiles").transform;
             root.SetParent(transform, false);
             for (var y = 0; y < Map.Height; y++)
             {
@@ -105,7 +136,7 @@ namespace UnitySlotTower.Battle
 
         private void BuildPaths()
         {
-            var root = new GameObject("Paths").transform;
+            var root = _pathsRoot = new GameObject("Paths").transform;
             root.SetParent(transform, false);
             foreach (var path in Map.Paths)
             {

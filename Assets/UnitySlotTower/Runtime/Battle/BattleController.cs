@@ -11,6 +11,7 @@ namespace UnitySlotTower.Battle
     /// <summary>
     /// ウェーブの進行（<see cref="WaveRun"/>）を組み立てて実時間で進める。財布はスロット筐体と共有する（T301）。
     /// スロット操作中も止まらない（FR-011）。▶ の入力ができるまでは準備に入るとすぐ戦闘を始める（autoStart）。
+    /// ウェーブ n はマップ w{n} で戦い、ウェーブが始まるとフィールドの表示を差し替える（T305）。
     /// </summary>
     [DefaultExecutionOrder(-10)]
     public sealed class BattleController : MonoBehaviour
@@ -26,8 +27,8 @@ namespace UnitySlotTower.Battle
         [SerializeField] private BattleFieldView fieldView;
         [Tooltip("所持コインを共有するスロット筐体。")]
         [SerializeField] private SlotCabinet slotCabinet;
-        [Tooltip("最後のウェーブの番号。waves.csv にそのウェーブまでの行が要る（W2〜5 は T305）。")]
-        [SerializeField] private int waveCount = 1;
+        [Tooltip("最後のウェーブの番号。waves.csv とフィールドのマップの表にそのウェーブまでが要る。")]
+        [SerializeField] private int waveCount = 5;
         [Tooltip("準備に入ったらすぐ戦闘を始める（▶ の入力ができるまでの仮）。")]
         [SerializeField] private bool autoStart = true;
 
@@ -67,11 +68,14 @@ namespace UnitySlotTower.Battle
                 var enemies = EnemyTable.Load(Parse(EnemyTable.FileName, enemiesTable));
                 var waves = Parse(WaveSchedule.FileName, wavesTable);
                 var wallet = slotCabinet.Wallet;
-                // マップはまだ1枚だけ（ウェーブごとのマップは T305）。
-                var map = fieldView.Map;
                 Run = new WaveRun(config, Units, ranges, new UnitUpgrades(upgradeTable, wallet), wallet, waveCount,
-                    wave => new WaveStage(map, WaveSchedule.Load(waves, wave, map, enemies)),
+                    wave =>
+                    {
+                        var map = wave == 1 ? fieldView.Map : fieldView.LoadWaveMap(wave);
+                        return new WaveStage(map, WaveSchedule.Load(waves, wave, map, enemies));
+                    },
                     new SeededRandom((ulong)DateTime.UtcNow.Ticks));
+                Run.WaveBegan += OnWaveBegan;
             }
             catch (Exception e)
             {
@@ -82,6 +86,16 @@ namespace UnitySlotTower.Battle
 
             _clock = new SimulationClock();
         }
+
+        private void OnDestroy()
+        {
+            if (Run != null)
+            {
+                Run.WaveBegan -= OnWaveBegan;
+            }
+        }
+
+        private void OnWaveBegan(int wave) => fieldView.Show(Run.Map);
 
         private void Update()
         {

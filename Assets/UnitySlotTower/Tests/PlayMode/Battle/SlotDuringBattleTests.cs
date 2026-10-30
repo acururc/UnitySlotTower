@@ -110,21 +110,23 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             // 置けるマスすべてに剣士を置き、W1 を最後まで進める。
             var map = Object.FindAnyObjectByType<BattleFieldView>().Map;
             var sword = _battle.Units.Get("sword");
+            // W1 を終えると次のウェーブの戦闘に作り直されるので、W1 の戦闘を持っておく（T305）。
+            var field = _battle.Field;
             for (var y = 0; y < map.Height; y++)
             {
                 for (var x = 0; x < map.Width; x++)
                 {
                     if (UnitPlacement.CanPlace(map, new GridPoint(x, y), sword))
                     {
-                        _battle.Field.AddUnit(sword, new GridPoint(x, y), Facing.Right);
+                        field.AddUnit(sword, new GridPoint(x, y), Facing.Right);
                     }
                 }
             }
 
             yield return null;
             var coinsBefore = _battle.Wallet.Coins;
-            var droppedBefore = _battle.Field.DroppedCoins;
-            _battle.Field.Advance(60 * 60);
+            var droppedBefore = field.DroppedCoins;
+            field.Advance(60 * 60);
             // 進行が次のステップでウェーブの終わりに気づくまで待つ（ステップが0のフレームもある）。
             for (var i = 0; i < 60 && _battle.Run.Phase == WavePhase.Fighting; i++)
             {
@@ -133,8 +135,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             // W1 を終えるとライフボーナスも入る（T304）。
             Assert.That(_battle.Wallet.Coins - coinsBefore,
-                Is.EqualTo(_battle.Field.DroppedCoins - droppedBefore + _battle.Run.LastLifeBonus));
-            Assert.That(_battle.Field.ArrivedCount, Is.LessThan(5), "1体も倒せていない");
+                Is.EqualTo(field.DroppedCoins - droppedBefore + _battle.Run.LastLifeBonus));
+            Assert.That(field.ArrivedCount, Is.LessThan(5), "1体も倒せていない");
         }
 
         private IEnumerator Tap(Key key)

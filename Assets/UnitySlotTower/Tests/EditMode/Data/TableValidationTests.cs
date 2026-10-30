@@ -169,5 +169,31 @@ namespace UnitySlotTower.Tests.EditMode.Data
 
             Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("waves.csv", line, 4)));
         }
+
+        [Test]
+        public void Map_Without_Paths_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["map_paths.csv"] = WithoutLinesStartingWith(files["map_paths.csv"], "w5,");
+            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "5,");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain("map_paths.csv"));
+        }
+
+        [Test]
+        public void Wave_Without_Enemies_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "5,");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain("waves.csv"));
+        }
+
+        private static string WithoutLinesStartingWith(string text, string prefix) =>
+            string.Join("\n", text.Split('\n').Where(line => !line.StartsWith(prefix)));
     }
 }

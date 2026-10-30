@@ -255,24 +255,16 @@ namespace UnitySlotTower.Core.Data
             }
         }
 
-        /// <summary>経路のあるマップは、範囲・通行可否・出現口からゴールまでを <see cref="BattleMap"/> で確かめる。</summary>
+        /// <summary>
+        /// 各マップの経路の有無・範囲・通行可否・出現口からゴールまでを <see cref="BattleMap"/> で確かめる。
+        /// 全ウェーブがマップを使うので、経路のないマップもエラーにする。
+        /// </summary>
         private static Dictionary<string, BattleMap> ValidateMapPaths(IReadOnlyDictionary<string, string> files,
             CsvTable paths, List<string> maps, ValidationReport report)
         {
             var loaded = new Dictionary<string, BattleMap>();
             foreach (var map in maps)
             {
-                var hasPath = false;
-                foreach (var row in paths.Rows)
-                {
-                    hasPath |= row.Get("map_id") == map;
-                }
-
-                if (!hasPath)
-                {
-                    continue;
-                }
-
                 try
                 {
                     loaded.Add(map, BattleMap.Load(map, files[BattleMap.MapFileName(map)], paths));
@@ -310,7 +302,10 @@ namespace UnitySlotTower.Core.Data
 
                 try
                 {
-                    WaveSchedule.Load(waves, wave, map, enemies);
+                    if (WaveSchedule.Load(waves, wave, map, enemies).Spawns.Count == 0)
+                    {
+                        report.Add(new CsvError(waves.FileName, 0, 0, $"ウェーブ {wave} の敵がない"));
+                    }
                 }
                 catch (CsvFormatException ex)
                 {

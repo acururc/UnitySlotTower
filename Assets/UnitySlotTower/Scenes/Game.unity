@@ -11318,9 +11318,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b346f0acd45c36049bae9a6dc4b68a27, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnitySlotTower.Runtime::UnitySlotTower.Battle.BattleFieldView
-  mapTable: {fileID: 4900000, guid: be59d76b2e0b2aa4199e9bfdbdb3a200, type: 3}
+  mapTables:
+  - {fileID: 4900000, guid: be59d76b2e0b2aa4199e9bfdbdb3a200, type: 3}
+  - {fileID: 4900000, guid: b4c2ad0028ff9ff4a9dc633af14cc3fd, type: 3}
+  - {fileID: 4900000, guid: 6fc91c70ab3137644b70907b03992689, type: 3}
+  - {fileID: 4900000, guid: c45907e68810a8241bec2abf2504e4a0, type: 3}
+  - {fileID: 4900000, guid: 5c7b5e4ad9f506b49ade36eaf29cbc13, type: 3}
   pathsTable: {fileID: 4900000, guid: 90f28fb97f36826468ce4a184e7822fa, type: 3}
-  mapId: w1
   groundHeight: 0.1
   highGroundHeight: 0.5
   airPathHeight: 1.2
@@ -11385,7 +11389,8 @@ MonoBehaviour:
   wavesTable: {fileID: 4900000, guid: 16fe09eb21bd7ef4f923eb9f40a16d3d, type: 3}
   fieldView: {fileID: 1813959773}
   slotCabinet: {fileID: 83309650}
-  wave: 1
+  waveCount: 5
+  autoStart: 1
 --- !u!1 &1822891391
 GameObject:
   m_ObjectHideFlags: 0
