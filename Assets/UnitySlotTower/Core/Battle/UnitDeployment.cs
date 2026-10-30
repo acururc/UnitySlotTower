@@ -30,6 +30,8 @@ namespace UnitySlotTower.Core.Battle
             _ranges = ranges;
             _summoner = summoner;
             _field = field;
+            // 戦闘と同じ寿命なので解除しない。
+            _field.UnitFell += _ => _summoner.ReleaseFallen();
         }
 
         public DeployPhase Phase { get; private set; }
@@ -152,6 +154,15 @@ namespace UnitySlotTower.Core.Battle
 
             Clear();
             return result;
+        }
+
+        /// <summary>配置中の味方を撤退させ、返還する（FR-025）。フィールドに居なければ何もしない。</summary>
+        public void Retreat(BattleUnit unit)
+        {
+            if (_field.RemoveUnit(unit))
+            {
+                _summoner.Retreat(unit.Definition.Id);
+            }
         }
 
         /// <summary>1段階戻す（向き選び→マス選び→選択なし）。</summary>

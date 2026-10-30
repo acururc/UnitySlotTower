@@ -6,7 +6,7 @@ using UnitySlotTower.Core.Simulation;
 
 namespace UnitySlotTower.Tests.EditMode.Battle
 {
-    [Description("AC-020: コイン不足・配置上限・種類ごとの待ち時間で召喚が拒否される")]
+    [Description("AC-020: コイン不足・配置上限・種類ごとの待ち時間で召喚が拒否され、撤退で返還率どおりのコインが戻る")]
     public sealed class UnitSummonerTests
     {
         // tank: コスト15・待ち20秒、sword: コスト12・待ち12秒、archer: コスト14・待ち15秒
@@ -21,7 +21,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         private UnitSummoner Create(int coins, int deployLimit = 8)
         {
             _wallet = new CoinWallet(coins);
-            return new UnitSummoner(UnitTable.Load(CsvParser.Parse(UnitTable.FileName, Units)), _wallet, deployLimit);
+            return new UnitSummoner(UnitTable.Load(CsvParser.Parse(UnitTable.FileName, Units)), _wallet, deployLimit, 0.5);
         }
 
         [Test]
@@ -122,6 +122,28 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             summoner.Advance(12 * SimulationClock.StepsPerSecond);
 
             Assert.That(summoner.TrySummon("sword"), Is.EqualTo(SummonResult.Summoned));
+        }
+
+        [Test]
+        public void Retreat_Refunds_The_Cost_Times_The_Rate_Rounded_Down()
+        {
+            var summoner = Create(30);
+            summoner.TrySummon("tank");
+
+            // 15 × 0.5 = 7.5 → 7
+            Assert.That((summoner.Retreat("tank"), _wallet.Coins), Is.EqualTo((7, 22)));
+        }
+
+        [Test]
+        public void Retreat_Frees_A_Deploy_Slot()
+        {
+            var summoner = Create(100, deployLimit: 2);
+            summoner.TrySummon("tank");
+            summoner.TrySummon("sword");
+
+            summoner.Retreat("tank");
+
+            Assert.That(summoner.TrySummon("archer"), Is.EqualTo(SummonResult.Summoned));
         }
     }
 }

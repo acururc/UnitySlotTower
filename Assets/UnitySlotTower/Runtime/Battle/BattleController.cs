@@ -62,7 +62,7 @@ namespace UnitySlotTower.Battle
                 var enemies = EnemyTable.Load(Parse(EnemyTable.FileName, enemiesTable));
                 var schedule = WaveSchedule.Load(Parse(WaveSchedule.FileName, wavesTable), wave, fieldView.Map, enemies);
                 Wallet = slotCabinet.Wallet;
-                Summoner = new UnitSummoner(Units, Wallet, config.DeployLimit);
+                Summoner = new UnitSummoner(Units, Wallet, config.DeployLimit, config.RetreatRefundRate);
                 Field = new Battlefield(schedule, ranges, config.Life, new SeededRandom((ulong)DateTime.UtcNow.Ticks));
                 Deployment = new UnitDeployment(fieldView.Map, Units, ranges, Summoner, Field);
             }

@@ -268,5 +268,19 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
             Assert.That(Position(field.Enemies[0]), Is.EqualTo(new[] { 1.0, 0.0 }).Within(1e-6));
         }
+
+        [Test]
+        [Description("FR-025: 撤退した味方がブロックしていた敵は再び進む")]
+        public void Enemy_Blocked_By_A_Retreated_Unit_Moves_On()
+        {
+            var field = Create("1,0,melee,S1,g,0\n");
+            var tank = Place(field, "tank", 2, 0);
+            field.Advance(240);
+
+            field.RemoveUnit(tank);
+            field.Advance(60);
+
+            Assert.That(field.Enemies[0].X, Is.GreaterThan(1.5));
+        }
     }
 }

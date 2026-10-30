@@ -22,16 +22,19 @@ namespace UnitySlotTower.Core.Battle
         private readonly UnitTable _units;
         private readonly CoinWallet _wallet;
         private readonly int _deployLimit;
+        private readonly double _refundRate;
         private readonly Dictionary<string, int> _indices = new Dictionary<string, int>();
 
         // 種類ごとの残り待ちステップ数（UnitTable.All と同じ並び）。
         private readonly int[] _cooldownSteps;
 
-        public UnitSummoner(UnitTable units, CoinWallet wallet, int deployLimit)
+        /// <param name="refundRate">撤退で召喚コストのうち返す割合（FR-025）。</param>
+        public UnitSummoner(UnitTable units, CoinWallet wallet, int deployLimit, double refundRate)
         {
             _units = units;
             _wallet = wallet;
             _deployLimit = deployLimit;
+            _refundRate = refundRate;
             _cooldownSteps = new int[units.All.Count];
             for (var i = 0; i < units.All.Count; i++)
             {
@@ -73,6 +76,24 @@ namespace UnitySlotTower.Core.Battle
             _cooldownSteps[_indices[unitId]] = (int)Math.Round(unit.Cooldown * SimulationClock.StepsPerSecond);
             DeployedCount++;
             return SummonResult.Summoned;
+        }
+
+        /// <summary>
+        /// 撤退した味方の分の返還（FR-025）。召喚コスト × 返還率を切り捨てて財布に戻し、返した額を返す。
+        /// ストックから出した味方も同じく召喚コストを基準にする（plan C-3）。
+        /// </summary>
+        public int Retreat(string unitId)
+        {
+            var refund = (int)Math.Floor(_units.Get(unitId).Cost * _refundRate);
+            _wallet.Add(refund);
+            DeployedCount--;
+            return refund;
+        }
+
+        /// <summary>倒された味方の分の配置枠を空ける（返還はない）。</summary>
+        public void ReleaseFallen()
+        {
+            DeployedCount--;
         }
 
         /// <summary>その種類を再び召喚できるまでの残り秒数。召喚できるなら 0。</summary>

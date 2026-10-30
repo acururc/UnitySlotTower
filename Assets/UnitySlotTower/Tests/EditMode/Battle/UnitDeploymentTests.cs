@@ -13,13 +13,15 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         private CoinWallet _wallet;
         private Battlefield _field;
 
-        private UnitDeployment Create(int coins = 100)
+        private UnitSummoner _summoner;
+
+        private UnitDeployment Create(int coins = 100, string waveRows = "")
         {
             _wallet = new CoinWallet(coins);
             var units = BattleFixtures.LoadUnits();
-            _field = BattleFixtures.CreateField("");
-            return new UnitDeployment(BattleFixtures.LoadMap(), units, BattleFixtures.LoadRanges(),
-                new UnitSummoner(units, _wallet, 8), _field);
+            _field = BattleFixtures.CreateField(waveRows);
+            _summoner = new UnitSummoner(units, _wallet, 8, 0.5);
+            return new UnitDeployment(BattleFixtures.LoadMap(), units, BattleFixtures.LoadRanges(), _summoner, _field);
         }
 
         [Test]
@@ -238,6 +240,35 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             deployment.ChooseCell();
 
             Assert.That((deployment.Cursor, deployment.Facing), Is.EqualTo((new GridPoint(1, 0), Facing.Right)));
+        }
+
+        [Test]
+        [Description("FR-025")]
+        public void Retreat_Removes_The_Unit_And_Refunds_Half_The_Cost()
+        {
+            var deployment = CreateChoosingFacing(coins: 30);
+            deployment.Confirm();
+
+            deployment.Retreat(_field.Units[0]);
+
+            // 30 − 15 + floor(15 × 0.5)
+            Assert.That((_field.Units.Count, _wallet.Coins), Is.EqualTo((0, 22)));
+        }
+
+        [Test]
+        [Description("FR-021: 倒された味方は配置数から外れる（返還はない）")]
+        public void A_Fallen_Unit_Frees_A_Deploy_Slot_Without_Refund()
+        {
+            var deployment = Create(coins: 30, waveRows: "1,0,brute,S1,g,0\n");
+            deployment.Select("sword");
+            deployment.SetCursor(new GridPoint(1, 0));
+            deployment.ChooseCell();
+            deployment.Confirm();
+            var coinsAfterSummon = _wallet.Coins;
+
+            _field.Advance(100);
+
+            Assert.That((_field.Units.Count, _summoner.DeployedCount, _wallet.Coins), Is.EqualTo((0, 0, coinsAfterSummon)));
         }
     }
 }

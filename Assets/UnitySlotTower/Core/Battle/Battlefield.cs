@@ -61,6 +61,21 @@ namespace UnitySlotTower.Core.Battle
             return unit;
         }
 
+        /// <summary>HP0 で味方が消えたとき（FR-024）。撤退では呼ばれない。</summary>
+        public event Action<BattleUnit> UnitFell;
+
+        /// <summary>撤退（FR-025）。その味方がブロックしていた敵は再び進む。フィールドに居ない味方なら何もせず false。</summary>
+        public bool RemoveUnit(BattleUnit unit)
+        {
+            if (!_units.Remove(unit))
+            {
+                return false;
+            }
+
+            ReleaseBlockedEnemies(unit);
+            return true;
+        }
+
         /// <summary>
         /// 1 ステップごとに 出現 → 移動（ゴール到着で退場・ライフ減少） → 敵の攻撃 → HP0 の味方の消滅 → 味方の行動
         /// → HP0 の敵の消滅（ドロップ） の順で処理する。ゲームオーバーになったら残りのステップは進めない。
@@ -202,17 +217,23 @@ namespace UnitySlotTower.Core.Battle
                     continue;
                 }
 
-                foreach (var enemy in _enemies)
-                {
-                    if (enemy.BlockedBy == unit)
-                    {
-                        enemy.BlockedBy = null;
-                    }
-                }
-
-                unit.BlockUsed = 0;
+                ReleaseBlockedEnemies(unit);
                 _units.RemoveAt(i);
+                UnitFell?.Invoke(unit);
             }
+        }
+
+        private void ReleaseBlockedEnemies(BattleUnit unit)
+        {
+            foreach (var enemy in _enemies)
+            {
+                if (enemy.BlockedBy == unit)
+                {
+                    enemy.BlockedBy = null;
+                }
+            }
+
+            unit.BlockUsed = 0;
         }
 
         /// <summary>

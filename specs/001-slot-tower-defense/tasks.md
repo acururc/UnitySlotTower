@@ -43,7 +43,7 @@
 ## M3 最初に遊べる版
 
 - [x] T301 (FR-011, FR-040) スロットのコインと戦闘のコインを1つの財布に統合し、戦闘中もスロットを回せるようにする — 検証: PlayMode テスト（スロット操作中も敵が進む: AC-011） — 結果: 2026-10-30 財布は `SlotCabinet.Wallet`（Awake で作る）を `BattleController` が `slotCabinet` 参照経由で共有（Game シーンで設定済み、`BattlePlacementSetup` にも追加）。`Battlefield.DroppedCoins` の増分を毎フレーム財布へ加算。テスト `Tests/PlayMode/Battle/SlotDuringBattleTests` 2件（リール回転中に Tick と敵の距離が進む・ベットが共有財布から引かれる／ドロップ増分＝財布増分）。PlayMode 7/7、ハーネス 8/8。EditMode は Core 変更なしのため未再実行。コイン表示はスロットのクレジットだけ（操作バーの表示は T308）
-- [ ] T302 (FR-025) 撤退と返還（ストック由来を含む） — 検証: EditMode テスト（AC-020）
+- [x] T302 (FR-025) 撤退と返還（ストック由来を含む） — 検証: EditMode テスト（AC-020） — 結果: 2026-10-30 `UnitSummoner` に返還率を渡す（`game_config.csv` の `retreat_refund_rate`）。`UnitSummoner.Retreat(id)`（召喚コスト × 返還率を切り捨てで返し、配置数を1減らす。支払額ではなく種類のコストを基準にするのでストック由来も同じ式＝T304 のストック配置もこれを使う）、`ReleaseFallen()`（HP0 の味方の枠を空ける、返還なし）。`Battlefield.RemoveUnit`（ブロックしていた敵を再び進ませる）と `UnitFell` イベント、`UnitDeployment.Retreat(unit)`（フィールドから外して返還）。撤退の入力（撤退アイコン・X、plan 3章）は未実装（T308 の操作バーと合わせる）。テスト5件追加（red→green 5サイクル）。EditMode 336/336、PlayMode 7/7、ハーネス 8/8。Console は確認コマンドの引数誤りで未確認（テストはコンパイル・実行済み）
 - [ ] T303 (FR-026) 種類ごとの強化（`unit_upgrades.csv`、配置中と今後の個体への反映） — 検証: EditMode テスト（AC-022）
 - [ ] T304 (FR-010, FR-014〜016) ウェーブ進行（準備フェーズ、▶で開始、ウェーブ終了でライフボーナス・ストック化・ライフ回復、ストックからの無料配置、準備中は待ち時間なし） — 検証: EditMode テスト（AC-012）
 - [ ] T305 (FR-010) `maps/w2〜w5.csv` と各ウェーブの出現内容を作る — 検証: 経路検証テスト、手動プレイ
