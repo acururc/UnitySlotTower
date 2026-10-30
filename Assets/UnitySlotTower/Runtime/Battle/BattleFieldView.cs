@@ -42,6 +42,13 @@ namespace UnitySlotTower.Battle
         public Vector3 CellTopToWorld(GridPoint point) =>
             transform.TransformPoint(CellToLocal(point) + Vector3.up * (TileHeight(Map.TileAt(point)) - groundHeight));
 
+        /// <summary>
+        /// 敵の位置（マス単位の連続値。マス (x, y) の中心が (x, y)）のワールド座標。地上は地面の上面、空中は空中経路の高さ。
+        /// </summary>
+        public Vector3 PositionToWorld(double x, double y, bool air) =>
+            transform.TransformPoint(new Vector3((float)x - (Map.Width - 1) * 0.5f, air ? airPathHeight : 0f,
+                (Map.Height - 1) * 0.5f - (float)y));
+
         /// <summary>ワールド座標の真下（フィールドの水平面上）のマス。マップ外なら false。</summary>
         public bool TryGetCell(Vector3 world, out GridPoint cell)
         {

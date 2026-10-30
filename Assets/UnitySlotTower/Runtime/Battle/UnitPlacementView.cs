@@ -5,8 +5,8 @@ using UnitySlotTower.Core.Battle;
 namespace UnitySlotTower.Battle
 {
     /// <summary>
-    /// 配置操作の仮表示（T208）: カーソル（置ければ緑・置けなければ赤）、向きの矢印、攻撃範囲の見本と、
-    /// 配置済みの味方の仮の目印。役職ごとの見た目と HP ゲージは T209 で作る。
+    /// 配置操作の仮表示（T208）: カーソル（置ければ緑・置けなければ赤）、向きの矢印と攻撃範囲の見本。
+    /// 配置済みの味方と敵は BattleActorsView（T209）が表示する。
     /// </summary>
     public sealed class UnitPlacementView : MonoBehaviour
     {
@@ -17,11 +17,8 @@ namespace UnitySlotTower.Battle
         [SerializeField] private Color placeableColor = new Color(0.3f, 0.95f, 0.4f);
         [SerializeField] private Color blockedColor = new Color(0.95f, 0.25f, 0.2f);
         [SerializeField] private Color rangeColor = new Color(1f, 0.6f, 0.15f);
-        [SerializeField] private Color unitColor = new Color(0.85f, 0.85f, 0.95f);
 
         private readonly List<Transform> _rangeMarkers = new List<Transform>();
-        private readonly Dictionary<BattleUnit, Transform> _unitMarkers = new Dictionary<BattleUnit, Transform>();
-        private readonly List<BattleUnit> _removed = new List<BattleUnit>();
         private MaterialPropertyBlock _block;
         private Transform _cursor;
         private Renderer _cursorRenderer;
@@ -48,7 +45,6 @@ namespace UnitySlotTower.Battle
             }
 
             ShowPlacement(deployment);
-            SyncUnits();
         }
 
         private void ShowPlacement(UnitDeployment deployment)
@@ -87,45 +83,6 @@ namespace UnitySlotTower.Battle
             for (var i = 0; i < _rangeMarkers.Count; i++)
             {
                 _rangeMarkers[i].gameObject.SetActive(i < rangeCount);
-            }
-        }
-
-        private void SyncUnits()
-        {
-            var units = battle.Field.Units;
-            for (var i = 0; i < units.Count; i++)
-            {
-                if (_unitMarkers.ContainsKey(units[i]))
-                {
-                    continue;
-                }
-
-                var unit = units[i];
-                var marker = CreateCube($"Unit {unit.Definition.Id}", transform, unitColor);
-                marker.localScale = new Vector3(0.6f, 0.6f, 0.6f);
-                var direction = Direction(unit.Facing);
-                marker.SetPositionAndRotation(fieldView.CellTopToWorld(unit.Cell) + Vector3.up * 0.3f,
-                    Quaternion.LookRotation(direction));
-                var nose = CreateCube("Nose", marker, rangeColor);
-                nose.localScale = new Vector3(0.3f, 0.3f, 0.5f);
-                nose.localPosition = new Vector3(0f, 0f, 0.6f);
-                _unitMarkers.Add(unit, marker);
-            }
-
-            // HP0 で消えた味方の目印を消す。
-            _removed.Clear();
-            foreach (var pair in _unitMarkers)
-            {
-                if (!pair.Key.IsAlive)
-                {
-                    _removed.Add(pair.Key);
-                }
-            }
-
-            foreach (var unit in _removed)
-            {
-                Destroy(_unitMarkers[unit].gameObject);
-                _unitMarkers.Remove(unit);
             }
         }
 
