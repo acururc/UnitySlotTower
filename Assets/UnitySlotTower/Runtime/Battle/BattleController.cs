@@ -19,6 +19,7 @@ namespace UnitySlotTower.Battle
         [SerializeField] private TextAsset gameConfigTable;
         [SerializeField] private TextAsset unitsTable;
         [SerializeField] private TextAsset unitRangesTable;
+        [SerializeField] private TextAsset unitUpgradesTable;
         [SerializeField] private TextAsset enemiesTable;
         [SerializeField] private TextAsset wavesTable;
 
@@ -34,6 +35,7 @@ namespace UnitySlotTower.Battle
         public UnitTable Units { get; private set; }
         public CoinWallet Wallet { get; private set; }
         public UnitSummoner Summoner { get; private set; }
+        public UnitUpgrades Upgrades { get; private set; }
         public Battlefield Field { get; private set; }
         public UnitDeployment Deployment { get; private set; }
 
@@ -59,12 +61,14 @@ namespace UnitySlotTower.Battle
                 var config = GameConfig.Load(Parse(GameConfig.FileName, gameConfigTable));
                 Units = UnitTable.Load(Parse(UnitTable.FileName, unitsTable));
                 var ranges = UnitRanges.Load(Parse(UnitRanges.FileName, unitRangesTable), Units);
+                var upgradeTable = UnitUpgradeTable.Load(Parse(UnitUpgradeTable.FileName, unitUpgradesTable), Units);
                 var enemies = EnemyTable.Load(Parse(EnemyTable.FileName, enemiesTable));
                 var schedule = WaveSchedule.Load(Parse(WaveSchedule.FileName, wavesTable), wave, fieldView.Map, enemies);
                 Wallet = slotCabinet.Wallet;
                 Summoner = new UnitSummoner(Units, Wallet, config.DeployLimit, config.RetreatRefundRate);
+                Upgrades = new UnitUpgrades(upgradeTable, Wallet);
                 Field = new Battlefield(schedule, ranges, config.Life, new SeededRandom((ulong)DateTime.UtcNow.Ticks));
-                Deployment = new UnitDeployment(fieldView.Map, Units, ranges, Summoner, Field);
+                Deployment = new UnitDeployment(fieldView.Map, Units, ranges, Summoner, Field, Upgrades);
             }
             catch (Exception e)
             {

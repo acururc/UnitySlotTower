@@ -50,6 +50,13 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             "buffer,0,-1\nbuffer,0,0\nbuffer,0,1\nbuffer,1,-1\nbuffer,1,0\nbuffer,1,1\n" +
             "weak_buffer,0,-1\nweak_buffer,0,0\nweak_buffer,0,1\nweak_buffer,1,-1\nweak_buffer,1,0\nweak_buffer,1,1\n";
 
+        // sword: 3段階（段階2で HP×1.5・攻撃×1.25・防御×2、費用20）、archer・healer: 2段階、ほかの種類は行がない（強化できない）。
+        public const string Upgrades =
+            "unit_id,level,hp_mult,atk_mult,def_mult,cost\n" +
+            "sword,1,1,1,1,0\nsword,2,1.5,1.25,2,20\nsword,3,2,1.5,3,35\n" +
+            "archer,1,1,1,1,0\narcher,2,1.2,2,1,30\n" +
+            "healer,1,1,1,1,0\nhealer,2,1,1.5,1,30\n";
+
         public const string WavesHeader = "wave,time,enemy_id,spawn,path_id,is_boss\n";
 
         public static BattleMap LoadMap() =>
@@ -61,6 +68,9 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
         public static UnitRanges LoadRanges() =>
             UnitRanges.Load(CsvParser.Parse(UnitRanges.FileName, Ranges), LoadUnits());
+
+        public static UnitUpgradeTable LoadUpgrades(string csv = Upgrades) =>
+            UnitUpgradeTable.Load(CsvParser.Parse(UnitUpgradeTable.FileName, csv), LoadUnits());
 
         public static WaveSchedule LoadWave(string rows, int wave = 1) =>
             WaveSchedule.Load(CsvParser.Parse(WaveSchedule.FileName, WavesHeader + rows), wave, LoadMap(), LoadEnemies());

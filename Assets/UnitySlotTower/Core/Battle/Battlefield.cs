@@ -54,11 +54,26 @@ namespace UnitySlotTower.Core.Battle
         public int ArrivedCount { get; private set; }
 
         /// <summary>配置できるマスかは呼び出し側（<see cref="UnitPlacement"/>、T208）で判定する。</summary>
-        public BattleUnit AddUnit(UnitDefinition definition, GridPoint cell, Facing facing)
+        /// <param name="upgrade">その種類のいまの強化段階（FR-026）。null なら段階1。</param>
+        public BattleUnit AddUnit(UnitDefinition definition, GridPoint cell, Facing facing,
+            UnitUpgradeLevel upgrade = null)
         {
-            var unit = new BattleUnit(definition, cell, facing, _ranges.CellsFrom(definition.Id, cell, facing));
+            var unit = new BattleUnit(definition, cell, facing, _ranges.CellsFrom(definition.Id, cell, facing),
+                upgrade ?? UnitUpgradeLevel.Base);
             _units.Add(unit);
             return unit;
+        }
+
+        /// <summary>配置中のその種類の全個体を強化の段階に合わせる（FR-026）。</summary>
+        public void ApplyUpgrade(string unitId, UnitUpgradeLevel level)
+        {
+            foreach (var unit in _units)
+            {
+                if (unit.Definition.Id == unitId)
+                {
+                    unit.ApplyUpgrade(level);
+                }
+            }
         }
 
         /// <summary>HP0 で味方が消えたとき（FR-024）。撤退では呼ばれない。</summary>
@@ -200,7 +215,7 @@ namespace UnitySlotTower.Core.Battle
                     continue;
                 }
 
-                target.TakeDamage(Damage.Calculate(enemy.Definition.Atk, target.Definition.Def));
+                target.TakeDamage(Damage.Calculate(enemy.Definition.Atk, target.Def));
                 enemy.AttackCooldownSteps =
                     (int)Math.Round(enemy.Definition.AttackInterval * SimulationClock.StepsPerSecond);
             }
@@ -324,14 +339,14 @@ namespace UnitySlotTower.Core.Battle
             BattleUnit patient = null;
             foreach (var unit in _units)
             {
-                if (!unit.IsAlive || unit.Hp >= unit.Definition.MaxHp || !healer.InRange(unit.Cell))
+                if (!unit.IsAlive || unit.Hp >= unit.MaxHp || !healer.InRange(unit.Cell))
                 {
                     continue;
                 }
 
                 // Hp / MaxHp の比較を整数の掛け算で行う。
                 if (patient == null ||
-                    (long)unit.Hp * patient.Definition.MaxHp < (long)patient.Hp * unit.Definition.MaxHp)
+                    (long)unit.Hp * patient.MaxHp < (long)patient.Hp * unit.MaxHp)
                 {
                     patient = unit;
                 }
@@ -356,7 +371,7 @@ namespace UnitySlotTower.Core.Battle
                 }
             }
 
-            return (int)Math.Round(unit.Definition.Atk * rate, MidpointRounding.AwayFromZero);
+            return (int)Math.Round(unit.Atk * rate, MidpointRounding.AwayFromZero);
         }
 
         /// <summary>

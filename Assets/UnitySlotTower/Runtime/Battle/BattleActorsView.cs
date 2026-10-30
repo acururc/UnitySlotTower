@@ -121,7 +121,7 @@ namespace UnitySlotTower.Battle
                 }
 
                 actor.Seen = frame;
-                UpdateGauge(actor, unit.Hp, unit.Definition.MaxHp);
+                UpdateGauge(actor, unit.Hp, unit.MaxHp);
             }
 
             _goneUnits.Clear();

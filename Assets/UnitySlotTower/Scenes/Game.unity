@@ -11380,6 +11380,7 @@ MonoBehaviour:
   gameConfigTable: {fileID: 4900000, guid: 2d933355fbebe6842832dd894f5231c3, type: 3}
   unitsTable: {fileID: 4900000, guid: c4e4e49cdbcbeeb44a1cc915c2e30fce, type: 3}
   unitRangesTable: {fileID: 4900000, guid: e44ee68ec2d87f34a81f2deeac35af8a, type: 3}
+  unitUpgradesTable: {fileID: 4900000, guid: 9889e692075915d48ba1cc06d6e744a4, type: 3}
   enemiesTable: {fileID: 4900000, guid: bac7ea120bee583418e621197ec22cb5, type: 3}
   wavesTable: {fileID: 4900000, guid: 16fe09eb21bd7ef4f923eb9f40a16d3d, type: 3}
   fieldView: {fileID: 1813959773}

@@ -21,7 +21,8 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var units = BattleFixtures.LoadUnits();
             _field = BattleFixtures.CreateField(waveRows);
             _summoner = new UnitSummoner(units, _wallet, 8, 0.5);
-            return new UnitDeployment(BattleFixtures.LoadMap(), units, BattleFixtures.LoadRanges(), _summoner, _field);
+            return new UnitDeployment(BattleFixtures.LoadMap(), units, BattleFixtures.LoadRanges(), _summoner, _field,
+                new UnitUpgrades(BattleFixtures.LoadUpgrades(), _wallet));
         }
 
         [Test]

@@ -51,6 +51,7 @@ namespace UnitySlotTower.Editor.Setup
             Assign(battle, "gameConfigTable", Table(GameConfig.FileName));
             Assign(battle, "unitsTable", Table(UnitTable.FileName));
             Assign(battle, "unitRangesTable", Table(UnitRanges.FileName));
+            Assign(battle, "unitUpgradesTable", Table(UnitUpgradeTable.FileName));
             Assign(battle, "enemiesTable", Table(EnemyTable.FileName));
             Assign(battle, "wavesTable", Table(WaveSchedule.FileName));
             Assign(battle, "fieldView", field);

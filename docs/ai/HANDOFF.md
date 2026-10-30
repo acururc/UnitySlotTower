@@ -2,13 +2,13 @@
 
 ## 現在の作業
 
-更新: 2026-10-30 Asia/Tokyo / 状態: M0・M1・M2 完了、M3 の T301・T302 完了（財布統合・撤退と返還。結果は tasks.md の各行）。次は T303
+更新: 2026-10-30 Asia/Tokyo / 状態: M0・M1・M2 完了、M3 の T301〜T303 完了（財布統合・撤退と返還・強化。結果は tasks.md の各行）。次は T304
 
 - 対象: [`spec.md`](../../specs/001-slot-tower-defense/spec.md)（2026-10-26 承認。変えたら再承認）、[`plan.md`](../../specs/001-slot-tower-defense/plan.md)、[`tasks.md`](../../specs/001-slot-tower-defense/tasks.md)（完了タスクは `[x]` と行末に結果。M2 各タスクの成果・API はそこを見る）。
 - 承認: 2026-10-29 にユーザーが「M0から実装を始めて」と依頼。M3 以降も実装依頼の範囲内と解釈してよいが、spec 変更は別途承認が要る（T108 で先バレ対象を BIG・REG に変えたときは承認済み）。T208 は 2026-10-30 にユーザーが手動確認済み。
 - ブランチ: `feature/001-m0-foundation`（main に直接コミットしない）。
 - 画面比: 3:4（基準 1440×1920、初期ウィンドウ 960×1280。plan 2章）。プレイヤービルドで戦闘マスがマゼンタ（シェーダー欠落、Editor 外の既存問題で未調査）。
-- 次の一手: T303（種類ごとの強化、`unit_upgrades.csv`、配置中と今後の個体への反映。EditMode テストで AC-022、`tdd` スキル）。撤退は Core だけ（`UnitDeployment.Retreat`・`UnitSummoner.Retreat`・`Battlefield.RemoveUnit`、死亡は `UnitFell` で配置枠を空ける）。撤退の入力（アイコン・X）は未実装で T308 と合わせる。T304 のストック配置は配置数に数え、撤退は同じ `Retreat` で返す。
+- 次の一手: T304（ウェーブ進行・準備フェーズ・ストック。EditMode テストで AC-012、`tdd` スキル）。撤退・強化は Core だけ（`UnitDeployment.Retreat`/`Upgrade`、`UnitUpgrades`）。入力（撤退アイコン・X、強化アイコン・Shift+数字）は T308。T304 の注意: ストック配置は配置数に数え、撤退は同じ `Retreat` で返す。`UnitUpgrades` と財布はウェーブをまたいで同じものを使い、次ウェーブの `Battlefield`/`UnitDeployment` に渡す（ストック配置も `_upgrades.Current` の段階で置き HP 全快）。
 - M2 の要点: Core/Battle に地図・味方/敵の表・召喚・配置可否と範囲・ウェーブ・ブロック・攻撃/回復/強化・ライフとドロップ・配置操作（`UnitDeployment`）。Runtime/Battle に `BattleFieldView`（`CellTopToWorld`・`PositionToWorld`）・`BattleController`（仮の進行。敵は W1 の5体だけ）・`UnitPlacementInput`/`UnitPlacementView`・`BattleActorsView`（T209 の味方・敵・HP ゲージ・範囲）。シーンへの追加は Editor `Setup/*Setup`（実行済み）。撤退時に配置数を減らす API はまだない（T302）。
 - 最終検証（T209）: Editor 画像 `Artifacts/Automation/Editor/t209-*.png`（味方5種・近距離/遠距離の敵・HP ゲージ・範囲）、PlayMode 5/5、ハーネス 8/8。EditMode は T208 時点 331/331（T209 は Core 変更なしのため未再実行）。空中の敵の見た目は W1 に空中敵がいないため未確認（W3 を作るときに見る）。タンクの色（青灰）が高台マスの色に近く見分けにくい — M3 のプレイ確認で必要なら色を変える（操作バーのアイコン色も揃える）。
 ### M1 の成果（詳細は tasks.md 各行と plan 5章）
