@@ -2,13 +2,13 @@
 
 ## 現在の作業
 
-更新: 2026-10-30 Asia/Tokyo / 状態: M0・M1・M2 完了、M3 の T301〜T308 完了（財布統合・撤退と返還・強化・ウェーブ進行とストック・W2〜W5・ボス2種・一時停止・操作バー。結果は tasks.md の各行）。次は T309
+更新: 2026-10-30 Asia/Tokyo / 状態: M0・M1・M2 完了、M3 の T301〜T308 完了（財布統合・撤退と返還・強化・ウェーブ進行とストック・W2〜W5・ボス2種・一時停止・操作バー。結果は tasks.md の各行）。T309 は後回し、次は T401
 
 - 対象: [`spec.md`](../../specs/001-slot-tower-defense/spec.md)（2026-10-26 承認。変えたら再承認）、[`plan.md`](../../specs/001-slot-tower-defense/plan.md)、[`tasks.md`](../../specs/001-slot-tower-defense/tasks.md)（完了タスクは `[x]` と行末に結果・API）。
 - 承認: 2026-10-29 にユーザーが「M0から実装を始めて」と依頼。M3 以降も実装依頼の範囲内と解釈してよいが、spec 変更は別途承認が要る（T108 で先バレ対象を BIG・REG に変えたときは承認済み）。T208 は 2026-10-30 にユーザーが手動確認済み。
 - ブランチ: `feature/001-m0-foundation`（main に直接コミットしない）。
 - 画面比: 3:4（基準 1440×1920、初期ウィンドウ 960×1280。plan 2章）。プレイヤービルドで戦闘マスがマゼンタ（シェーダー欠落、Editor 外の既存問題で未調査）。
-- 次の一手: T309（5ウェーブ通しの手動プレイで忙しさ・経済・難易度を確かめ CSV を調整。設定1と6で各1回以上。ユーザーの手動プレイが要る）。確認したい点: ウェーブの長さ（各約1分で plan の目安より短い）、ボスの見た目と範囲攻撃の演出（今はなし）、W3〜W5 の見た目、タンクの色（青灰）が高台マスと見分けにくい件、操作バーの強化欄（数字と段階の点が小さい）。
+- 次の一手: T401（`Title` シーンと難易度選択 設定1〜6。PlayMode テスト AC-004）。T309（5ウェーブ通しの手動プレイとCSV調整）は 2026-10-31 にユーザーが「バランスはまた後で調整する」として後回し（未完了のまま残す）。T309 で確認したい点: ウェーブの長さ（各約1分で plan の目安より短い）、ボスの見た目と範囲攻撃の演出（今はなし）、W3〜W5 の見た目、タンクの色（青灰）が高台マスと見分けにくい件、操作バーの強化欄（数字と段階の点が小さい）。
 - T308 で決めたこと（plan 3章に ▶ のキーがなかったため）: ▶ は「配置操作中でないときの Enter」と操作バーの ▶。撤退は配置中の味方をクリック／Tab で選び X か撤退アイコン。準備中は `BattleController.autoStart`=false で ▶ を待つ（PlayMode テストは `StartWave()` を呼んでから戦闘を確かめる）。
 - M2 の要点: Core/Battle に地図・味方/敵の表・召喚・配置可否と範囲・ウェーブ・ブロック・攻撃/回復/強化・ライフとドロップ・配置操作（`UnitDeployment`）。Runtime/Battle に `BattleFieldView`・`BattleController`（W1〜W5、`StartWave`/`TogglePause`）・`UnitPlacementInput`（選択・配置・強化・撤退・▶・一時停止の入力、`SelectedUnit`）/`UnitPlacementView`・`BattleActorsView`・操作バー（`UnitBarIcon`・`UnitUpgradeIcon`・`OperationBarStatus`）。シーンへの追加は Editor `Setup/*Setup`（実行済み）。
 - 最終検証（T308）: EditMode 388/388、PlayMode 12/12、Console エラー0、ハーネス 8/8、Editor 画像 `Artifacts/Automation/Editor/t308-bar-prep.png` を目視。手動プレイは未実施（T309）。
