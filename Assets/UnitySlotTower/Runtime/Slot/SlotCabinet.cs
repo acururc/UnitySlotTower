@@ -8,6 +8,7 @@ using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Economy;
 using UnitySlotTower.Core.Simulation;
 using UnitySlotTower.Core.Slot;
+using UnitySlotTower.Flow;
 
 namespace UnitySlotTower.Slot
 {
@@ -28,7 +29,7 @@ namespace UnitySlotTower.Slot
         [SerializeField] private TextAsset premonitionTable;
         [SerializeField] private TextAsset rulesTable;
 
-        [Tooltip("難易度（設定1〜6）。M4 で難易度選択から渡す。")]
+        [Tooltip("難易度（設定1〜6）。Game シーンを直接開いたときだけ使う。難易度選択を通ったときはその設定（T401）。")]
         [SerializeField, Range(1, 6)] private int setting = 1;
 
         [Header("Input")]
@@ -76,8 +77,12 @@ namespace UnitySlotTower.Slot
         /// <summary>true のあいだはレバーとストップを受け付けない（一時停止中: FR-012）。</summary>
         public bool InputLocked { get; set; }
 
+        /// <summary>このプレイの難易度（設定1〜6、FR-045）。</summary>
+        public int Setting => setting;
+
         private void Awake()
         {
+            setting = GameSession.SelectedSetting ?? setting;
             SlotReels slotReels;
             try
             {
