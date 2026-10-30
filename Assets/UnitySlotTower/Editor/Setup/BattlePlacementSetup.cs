@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
+using UnitySlotTower.Slot;
 
 namespace UnitySlotTower.Editor.Setup
 {
@@ -53,6 +54,7 @@ namespace UnitySlotTower.Editor.Setup
             Assign(battle, "enemiesTable", Table(EnemyTable.FileName));
             Assign(battle, "wavesTable", Table(WaveSchedule.FileName));
             Assign(battle, "fieldView", field);
+            Assign(battle, "slotCabinet", Object.FindAnyObjectByType<SlotCabinet>(FindObjectsInactive.Include));
 
             var view = new GameObject("Placement View").AddComponent<UnitPlacementView>();
             view.transform.SetParent(field.transform, false);

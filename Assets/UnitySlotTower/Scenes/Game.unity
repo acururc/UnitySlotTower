@@ -11383,6 +11383,7 @@ MonoBehaviour:
   enemiesTable: {fileID: 4900000, guid: bac7ea120bee583418e621197ec22cb5, type: 3}
   wavesTable: {fileID: 4900000, guid: 16fe09eb21bd7ef4f923eb9f40a16d3d, type: 3}
   fieldView: {fileID: 1813959773}
+  slotCabinet: {fileID: 83309650}
   wave: 1
 --- !u!1 &1822891391
 GameObject:

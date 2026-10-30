@@ -4,12 +4,13 @@ using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Economy;
 using UnitySlotTower.Core.Simulation;
+using UnitySlotTower.Slot;
 
 namespace UnitySlotTower.Battle
 {
     /// <summary>
-    /// 1 ウェーブの戦闘を組み立てて実時間で進める（T208 時点の仮の進行）。財布は戦闘専用で、スロットとの統合は T301、
-    /// ウェーブの準備フェーズと開始は T304 で扱う。
+    /// 1 ウェーブの戦闘を組み立てて実時間で進める（仮の進行）。財布はスロット筐体と共有し、撃破ドロップを加える（T301）。
+    /// スロット操作中も止まらない（FR-011）。ウェーブの準備フェーズと開始は T304 で扱う。
     /// </summary>
     [DefaultExecutionOrder(-10)]
     public sealed class BattleController : MonoBehaviour
@@ -22,10 +23,13 @@ namespace UnitySlotTower.Battle
         [SerializeField] private TextAsset wavesTable;
 
         [SerializeField] private BattleFieldView fieldView;
+        [Tooltip("所持コインを共有するスロット筐体。")]
+        [SerializeField] private SlotCabinet slotCabinet;
         [Tooltip("waves.csv の wave。M3 でウェーブ進行から渡す。")]
         [SerializeField] private int wave = 1;
 
         private SimulationClock _clock;
+        private int _collectedDrops;
 
         public UnitTable Units { get; private set; }
         public CoinWallet Wallet { get; private set; }
@@ -35,10 +39,17 @@ namespace UnitySlotTower.Battle
 
         private void Start()
         {
-            // マップは BattleFieldView の Awake で読み込み済み。
+            // マップは BattleFieldView の Awake、財布は SlotCabinet の Awake で作られている。
             if (fieldView == null || fieldView.Map == null)
             {
                 Debug.LogError("戦闘フィールドのマップがない", this);
+                enabled = false;
+                return;
+            }
+
+            if (slotCabinet == null || slotCabinet.Wallet == null)
+            {
+                Debug.LogError("財布を共有するスロット筐体がない", this);
                 enabled = false;
                 return;
             }
@@ -50,7 +61,7 @@ namespace UnitySlotTower.Battle
                 var ranges = UnitRanges.Load(Parse(UnitRanges.FileName, unitRangesTable), Units);
                 var enemies = EnemyTable.Load(Parse(EnemyTable.FileName, enemiesTable));
                 var schedule = WaveSchedule.Load(Parse(WaveSchedule.FileName, wavesTable), wave, fieldView.Map, enemies);
-                Wallet = new CoinWallet(config.InitialCoins);
+                Wallet = slotCabinet.Wallet;
                 Summoner = new UnitSummoner(Units, Wallet, config.DeployLimit);
                 Field = new Battlefield(schedule, ranges, config.Life, new SeededRandom((ulong)DateTime.UtcNow.Ticks));
                 Deployment = new UnitDeployment(fieldView.Map, Units, ranges, Summoner, Field);
@@ -70,6 +81,14 @@ namespace UnitySlotTower.Battle
             var steps = _clock.Advance(Time.deltaTime);
             Field.Advance(steps);
             Summoner.Advance(steps);
+
+            // 撃破ドロップは落ちた時点で所持コインに入る（FR-033）。
+            var dropped = Field.DroppedCoins;
+            if (dropped > _collectedDrops)
+            {
+                Wallet.Add(dropped - _collectedDrops);
+                _collectedDrops = dropped;
+            }
         }
 
         private static CsvTable Parse(string fileName, TextAsset asset)

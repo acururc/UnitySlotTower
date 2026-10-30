@@ -42,7 +42,7 @@
 
 ## M3 最初に遊べる版
 
-- [ ] T301 (FR-011, FR-040) スロットのコインと戦闘のコインを1つの財布に統合し、戦闘中もスロットを回せるようにする — 検証: PlayMode テスト（スロット操作中も敵が進む: AC-011）
+- [x] T301 (FR-011, FR-040) スロットのコインと戦闘のコインを1つの財布に統合し、戦闘中もスロットを回せるようにする — 検証: PlayMode テスト（スロット操作中も敵が進む: AC-011） — 結果: 2026-10-30 財布は `SlotCabinet.Wallet`（Awake で作る）を `BattleController` が `slotCabinet` 参照経由で共有（Game シーンで設定済み、`BattlePlacementSetup` にも追加）。`Battlefield.DroppedCoins` の増分を毎フレーム財布へ加算。テスト `Tests/PlayMode/Battle/SlotDuringBattleTests` 2件（リール回転中に Tick と敵の距離が進む・ベットが共有財布から引かれる／ドロップ増分＝財布増分）。PlayMode 7/7、ハーネス 8/8。EditMode は Core 変更なしのため未再実行。コイン表示はスロットのクレジットだけ（操作バーの表示は T308）
 - [ ] T302 (FR-025) 撤退と返還（ストック由来を含む） — 検証: EditMode テスト（AC-020）
 - [ ] T303 (FR-026) 種類ごとの強化（`unit_upgrades.csv`、配置中と今後の個体への反映） — 検証: EditMode テスト（AC-022）
 - [ ] T304 (FR-010, FR-014〜016) ウェーブ進行（準備フェーズ、▶で開始、ウェーブ終了でライフボーナス・ストック化・ライフ回復、ストックからの無料配置、準備中は待ち時間なし） — 検証: EditMode テスト（AC-012）

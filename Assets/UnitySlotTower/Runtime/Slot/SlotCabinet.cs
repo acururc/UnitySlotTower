@@ -70,6 +70,9 @@ namespace UnitySlotTower.Slot
         private int _shownPayout = -1;
         private int _shownCounter = -1;
 
+        /// <summary>所持コイン。戦闘の召喚・撃破ドロップと共有する（FR-040、T301）。Awake で作る。</summary>
+        public CoinWallet Wallet => _wallet;
+
         private void Awake()
         {
             SlotReels slotReels;
