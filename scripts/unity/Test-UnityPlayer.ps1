@@ -1,5 +1,6 @@
 [CmdletBinding()]
-param([string]$PlayerPath = 'Builds/Windows/UnitySlotTower.exe', [int]$TimeoutSeconds = 90, [switch]$ShowWindow)
+param([string]$PlayerPath = 'Builds/Windows/UnitySlotTower.exe', [int]$TimeoutSeconds = 90, [switch]$ShowWindow,
+    [ValidateRange(64, 7680)][int]$Width = 1280, [ValidateRange(64, 4320)][int]$Height = 720)
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 if (-not [IO.Path]::IsPathRooted($PlayerPath)) { $PlayerPath = Join-Path $projectRoot $PlayerPath }
@@ -9,7 +10,7 @@ New-Item -ItemType Directory -Path $runDirectory -Force | Out-Null
 $screenshot = Join-Path $runDirectory 'player.png'
 $playerLog = Join-Path $runDirectory 'player.log'
 $windowStyle = if ($ShowWindow) { 'Normal' } else { 'Hidden' }
-$player = Start-Process -FilePath $PlayerPath -ArgumentList @('-screen-fullscreen','0','-screen-width','1280','-screen-height','720','-logFile',('"' + $playerLog + '"'),'-automationScreenshot',('"' + $screenshot + '"')) -WorkingDirectory (Split-Path $PlayerPath) -WindowStyle $windowStyle -PassThru
+$player = Start-Process -FilePath $PlayerPath -ArgumentList @('-screen-fullscreen','0','-screen-width',"$Width",'-screen-height',"$Height",'-logFile',('"' + $playerLog + '"'),'-automationScreenshot',('"' + $screenshot + '"')) -WorkingDirectory (Split-Path $PlayerPath) -WindowStyle $windowStyle -PassThru
 $completed = $player.WaitForExit($TimeoutSeconds * 1000)
 if (-not $completed) {
     # Only stop the process started by this verification run.
