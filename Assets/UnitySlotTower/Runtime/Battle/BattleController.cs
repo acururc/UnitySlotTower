@@ -10,7 +10,7 @@ namespace UnitySlotTower.Battle
 {
     /// <summary>
     /// ウェーブの進行（<see cref="WaveRun"/>）を組み立てて実時間で進める。財布はスロット筐体と共有する（T301）。
-    /// スロット操作中も止まらない（FR-011）。▶ の入力ができるまでは準備に入るとすぐ戦闘を始める（autoStart）。
+    /// スロット操作中も止まらない（FR-011）。戦闘は ▶（<see cref="StartWave"/>）で始める。autoStart なら準備に入るとすぐ始める。
     /// ウェーブ n はマップ w{n} で戦い、ウェーブが始まるとフィールドの表示を差し替える（T305）。
     /// </summary>
     [DefaultExecutionOrder(-10)]
@@ -29,11 +29,12 @@ namespace UnitySlotTower.Battle
         [SerializeField] private SlotCabinet slotCabinet;
         [Tooltip("最後のウェーブの番号。waves.csv とフィールドのマップの表にそのウェーブまでが要る。")]
         [SerializeField] private int waveCount = 5;
-        [Tooltip("準備に入ったらすぐ戦闘を始める（▶ の入力ができるまでの仮）。")]
-        [SerializeField] private bool autoStart = true;
+        [Tooltip("準備に入ったらすぐ戦闘を始める（確認用。通常は ▶ で始める）。")]
+        [SerializeField] private bool autoStart;
 
         private SimulationClock _clock;
 
+        public int WaveCount => waveCount;
         public UnitTable Units { get; private set; }
         public WaveRun Run { get; private set; }
         public CoinWallet Wallet => Run?.Wallet;
@@ -107,6 +108,15 @@ namespace UnitySlotTower.Battle
         }
 
         public void TogglePause() => SetPaused(!IsPaused);
+
+        /// <summary>準備中なら戦闘を始める（▶、plan 4章）。一時停止中は受け付けない。</summary>
+        public void StartWave()
+        {
+            if (!IsPaused)
+            {
+                Run?.Start();
+            }
+        }
 
         private void OnDestroy()
         {

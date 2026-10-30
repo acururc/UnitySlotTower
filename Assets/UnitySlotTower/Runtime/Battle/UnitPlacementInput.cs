@@ -12,7 +12,9 @@ namespace UnitySlotTower.Battle
     /// マスを決めたあとは、ポインターの方向（上下左右）を向き、フィールドをクリックすると決まる。マスの中心付近のクリックはマス選びに戻る。
     /// キーボード: 1〜5 で選び、矢印でカーソル移動と向き、Enter で決定、Esc で1段階戻る。
     /// 一時停止（T307）: P で切り替え。Esc は配置操作中なら1段階戻り、それ以外（一時停止中を含む）は一時停止を切り替える。
-    /// 一時停止中は選択・配置の操作を受け付けない（FR-012）。
+    /// 一時停止中は選択・配置・撤退・強化・▶ の操作を受け付けない（FR-012）。
+    /// 撤退（T308）: 配置中の味方をクリックか Tab で選び、X か操作バーの撤退アイコンで撤退させる。
+    /// 強化（T308）: Shift + 1〜5 か操作バーの強化アイコン。▶: 配置操作中でないときの Enter か操作バーの ▶。
     /// </summary>
     public sealed class UnitPlacementInput : MonoBehaviour
     {
@@ -27,6 +29,9 @@ namespace UnitySlotTower.Battle
         [SerializeField, FormerlySerializedAs("facingDragCells")] private float facingMinCells = 0.5f;
 
         private readonly InputAction[] _selects = new InputAction[SlotCount];
+        private readonly InputAction[] _upgrades = new InputAction[SlotCount];
+        private InputAction _cycleUnit;
+        private InputAction _retreat;
         private InputAction _cursor;
         private InputAction _confirm;
         private InputAction _cancel;
@@ -43,7 +48,11 @@ namespace UnitySlotTower.Battle
             for (var i = 0; i < SlotCount; i++)
             {
                 _selects[i] = map.FindAction($"SelectUnit{i + 1}", true);
+                _upgrades[i] = map.FindAction($"Upgrade{i + 1}", true);
             }
+
+            _cycleUnit = map.FindAction("CycleUnit", true);
+            _retreat = map.FindAction("Retreat", true);
 
             _cursor = map.FindAction("Cursor", true);
             _confirm = map.FindAction("Confirm", true);
@@ -58,8 +67,11 @@ namespace UnitySlotTower.Battle
             for (var i = 0; i < SlotCount; i++)
             {
                 _selects[i].performed += OnSelectAction;
+                _upgrades[i].performed += OnUpgradeAction;
             }
 
+            _cycleUnit.performed += OnCycleUnitAction;
+            _retreat.performed += OnRetreatAction;
             _cursor.performed += OnCursorAction;
             _cursor.canceled += OnCursorAction;
             _confirm.performed += OnConfirmAction;
@@ -73,8 +85,11 @@ namespace UnitySlotTower.Battle
             for (var i = 0; i < SlotCount; i++)
             {
                 _selects[i].performed -= OnSelectAction;
+                _upgrades[i].performed -= OnUpgradeAction;
             }
 
+            _cycleUnit.performed -= OnCycleUnitAction;
+            _retreat.performed -= OnRetreatAction;
             _cursor.performed -= OnCursorAction;
             _cursor.canceled -= OnCursorAction;
             _confirm.performed -= OnConfirmAction;
@@ -106,7 +121,84 @@ namespace UnitySlotTower.Battle
                 return;
             }
 
-            deployment.Select(unitId);
+            if (deployment.Select(unitId) == SummonResult.Summoned)
+            {
+                SelectedUnit = null;
+            }
+        }
+
+        /// <summary>撤退の対象として選んでいる配置中の味方。いなければ null。</summary>
+        public BattleUnit SelectedUnit { get; private set; }
+
+        /// <summary>操作バーの slot 番目の味方の種類を1段階強化する（FR-026）。</summary>
+        public UpgradeResult? UpgradeSlot(int slot)
+        {
+            var deployment = battle.Deployment;
+            if (deployment == null || battle.IsPaused || slot < 0 || slot >= battle.Units.All.Count)
+            {
+                return null;
+            }
+
+            return deployment.Upgrade(battle.Units.All[slot].Id);
+        }
+
+        /// <summary>選んでいる味方を撤退させる（FR-025）。</summary>
+        public void RetreatSelected()
+        {
+            var deployment = battle.Deployment;
+            if (deployment == null || battle.IsPaused || !IsOnField(SelectedUnit))
+            {
+                return;
+            }
+
+            deployment.Retreat(SelectedUnit);
+            SelectedUnit = null;
+        }
+
+        /// <summary>配置中の味方を並び順に1体ずつ選ぶ（Tab）。最後の次は先頭に戻る。</summary>
+        public void CycleUnit()
+        {
+            var field = battle.Field;
+            if (field == null || battle.IsPaused || battle.Deployment.Phase != DeployPhase.Idle)
+            {
+                return;
+            }
+
+            var units = field.Units;
+            var start = IndexOf(units, SelectedUnit);
+            for (var step = 1; step <= units.Count; step++)
+            {
+                var unit = units[(start + step + units.Count) % units.Count];
+                if (unit.IsAlive)
+                {
+                    SelectedUnit = unit;
+                    return;
+                }
+            }
+
+            SelectedUnit = null;
+        }
+
+        private void OnUpgradeAction(InputAction.CallbackContext context) =>
+            UpgradeSlot(System.Array.IndexOf(_upgrades, context.action));
+
+        private void OnCycleUnitAction(InputAction.CallbackContext context) => CycleUnit();
+
+        private void OnRetreatAction(InputAction.CallbackContext context) => RetreatSelected();
+
+        private bool IsOnField(BattleUnit unit) => unit != null && unit.IsAlive && IndexOf(battle.Field.Units, unit) >= 0;
+
+        private static int IndexOf(System.Collections.Generic.IReadOnlyList<BattleUnit> units, BattleUnit unit)
+        {
+            for (var i = 0; i < units.Count; i++)
+            {
+                if (units[i] == unit)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
 
         private void OnSelectAction(InputAction.CallbackContext context)
@@ -148,6 +240,10 @@ namespace UnitySlotTower.Battle
             else if (deployment.Phase == DeployPhase.ChoosingFacing)
             {
                 deployment.Confirm();
+            }
+            else
+            {
+                battle.StartWave();
             }
         }
 
@@ -196,6 +292,19 @@ namespace UnitySlotTower.Battle
             var pointerMoved = pointer != _lastPointer;
             _lastPointer = pointer;
 
+            // 倒された・ウェーブが替わったなどでフィールドから居なくなった味方は選びをやめる。
+            if (SelectedUnit != null && !IsOnField(SelectedUnit))
+            {
+                SelectedUnit = null;
+            }
+
+            // 配置操作中でないときにフィールドをクリックしたら、そのマスの味方を選ぶ（居なければ選びをやめる）。
+            if (_press.WasPressedThisFrame() && deployment.Phase == DeployPhase.Idle
+                && battleCamera.pixelRect.Contains(pointer))
+            {
+                SelectedUnit = TryGetCell(pointer, out var clickedCell) ? UnitAt(clickedCell) : null;
+            }
+
             // キーボードで動かしたカーソル・向きを、止まっているマウスが上書きしないよう、動いたときだけ追う。
             if (pointerMoved && deployment.Phase == DeployPhase.ChoosingCell && TryGetCell(pointer, out var hovered))
             {
@@ -238,6 +347,20 @@ namespace UnitySlotTower.Battle
                 deployment.SetCursor(dropped);
                 deployment.ChooseCell();
             }
+        }
+
+        private BattleUnit UnitAt(GridPoint cell)
+        {
+            var units = battle.Field.Units;
+            for (var i = 0; i < units.Count; i++)
+            {
+                if (units[i].IsAlive && units[i].Cell.Equals(cell))
+                {
+                    return units[i];
+                }
+            }
+
+            return null;
         }
 
         private bool TryGetCell(Vector2 screen, out GridPoint cell)

@@ -65,6 +65,19 @@ namespace UnitySlotTower.Tests.EditMode.Ui
         }
 
         [Test]
+        public void Numeric_Font_Keeps_Every_Glyph_In_Its_Single_Saved_Atlas()
+        {
+            // 2枚目以降のアトラスはアセットに保存されず、そこに入った字（T308 で見つけた / と %）は描けなかった。
+            var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+            Assert.That(font, Is.Not.Null, FontAssetPath);
+
+            var outside = new string(font.characterTable.Where(c => c.glyph.atlasIndex != 0).Select(c => (char)c.unicode).ToArray());
+
+            Assert.That((font.atlasTextures.Length, outside, AssetDatabase.IsSubAsset(font.atlasTextures[0])),
+                Is.EqualTo((1, "", true)));
+        }
+
+        [Test]
         public void Numeric_Font_Cannot_Add_Characters_At_Runtime()
         {
             var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);

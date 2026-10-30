@@ -21,6 +21,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         private InputSettings.BackgroundBehavior _backgroundBehavior;
         private BattleController _battle;
         private BattleFieldView _fieldView;
+        private UnitPlacementInput _input;
         private Camera _camera;
 
         [UnitySetUp]
@@ -61,6 +62,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             Assert.That(_battle?.Deployment, Is.Not.Null, "Game シーンの戦闘が始まらない");
             _fieldView = Object.FindAnyObjectByType<BattleFieldView>();
+            _input = Object.FindAnyObjectByType<UnitPlacementInput>();
             _camera = GameObject.Find("Battle Camera").GetComponent<Camera>();
             // 物理の当たり判定が揃うまで待つ。
             yield return new WaitForFixedUpdate();
@@ -164,6 +166,85 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return MouseAt(cellScreen, false);
 
             Assert.That((_battle.Deployment.Phase, _battle.Field.Units.Count), Is.EqualTo((DeployPhase.ChoosingCell, 0)));
+        }
+
+        [UnityTest]
+        public IEnumerator Keyboard_Upgrades_With_Shift_Digit_Retreats_With_Tab_And_X_And_Starts_With_Enter()
+        {
+            yield return Tap(Key.Digit1);
+            yield return MoveCursorTo(FirstPlaceableCell());
+            yield return Tap(Key.Enter);
+            yield return Tap(Key.Enter);
+            var placed = _battle.Field.Units[0];
+            var afterSummon = _battle.Wallet.Coins;
+            yield return Tap(Key.Tab);
+            Assert.That(_input.SelectedUnit, Is.SameAs(placed), "Tab で配置中の味方を選ぶ");
+
+            yield return Tap(Key.X);
+            var refund = (int)System.Math.Floor(placed.Definition.Cost * 0.5);
+            Assert.That((_battle.Field.Units.Count, _battle.Wallet.Coins - afterSummon, _input.SelectedUnit),
+                Is.EqualTo((0, refund, (BattleUnit)null)), "X で撤退して返還する");
+
+            var coins = _battle.Wallet.Coins;
+            yield return Tap(Key.LeftShift, Key.Digit1);
+            Assert.That((_battle.Upgrades.Level("tank"), coins - _battle.Wallet.Coins, _battle.Run.Phase),
+                Is.EqualTo((2, _battle.Upgrades.Current("tank").Cost, WavePhase.Preparing)),
+                "Shift + 1 で強化し、▶ までは準備のまま");
+
+            yield return Tap(Key.Enter);
+            Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.Fighting), "配置操作中でない Enter で戦闘を始める");
+        }
+
+        [UnityTest]
+        public IEnumerator Mouse_Upgrades_Selects_And_Retreats_A_Unit_And_Starts_The_Wave_From_The_Bar()
+        {
+            var bar = Object.FindAnyObjectByType<OperationBarStatus>();
+            yield return Tap(Key.Digit1);
+            var target = FirstPlaceableCell();
+            yield return MoveCursorTo(target);
+            yield return Tap(Key.Enter);
+            yield return Tap(Key.Enter);
+            yield return MouseAt(CellScreen(target), false);
+            yield return MouseAt(CellScreen(target), true);
+            yield return MouseAt(CellScreen(target), false);
+            Assert.That(_input.SelectedUnit, Is.SameAs(_battle.Field.Units[0]), "味方をクリックで選ぶ");
+
+            yield return Click(bar.transform.Find("Retreat Button"));
+            Assert.That((_battle.Field.Units.Count, bar.transform.Find("Retreat Button").gameObject.activeSelf),
+                Is.EqualTo((0, false)), "撤退アイコンで撤退し、選びがなくなるとアイコンを隠す");
+
+            yield return Click(GameObject.Find("Upgrade Icon 2").transform);
+            Assert.That(_battle.Upgrades.Level("sword"), Is.EqualTo(2), "強化アイコンで強化する");
+
+            yield return Click(bar.transform.Find("Start Button"));
+            Assert.That((_battle.Run.Phase, bar.transform.Find("Start Button").gameObject.activeSelf),
+                Is.EqualTo((WavePhase.Fighting, false)), "▶ で戦闘を始め、▶ を隠す");
+        }
+
+        [UnityTest]
+        public IEnumerator Bar_Shows_Cost_Life_Coins_Wave_And_Upgrade_Cost_As_Numbers()
+        {
+            yield return null;
+            var status = Object.FindAnyObjectByType<OperationBarStatus>().transform;
+            var icon = GameObject.Find("Unit Icon 3").transform;
+            var upgrade = GameObject.Find("Upgrade Icon 3").transform;
+
+            Assert.That(
+                (Text(icon, "Cost"), Text(status, "Life"), Text(status, "Coins"), Text(status, "Wave"), Text(upgrade, "Cost")),
+                Is.EqualTo((_battle.Units.Get("archer").Cost.ToString(), _battle.Field.Life.ToString(),
+                    _battle.Wallet.Coins.ToString(), $"1/{_battle.WaveCount}",
+                    _battle.Upgrades.NextCost("archer").ToString())));
+        }
+
+        private static string Text(Transform parent, string child) =>
+            parent.Find(child).GetComponent<TMPro.TMP_Text>().text;
+
+        private IEnumerator Click(Transform target)
+        {
+            var screen = RectTransformUtility.WorldToScreenPoint(null, target.position);
+            yield return MouseAt(screen, false);
+            yield return MouseAt(screen, true);
+            yield return MouseAt(screen, false);
         }
 
         private GridPoint FirstPlaceableCell()

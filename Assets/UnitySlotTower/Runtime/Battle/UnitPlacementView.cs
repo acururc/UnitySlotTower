@@ -6,7 +6,7 @@ namespace UnitySlotTower.Battle
 {
     /// <summary>
     /// 配置操作の仮表示（T208）: カーソル（置ければ緑・置けなければ赤）、向きの矢印と攻撃範囲の見本。
-    /// 配置済みの味方と敵は BattleActorsView（T209）が表示する。
+    /// 撤退の対象に選んだ配置中の味方には枠を出す（T308）。配置済みの味方と敵は BattleActorsView（T209）が表示する。
     /// </summary>
     public sealed class UnitPlacementView : MonoBehaviour
     {
@@ -14,9 +14,11 @@ namespace UnitySlotTower.Battle
 
         [SerializeField] private BattleController battle;
         [SerializeField] private BattleFieldView fieldView;
+        [SerializeField] private UnitPlacementInput placementInput;
         [SerializeField] private Color placeableColor = new Color(0.3f, 0.95f, 0.4f);
         [SerializeField] private Color blockedColor = new Color(0.95f, 0.25f, 0.2f);
         [SerializeField] private Color rangeColor = new Color(1f, 0.6f, 0.15f);
+        [SerializeField] private Color selectedUnitColor = new Color(1f, 0.95f, 0.4f);
 
         private readonly List<Transform> _rangeMarkers = new List<Transform>();
         private MaterialPropertyBlock _block;
@@ -24,6 +26,7 @@ namespace UnitySlotTower.Battle
         private Renderer _cursorRenderer;
         private Color _cursorColor;
         private Transform _arrow;
+        private Transform _selectedMarker;
 
         private void Awake()
         {
@@ -34,6 +37,8 @@ namespace UnitySlotTower.Battle
             _cursorColor = placeableColor;
             _arrow = CreateCube("Facing Arrow", transform, placeableColor);
             _arrow.localScale = new Vector3(0.15f, 0.06f, 0.7f);
+            _selectedMarker = CreateCube("Selected Unit Marker", transform, selectedUnitColor);
+            _selectedMarker.localScale = new Vector3(1f, 0.03f, 1f);
         }
 
         private void LateUpdate()
@@ -45,6 +50,12 @@ namespace UnitySlotTower.Battle
             }
 
             ShowPlacement(deployment);
+            var selected = placementInput.SelectedUnit;
+            _selectedMarker.gameObject.SetActive(selected != null);
+            if (selected != null)
+            {
+                _selectedMarker.position = fieldView.CellTopToWorld(selected.Cell) + Vector3.up * 0.015f;
+            }
         }
 
         private void ShowPlacement(UnitDeployment deployment)

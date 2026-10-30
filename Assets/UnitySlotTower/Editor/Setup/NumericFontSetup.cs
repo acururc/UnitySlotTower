@@ -45,8 +45,9 @@ namespace UnitySlotTower.Editor.Setup
                 return;
             }
 
-            var font = TMP_FontAsset.CreateFontAsset(source, 90, 9, GlyphRenderMode.SDFAA, 256, 256,
-                AtlasPopulationMode.Dynamic, true);
+            // 2枚目以降のアトラスは保存されないので、全字が1枚に入る大きさにし、複数アトラスは使わない（T308）。
+            var font = TMP_FontAsset.CreateFontAsset(source, 90, 9, GlyphRenderMode.SDFAA, 512, 512,
+                AtlasPopulationMode.Dynamic, false);
             font.name = Path.GetFileNameWithoutExtension(FontAssetPath);
             if (!font.TryAddCharacters(NumericText.AllowedCharacters, out var missing))
             {

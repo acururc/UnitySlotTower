@@ -58,6 +58,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(_battle?.Field, Is.Not.Null, "Game シーンの戦闘が始まらない");
+            _battle.StartWave();
         }
 
         [TearDown]
