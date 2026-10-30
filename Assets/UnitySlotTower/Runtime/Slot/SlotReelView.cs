@@ -13,10 +13,17 @@ namespace UnitySlotTower.Slot
         [SerializeField] private RectTransform[] cells;
         [SerializeField] private float symbolsPerSecond = 16f;
 
+        // 回転中だけ本体の上側（来た方向）に薄いコピーを重ね、1フレームごとの飛びを残像でつなぐ。
+        [SerializeField] private float[] blurAlphas = { 0.45f, 0.2f };
+        [SerializeField] private float blurSpacing = 0.12f;
+
         private SlotReels _reels;
         private int _reel;
         private RectTransform _rect;
         private int[] _shown;
+        private RectTransform[] _ghosts;
+        private int[] _ghostShown;
+        private bool _ghostsVisible;
         private double _position;
         private double? _target;
 
@@ -38,6 +45,7 @@ namespace UnitySlotTower.Slot
                 cells[i].sizeDelta = new Vector2(cells[i].sizeDelta.x, cellHeight);
             }
 
+            CreateGhosts();
             _position = stop;
             Render();
         }
@@ -90,10 +98,80 @@ namespace UnitySlotTower.Slot
                 }
 
                 _shown[i] = symbol;
-                for (var s = 0; s < cells[i].childCount; s++)
+                ShowSymbol(cells[i], symbol);
+            }
+
+            RenderGhosts(cellHeight, top, fraction);
+        }
+
+        private void CreateGhosts()
+        {
+            if (_ghosts != null)
+            {
+                return;
+            }
+
+            _ghosts = new RectTransform[blurAlphas.Length * cells.Length];
+            _ghostShown = new int[_ghosts.Length];
+            for (var g = 0; g < blurAlphas.Length; g++)
+            {
+                for (var i = 0; i < cells.Length; i++)
                 {
-                    cells[i].GetChild(s).gameObject.SetActive(s == symbol);
+                    var ghost = Instantiate(cells[i], cells[i].parent);
+                    ghost.name = $"{cells[i].name} Blur {g + 1}";
+                    // 本体より先に描いて、本体が上に重なるようにする。
+                    ghost.SetAsFirstSibling();
+                    var group = ghost.gameObject.AddComponent<CanvasGroup>();
+                    group.alpha = blurAlphas[g];
+                    group.blocksRaycasts = false;
+                    ghost.gameObject.SetActive(false);
+                    _ghosts[g * cells.Length + i] = ghost;
+                    _ghostShown[g * cells.Length + i] = -1;
                 }
+            }
+        }
+
+        private void RenderGhosts(float cellHeight, double top, float fraction)
+        {
+            var visible = IsSpinning;
+            if (visible != _ghostsVisible)
+            {
+                _ghostsVisible = visible;
+                for (var k = 0; k < _ghosts.Length; k++)
+                {
+                    _ghosts[k].gameObject.SetActive(visible);
+                }
+            }
+
+            if (!visible)
+            {
+                return;
+            }
+
+            var center = cells.Length / 2;
+            for (var g = 0; g < blurAlphas.Length; g++)
+            {
+                var lift = (g + 1) * blurSpacing;
+                for (var i = 0; i < cells.Length; i++)
+                {
+                    var k = g * cells.Length + i;
+                    var offset = i - center;
+                    _ghosts[k].anchoredPosition = new Vector2(0f, (fraction - offset + lift) * cellHeight);
+                    var symbol = (int)_reels.At(_reel, (int)top + offset);
+                    if (_ghostShown[k] != symbol)
+                    {
+                        _ghostShown[k] = symbol;
+                        ShowSymbol(_ghosts[k], symbol);
+                    }
+                }
+            }
+        }
+
+        private static void ShowSymbol(RectTransform cell, int symbol)
+        {
+            for (var s = 0; s < cell.childCount; s++)
+            {
+                cell.GetChild(s).gameObject.SetActive(s == symbol);
             }
         }
     }
