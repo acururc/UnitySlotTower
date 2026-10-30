@@ -305,5 +305,19 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
             Assert.That((run.Wave, run.Phase), Is.EqualTo((1, WavePhase.Completed)));
         }
+
+        [Test]
+        [Description("AC-010: 最終ボスを倒しても、残りの敵を全滅させるまでクリアにならない（2026-10-30 ユーザー決定）")]
+        public void Defeating_The_Final_Boss_Does_Not_Complete_The_Run_While_Enemies_Remain()
+        {
+            // ボス役の fodder は約 0.5 秒で剣士に倒される。雑魚は 5 秒に出る。
+            var run = Create(waveCount: 1, waveRows: "1,0,fodder,S1,g,1\n1,5,fodder,S1,g,0\n");
+            Place(run, "sword", 1, 0);
+            run.Start();
+
+            run.Advance(120);
+
+            Assert.That((run.Field.Enemies.Count, run.Phase), Is.EqualTo((0, WavePhase.Fighting)));
+        }
     }
 }

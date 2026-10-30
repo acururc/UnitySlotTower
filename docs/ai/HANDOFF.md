@@ -2,15 +2,15 @@
 
 ## 現在の作業
 
-更新: 2026-10-30 Asia/Tokyo / 状態: M0・M1・M2 完了、M3 の T301〜T305 完了（財布統合・撤退と返還・強化・ウェーブ進行とストック・W2〜W5 のマップと出現。結果は tasks.md の各行）。次は T306
+更新: 2026-10-30 Asia/Tokyo / 状態: M0・M1・M2 完了、M3 の T301〜T306 完了（財布統合・撤退と返還・強化・ウェーブ進行とストック・W2〜W5 のマップと出現・ボス2種。結果は tasks.md の各行）。次は T307
 
 - 対象: [`spec.md`](../../specs/001-slot-tower-defense/spec.md)（2026-10-26 承認。変えたら再承認）、[`plan.md`](../../specs/001-slot-tower-defense/plan.md)、[`tasks.md`](../../specs/001-slot-tower-defense/tasks.md)（完了タスクは `[x]` と行末に結果。M2 各タスクの成果・API はそこを見る）。
 - 承認: 2026-10-29 にユーザーが「M0から実装を始めて」と依頼。M3 以降も実装依頼の範囲内と解釈してよいが、spec 変更は別途承認が要る（T108 で先バレ対象を BIG・REG に変えたときは承認済み）。T208 は 2026-10-30 にユーザーが手動確認済み。
 - ブランチ: `feature/001-m0-foundation`（main に直接コミットしない）。
 - 画面比: 3:4（基準 1440×1920、初期ウィンドウ 960×1280。plan 2章）。プレイヤービルドで戦闘マスがマゼンタ（シェーダー欠落、Editor 外の既存問題で未調査）。
-- 次の一手: T306（中ボス・最終ボスと最終ボス撃破でのクリア。`enemies.csv` にボスを足し、`waves.csv` の `is_boss`。W1 末に中ボス、W5 末に最終ボス＝plan 7章。クリア判定は今 `WaveRun` の最終ウェーブ終了で `Completed`）。ウェーブごとのマップは T305 で済（`BattleFieldView.LoadWaveMap`/`Show`、`BattleController` が `WaveBegan` で差し替え）。▶ の入力はまだなく `autoStart` で準備を即終了している（▶ は T308 の操作バーと合わせる想定。入れたら `autoStart` を false に）。撤退・強化の入力（撤退アイコン・X、Shift+数字）も T308。
+- 次の一手: T307（一時停止: 時間停止・閲覧のみ・操作の拒否。PlayMode テスト AC-011。Esc は配置操作中なら Cancel、それ以外は Pause＝plan 3章）。T306 のボス仕様は plan 5章「敵」（中ボスは固有行動なし、最終ボスは範囲攻撃、クリアは雑魚も全滅させてから）。▶ の入力はまだなく `autoStart` で準備を即終了している（▶ は T308 の操作バーと合わせる想定。入れたら `autoStart` を false に）。撤退・強化の入力（撤退アイコン・X、Shift+数字）も T308。
 - M2 の要点: Core/Battle に地図・味方/敵の表・召喚・配置可否と範囲・ウェーブ・ブロック・攻撃/回復/強化・ライフとドロップ・配置操作（`UnitDeployment`）。Runtime/Battle に `BattleFieldView`（`CellTopToWorld`・`PositionToWorld`）・`BattleController`（ウェーブ進行の組み立て。W1〜W5）・`UnitPlacementInput`/`UnitPlacementView`・`BattleActorsView`（T209 の味方・敵・HP ゲージ・範囲）。シーンへの追加は Editor `Setup/*Setup`（実行済み）。
-- 最終検証（T305）: EditMode 377/377、PlayMode 7/7、Console エラー0、ハーネス 8/8、Play で W1→W2 のマップ切り替えを画像確認。W3〜W5 の見た目・空中の敵の見た目・手動プレイは未確認（T309）。ウェーブの長さは各約1分で plan の目安より短い（T309 で調整）。タンクの色（青灰）が高台マスの色に近く見分けにくい — M3 のプレイ確認で必要なら色を変える（操作バーのアイコン色も揃える）。
+- 最終検証（T306）: EditMode 387/387、PlayMode 7/7、Console エラー0、ハーネス 8/8。ボスの見た目・範囲攻撃の演出（今はなし）・W3〜W5 の見た目・手動プレイは未確認（T309）。ウェーブの長さは各約1分で plan の目安より短い（T309 で調整）。タンクの色（青灰）が高台マスの色に近く見分けにくい — M3 のプレイ確認で必要なら色を変える（操作バーのアイコン色も揃える）。
 ### M1 の成果（詳細は tasks.md 各行と plan 5章）
 - Core/Slot: 表（SlotReels・SlotPayouts・SlotRules・SlotProbabilities・SlotPremonition）、SlotLines、SlotReelControl（フラグ＋持ち越しごとに 23^3 状態をメモ化評価）、SlotMachine（持ち越し・ボーナス上限・確変・先バレ）、SlotTheory、SlotWait。Core/Economy/CoinWallet。
 - Runtime/Slot: SlotCabinet（CSV を TextAsset で読む。`setting` 既定1）、SlotReelView（`symbolsPerSecond` 16。ユーザー確認で 28 から変更）。Editor: `Setup/SlotCabinetSetup`、`Slot/SlotTheoryReport`。

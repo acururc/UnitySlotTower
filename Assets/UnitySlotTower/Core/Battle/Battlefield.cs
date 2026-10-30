@@ -119,7 +119,10 @@ namespace UnitySlotTower.Core.Battle
                    Math.Round(spawns[_nextSpawn].Time * SimulationClock.StepsPerSecond) <= Tick)
             {
                 var spawn = spawns[_nextSpawn++];
-                _enemies.Add(new BattleEnemy(spawn.Enemy, spawn.Path));
+                _enemies.Add(new BattleEnemy(spawn.Enemy, spawn.Path)
+                {
+                    AreaCooldownSteps = StepsOf(spawn.Enemy.AreaInterval),
+                });
             }
         }
 
@@ -196,12 +199,17 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>
         /// 攻撃間隔ごとに攻撃する。射程のある敵（遠距離・空中）は射程内で最も近い味方（同じ距離なら先に配置した味方）を、
-        /// 射程0の敵（近距離）はブロックした味方だけを攻撃する。
+        /// 射程0の敵（近距離）はブロックした味方だけを攻撃する。範囲攻撃を持つ敵（最終ボス）はこれとは別の間隔で範囲攻撃もする。
         /// </summary>
         private void Attack()
         {
             foreach (var enemy in _enemies)
             {
+                if (enemy.Definition.HasAreaAttack)
+                {
+                    AreaAttack(enemy);
+                }
+
                 if (enemy.AttackCooldownSteps > 0)
                 {
                     enemy.AttackCooldownSteps--;
@@ -223,6 +231,41 @@ namespace UnitySlotTower.Core.Battle
                     (int)Math.Round(enemy.Definition.AttackInterval * SimulationClock.StepsPerSecond);
             }
         }
+
+        /// <summary>
+        /// 範囲攻撃の間隔ごとに、敵の位置から半径内にマス中心がある味方全員を範囲攻撃の攻撃力で攻撃する。
+        /// 半径内に味方がいないあいだは間隔を消費しない。
+        /// </summary>
+        private void AreaAttack(BattleEnemy enemy)
+        {
+            if (enemy.AreaCooldownSteps > 0)
+            {
+                enemy.AreaCooldownSteps--;
+            }
+
+            if (enemy.AreaCooldownSteps > 0)
+            {
+                return;
+            }
+
+            var definition = enemy.Definition;
+            var hit = false;
+            foreach (var unit in _units)
+            {
+                if (unit.IsAlive && enemy.DistanceTo(unit.Cell) <= definition.AreaRadius + RangeEpsilon)
+                {
+                    unit.TakeDamage(Damage.Calculate(definition.AreaAtk, unit.Def));
+                    hit = true;
+                }
+            }
+
+            if (hit)
+            {
+                enemy.AreaCooldownSteps = StepsOf(definition.AreaInterval);
+            }
+        }
+
+        private static int StepsOf(double seconds) => (int)Math.Round(seconds * SimulationClock.StepsPerSecond);
 
         /// <summary>HP0 の味方を消し（FR-024）、その味方がブロックしていた敵を再び進ませる。</summary>
         private void RemoveFallenUnits()

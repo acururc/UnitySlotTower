@@ -7,7 +7,8 @@ namespace UnitySlotTower.Core.Battle
     public sealed class EnemyDefinition
     {
         internal EnemyDefinition(string id, int maxHp, int atk, int def, double attackInterval, double moveSpeed,
-            double range, bool isAir, int blockCost, int lifeDamage, double dropRate, int dropMin, int dropMax)
+            double range, bool isAir, int blockCost, int lifeDamage, double dropRate, int dropMin, int dropMax,
+            int areaAtk, double areaRadius, double areaInterval)
         {
             Id = id;
             MaxHp = maxHp;
@@ -22,6 +23,9 @@ namespace UnitySlotTower.Core.Battle
             DropRate = dropRate;
             DropMin = dropMin;
             DropMax = dropMax;
+            AreaAtk = areaAtk;
+            AreaRadius = areaRadius;
+            AreaInterval = areaInterval;
         }
 
         public string Id { get; }
@@ -46,6 +50,17 @@ namespace UnitySlotTower.Core.Battle
         public double DropRate { get; }
         public int DropMin { get; }
         public int DropMax { get; }
+
+        /// <summary>範囲攻撃の攻撃力（最終ボス）。0 なら範囲攻撃をしない。</summary>
+        public int AreaAtk { get; }
+
+        /// <summary>範囲攻撃が届く半径（マス）。敵の位置から味方のマス中心までの距離で測る。</summary>
+        public double AreaRadius { get; }
+
+        /// <summary>範囲攻撃の間隔（秒）。</summary>
+        public double AreaInterval { get; }
+
+        public bool HasAreaAttack => AreaAtk > 0;
     }
 
     /// <summary>enemies.csv の敵一覧。</summary>
@@ -84,10 +99,18 @@ namespace UnitySlotTower.Core.Battle
                     throw row.Error("id", $"敵 '{id}' が重複している");
                 }
 
+                var areaAtk = row.GetInt("area_atk");
+                var areaInterval = row.GetDouble("area_interval");
+                if (areaAtk > 0 && areaInterval <= 0)
+                {
+                    throw row.Error("area_interval", $"範囲攻撃する敵 '{id}' の間隔が 0 以下");
+                }
+
                 enemies._enemies.Add(id, new EnemyDefinition(id, row.GetInt("max_hp"), row.GetInt("atk"),
                     row.GetInt("def"), row.GetDouble("attack_interval"), row.GetDouble("move_speed"),
                     row.GetDouble("range"), row.GetBool("is_air"), row.GetInt("block_cost"), row.GetInt("life_damage"),
-                    row.GetProbability("drop_rate"), row.GetInt("drop_min"), row.GetInt("drop_max")));
+                    row.GetProbability("drop_rate"), row.GetInt("drop_min"), row.GetInt("drop_max"), areaAtk,
+                    row.GetDouble("area_radius"), areaInterval));
             }
 
             return enemies;

@@ -4,6 +4,7 @@
 1,8,melee,S1,w1_g1,0
 1,14,ranged,S1,w1_g1,0
 1,18,ranged,S1,w1_g1,0
+1,26,mid_boss,S1,w1_g1,1
 2,0,melee,S1,w2_g1,0
 2,4,melee,S1,w2_g1,0
 2,8,melee,S1,w2_g1,0
@@ -17,6 +18,7 @@
 2,44,ranged,S1,w2_g1,0
 2,50,melee,S1,w2_g1,0
 2,53,melee,S1,w2_g1,0
+2,60,mid_boss,S1,w2_g1,1
 3,0,melee,S1,w3_g1,0
 3,4,melee,S1,w3_g1,0
 3,8,melee,S1,w3_g1,0
@@ -31,6 +33,7 @@
 3,47,air,S1,w3_a1,0
 3,50,air,S1,w3_a1,0
 3,56,ranged,S1,w3_g1,0
+3,64,mid_boss,S1,w3_g1,1
 4,0,melee,S1,w4_g1,0
 4,3,melee,S2,w4_g2,0
 4,6,melee,S1,w4_g1,0
@@ -48,6 +51,7 @@
 4,52,melee,S2,w4_g2,0
 4,56,air,S1,w4_a1,0
 4,58,air,S1,w4_a1,0
+4,66,mid_boss,S1,w4_g1,1
 5,0,melee,S1,w5_g1,0
 5,2,melee,S2,w5_g2,0
 5,5,melee,S1,w5_g1,0
@@ -72,3 +76,4 @@
 5,60,air,S2,w5_a1,0
 5,62,melee,S1,w5_g1,0
 5,64,melee,S2,w5_g2,0
+5,72,final_boss,S1,w5_g1,1

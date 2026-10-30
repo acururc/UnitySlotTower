@@ -45,6 +45,9 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>次に攻撃できるまでの残りステップ数。</summary>
         internal int AttackCooldownSteps { get; set; }
 
+        /// <summary>次に範囲攻撃できるまでの残りステップ数。出現から1間隔待ってから撃つ。</summary>
+        internal int AreaCooldownSteps { get; set; }
+
         // 1/60 秒ぶんの移動を足し続けたときの丸め誤差の許容幅。
         private const double Epsilon = 1e-9;
 
