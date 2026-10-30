@@ -73,6 +73,9 @@ namespace UnitySlotTower.Slot
         /// <summary>所持コイン。戦闘の召喚・撃破ドロップと共有する（FR-040、T301）。Awake で作る。</summary>
         public CoinWallet Wallet => _wallet;
 
+        /// <summary>true のあいだはレバーとストップを受け付けない（一時停止中: FR-012）。</summary>
+        public bool InputLocked { get; set; }
+
         private void Awake()
         {
             SlotReels slotReels;
@@ -181,7 +184,7 @@ namespace UnitySlotTower.Slot
         // 回転中のレバーは無視する。ウェイト中は受け付けておき、時間が来たら回す（plan 5章）。
         private void OnLever()
         {
-            if (_machine.Spin == null)
+            if (!InputLocked && _machine.Spin == null)
             {
                 _wait.Request();
             }
@@ -190,7 +193,7 @@ namespace UnitySlotTower.Slot
         private void OnStop(int reel)
         {
             var spin = _machine.Spin;
-            if (spin == null || spin.IsStopped(reel))
+            if (InputLocked || spin == null || spin.IsStopped(reel))
             {
                 return;
             }

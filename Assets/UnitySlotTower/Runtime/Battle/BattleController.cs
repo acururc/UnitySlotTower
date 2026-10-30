@@ -87,8 +87,35 @@ namespace UnitySlotTower.Battle
             _clock = new SimulationClock();
         }
 
+        /// <summary>一時停止中か（FR-012）。時間が止まり、配置・撤退・強化・スロットの操作を受け付けない。</summary>
+        public bool IsPaused { get; private set; }
+
+        /// <summary>一時停止を切り替える。スロットのリールやウェイトも止めるため Time.timeScale を 0 にする。</summary>
+        public void SetPaused(bool paused)
+        {
+            IsPaused = paused;
+            Time.timeScale = paused ? 0f : 1f;
+            if (_clock != null)
+            {
+                _clock.IsPaused = paused;
+            }
+
+            if (slotCabinet != null)
+            {
+                slotCabinet.InputLocked = paused;
+            }
+        }
+
+        public void TogglePause() => SetPaused(!IsPaused);
+
         private void OnDestroy()
         {
+            // シーンを離れても時間が止まったままにならないようにする。
+            if (IsPaused)
+            {
+                Time.timeScale = 1f;
+            }
+
             if (Run != null)
             {
                 Run.WaveBegan -= OnWaveBegan;

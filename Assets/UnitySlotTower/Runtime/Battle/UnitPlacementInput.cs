@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Controls;
 using UnityEngine.Serialization;
 using UnitySlotTower.Core.Battle;
 
@@ -10,6 +11,8 @@ namespace UnitySlotTower.Battle
     /// マウス: 操作バーのアイコンを押してフィールドのマスで離す（クリックで選んでからマスをクリックしてもよい）。
     /// マスを決めたあとは、ポインターの方向（上下左右）を向き、フィールドをクリックすると決まる。マスの中心付近のクリックはマス選びに戻る。
     /// キーボード: 1〜5 で選び、矢印でカーソル移動と向き、Enter で決定、Esc で1段階戻る。
+    /// 一時停止（T307）: P で切り替え。Esc は配置操作中なら1段階戻り、それ以外（一時停止中を含む）は一時停止を切り替える。
+    /// 一時停止中は選択・配置の操作を受け付けない（FR-012）。
     /// </summary>
     public sealed class UnitPlacementInput : MonoBehaviour
     {
@@ -29,6 +32,7 @@ namespace UnitySlotTower.Battle
         private InputAction _cancel;
         private InputAction _point;
         private InputAction _press;
+        private InputAction _pause;
         private Vector2 _lastCursorValue;
         private Vector2 _lastPointer;
         private bool _ignoreRelease;
@@ -46,6 +50,7 @@ namespace UnitySlotTower.Battle
             _cancel = map.FindAction("Cancel", true);
             _point = map.FindAction("Point", true);
             _press = map.FindAction("Press", true);
+            _pause = map.FindAction("Pause", true);
         }
 
         private void OnEnable()
@@ -59,6 +64,7 @@ namespace UnitySlotTower.Battle
             _cursor.canceled += OnCursorAction;
             _confirm.performed += OnConfirmAction;
             _cancel.performed += OnCancelAction;
+            _pause.performed += OnPauseAction;
             _cursor.actionMap.Enable();
         }
 
@@ -73,6 +79,7 @@ namespace UnitySlotTower.Battle
             _cursor.canceled -= OnCursorAction;
             _confirm.performed -= OnConfirmAction;
             _cancel.performed -= OnCancelAction;
+            _pause.performed -= OnPauseAction;
         }
 
         /// <summary>
@@ -82,7 +89,7 @@ namespace UnitySlotTower.Battle
         public void SelectSlot(int slot)
         {
             var deployment = battle.Deployment;
-            if (deployment == null || slot < 0 || slot >= battle.Units.All.Count)
+            if (deployment == null || battle.IsPaused || slot < 0 || slot >= battle.Units.All.Count)
             {
                 return;
             }
@@ -120,7 +127,7 @@ namespace UnitySlotTower.Battle
             var dx = value.x != 0f && _lastCursorValue.x == 0f ? (int)Mathf.Sign(value.x) : 0;
             var dy = dx == 0 && value.y != 0f && _lastCursorValue.y == 0f ? -(int)Mathf.Sign(value.y) : 0;
             _lastCursorValue = value;
-            if (dx != 0 || dy != 0)
+            if ((dx != 0 || dy != 0) && !battle.IsPaused)
             {
                 battle.Deployment?.MoveCursor(dx, dy);
             }
@@ -129,7 +136,7 @@ namespace UnitySlotTower.Battle
         private void OnConfirmAction(InputAction.CallbackContext context)
         {
             var deployment = battle.Deployment;
-            if (deployment == null)
+            if (deployment == null || battle.IsPaused)
             {
                 return;
             }
@@ -146,14 +153,41 @@ namespace UnitySlotTower.Battle
 
         private void OnCancelAction(InputAction.CallbackContext context)
         {
-            // 配置操作中でなければ Esc は一時停止（T307）に回す。
-            battle.Deployment?.Cancel();
+            // Esc は Pause にも割り当ててあるが、配置操作中かどうかで振り分けるためここで扱う（plan 3章）。
+            var deployment = battle.Deployment;
+            if (deployment == null)
+            {
+                return;
+            }
+
+            if (!battle.IsPaused && deployment.Phase != DeployPhase.Idle)
+            {
+                deployment.Cancel();
+            }
+            else
+            {
+                battle.TogglePause();
+            }
+        }
+
+        private void OnPauseAction(InputAction.CallbackContext context)
+        {
+            // Esc は OnCancelAction で振り分ける。
+            if (context.control is KeyControl key && key.keyCode == Key.Escape)
+            {
+                return;
+            }
+
+            if (battle.Deployment != null)
+            {
+                battle.TogglePause();
+            }
         }
 
         private void Update()
         {
             var deployment = battle.Deployment;
-            if (deployment == null)
+            if (deployment == null || battle.IsPaused)
             {
                 return;
             }
