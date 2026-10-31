@@ -10,16 +10,16 @@ namespace UnitySlotTower.Battle
     /// 召喚・配置・向き選びの入力（FR-002、plan 3章）。マウスとキーボードの操作を <see cref="UnitDeployment"/> の操作に変える。
     /// マウス: 操作バーのアイコンを押してフィールドのマスで離す（クリックで選んでからマスをクリックしてもよい）。
     /// マスを決めたあとは、ポインターの方向（上下左右）を向き、フィールドをクリックすると決まる。マスの中心付近のクリックはマス選びに戻る。
-    /// キーボード: 1〜5 で選び、矢印でカーソル移動と向き、Enter で決定、Esc で1段階戻る。
+    /// キーボード: 1〜4 で選び、矢印でカーソル移動と向き、Enter で決定、Esc で1段階戻る。
     /// 一時停止（T307）: P で切り替え。Esc は配置操作中なら1段階戻り、それ以外（一時停止中を含む）は一時停止を切り替える。
     /// 一時停止中は選択・配置・撤退・強化・▶ の操作を受け付けない（FR-012）。
     /// 撤退（T308）: 配置中の味方をクリックか Tab で選び、X か操作バーの撤退アイコンで撤退させる。
-    /// 強化（T308）: Shift + 1〜5 か操作バーの強化アイコン。▶: 配置操作中でないときの Enter か操作バーの ▶。
+    /// 強化（T308）: Shift + 1〜4 か操作バーの強化アイコン。▶: 配置操作中でないときの Enter か操作バーの ▶。
     /// </summary>
     public sealed class UnitPlacementInput : MonoBehaviour
     {
         private const string ActionMap = "SlotTower";
-        private const int SlotCount = 5;
+        private const int SlotCount = 4;
 
         [SerializeField] private InputActionAsset inputActions;
         [SerializeField] private BattleController battle;

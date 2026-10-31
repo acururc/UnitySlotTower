@@ -298,18 +298,12 @@ namespace UnitySlotTower.Core.Battle
         }
 
         /// <summary>
-        /// 攻撃間隔ごとに、範囲内の敵を攻撃する（ヒーラーは味方を回復する）。対象がなければ待たずに次のステップで探す。
-        /// バッファーは自分では行動せず、<see cref="AttackOf"/> で範囲内の味方の攻撃力を上げる。
+        /// 攻撃間隔ごとに、範囲内の敵を攻撃する（ヒーラーは攻撃力ぶん味方を回復する）。対象がなければ待たずに次のステップで探す。
         /// </summary>
         private void Act()
         {
             foreach (var unit in _units)
             {
-                if (unit.Definition.Role == UnitRole.Buff)
-                {
-                    continue;
-                }
-
                 if (unit.AttackCooldownSteps > 0)
                 {
                     unit.AttackCooldownSteps--;
@@ -328,7 +322,7 @@ namespace UnitySlotTower.Core.Battle
                         continue;
                     }
 
-                    patient.Heal(AttackOf(unit));
+                    patient.Heal(unit.Atk);
                 }
                 else
                 {
@@ -338,7 +332,7 @@ namespace UnitySlotTower.Core.Battle
                         continue;
                     }
 
-                    target.TakeDamage(Damage.Calculate(AttackOf(unit), target.Definition.Def));
+                    target.TakeDamage(Damage.Calculate(unit.Atk, target.Definition.Def));
                 }
 
                 unit.AttackCooldownSteps =
@@ -399,25 +393,6 @@ namespace UnitySlotTower.Core.Battle
             }
 
             return patient;
-        }
-
-        /// <summary>
-        /// 範囲に自分を含む他のバッファーのうち、最も高い倍率だけをかけた攻撃力（重ねがけしない、FR-028）。
-        /// ヒーラーの回復量もこの値。端数は四捨五入する。
-        /// </summary>
-        private int AttackOf(BattleUnit unit)
-        {
-            var rate = 1.0;
-            foreach (var buffer in _units)
-            {
-                if (buffer != unit && buffer.IsAlive && buffer.Definition.Role == UnitRole.Buff &&
-                    buffer.Definition.BuffRate > rate && buffer.InRange(unit.Cell))
-                {
-                    rate = buffer.Definition.BuffRate;
-                }
-            }
-
-            return (int)Math.Round(unit.Atk * rate, MidpointRounding.AwayFromZero);
         }
 
         /// <summary>

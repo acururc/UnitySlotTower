@@ -1,6 +1,7 @@
 # タスク: スロット × タワーディフェンス
 
-対象: [spec.md](spec.md)（承認済み）/ [plan.md](plan.md)（確定）
+対象: [spec.md](spec.md)（2026-11-01 再承認）/ [plan.md](plan.md)（確定、2026-11-01 改訂）
+M0〜M3 の完了行は旧仕様（5種の味方・旧スロット・5ウェーブ）での結果の記録。2026-11-01 の仕様変更は M3R で反映し、M4 の残りより先に行う。
 書式: `- [ ] Txxx (要求ID) 作業 — 検証: 方法`。完了時は `[x]` にし、行末に実際の結果（テスト件数・日付など）を書く。
 各段階の最後にハーネス（`scripts/harness/Test-ProjectHarness.ps1`）を実行し、HANDOFF を更新する。
 
@@ -50,14 +51,26 @@
 - [x] T306 (FR-030) 中ボス・最終ボス（高HP、ブロック消費、固有行動1〜2個）と、最終ボス撃破でのクリア — 検証: EditMode テスト（AC-010） — 結果: 2026-10-30 ユーザー決定で中ボスは固有行動なし（ステータスのみ）、最終ボスは範囲攻撃、クリアは雑魚も全滅させてから（plan 5章）。`enemies.csv` に `area_atk`・`area_radius`・`area_interval` 列と `mid_boss`（HP8000・ブロック消費2・ライフ3・100%で10枚）・`final_boss`（HP20000・ブロック消費3・ライフ10・範囲攻撃300/半径1.5/5秒）。`waves.csv` の W1〜4 末に中ボス、W5 末に最終ボス（`is_boss`=1）。範囲攻撃は `Battlefield.AreaAttack`。クリア判定は従来どおり最終ウェーブ終了で `Completed`。テスト `Tests/EditMode/Battle/BossTests` 9件と `WaveRunTests` 1件。EditMode 387/387、PlayMode 7/7、ハーネス 8/8。ボスの見た目（ブロック消費で大きくなる既存の表示のみ、範囲攻撃の演出なし）と強さの手応えは未確認（T309）
 - [x] T307 (FR-012) 一時停止（時間停止、閲覧のみ可、操作の拒否） — 検証: PlayMode テスト（AC-011） — 結果: 2026-10-30 `BattleController.IsPaused`/`SetPaused`/`TogglePause`（`Time.timeScale` 0 と `SimulationClock.IsPaused`、`SlotCabinet.InputLocked` でレバー・ストップを拒否。シーンを離れると timeScale を戻す）。入力は `UnitPlacementInput`: P で切り替え、Esc は配置操作中なら Cancel・それ以外（一時停止中を含む）は切り替え（Pause の Esc バインドは無視して Cancel 側で振り分け）。一時停止中は選択・カーソル・決定・マウス操作を受け付けない（配置途中の状態は保持）。テスト `Tests/PlayMode/Battle/PauseTests` 2件。PlayMode 9/9、Console エラー0、ハーネス 8/8。EditMode は Core 変更なしのため未再実行。一時停止ボタン（マウス）は T308、閲覧の「?」は T404、一時停止中の音は止めていない
 - [x] T308 (FR-002) 操作バー（5種のアイコン、コスト・待ち時間ゲージ・ストック数・強化段階、ライフ、コイン、ウェーブ番号） — 検証: Editor 画像、文字チェックテスト — 結果: 2026-10-30 `UnitBarIcon`（コスト・×ストック・待ち時間ゲージ・召喚不可の暗転・選択中の明るみ）、`UnitUpgradeIcon`（種類ごと。▲・次の費用・段階の点5つ・クリックで強化）、`OperationBarStatus`（ライフ・コイン・ウェーブ n/5・▶＝準備中だけ・撤退＝選択中だけ・一時停止）、`TriangleGraphic`（▶▲ の仮図形）。シーンへは Editor `Setup/OperationBarSetup`（実行済み）。入力: Shift+1〜5 で強化、配置中の味方をクリック／Tab で選び X で撤退（フィールドに選択枠）、配置操作中でない Enter で ▶。`autoStart` は false（▶ で開始）。数字フォントの `/` `%` が保存されない2枚目のアトラスに入って描けなかったのを、同じアセットのまま 512×512・1枚に作り直して修正（`NumericFontSetup` も同設定に。EditMode テスト追加）。PlayMode 12/12（新規3件: キーボードでの撤退・強化・▶、マウスでの選択・撤退・強化・▶、バーの数字）、EditMode 388/388、Console エラー0、ハーネス 8/8、Editor 画像 `Artifacts/Automation/Editor/t308-bar-prep.png`。強化欄の数字と点は小さい（T309 の手動確認で要調整か判断）
-- [ ] T309 (plan 12章) 5ウェーブ通しの手動プレイで、忙しさ・経済・難易度を確かめ、CSV を調整する — 検証: プレイ記録（設定1と6で各1回以上）
+- [ ] T309 (plan 12章) 3ステージ通しの手動プレイで、忙しさ・経済・難易度・スロットの数値（ハズレ率・払い出し・効果）を確かめ、CSV を調整する（M3R の後に行う。2026-10-31 にユーザーが後回しを指示） — 検証: プレイ記録（設定1と6で各1回以上）
+
+## M3R 仕様変更の反映（2026-11-01、plan 13章）
+
+- [x] T310 (FR-020, FR-027, FR-028) バッファーの廃止: `units.csv`・`unit_ranges.csv`・`unit_upgrades.csv` から `buffer` を消し、`buff` 役割と `buff_rate`・強化処理、表示（形・色・操作バーの5つ目）、`5`/`Shift+5` のバインドを外す — 検証: EditMode（AC-022 の「バッファーが存在しない」、既存テストの整理）、PlayMode、Console エラー0 — 結果: 2026-11-01 `UnitRole.Buff`・`UnitDefinition.BuffRate`・`Battlefield.AttackOf` を削除（攻撃・回復は `BattleUnit.Atk` そのまま）。`units.csv` の `buff_rate` 列と検証ルールも削除。入力アセットから `SelectUnit5`・`Upgrade5` のアクションごと削除し、`UnitPlacementInput`・Setup の枠数を4に。Game シーンの `Unit Icon 5`・`Upgrade Icon 5` と `BattleActorsView` の buffer の見た目を MCP で削除（右側に1枠ぶんの隙間が残る。T317 で詰める）。テスト: バッファー2件を削除、`Buff_Role_Is_Rejected`・`Fifth_Unit_Keys_Are_Not_Bound` を追加、表の4種化。EditMode 386/386、PlayMode 14/14、Console エラー0、ハーネス 8/8
+- [ ] T311 (FR-010, FR-013〜016) ステージ制の Core: `waves.csv` にステージ列、`maps/s1〜s3.csv`（旧 w2/w4/w5 を流用）と経路、`WaveSchedule`/`WaveRun` をステージ×2ウェーブに（ステージ内は配置・HP・ライフを保持、ステージ終了でライフボーナス・ストック化・ライフ回復、S1/S2 の W2 末に中ボス、S3-W2 末に最終ボスでクリア） — 検証: EditMode（AC-010, AC-012）、全CSV検証テスト
+- [ ] T312 (FR-010) ステージ制の表示: `BattleController`・`BattleFieldView` をステージのマップに、操作バーの番号を S-W 表示に — 検証: PlayMode、Editor 画像（ステージ切り替え）
+- [ ] T313 (FR-040, FR-041, FR-045, FR-046) 新スロットの Core: `SlotSymbol`（6図柄）、`ReelLayout`（条件検証と確率）、`SlotSettings`（ハズレ率）、`SlotRules`（新キー）、`SlotMachine`（ハズレ抽選→配列比率で図柄、結果に合う停止位置）。旧スロットのクラス・CSV・テスト・Editor ツールを削除 — 検証: EditMode（AC-040 固定シード大量試行、AC-041 全押し順×全押し位置で出目と結果が一致・押し位置で分布が変わらない、AC-044 の配列条件）
+- [ ] T314 (FR-042, FR-043) スロットの結果: コイン払い出し、BIG/REG（掛け金なしのゲーム数×払い出し）、効果 `SlotEffects`（攻撃力・攻撃速度の倍率と残り時間・延長、全体HP回復）を `Battlefield` に結合 — 検証: EditMode（AC-042, AC-043）
+- [ ] T315 (FR-040, FR-042) 筐体の作り直し: 1ライン・12コマ・プレイヤー配列のリール表示、ボーナスのランプと残りゲーム数、先バレ・確変・リプレイの表示と音を削除、効果の残り秒数を操作バーに — 検証: PlayMode（スロット操作中も戦闘が進む・効果が戦闘に届く: AC-011）、Editor 画像
+- [ ] T316 (FR-005, FR-046〜048) リールのカスタム画面: ゲーム開始前とステージ間に開くオーバーレイ、マスの図柄選択、条件を満たさないと ✔ 不可、ハズレ・当たり・各図柄の%表示の即時更新、マウスとキーボード — 検証: PlayMode（AC-044、開くタイミング、キーボードだけ・マウスだけで確定）、EditMode（AC-045 の計算）、Editor 画像
+- [ ] T317 (FR-001) 画面比率を戦闘60%・スロット40%に: `PortraitLayout`、戦闘カメラ、筐体と操作バーの詰め直し、マスの大きさ — 検証: EditMode（PortraitLayoutTests）、Editor 画像（AC-001 の比率）、文字チェックテスト
+- [ ] T318 (FR-050) 新しい CSV（`slot_settings`・`slot_rules`・`slot_default_reel`・ステージ列）の検証を `GameDataValidator`/`TableValidator` に追加し、`docs/ai/PROJECT_CONTEXT.md` など文書の旧仕様の記述を更新 — 検証: 壊した CSV で失敗するテスト、EditMode/PlayMode 全件、ハーネス
 
 ## M4 外枠
 
 - [x] T401 (FR-005) `Title` シーン（ロゴのみ文字可）と難易度選択（設定1〜6） — 検証: PlayMode テスト（AC-004） → `Title`（ビルド先頭）はロゴ＋▶ と、設定1〜6の筐体プレート（3列×2段）＋◀ の2画面。キーボードは矢印＋Enter（UI ナビゲーション）、Esc で戻る。マウスはクリック。選んだ設定は `Flow/GameSession.SelectedSetting`（Play ごとに null に戻す）で渡し、`SlotCabinet.Setting` が使う（Game を直接開いたときは筐体の既定値）。シーンは Editor `Setup/TitleSceneSetup`（実行済み）。PlayMode 14/14（TitleFlowTests 2件: キーボードで設定3、マウスで ◀ 戻りと設定6）、EditMode 388/388、ハーネス 8/8、画像 `t401-title.png`・`t401-difficulty.png` を目視
 - [ ] T402 (FR-005) リザルト（クリア／ゲームオーバーをアイコンと数字で表示）、リトライ、タイトルへ戻る — 検証: PlayMode テスト（リトライで初期化: AC-004）
-- [ ] T403 (FR-004) 文字なし説明（薄暗いオーバーレイ、矢印・手のアニメ、初回のみ表示）を召喚・配置・向き・スロット・ボーナス・強化・撤退に付ける — 検証: 手動プレイ、第三者確認（AC-003）
-- [ ] T404 (FR-012) 一時停止中の「?」: 役の図柄＝配当の早見表、味方の範囲図と数値 — 検証: Editor 画像、文字チェックテスト
+- [ ] T403 (FR-004) 文字なし説明（薄暗いオーバーレイ、矢印・手のアニメ、初回のみ表示）を召喚・配置・向き・スロット・ボーナス・強化・撤退・リールのカスタムに付ける — 検証: 手動プレイ、第三者確認（AC-003）
+- [ ] T404 (FR-012) 一時停止中の「?」: 図柄＝効果・払い出しの早見表と現在の確率、味方の範囲図と数値 — 検証: Editor 画像、文字チェックテスト
 - [ ] T405 (FR-002) キーボードだけ・マウスだけで1ウェーブ通せることの確認と不足操作の補完 — 検証: PlayMode テスト＋手動（AC-002）
 - [ ] T406 (FR-003) 全画面の文字チェックと縦長レイアウトの画像確認 — 検証: 文字チェックテスト、Editor 画像（AC-001）
 
@@ -65,6 +78,6 @@
 
 - [ ] T501 (plan 11章) 商用利用できる無料素材（ローポリモデル、アイコン、効果音）の選定とライセンス記録 — 検証: `docs/` にライセンス一覧
 - [ ] T502 (FR-001) グレーボックスを素材に差し替え、スロット筐体の絵と演出を仕上げる — 検証: Editor 画像
-- [ ] T503 (FR-050) CSV だけを変えて挙動が変わることの確認（召喚費用・役の確率・敵の出現） — 検証: EditMode テスト＋手動（AC-050）
-- [ ] T504 (FR-045) 最終バランス調整（設定ごとの機械割、ウェーブの難しさ） — 検証: シミュレーションテスト、手動プレイ
+- [ ] T503 (FR-050) CSV だけを変えて挙動が変わることの確認（召喚費用・ハズレ率・図柄効果・敵の出現） — 検証: EditMode テスト＋手動（AC-050）
+- [ ] T504 (FR-045) 最終バランス調整（設定ごとのハズレ率と払い出し、ウェーブの難しさ） — 検証: シミュレーションテスト、手動プレイ
 - [ ] T505 (全体) Windows 開発ビルドの作成と起動画像確認、全テストの実行 — 検証: `Build-UnityPlayer.ps1`、`Test-UnityPlayer.ps1 -ShowWindow`、EditMode/PlayMode の件数と結果

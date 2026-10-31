@@ -1032,15 +1032,6 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "SelectUnit5",
-                    "type": "Button",
-                    "id": "72e3bb84-f537-4c32-a978-ed2b4ffc55c1",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
                     "name": "Upgrade1",
                     "type": "Button",
                     "id": "6fb1ba92-8601-4ba3-ab39-c7de5646be3c",
@@ -1071,15 +1062,6 @@
                     "name": "Upgrade4",
                     "type": "Button",
                     "id": "3983963d-bf4a-4890-a9a7-b277ef5a3775",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "Upgrade5",
-                    "type": "Button",
-                    "id": "f58dc09a-d171-47a8-9054-cc5f86c118b9",
                     "expectedControlType": "Button",
                     "processors": "",
                     "interactions": "",
@@ -1240,17 +1222,6 @@
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
-                    "id": "ea69e290-032a-468b-acfc-055c34a6953f",
-                    "path": "<Keyboard>/5",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "SelectUnit5",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
                     "name": "Shift",
                     "id": "c333b965-7c49-40de-bf24-97c775ad9dda",
                     "path": "OneModifier",
@@ -1379,39 +1350,6 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "Upgrade4",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "Shift",
-                    "id": "fdffc299-13f9-4eed-8c3e-9e6b43a4773b",
-                    "path": "OneModifier",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Upgrade5",
-                    "isComposite": true,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "modifier",
-                    "id": "ea41298b-c21c-4a86-b342-9d19c1005fa7",
-                    "path": "<Keyboard>/shift",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "Upgrade5",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "binding",
-                    "id": "2caa30b9-46b3-4af2-a818-4c85b5bb19d5",
-                    "path": "<Keyboard>/5",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "Upgrade5",
                     "isComposite": false,
                     "isPartOfComposite": true
                 },

@@ -8,14 +8,14 @@ using UnitySlotTower.Battle;
 namespace UnitySlotTower.Editor.Setup
 {
     /// <summary>
-    /// Game シーンの操作バー（T308、plan 2章）を組み立てる一回限りの手順。T208 の仮アイコン5つに待ち時間ゲージ・コスト・ストック数・
+    /// Game シーンの操作バー（T308、plan 2章）を組み立てる一回限りの手順。T208 の仮アイコン4つに待ち時間ゲージ・コスト・ストック数・
     /// 選択の印を足し、その下に種類ごとの強化アイコン、右側にライフ・コイン・ウェーブ番号と ▶・撤退・一時停止のボタンを置く。
     /// 既に付いていれば何もしない。以後の変更は Editor でシーンを直接編集する。
     /// </summary>
     internal static class OperationBarSetup
     {
         private const string FontPath = "Assets/UnitySlotTower/Art/Fonts/NumericOnly SDF.asset";
-        private const int SlotCount = 5;
+        private const int SlotCount = 4;
         private const int MaxLevel = 5;
 
         private static Sprite _knob;

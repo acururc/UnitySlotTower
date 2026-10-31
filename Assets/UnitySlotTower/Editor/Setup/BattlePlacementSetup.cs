@@ -11,7 +11,7 @@ using UnitySlotTower.Slot;
 namespace UnitySlotTower.Editor.Setup
 {
     /// <summary>
-    /// Game シーンの戦闘フィールドに、戦闘の進行・配置操作・その仮表示と、操作バーの仮の味方アイコン5つ（T208）を付ける一回限りの手順。
+    /// Game シーンの戦闘フィールドに、戦闘の進行・配置操作・その仮表示と、操作バーの仮の味方アイコン4つ（T208。2026-11-01 にバッファーを廃止して4つ）を付ける一回限りの手順。
     /// 既に付いていれば何もしない。以後の変更は Editor でシーンを直接編集する。
     /// </summary>
     internal static class BattlePlacementSetup
@@ -19,14 +19,13 @@ namespace UnitySlotTower.Editor.Setup
         private const string TableFolder = "Assets/UnitySlotTower/Data/Tables/";
         private const string InputActionsPath = "Assets/InputSystem_Actions.inputactions";
 
-        // units.csv の並び（タンク・剣士・弓・ヒーラー・バッファー）の仮の色。
+        // units.csv の並び（タンク・剣士・弓・ヒーラー）の仮の色。
         private static readonly Color[] IconColors =
         {
             new Color(0.45f, 0.55f, 0.75f),
             new Color(0.85f, 0.3f, 0.25f),
             new Color(0.35f, 0.75f, 0.35f),
             new Color(0.95f, 0.75f, 0.85f),
-            new Color(0.95f, 0.8f, 0.25f),
         };
 
         [MenuItem("Tools/UnitySlotTower/Setup/Build Battle Placement")]

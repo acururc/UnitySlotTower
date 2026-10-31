@@ -17,12 +17,10 @@ namespace UnitySlotTower.Tests.EditMode.Input
         [TestCase("SelectUnit2", "<Keyboard>/2")]
         [TestCase("SelectUnit3", "<Keyboard>/3")]
         [TestCase("SelectUnit4", "<Keyboard>/4")]
-        [TestCase("SelectUnit5", "<Keyboard>/5")]
         [TestCase("Upgrade1", "<Keyboard>/shift", "<Keyboard>/1")]
         [TestCase("Upgrade2", "<Keyboard>/shift", "<Keyboard>/2")]
         [TestCase("Upgrade3", "<Keyboard>/shift", "<Keyboard>/3")]
         [TestCase("Upgrade4", "<Keyboard>/shift", "<Keyboard>/4")]
-        [TestCase("Upgrade5", "<Keyboard>/shift", "<Keyboard>/5")]
         [TestCase("Cursor", "<Keyboard>/upArrow", "<Keyboard>/downArrow", "<Keyboard>/leftArrow", "<Keyboard>/rightArrow")]
         [TestCase("Confirm", "<Keyboard>/enter", "<Keyboard>/numpadEnter")]
         [TestCase("Cancel", "<Keyboard>/escape")]
@@ -43,6 +41,17 @@ namespace UnitySlotTower.Tests.EditMode.Input
                 .ToArray();
 
             Assert.That(bound, Is.EquivalentTo(paths));
+        }
+
+        [Test]
+        [Description("FR-020: 味方は4種なので、5 と Shift+5 の操作はない（2026-11-01 にバッファーを廃止）")]
+        public void Fifth_Unit_Keys_Are_Not_Bound()
+        {
+            var map = Map();
+
+            Assert.That((map.FindAction("SelectUnit5"), map.FindAction("Upgrade5"),
+                    map.bindings.Count(b => b.path == "<Keyboard>/5")),
+                Is.EqualTo(((InputAction)null, (InputAction)null, 0)));
         }
 
         [Test]
