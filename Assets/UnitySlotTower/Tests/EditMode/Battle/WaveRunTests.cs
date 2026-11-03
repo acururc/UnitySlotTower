@@ -4,6 +4,8 @@ using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Economy;
 using UnitySlotTower.Core.Simulation;
+using UnitySlotTower.Core.Slot;
+using UnitySlotTower.Tests.EditMode.Slot;
 
 namespace UnitySlotTower.Tests.EditMode.Battle
 {
@@ -406,6 +408,64 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             run.Advance(120);
 
             Assert.That((run.Field.Enemies.Count, run.Phase), Is.EqualTo((0, WavePhase.Fighting)));
+        }
+
+        [TestCase(SlotSymbol.Atk, 1.5, 1.0)]
+        [TestCase(SlotSymbol.Speed, 1.0, 1.5)]
+        [TestCase(SlotSymbol.Coin, 1.0, 1.0)]
+        [TestCase(SlotSymbol.Seven, 1.0, 1.0)]
+        [TestCase(SlotSymbol.Bar, 1.0, 1.0)]
+        [TestCase(SlotSymbol.Heal, 1.0, 1.0)]
+        [Description("FR-042: 攻撃力アップ・攻撃速度アップの図柄だけが戦闘の倍率を上げる")]
+        public void Slot_Symbol_Grants_Its_Effect(SlotSymbol symbol, double attackRate, double speedRate)
+        {
+            var run = Create();
+
+            run.ApplySlot(symbol, SlotTestRules.Create(atkRate: 1.5, speedRate: 1.5));
+
+            Assert.That((run.Field.Effects.AttackRate, run.Field.Effects.SpeedRate), Is.EqualTo((attackRate, speedRate)));
+        }
+
+        [Test]
+        [Description("AC-042: 全体HP回復の図柄で、配置中の味方を最大HP×割合だけ回復する（剣士 1200×0.1=120）")]
+        public void Heal_Symbol_Heals_Deployed_Units()
+        {
+            // melee（攻撃200）が剣士（防御50）を 150 ずつ削る。
+            var run = Create(waveRows: "1,1,0,melee,S1,g,0\n");
+            Place(run, "sword", 1, 0);
+            run.Start();
+            run.Advance(120);
+            var sword = run.Field.Units[0];
+            var before = sword.Hp;
+
+            run.ApplySlot(SlotSymbol.Heal, SlotTestRules.Create(healRate: 0.1));
+
+            Assert.That((before < 1200 - 120, sword.Hp - before), Is.EqualTo((true, 120)));
+        }
+
+        [Test]
+        [Description("plan 5章: 効果の残り時間は準備中は減らない")]
+        public void Effects_Do_Not_Wear_Off_While_Preparing()
+        {
+            var run = Create();
+            run.ApplySlot(SlotSymbol.Atk, SlotTestRules.Create(atkSeconds: 20));
+
+            run.Advance(600);
+
+            Assert.That(run.Field.Effects.AttackSeconds, Is.EqualTo(20.0));
+        }
+
+        [Test]
+        [Description("plan 5章: 効果はステージをまたいで持ち越す")]
+        public void Effects_Carry_Over_To_The_Next_Stage()
+        {
+            var run = Create();
+            Place(run, "sword", 1, 0);
+            run.ApplySlot(SlotSymbol.Atk, SlotTestRules.Create(atkRate: 1.5, atkSeconds: 100));
+
+            PlayStage(run);
+
+            Assert.That((run.Stage, run.Field.Effects.AttackRate), Is.EqualTo((2, 1.5)));
         }
     }
 }

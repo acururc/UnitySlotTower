@@ -2,6 +2,7 @@ using System;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Economy;
 using UnitySlotTower.Core.Simulation;
+using UnitySlotTower.Core.Slot;
 
 namespace UnitySlotTower.Core.Battle
 {
@@ -19,7 +20,7 @@ namespace UnitySlotTower.Core.Battle
     /// ステージとウェーブの進行（FR-010, FR-013〜016、plan 4章）。ステージごとに 準備 → 戦闘 を各ウェーブで繰り返し、
     /// 最後のウェーブを終えるとステージ終了（ライフボーナス・ストック化）→ 次のステージの準備 と進める。
     /// ステージ内のウェーブ切り替えでは、配置・HP・ライフ・召喚の状態をそのまま残す。
-    /// 財布・強化・ストックはステージをまたいで同じものを使い、戦闘・召喚・配置操作はステージごとに作り直す（ライフも満タンに戻る）。
+    /// 財布・強化・ストック・スロットの効果はステージをまたいで同じものを使い、戦闘・召喚・配置操作はステージごとに作り直す（ライフも満タンに戻る）。
     /// </summary>
     public sealed class WaveRun
     {
@@ -64,6 +65,29 @@ namespace UnitySlotTower.Core.Battle
         public CoinWallet Wallet { get; }
         public UnitUpgrades Upgrades { get; }
         public UnitStock Stock { get; } = new UnitStock();
+
+        /// <summary>スロットの効果（D-45）。各ステージの <see cref="Field"/> に同じものを渡す。</summary>
+        public SlotEffects Effects { get; } = new SlotEffects();
+
+        /// <summary>
+        /// 揃った図柄の効果を戦闘に渡す（FR-042）。攻撃力アップ・攻撃速度アップは <see cref="Effects"/> に倍率と時間を足し、
+        /// 全体HP回復は配置中の味方を回復する。コイン・7・BAR は筐体側で払い出すので何もしない。
+        /// </summary>
+        public void ApplySlot(SlotSymbol symbol, SlotRules rules)
+        {
+            switch (symbol)
+            {
+                case SlotSymbol.Atk:
+                    Effects.GrantAttack(rules.AtkRate, rules.AtkSeconds);
+                    break;
+                case SlotSymbol.Speed:
+                    Effects.GrantSpeed(rules.SpeedRate, rules.SpeedSeconds);
+                    break;
+                case SlotSymbol.Heal:
+                    Field.HealAll(rules.HealRate);
+                    break;
+            }
+        }
 
         /// <summary>最後に終えたステージのライフボーナス（まだなければ 0）。</summary>
         public int LastLifeBonus { get; private set; }
@@ -167,7 +191,7 @@ namespace UnitySlotTower.Core.Battle
             Wave = 1;
             Phase = WavePhase.Preparing;
             Map = map;
-            Field = new Battlefield(schedule, _ranges, _config.Life, _random);
+            Field = new Battlefield(schedule, _ranges, _config.Life, _random, Effects);
             _collectedDrops = 0;
             Summoner = new UnitSummoner(_units, Wallet, _config.DeployLimit, _config.RetreatRefundRate, Stock)
             {

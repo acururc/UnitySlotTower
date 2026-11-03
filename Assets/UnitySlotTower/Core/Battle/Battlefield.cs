@@ -24,13 +24,34 @@ namespace UnitySlotTower.Core.Battle
 
         /// <param name="life">ウェーブ開始時のライフ（満タン、FR-013）。</param>
         /// <param name="random">撃破ドロップの抽選に使う（FR-033）。</param>
-        public Battlefield(WaveSchedule wave, UnitRanges ranges, int life, IRandom random)
+        /// <param name="effects">スロットの効果。ステージをまたいで持ち越すときは前のステージと同じものを渡す。null なら新しく作る。</param>
+        public Battlefield(WaveSchedule wave, UnitRanges ranges, int life, IRandom random, SlotEffects effects = null)
         {
             _wave = wave;
             _ranges = ranges;
             _random = random;
             Life = life;
+            Effects = effects ?? new SlotEffects();
         }
+
+        /// <summary>スロットの効果（攻撃力アップ・攻撃速度アップの倍率と残り時間、D-45）。</summary>
+        public SlotEffects Effects { get; }
+
+        /// <summary>全体HP回復（D-45）。配置中の味方全員に最大HP×<paramref name="rate"/>（四捨五入）を足す。最大HPは超えない。</summary>
+        public void HealAll(double rate)
+        {
+            foreach (var unit in _units)
+            {
+                if (unit.IsAlive)
+                {
+                    unit.Heal((int)Math.Round(unit.MaxHp * rate, MidpointRounding.AwayFromZero));
+                }
+            }
+        }
+
+        /// <summary>攻撃力アップを掛けた攻撃力（回復量にも使う。端数は四捨五入）。</summary>
+        private int EffectiveAtk(BattleUnit unit) =>
+            (int)Math.Round(unit.Atk * Effects.AttackRate, MidpointRounding.AwayFromZero);
 
         /// <summary>残りライフ。</summary>
         public int Life { get; private set; }
@@ -111,7 +132,7 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>
         /// 1 ステップごとに 出現 → 移動（ゴール到着で退場・ライフ減少） → 敵の攻撃 → HP0 の味方の消滅 → 味方の行動
-        /// → HP0 の敵の消滅（ドロップ） の順で処理する。ゲームオーバーになったら残りのステップは進めない。
+        /// → HP0 の敵の消滅（ドロップ） の順で処理し、最後にスロットの効果の残り時間を1ステップ減らす。ゲームオーバーになったら残りのステップは進めない。
         /// </summary>
         public void Advance(int steps)
         {
@@ -123,6 +144,7 @@ namespace UnitySlotTower.Core.Battle
                 RemoveFallenUnits();
                 Act();
                 RemoveDefeatedEnemies();
+                Effects.Step();
                 Tick++;
             }
         }
@@ -337,7 +359,7 @@ namespace UnitySlotTower.Core.Battle
                         continue;
                     }
 
-                    patient.Heal(unit.Atk);
+                    patient.Heal(EffectiveAtk(unit));
                 }
                 else
                 {
@@ -347,11 +369,12 @@ namespace UnitySlotTower.Core.Battle
                         continue;
                     }
 
-                    target.TakeDamage(Damage.Calculate(unit.Atk, target.Definition.Def));
+                    target.TakeDamage(Damage.Calculate(EffectiveAtk(unit), target.Definition.Def));
                 }
 
-                unit.AttackCooldownSteps =
-                    (int)Math.Round(unit.Definition.AttackInterval * SimulationClock.StepsPerSecond);
+                // 攻撃速度アップは攻撃間隔を倍率で割る（D-45）。
+                unit.AttackCooldownSteps = (int)Math.Round(
+                    unit.Definition.AttackInterval * SimulationClock.StepsPerSecond / Effects.SpeedRate);
             }
         }
 

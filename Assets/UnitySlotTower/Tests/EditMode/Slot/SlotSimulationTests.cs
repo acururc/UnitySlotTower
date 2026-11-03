@@ -25,7 +25,8 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         /// <summary><paramref name="games"/> 回まわして、ハズレの回数と当たり図柄ごとの回数を返す。</summary>
         private static (int misses, int[] hits) Play(ReelLayout layout, double missRate, int games, ulong seed)
         {
-            var machine = new SlotMachine(layout, missRate, new CoinWallet(games * 3), 3, new SeededRandom(seed));
+            var machine = new SlotMachine(layout, missRate, new CoinWallet(games * 3), 3, SlotTestRules.NoBonus(),
+                new SeededRandom(seed));
             var misses = 0;
             var hits = new int[SlotSymbols.Count];
             for (var i = 0; i < games; i++)

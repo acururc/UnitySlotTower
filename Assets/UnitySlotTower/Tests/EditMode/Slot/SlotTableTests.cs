@@ -44,6 +44,15 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         }
 
         [Test]
+        [Description("AC-043, D-40: REG の払い出しの合計（ゲーム数×1ゲームの払い出し）は BIG より小さい")]
+        public void Project_Reg_Pays_Less_Than_Big()
+        {
+            var rules = SlotRules.Load(ProjectTable(SlotRules.FileName));
+
+            Assert.That(rules.RegGames * rules.RegPayout, Is.LessThan(rules.BigGames * rules.BigPayout));
+        }
+
+        [Test]
         [Description("D-46: 既定の配列はルールのマス数と配列の条件を満たす")]
         public void Project_Default_Reel_Is_Valid_For_The_Rules()
         {

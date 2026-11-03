@@ -4,6 +4,7 @@ using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Economy;
 using UnitySlotTower.Core.Simulation;
+using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Slot;
 
 namespace UnitySlotTower.Battle
@@ -72,6 +73,7 @@ namespace UnitySlotTower.Battle
                     (stage, wave, map) => WaveSchedule.Load(waves, stage, wave, map, enemies),
                     new SeededRandom((ulong)DateTime.UtcNow.Ticks));
                 Run.StageBegan += OnStageBegan;
+                slotCabinet.Aligned += OnSlotAligned;
             }
             catch (Exception e)
             {
@@ -124,10 +126,17 @@ namespace UnitySlotTower.Battle
             if (Run != null)
             {
                 Run.StageBegan -= OnStageBegan;
+                if (slotCabinet != null)
+                {
+                    slotCabinet.Aligned -= OnSlotAligned;
+                }
             }
         }
 
         private void OnStageBegan() => fieldView.Show(Run.Map);
+
+        // 揃った図柄の効果（攻撃力アップ・攻撃速度アップ・全体HP回復）を戦闘へ渡す（FR-042、T314）。
+        private void OnSlotAligned(SlotSymbol symbol) => Run.ApplySlot(symbol, slotCabinet.Rules);
 
         private void Update()
         {

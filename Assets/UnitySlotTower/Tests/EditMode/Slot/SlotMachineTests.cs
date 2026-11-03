@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UnitySlotTower.Core.Economy;
@@ -16,7 +17,7 @@ namespace UnitySlotTower.Tests.EditMode.Slot
             new ReelLayout(ids.Split(' ').Select(id => (SlotSymbol)Array.IndexOf(SlotSymbols.Ids, id)).ToArray());
 
         private static SlotMachine Machine(CoinWallet wallet, double missRate = 0.85) =>
-            new SlotMachine(Layout(DefaultReel), missRate, wallet, Bet, new SeededRandom(1));
+            new SlotMachine(Layout(DefaultReel), missRate, wallet, Bet, SlotTestRules.NoBonus(), new SeededRandom(1));
 
         [Test]
         [Description("FR-040: レバーオンで掛け金を払ってリールが回る")]
@@ -84,11 +85,12 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         }
 
         /// <summary>結果が <paramref name="result"/>（null ならハズレ）に決まる既定配列の台。</summary>
-        private static SlotMachine Fixed(SlotSymbol? result, CoinWallet wallet)
+        private static SlotMachine Fixed(SlotSymbol? result, CoinWallet wallet, SlotRules rules = null)
         {
             var layout = Layout(DefaultReel);
             var cell = result.HasValue ? Enumerable.Range(0, layout.Length).First(i => layout.At(i) == result.Value) : 0;
-            return new SlotMachine(layout, result.HasValue ? 0.0 : 1.0, wallet, Bet, new FixedRandom(cell));
+            return new SlotMachine(layout, result.HasValue ? 0.0 : 1.0, wallet, Bet, rules ?? SlotTestRules.NoBonus(),
+                new FixedRandom(cell));
         }
 
         private static readonly int[][] Orders =
@@ -107,7 +109,7 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         public void Every_Press_Order_And_Position_Shows_The_Decided_Result(SlotSymbol? result)
         {
             const int length = 12;
-            var machine = Fixed(result, new CoinWallet(int.MaxValue));
+            var machine = Fixed(result, new CoinWallet(1_000_000_000));
             var mismatches = 0;
             foreach (var order in Orders)
             {
@@ -160,7 +162,8 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         {
             SlotSymbol?[] Results(Func<int, int, int> press)
             {
-                var machine = new SlotMachine(Layout(DefaultReel), 0.7, new CoinWallet(int.MaxValue), Bet, new SeededRandom(5));
+                var machine = new SlotMachine(Layout(DefaultReel), 0.7, new CoinWallet(1_000_000_000), Bet, SlotTestRules.NoBonus(),
+                    new SeededRandom(5));
                 var results = new SlotSymbol?[1000];
                 for (var game = 0; game < results.Length; game++)
                 {
@@ -176,6 +179,152 @@ namespace UnitySlotTower.Tests.EditMode.Slot
             }
 
             Assert.That(Results((game, reel) => 0), Is.EqualTo(Results((game, reel) => game * 7 + reel * 5)));
+        }
+
+        /// <summary>レバーを引いて左から順に3本止める。レバーが引けなければ false。</summary>
+        private static bool Play(SlotMachine machine)
+        {
+            if (!machine.TryLever())
+            {
+                return false;
+            }
+
+            for (var reel = 0; reel < SlotMachine.ReelCount; reel++)
+            {
+                machine.Stop(reel, 0);
+            }
+
+            return true;
+        }
+
+        [Test]
+        [Description("AC-042, FR-042: コイン揃いでコイン払い出し（15枚）を払う")]
+        public void Coin_Alignment_Pays_The_Coin_Payout()
+        {
+            var wallet = new CoinWallet(10);
+            var machine = Fixed(SlotSymbol.Coin, wallet, SlotTestRules.Create(coinPayout: 15));
+
+            Play(machine);
+
+            Assert.That((wallet.Coins, machine.LastPayout), Is.EqualTo((10 - Bet + 15, 15)));
+        }
+
+        [Test]
+        [Description("plan 5章: 払い出しは最後のリールが止まったときに払う")]
+        public void Payout_Waits_For_The_Last_Reel()
+        {
+            var wallet = new CoinWallet(10);
+            var machine = Fixed(SlotSymbol.Coin, wallet, SlotTestRules.Create(coinPayout: 15));
+            machine.TryLever();
+
+            machine.Stop(0, 0);
+            machine.Stop(1, 0);
+
+            Assert.That(wallet.Coins, Is.EqualTo(10 - Bet));
+        }
+
+        [TestCase(SlotSymbol.Atk)]
+        [TestCase(SlotSymbol.Speed)]
+        [TestCase(SlotSymbol.Heal)]
+        [TestCase(null)]
+        [Description("plan 5章: 効果の図柄とハズレは払い出しなし")]
+        public void Effect_Symbols_And_Misses_Pay_Nothing(SlotSymbol? result)
+        {
+            var wallet = new CoinWallet(10);
+            var machine = Fixed(result, wallet, SlotTestRules.Create());
+
+            Play(machine);
+
+            Assert.That((wallet.Coins, machine.LastPayout), Is.EqualTo((10 - Bet, 0)));
+        }
+
+        [TestCase(SlotSymbol.Atk)]
+        [TestCase(SlotSymbol.Speed)]
+        [TestCase(SlotSymbol.Heal)]
+        [TestCase(SlotSymbol.Coin)]
+        [TestCase(SlotSymbol.Seven)]
+        [TestCase(SlotSymbol.Bar)]
+        [Description("FR-042: 揃った図柄を最後のリールが止まったときに通知する（戦闘へ効果を渡すため）")]
+        public void Alignment_Is_Notified_With_The_Symbol(SlotSymbol result)
+        {
+            var machine = Fixed(result, new CoinWallet(10), SlotTestRules.Create());
+            var aligned = new List<SlotSymbol>();
+            machine.Aligned += aligned.Add;
+
+            Play(machine);
+
+            Assert.That(aligned, Is.EqualTo(new[] { result }));
+        }
+
+        [Test]
+        public void Miss_Is_Not_Notified()
+        {
+            var machine = Fixed(null, new CoinWallet(10), SlotTestRules.Create());
+            var aligned = new List<SlotSymbol>();
+            machine.Aligned += aligned.Add;
+
+            Play(machine);
+
+            Assert.That(aligned, Is.Empty);
+        }
+
+        [TestCase(SlotSymbol.Seven, SlotBonus.Big, 12)]
+        [TestCase(SlotSymbol.Bar, SlotBonus.Reg, 6)]
+        [Description("AC-043, FR-043: 7揃いで BIG、BAR揃いで REG になり、残りゲーム数は定義どおり")]
+        public void Seven_Starts_Big_And_Bar_Starts_Reg(SlotSymbol result, SlotBonus bonus, int games)
+        {
+            var machine = Fixed(result, new CoinWallet(10), SlotTestRules.Create(bigGames: 12, regGames: 6));
+
+            Play(machine);
+
+            Assert.That((machine.Bonus, machine.BonusGamesLeft), Is.EqualTo((bonus, games)));
+        }
+
+        [Test]
+        [Description("AC-043, plan 5章: ボーナス中は掛け金なしでレバーを引け、ハズレ抽選なしでコインが揃う")]
+        public void Bonus_Game_Needs_No_Bet_And_Aligns_Coins()
+        {
+            var wallet = new CoinWallet(Bet);
+            var machine = Fixed(SlotSymbol.Seven, wallet, SlotTestRules.Create());
+            Play(machine);
+
+            var started = machine.TryLever();
+
+            Assert.That((started, wallet.Coins, machine.Result), Is.EqualTo((true, 0, (SlotSymbol?)SlotSymbol.Coin)));
+        }
+
+        [TestCase(SlotSymbol.Seven, 12, 10)]
+        [TestCase(SlotSymbol.Bar, 6, 8)]
+        [Description("AC-043: ボーナスはゲームごとに定義どおり払い出し、定義どおりのゲーム数で通常に戻る（BIG 12G×10枚、REG 6G×8枚）")]
+        public void Bonus_Pays_Each_Game_And_Ends_After_Its_Games(SlotSymbol result, int games, int payout)
+        {
+            var wallet = new CoinWallet(Bet);
+            var machine = Fixed(result, wallet, SlotTestRules.Create(coinPayout: 15, bigGames: 12, bigPayout: 10,
+                regGames: 6, regPayout: 8));
+            Play(machine);
+
+            var played = 0;
+            while (machine.Bonus != SlotBonus.None && played < 100)
+            {
+                Play(machine);
+                played++;
+            }
+
+            Assert.That((played, wallet.Coins), Is.EqualTo((games, games * payout)));
+        }
+
+        [Test]
+        [Description("plan 5章: ボーナスを消化し終えたら、次のゲームは掛け金を払って通常どおり抽選する")]
+        public void Game_After_The_Bonus_Needs_The_Bet_Again()
+        {
+            var wallet = new CoinWallet(Bet);
+            var machine = Fixed(SlotSymbol.Bar, wallet, SlotTestRules.Create(regGames: 1, regPayout: 2));
+            Play(machine);
+            Play(machine);
+
+            var started = machine.TryLever();
+
+            Assert.That((started, wallet.Coins), Is.EqualTo((false, 2)));
         }
     }
 }

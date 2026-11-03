@@ -72,6 +72,12 @@ namespace UnitySlotTower.Slot
         /// <summary>このプレイの難易度（設定1〜6、FR-045）。</summary>
         public int Setting => setting;
 
+        /// <summary>slot_rules.csv の値（効果の倍率・秒数・回復量を戦闘へ渡すときに使う）。Awake で読む。</summary>
+        public SlotRules Rules { get; private set; }
+
+        /// <summary>最後のリールが止まって図柄が揃ったとき（払い出しの後）に、その図柄を通知する（FR-042、T314）。</summary>
+        public event Action<SlotSymbol> Aligned;
+
         private void Awake()
         {
             setting = GameSession.SelectedSetting ?? setting;
@@ -81,6 +87,7 @@ namespace UnitySlotTower.Slot
                 var config = GameConfig.Load(Parse(GameConfig.FileName, gameConfigTable));
                 var settings = SlotSettings.Load(Parse(SlotSettings.FileName, settingsTable));
                 var rules = SlotRules.Load(Parse(SlotRules.FileName, rulesTable));
+                Rules = rules;
                 layout = ReelLayout.Load(Parse(ReelLayout.FileName, defaultReelTable));
                 if (!layout.IsValid(rules.ReelLength))
                 {
@@ -89,8 +96,9 @@ namespace UnitySlotTower.Slot
 
                 _wallet = new CoinWallet(config.InitialCoins);
                 _wait = new SlotWait(rules.WaitSeconds);
-                _machine = new SlotMachine(layout, settings.MissRate(setting), _wallet, config.Bet,
+                _machine = new SlotMachine(layout, settings.MissRate(setting), _wallet, config.Bet, rules,
                     new SeededRandom((ulong)DateTime.UtcNow.Ticks));
+                _machine.Aligned += symbol => Aligned?.Invoke(symbol);
             }
             catch (Exception e)
             {
