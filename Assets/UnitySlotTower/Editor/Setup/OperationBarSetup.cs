@@ -4,6 +4,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
 using UnitySlotTower.Battle;
+using UnitySlotTower.Core.Slot;
 
 namespace UnitySlotTower.Editor.Setup
 {
@@ -62,10 +63,62 @@ namespace UnitySlotTower.Editor.Setup
             }
 
             BuildStatus(bar, battle, input);
+            BuildEffects(bar, Object.FindAnyObjectByType<OperationBarStatus>(FindObjectsInactive.Include));
 
             EditorSceneManager.MarkSceneDirty(bar.gameObject.scene);
             EditorSceneManager.SaveScene(bar.gameObject.scene);
             Debug.Log("[SlotTower Setup] 操作バーを作成した。");
+        }
+
+        /// <summary>
+        /// 既にある操作バーに、攻撃力アップ・攻撃速度アップの残り秒数（T315、plan 2章）を足す。味方アイコンと状態表示のあいだに置く。
+        /// 既にあれば何もしない。
+        /// </summary>
+        [MenuItem("Tools/UnitySlotTower/Setup/Add Slot Effects To Operation Bar (T315)")]
+        private static void AddEffects()
+        {
+            var status = Object.FindAnyObjectByType<OperationBarStatus>(FindObjectsInactive.Include);
+            var bar = status != null ? status.transform.parent as RectTransform : null;
+            if (bar == null)
+            {
+                Debug.LogError("[SlotTower Setup] 操作バーが見つからない。");
+                return;
+            }
+
+            if (bar.Find("Slot Effects") != null)
+            {
+                Debug.LogWarning("[SlotTower Setup] 操作バーには効果の表示が既にあるため作成しない。");
+                return;
+            }
+
+            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontPath);
+            BuildEffects(bar, status);
+            EditorSceneManager.MarkSceneDirty(bar.gameObject.scene);
+            EditorSceneManager.SaveScene(bar.gameObject.scene);
+            Debug.Log("[SlotTower Setup] 操作バーに効果の残り秒数を足した。");
+        }
+
+        private static void BuildEffects(RectTransform bar, OperationBarStatus status)
+        {
+            var effects = CreateRect("Slot Effects", bar, new Vector2(0.505f, 0.04f), new Vector2(0.615f, 0.96f));
+            BuildEffect(effects, "Attack Effect", SlotSymbol.Atk, new Vector2(0f, 0.52f), Vector2.one, status,
+                "attackEffect", "attackSecondsText");
+            BuildEffect(effects, "Speed Effect", SlotSymbol.Speed, Vector2.zero, new Vector2(1f, 0.48f), status,
+                "speedEffect", "speedSecondsText");
+        }
+
+        private static void BuildEffect(RectTransform parent, string name, SlotSymbol symbol, Vector2 anchorMin,
+            Vector2 anchorMax, OperationBarStatus status, string groupProperty, string textProperty)
+        {
+            var row = CreateRect(name, parent, anchorMin, anchorMax);
+            var group = row.gameObject.AddComponent<CanvasGroup>();
+            group.blocksRaycasts = false;
+            var icon = CreateRect("Icon", row, Vector2.zero, new Vector2(0.42f, 1f));
+            SlotSymbolArt.Create(symbol, icon);
+            var seconds = CreateNumber("Seconds", row, new Vector2(0.44f, 0f), Vector2.one, Color.white);
+            seconds.alignment = TextAlignmentOptions.Left;
+            Assign(status, groupProperty, group);
+            Assign(status, textProperty, seconds);
         }
 
         private static void BuildUnitIcon(RectTransform icon, float x, BattleController battle, UnitPlacementInput input)

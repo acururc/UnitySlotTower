@@ -4,13 +4,15 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Slot;
 
 namespace UnitySlotTower.Editor.Setup
 {
     /// <summary>
-    /// Game シーンの「Slot Area」に仮のスロット筐体（T110）を組む一回限りの手順。既に筐体があれば何もしない。
+    /// Game シーンの「Slot Area」に仮のスロット筐体（T110、T315 で作り直し）を組む一回限りの手順。既に筐体があれば何もしない。
+    /// T110 の筐体があるシーンは「Update Slot Cabinet (T315)」で新しい図柄・ボーナス表示・有効ラインの印に置き換える。
     /// 以後の変更は Editor でシーンを直接編集する。
     /// </summary>
     internal static class SlotCabinetSetup
@@ -19,6 +21,14 @@ namespace UnitySlotTower.Editor.Setup
         private const string FontPath = "Assets/UnitySlotTower/Art/Fonts/NumericOnly SDF.asset";
         private const string InputActionsPath = "Assets/InputSystem_Actions.inputactions";
         private const int CellCount = 5;
+        private const string PaylineName = "Payline Mark";
+        private const string BonusGamesName = "Bonus Games";
+
+        // ボーナスのランプと残りゲーム数はリール窓の上に並べる（T315）。
+        private static readonly Vector2 BonusLampMin = new Vector2(0.36f, 0.91f);
+        private static readonly Vector2 BonusLampMax = new Vector2(0.48f, 0.98f);
+        private static readonly Vector2 BonusGamesMin = new Vector2(0.5f, 0.905f);
+        private static readonly Vector2 BonusGamesMax = new Vector2(0.66f, 0.985f);
 
         private static Sprite _knob;
         private static Sprite _box;
@@ -41,13 +51,8 @@ namespace UnitySlotTower.Editor.Setup
                 return;
             }
 
-            _knob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
-            _box = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontPath);
-
+            LoadAssets();
             var cabinet = slotArea.gameObject.AddComponent<SlotCabinet>();
-            var audio = slotArea.gameObject.AddComponent<AudioSource>();
-            audio.playOnAwake = false;
 
             var reels = new SlotReelView[SlotMachine.ReelCount];
             var stops = new Button[SlotMachine.ReelCount];
@@ -65,22 +70,15 @@ namespace UnitySlotTower.Editor.Setup
             var lever = CreateButton("Lever Button", slotArea, new Vector2(0.04f, 0.04f), new Vector2(0.2f, 0.16f),
                 new Color(0.85f, 0.85f, 0.88f));
 
-            var premonition = CreateImage("Premonition Lamp", slotArea, new Vector2(0.1f, 0.915f), new Vector2(0.42f, 0.975f),
-                new Color(1f, 0.55f, 0.05f), _box, false);
-            var bonus = CreateImage("Bonus Lamp", slotArea, new Vector2(0.47f, 0.91f), new Vector2(0.6f, 0.98f),
-                new Color(1f, 0.2f, 0.2f), _knob, true);
-            var kakuhen = CreateImage("Kakuhen Lamp", slotArea, new Vector2(0.62f, 0.91f), new Vector2(0.75f, 0.98f),
-                new Color(0.9f, 0.3f, 1f), _knob, true);
-            var replay = CreateImage("Replay Lamp", slotArea, new Vector2(0.77f, 0.91f), new Vector2(0.9f, 0.98f),
-                new Color(0.3f, 0.6f, 1f), _knob, true);
+            var bonus = CreateImage("Bonus Lamp", slotArea, BonusLampMin, BonusLampMax, new Color(1f, 0.2f, 0.2f), _knob, true);
+            CreatePaylineMarks(slotArea, window);
 
             var coin = CreateImage("Coin Icon", slotArea, new Vector2(0.1f, 0.365f), new Vector2(0.17f, 0.425f),
                 new Color(1f, 0.82f, 0.2f), _knob, true);
             var credit = CreateNumber("Credit", slotArea, new Vector2(0.18f, 0.36f), new Vector2(0.42f, 0.43f), Color.white);
             var payout = CreateNumber("Payout", slotArea, new Vector2(0.45f, 0.36f), new Vector2(0.65f, 0.43f),
                 new Color(1f, 0.82f, 0.2f));
-            var counter = CreateNumber("Bonus Or Kakuhen Counter", slotArea, new Vector2(0.68f, 0.36f),
-                new Vector2(0.9f, 0.43f), new Color(0.9f, 0.6f, 1f));
+            var counter = CreateNumber(BonusGamesName, slotArea, BonusGamesMin, BonusGamesMax, new Color(1f, 0.2f, 0.2f));
 
             var serialized = new SerializedObject(cabinet);
             SetTable(serialized, "gameConfigTable", "game_config.csv");
@@ -92,27 +90,112 @@ namespace UnitySlotTower.Editor.Setup
             serialized.FindProperty("leverButton").objectReferenceValue = lever;
             SetArray(serialized.FindProperty("stopButtons"), stops);
             SetArray(serialized.FindProperty("reels"), reels);
-            serialized.FindProperty("premonitionLamp").objectReferenceValue = premonition;
             serialized.FindProperty("bonusLamp").objectReferenceValue = bonus;
-            serialized.FindProperty("kakuhenLamp").objectReferenceValue = kakuhen;
-            serialized.FindProperty("replayLamp").objectReferenceValue = replay;
             serialized.FindProperty("coinIcon").objectReferenceValue = coin;
             serialized.FindProperty("creditText").objectReferenceValue = credit;
             serialized.FindProperty("payoutText").objectReferenceValue = payout;
-            serialized.FindProperty("counterText").objectReferenceValue = counter;
-            serialized.FindProperty("audioSource").objectReferenceValue = audio;
+            serialized.FindProperty("bonusGamesText").objectReferenceValue = counter;
             serialized.ApplyModifiedPropertiesWithoutUndo();
-
-            // M0 のカメラには AudioListener がないので、先バレ音のために戦闘カメラへ付ける。
-            if (Object.FindAnyObjectByType<AudioListener>() == null && Camera.main != null)
-            {
-                Camera.main.gameObject.AddComponent<AudioListener>();
-            }
 
             var scene = slotArea.gameObject.scene;
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             Debug.Log("[SlotTower Setup] スロット筐体を作成した。");
+        }
+
+        /// <summary>
+        /// T110 の筐体を T315 の表示に置き換える: 先バレ・確変・リプレイのランプと音源を消し、コマの図柄を6図柄に作り直し、
+        /// ボーナスのランプと残りゲーム数をリール窓の上に並べ、中段（有効ライン）の左右に印を置く。済んでいれば何もしない。
+        /// </summary>
+        [MenuItem("Tools/UnitySlotTower/Setup/Update Slot Cabinet (T315)")]
+        private static void UpdateCabinet()
+        {
+            var cabinet = Object.FindAnyObjectByType<SlotCabinet>(FindObjectsInactive.Include);
+            var slotArea = cabinet != null ? (RectTransform)cabinet.transform : null;
+            var window = slotArea != null ? slotArea.Find("Reel Window") as RectTransform : null;
+            if (window == null)
+            {
+                Debug.LogError("[SlotTower Setup] スロット筐体の Reel Window が見つからない。");
+                return;
+            }
+
+            if (slotArea.Find(PaylineName + " Left") != null)
+            {
+                Debug.LogWarning("[SlotTower Setup] スロット筐体は T315 の表示になっているため何もしない。");
+                return;
+            }
+
+            LoadAssets();
+            foreach (var name in new[] { "Premonition Lamp", "Kakuhen Lamp", "Replay Lamp" })
+            {
+                var lamp = slotArea.Find(name);
+                if (lamp != null)
+                {
+                    Object.DestroyImmediate(lamp.gameObject);
+                }
+            }
+
+            var audio = slotArea.GetComponent<AudioSource>();
+            if (audio != null)
+            {
+                Object.DestroyImmediate(audio);
+            }
+
+            foreach (var reel in window.GetComponentsInChildren<SlotReelView>(true))
+            {
+                var cells = new SerializedObject(reel).FindProperty("cells");
+                for (var c = 0; c < cells.arraySize; c++)
+                {
+                    var cell = (RectTransform)cells.GetArrayElementAtIndex(c).objectReferenceValue;
+                    for (var k = cell.childCount - 1; k >= 0; k--)
+                    {
+                        Object.DestroyImmediate(cell.GetChild(k).gameObject);
+                    }
+
+                    SlotSymbolArt.CreateAllSymbols(cell);
+                }
+            }
+
+            var serialized = new SerializedObject(cabinet);
+            var bonusLamp = (Graphic)serialized.FindProperty("bonusLamp").objectReferenceValue;
+            SetAnchors(bonusLamp.rectTransform, BonusLampMin, BonusLampMax);
+            var counter = (TMP_Text)serialized.FindProperty("bonusGamesText").objectReferenceValue;
+            counter.name = BonusGamesName;
+            SetAnchors(counter.rectTransform, BonusGamesMin, BonusGamesMax);
+            CreatePaylineMarks(slotArea, window);
+
+            var scene = slotArea.gameObject.scene;
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log("[SlotTower Setup] スロット筐体を T315 の表示に更新した。");
+        }
+
+        private static void LoadAssets()
+        {
+            _knob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
+            _box = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontPath);
+        }
+
+        // 中段（有効ライン）の高さで、リール窓の左右から内向きの三角を出す。
+        private static void CreatePaylineMarks(RectTransform slotArea, RectTransform window)
+        {
+            var y = Mathf.Lerp(window.anchorMin.y, window.anchorMax.y, 0.5f);
+            var height = (window.anchorMax.y - window.anchorMin.y) * 0.08f;
+            for (var side = 0; side < 2; side++)
+            {
+                var edge = side == 0 ? window.anchorMin.x : window.anchorMax.x;
+                var min = new Vector2(side == 0 ? edge - 0.035f : edge + 0.005f, y - height);
+                var max = new Vector2(side == 0 ? edge - 0.005f : edge + 0.035f, y + height);
+                var mark = CreateRect($"{PaylineName} {(side == 0 ? "Left" : "Right")}", slotArea, min, max)
+                    .gameObject.AddComponent<TriangleGraphic>();
+                mark.color = new Color(1f, 0.85f, 0.2f);
+                mark.raycastTarget = false;
+                if (side == 1)
+                {
+                    mark.rectTransform.localEulerAngles = new Vector3(0f, 0f, 180f);
+                }
+            }
         }
 
         private static SlotReelView CreateReel(RectTransform window, int index, Vector2 anchorMin, Vector2 anchorMax)
@@ -125,7 +208,7 @@ namespace UnitySlotTower.Editor.Setup
             {
                 var cell = CreateRect($"Cell {c - CellCount / 2}", reel.rectTransform, new Vector2(0f, 0.5f), new Vector2(1f, 0.5f));
                 cells[c] = cell;
-                CreateSymbols(cell);
+                SlotSymbolArt.CreateAllSymbols(cell);
             }
 
             var serialized = new SerializedObject(view);
@@ -134,40 +217,20 @@ namespace UnitySlotTower.Editor.Setup
             return view;
         }
 
-        // 子の順番は SlotSymbol の順（SlotReelView が番号で切り替える）。文字は数字の 7 だけを使う。
-        private static void CreateSymbols(RectTransform cell)
-        {
-            var seven = CreateNumber("Seven", cell, Vector2.zero, Vector2.one, new Color(0.9f, 0.05f, 0.1f));
-            seven.text = "7";
-            seven.fontStyle = FontStyles.Bold;
-
-            CreateImage("Bar", cell, new Vector2(0.12f, 0.32f), new Vector2(0.88f, 0.68f), new Color(0.1f, 0.1f, 0.12f), _box, false);
-            CreateImage("Bell", cell, new Vector2(0.25f, 0.12f), new Vector2(0.75f, 0.88f), new Color(1f, 0.8f, 0.1f), _knob, true);
-            CreateImage("Watermelon", cell, new Vector2(0.15f, 0.06f), new Vector2(0.85f, 0.94f), new Color(0.15f, 0.6f, 0.2f), _knob, true);
-
-            var cherry = CreateRect("Cherry", cell, Vector2.zero, Vector2.one);
-            CreateImage("Cherry L", cherry, new Vector2(0.2f, 0.15f), new Vector2(0.5f, 0.6f), new Color(0.85f, 0.1f, 0.3f), _knob, true);
-            CreateImage("Cherry R", cherry, new Vector2(0.5f, 0.15f), new Vector2(0.8f, 0.6f), new Color(0.85f, 0.1f, 0.3f), _knob, true);
-
-            var replay = CreateImage("Replay", cell, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Color(0.2f, 0.45f, 0.95f), _box, false);
-            replay.rectTransform.sizeDelta = new Vector2(90f, 90f);
-            replay.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 45f);
-
-            for (var i = 0; i < cell.childCount; i++)
-            {
-                cell.GetChild(i).gameObject.SetActive(false);
-            }
-        }
-
         private static RectTransform CreateRect(string name, RectTransform parent, Vector2 anchorMin, Vector2 anchorMax)
         {
             var rect = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
             rect.gameObject.layer = parent.gameObject.layer;
             rect.SetParent(parent, false);
+            SetAnchors(rect, anchorMin, anchorMax);
+            return rect;
+        }
+
+        private static void SetAnchors(RectTransform rect, Vector2 anchorMin, Vector2 anchorMax)
+        {
             rect.anchorMin = anchorMin;
             rect.anchorMax = anchorMax;
             rect.offsetMin = rect.offsetMax = Vector2.zero;
-            return rect;
         }
 
         private static Image CreateImage(string name, RectTransform parent, Vector2 anchorMin, Vector2 anchorMax, Color color,

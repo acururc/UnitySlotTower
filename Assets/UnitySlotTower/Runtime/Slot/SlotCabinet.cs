@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Economy;
@@ -13,8 +14,8 @@ using UnitySlotTower.Flow;
 namespace UnitySlotTower.Slot
 {
     /// <summary>
-    /// 下部のスロット筐体の仮表示（T110、plan 2・3・5章）。ベット＋レバー（Space）で回し、J/K/L かボタンで止める。
-    /// 数字: クレジット・払い出し。ランプとボーナスの数字は T314・T315 で作り直すまで消灯（先バレ・確変・リプレイは廃止）。
+    /// 下部のスロット筐体の仮表示（T110・T315、plan 2・3・5章）。ベット＋レバー（Space）で回し、J/K/L かボタンで止める。
+    /// 有効ラインは中段の1本。数字: クレジット・直前の払い出し・ボーナスの残りゲーム数。ボーナス中はランプが BIG/REG の色で点く。
     /// </summary>
     public sealed class SlotCabinet : MonoBehaviour
     {
@@ -37,18 +38,15 @@ namespace UnitySlotTower.Slot
 
         [Header("View")]
         [SerializeField] private SlotReelView[] reels = new SlotReelView[SlotMachine.ReelCount];
-        [SerializeField] private Graphic premonitionLamp;
         [SerializeField] private Graphic bonusLamp;
-        [SerializeField] private Graphic kakuhenLamp;
-        [SerializeField] private Graphic replayLamp;
         [SerializeField] private Graphic coinIcon;
         [SerializeField] private TMP_Text creditText;
         [SerializeField] private TMP_Text payoutText;
-        [SerializeField] private TMP_Text counterText;
+        [FormerlySerializedAs("counterText")]
+        [SerializeField] private TMP_Text bonusGamesText;
         [SerializeField] private Color lampOffColor = new Color(0.18f, 0.18f, 0.2f);
-
-        [Header("Sound")]
-        [SerializeField] private AudioSource audioSource;
+        [SerializeField] private Color bigColor = new Color(1f, 0.2f, 0.2f);
+        [SerializeField] private Color regColor = new Color(0.3f, 0.55f, 1f);
 
         private const double CoinBlinkSeconds = 1.0;
 
@@ -58,10 +56,15 @@ namespace UnitySlotTower.Slot
         private InputAction _lever;
         private readonly InputAction[] _stops = new InputAction[SlotMachine.ReelCount];
         private double _coinBlinkUntil;
-        private int _coinsBeforeLastStop;
-        private int _lastPayout;
         private int _shownCredit = -1;
         private int _shownPayout = -1;
+        private int _shownBonusGames = -1;
+        private SlotBonus? _shownBonus;
+
+        /// <summary>
+        /// テスト用: null でなければ、この後に読み込まれる筐体の抽選にこの乱数を使う（既定は時刻から作る）。
+        /// </summary>
+        public static IRandom RandomOverride { get; set; }
 
         /// <summary>所持コイン。戦闘の召喚・撃破ドロップと共有する（FR-040、T301）。Awake で作る。</summary>
         public CoinWallet Wallet => _wallet;
@@ -97,7 +100,7 @@ namespace UnitySlotTower.Slot
                 _wallet = new CoinWallet(config.InitialCoins);
                 _wait = new SlotWait(rules.WaitSeconds);
                 _machine = new SlotMachine(layout, settings.MissRate(setting), _wallet, config.Bet, rules,
-                    new SeededRandom((ulong)DateTime.UtcNow.Ticks));
+                    RandomOverride ?? new SeededRandom((ulong)DateTime.UtcNow.Ticks));
                 _machine.Aligned += symbol => Aligned?.Invoke(symbol);
             }
             catch (Exception e)
@@ -111,13 +114,6 @@ namespace UnitySlotTower.Slot
             {
                 reels[i].Initialize(layout, 0);
             }
-
-            foreach (var lamp in new[] { premonitionLamp, bonusLamp, kakuhenLamp, replayLamp })
-            {
-                lamp.color = lampOffColor;
-            }
-
-            counterText.enabled = false;
 
             var map = inputActions.FindActionMap(ActionMap, true);
             _lever = map.FindAction("Lever", true);
@@ -199,13 +195,8 @@ namespace UnitySlotTower.Slot
                 return;
             }
 
-            _coinsBeforeLastStop = _wallet.Coins;
             var stop = _machine.Stop(reel, reels[reel].PressPosition);
             reels[reel].StopAt(stop);
-            if (!_machine.IsSpinning)
-            {
-                _lastPayout = _wallet.Coins - _coinsBeforeLastStop;
-            }
         }
 
         private void Update()
@@ -216,7 +207,6 @@ namespace UnitySlotTower.Slot
                 if (_machine.TryLever())
                 {
                     _wait.Started(now);
-                    _lastPayout = 0;
                     foreach (var reel in reels)
                     {
                         reel.StartSpin();
@@ -232,7 +222,7 @@ namespace UnitySlotTower.Slot
             var blink = now < _coinBlinkUntil && (int)(now * 10) % 2 == 0;
             coinIcon.enabled = !blink;
 
-            // 3本目を押したあとの払い出しは、リールが見た目の上でも止まってから数字に出す。
+            // 3本目を押したあとの払い出しとボーナスは、リールが見た目の上でも止まってから表示に出す。
             if (_machine.IsSpinning || !AnyReelSpinning())
             {
                 UpdateNumbers();
@@ -242,7 +232,19 @@ namespace UnitySlotTower.Slot
         private void UpdateNumbers()
         {
             SetNumber(creditText, _wallet.Coins, ref _shownCredit);
-            SetNumber(payoutText, _lastPayout, ref _shownPayout);
+            SetNumber(payoutText, _machine.LastPayout, ref _shownPayout);
+
+            var bonus = _machine.Bonus;
+            if (bonus != _shownBonus)
+            {
+                _shownBonus = bonus;
+                var color = bonus == SlotBonus.Big ? bigColor : bonus == SlotBonus.Reg ? regColor : lampOffColor;
+                bonusLamp.color = color;
+                bonusGamesText.color = color;
+                bonusGamesText.enabled = bonus != SlotBonus.None;
+            }
+
+            SetNumber(bonusGamesText, _machine.BonusGamesLeft, ref _shownBonusGames);
         }
 
         private static void SetNumber(TMP_Text text, int value, ref int shown)

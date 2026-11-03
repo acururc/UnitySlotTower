@@ -7,7 +7,8 @@ namespace UnitySlotTower.Battle
 {
     /// <summary>
     /// 操作バーの状態表示とボタン（T308、plan 2章）: ライフ・所持コイン・ステージ-ウェーブ番号（例 2-1、T312）、
-    /// ▶（準備中だけ出す）・撤退（味方を選んでいるときだけ出す）・一時停止（一時停止中は色を変える）。
+    /// ▶（準備中だけ出す）・撤退（味方を選んでいるときだけ出す）・一時停止（一時停止中は色を変える）、
+    /// 攻撃力アップ・攻撃速度アップの残り秒数（切り上げ。効果がないときは薄く 0、T315）。
     /// </summary>
     public sealed class OperationBarStatus : MonoBehaviour
     {
@@ -21,6 +22,11 @@ namespace UnitySlotTower.Battle
         [SerializeField] private Button pauseButton;
         [SerializeField] private Image pauseBackground;
         [SerializeField] private Color pausedColor = new Color(0.95f, 0.75f, 0.2f);
+        [SerializeField] private CanvasGroup attackEffect;
+        [SerializeField] private TMP_Text attackSecondsText;
+        [SerializeField] private CanvasGroup speedEffect;
+        [SerializeField] private TMP_Text speedSecondsText;
+        [SerializeField, Range(0f, 1f)] private float inactiveEffectAlpha = 0.3f;
 
         private Color _pauseNormalColor;
         private int _shownLife = -1;
@@ -28,6 +34,8 @@ namespace UnitySlotTower.Battle
         private int _shownStage = -1;
         private int _shownWave = -1;
         private bool _shownPaused;
+        private int _shownAttackSeconds = -1;
+        private int _shownSpeedSeconds = -1;
 
         private void Awake()
         {
@@ -65,6 +73,9 @@ namespace UnitySlotTower.Battle
                 waveText.SetText("{0}-{1}", (float)run.Stage, run.Wave);
             }
 
+            SetEffect(attackEffect, attackSecondsText, run.Effects.AttackSeconds, ref _shownAttackSeconds);
+            SetEffect(speedEffect, speedSecondsText, run.Effects.SpeedSeconds, ref _shownSpeedSeconds);
+
             SetActive(startButton, run.Phase == WavePhase.Preparing);
             SetActive(retreatButton, placementInput.SelectedUnit != null);
             if (battle.IsPaused != _shownPaused)
@@ -72,6 +83,17 @@ namespace UnitySlotTower.Battle
                 _shownPaused = battle.IsPaused;
                 pauseBackground.color = _shownPaused ? pausedColor : _pauseNormalColor;
             }
+        }
+
+        private void SetEffect(CanvasGroup group, TMP_Text text, double seconds, ref int shown)
+        {
+            var value = (int)System.Math.Ceiling(seconds);
+            if (value != shown)
+            {
+                group.alpha = value > 0 ? 1f : inactiveEffectAlpha;
+            }
+
+            SetNumber(text, value, ref shown);
         }
 
         private static void SetActive(Button button, bool active)
