@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
@@ -6,33 +7,37 @@ using UnitySlotTower.Core.Simulation;
 
 namespace UnitySlotTower.Tests.EditMode.Battle
 {
-    [Description("FR-010, FR-013〜016: ウェーブの準備・戦闘・終了とストック（AC-012）")]
+    [Description("FR-010, FR-013〜016: ステージとウェーブの準備・戦闘・終了とストック（AC-010, AC-012）")]
     public sealed class WaveRunTests
     {
         // フィクスチャの地図（4×2）。地上マスは (1,0)(2,0)、高台マスは (1,1)(3,1)。
         //   S1 G G E
         //   S2 H X H
-        // fodder（HP1・攻撃0・1マス/秒）は 0 秒に出て約3秒でゴールに着く。
+        // fodder（HP1・攻撃0・1マス/秒）は 0 秒に出て約3秒でゴールに着く。行は stage,wave,time,enemy_id,spawn,path_id,is_boss。
         private const string OneFodderPerWave =
-            "1,0,fodder,S1,g,0\n2,0,fodder,S1,g,0\n3,0,fodder,S1,g,0\n";
+            "1,1,0,fodder,S1,g,0\n1,2,0,fodder,S1,g,0\n" +
+            "2,1,0,fodder,S1,g,0\n2,2,0,fodder,S1,g,0\n" +
+            "3,1,0,fodder,S1,g,0\n3,2,0,fodder,S1,g,0\n";
 
         // 10 秒あればどのウェーブも終わる。
         private const int WaveSteps = 600;
 
         private CoinWallet _wallet;
+        private Dictionary<int, BattleMap> _maps;
 
-        private WaveRun Create(int coins = 100, int waveCount = 3, int life = 10, int lifeBonus = 3, int deployLimit = 8,
-            string waveRows = OneFodderPerWave)
+        private WaveRun Create(int coins = 100, int stageCount = 3, int wavesPerStage = 2, int life = 10,
+            int lifeBonus = 3, int deployLimit = 8, string waveRows = OneFodderPerWave)
         {
             _wallet = new CoinWallet(coins);
+            _maps = new Dictionary<int, BattleMap>();
             var config = GameConfig.Load(CsvParser.Parse(GameConfig.FileName,
                 $"key,value\ninitial_coins,{coins}\nbet,3\nlife,{life}\nlife_bonus_per_life,{lifeBonus}\n" +
                 $"deploy_limit,{deployLimit}\nretreat_refund_rate,0.5\n"));
             var units = BattleFixtures.LoadUnits();
-            var map = BattleFixtures.LoadMap();
             return new WaveRun(config, units, BattleFixtures.LoadRanges(),
-                new UnitUpgrades(BattleFixtures.LoadUpgrades(), _wallet), _wallet, waveCount,
-                wave => new WaveStage(map, BattleFixtures.LoadWave(waveRows, wave)), new SeededRandom(1));
+                new UnitUpgrades(BattleFixtures.LoadUpgrades(), _wallet), _wallet, stageCount, wavesPerStage,
+                stage => _maps[stage] = BattleFixtures.LoadMap(),
+                (stage, wave, map) => BattleFixtures.LoadStageWave(waveRows, stage, wave), new SeededRandom(1));
         }
 
         private static SummonResult Place(WaveRun run, string unitId, int x, int y)
@@ -48,23 +53,34 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             return run.Deployment.Confirm();
         }
 
-        /// <summary>W1 で剣士を1体置いて終え、W2 の準備に入った状態（剣士のストック1）。</summary>
-        private WaveRun ClearWave1WithSword(int coins = 100, int lifeBonus = 3, int deployLimit = 8)
+        private static void PlayWave(WaveRun run)
+        {
+            run.Start();
+            run.Advance(WaveSteps);
+        }
+
+        private static void PlayStage(WaveRun run)
+        {
+            PlayWave(run);
+            PlayWave(run);
+        }
+
+        /// <summary>S1 で剣士を1体置いて終え、S2 の準備に入った状態（剣士のストック1）。</summary>
+        private WaveRun ClearStage1WithSword(int coins = 100, int lifeBonus = 3, int deployLimit = 8)
         {
             var run = Create(coins: coins, lifeBonus: lifeBonus, deployLimit: deployLimit);
             Place(run, "sword", 1, 0);
-            run.Start();
-            run.Advance(WaveSteps);
-            Assert.That((run.Wave, run.Stock.Count("sword")), Is.EqualTo((2, 1)), "W1 を剣士1体で終えられない");
+            PlayStage(run);
+            Assert.That((run.Stage, run.Stock.Count("sword")), Is.EqualTo((2, 1)), "S1 を剣士1体で終えられない");
             return run;
         }
 
         [Test]
-        public void Run_Starts_In_Preparation_Of_Wave_1()
+        public void Run_Starts_In_Preparation_Of_Stage_1_Wave_1()
         {
             var run = Create();
 
-            Assert.That((run.Wave, run.Phase), Is.EqualTo((1, WavePhase.Preparing)));
+            Assert.That((run.Stage, run.Wave, run.Phase), Is.EqualTo((1, 1, WavePhase.Preparing)));
         }
 
         [Test]
@@ -120,63 +136,125 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("AC-012: 残りライフ分のコインが加算され、コインが残る")]
-        public void Clearing_A_Wave_Adds_Life_Bonus_To_The_Coins()
+        [Description("FR-010: W1 を終えると同じステージの W2 の準備に入る")]
+        public void Clearing_Wave_1_Moves_To_Wave_2_Of_The_Same_Stage()
         {
-            // fodder がゴールに着いてライフ 9。ボーナスは 9 × 3 = 27。ゴールに着いた敵は落とさない。
-            var run = Create(coins: 100);
-            run.Start();
+            var run = Create();
+            var map = run.Map;
 
-            run.Advance(WaveSteps);
+            PlayWave(run);
 
-            Assert.That(_wallet.Coins, Is.EqualTo(127));
+            Assert.That((run.Stage, run.Wave, run.Phase, run.Map), Is.EqualTo((1, 2, WavePhase.Preparing, map)));
         }
 
         [Test]
-        public void Clearing_A_Wave_Moves_To_Preparation_Of_The_Next()
+        [Description("AC-010: 同じステージ内のウェーブ切り替えで配置が保たれる（同じ個体なので HP も残る）")]
+        public void Deployed_Units_Stay_On_The_Field_Into_Wave_2()
+        {
+            var run = Create();
+            Place(run, "sword", 1, 0);
+            var sword = run.Field.Units[0];
+
+            PlayWave(run);
+
+            Assert.That((run.Field.Units.Count, run.Field.Units[0], run.Summoner.DeployedCount, run.Stock.Count("sword")),
+                Is.EqualTo((1, sword, 1, 0)));
+        }
+
+        [Test]
+        [Description("plan 4章: W1 の終わりではライフボーナスもライフ回復もしない")]
+        public void Clearing_Wave_1_Keeps_The_Life_And_Gives_No_Bonus()
+        {
+            // fodder がゴールに着いてライフ 9。ゴールに着いた敵は落とさない。
+            var run = Create(coins: 100, life: 10);
+
+            PlayWave(run);
+
+            Assert.That((run.Field.Life, _wallet.Coins), Is.EqualTo((9, 100)));
+        }
+
+        [Test]
+        [Description("plan 4章: W2 の準備でも召喚の待ち時間を無視し、戦闘開始時の待ち時間は 0")]
+        public void Wave_2_Preparation_Clears_Cooldowns()
         {
             var run = Create();
             run.Start();
-
+            Place(run, "sword", 1, 0);
             run.Advance(WaveSteps);
 
-            Assert.That((run.Wave, run.Phase), Is.EqualTo((2, WavePhase.Preparing)));
+            Assert.That((run.Wave, run.Summoner.CooldownRemaining("sword"), Place(run, "sword", 2, 0)),
+                Is.EqualTo((2, 0.0, SummonResult.Summoned)));
         }
 
         [Test]
-        [Description("FR-013: ライフは各ウェーブ開始時に満タンに戻る")]
-        public void Next_Wave_Starts_With_Full_Life()
+        public void Wave_2_Spawns_Its_Own_Enemies_From_Time_Zero()
+        {
+            var run = Create();
+            PlayWave(run);
+
+            run.Start();
+            run.Advance(1);
+
+            Assert.That((run.Field.Tick, run.Field.Enemies.Count), Is.EqualTo((1L, 1)));
+        }
+
+        [Test]
+        [Description("AC-012: ステージ終了で残りライフ分のコインが加算され、コインが残る")]
+        public void Clearing_A_Stage_Adds_Life_Bonus_To_The_Coins()
+        {
+            // 2 体の fodder がゴールに着いてライフ 8。ボーナスは 8 × 3 = 24。
+            var run = Create(coins: 100);
+
+            PlayStage(run);
+
+            Assert.That((_wallet.Coins, run.LastLifeBonus), Is.EqualTo((124, 24)));
+        }
+
+        [Test]
+        public void Clearing_A_Stage_Moves_To_Preparation_Of_The_Next_On_Its_Map()
+        {
+            var run = Create();
+
+            PlayStage(run);
+
+            Assert.That((run.Stage, run.Wave, run.Phase, run.Map), Is.EqualTo((2, 1, WavePhase.Preparing, _maps[2])));
+        }
+
+        [Test]
+        [Description("FR-013: ライフは各ステージ開始時に満タンに戻る")]
+        public void Next_Stage_Starts_With_Full_Life()
         {
             var run = Create(life: 10);
-            run.Start();
 
-            run.Advance(WaveSteps);
+            PlayStage(run);
 
             Assert.That(run.Field.Life, Is.EqualTo(10));
         }
 
         [Test]
-        public void Wave_Began_Is_Raised_For_The_Next_Wave()
+        public void Stage_And_Wave_Began_Are_Raised()
         {
             var run = Create();
-            var began = 0;
-            run.WaveBegan += wave => began = wave;
-            run.Start();
+            var stages = 0;
+            var waves = 0;
+            run.StageBegan += () => stages++;
+            run.WaveBegan += () => waves++;
 
-            run.Advance(WaveSteps);
+            PlayWave(run);
+            var afterWave1 = (stages, waves);
+            PlayWave(run);
 
-            Assert.That(began, Is.EqualTo(2));
+            Assert.That((afterWave1, (stages, waves)), Is.EqualTo(((0, 1), (1, 2))));
         }
 
         [Test]
         public void Losing_All_Life_Ends_The_Run()
         {
             var run = Create(life: 1);
-            run.Start();
 
-            run.Advance(WaveSteps);
+            PlayWave(run);
 
-            Assert.That((run.Wave, run.Phase), Is.EqualTo((1, WavePhase.GameOver)));
+            Assert.That((run.Stage, run.Wave, run.Phase), Is.EqualTo((1, 1, WavePhase.GameOver)));
         }
 
         [Test]
@@ -188,22 +266,20 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             Place(run, "sword", 1, 0);
             Place(run, "archer", 1, 1);
             Place(run, "archer", 3, 1);
-            run.Start();
 
-            run.Advance(WaveSteps);
+            PlayStage(run);
 
             Assert.That((run.Stock.Count("sword"), run.Stock.Count("archer"), run.Stock.Count("tank")),
                 Is.EqualTo((1, 2, 0)));
         }
 
         [Test]
-        public void Next_Wave_Starts_With_An_Empty_Field()
+        public void Next_Stage_Starts_With_An_Empty_Field()
         {
             var run = Create();
             Place(run, "sword", 1, 0);
-            run.Start();
 
-            run.Advance(WaveSteps);
+            PlayStage(run);
 
             Assert.That((run.Field.Units.Count, run.Summoner.DeployedCount), Is.EqualTo((0, 0)));
         }
@@ -212,7 +288,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("FR-016: 無料ストックはコインなしで配置できる")]
         public void Placing_From_Stock_Costs_No_Coins()
         {
-            var run = ClearWave1WithSword();
+            var run = ClearStage1WithSword();
             var coins = _wallet.Coins;
 
             Place(run, "sword", 1, 0);
@@ -224,7 +300,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         public void Stock_Can_Be_Placed_Without_Enough_Coins()
         {
             // 剣士 12 枚をちょうど払い、ライフボーナスなし。fodder のドロップ（40%で1枚）があっても 12 枚には届かない。
-            var run = ClearWave1WithSword(coins: 12, lifeBonus: 0);
+            var run = ClearStage1WithSword(coins: 12, lifeBonus: 0);
 
             Assert.That(Place(run, "sword", 1, 0), Is.EqualTo(SummonResult.Summoned));
         }
@@ -233,7 +309,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("plan C-3: ストックからの配置も配置上限に数える")]
         public void Stock_Placement_Counts_Toward_The_Deploy_Limit()
         {
-            var run = ClearWave1WithSword(deployLimit: 1);
+            var run = ClearStage1WithSword(deployLimit: 1);
             Place(run, "sword", 1, 0);
 
             Assert.That(run.Deployment.Select("archer"), Is.EqualTo(SummonResult.DeployLimitReached));
@@ -247,8 +323,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var run = Create();
             Place(run, "sword", 1, 0);
             run.Deployment.Upgrade("sword");
-            run.Start();
-            run.Advance(WaveSteps);
+            PlayStage(run);
 
             Place(run, "sword", 1, 0);
 
@@ -257,21 +332,20 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        public void Unused_Stock_Carries_Over_To_Later_Waves()
+        public void Unused_Stock_Carries_Over_To_Later_Stages()
         {
-            var run = ClearWave1WithSword();
-            run.Start();
+            var run = ClearStage1WithSword();
 
-            run.Advance(WaveSteps);
+            PlayStage(run);
 
-            Assert.That((run.Wave, run.Stock.Count("sword")), Is.EqualTo((3, 1)));
+            Assert.That((run.Stage, run.Stock.Count("sword")), Is.EqualTo((3, 1)));
         }
 
         [Test]
         [Description("plan C-3: ストック由来の味方の撤退も召喚コストを基準に返す")]
         public void Retreating_A_Stock_Unit_Refunds_Half_Its_Cost()
         {
-            var run = ClearWave1WithSword();
+            var run = ClearStage1WithSword();
             Place(run, "sword", 1, 0);
             var coins = _wallet.Coins;
 
@@ -284,8 +358,8 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("FR-033: 撃破ドロップは戦闘中に財布へ入る")]
         public void Drops_Go_Into_The_Wallet_During_The_Fight()
         {
-            // rich は倒されると必ず 2〜3 枚落とす。ウェーブも終わるのでライフボーナスは 0 にする。
-            var run = Create(coins: 100, lifeBonus: 0, waveRows: "1,0,rich,S1,g,0\n");
+            // rich は倒されると必ず 2〜3 枚落とす。
+            var run = Create(coins: 100, waveRows: "1,1,0,rich,S1,g,0\n1,1,5,fodder,S1,g,0\n");
             Place(run, "sword", 1, 0);
             var coins = _wallet.Coins;
             run.Start();
@@ -296,14 +370,28 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        public void Clearing_The_Last_Wave_Completes_The_Run()
+        [Description("FR-033: W2 の撃破ドロップも二重に数えず財布へ入る")]
+        public void Drops_Of_Wave_2_Are_Added_Once()
         {
-            var run = Create(waveCount: 1);
-            run.Start();
+            var run = Create(coins: 100, lifeBonus: 0, waveRows: "1,1,0,rich,S1,g,0\n1,2,0,rich,S1,g,0\n");
+            Place(run, "sword", 1, 0);
+            PlayWave(run);
+            var coins = _wallet.Coins;
 
-            run.Advance(WaveSteps);
+            PlayWave(run);
 
-            Assert.That((run.Wave, run.Phase), Is.EqualTo((1, WavePhase.Completed)));
+            Assert.That(_wallet.Coins - coins, Is.InRange(2, 3));
+        }
+
+        [Test]
+        [Description("AC-010: 最後のステージの最終ウェーブを終えるとクリア")]
+        public void Clearing_The_Last_Stage_Completes_The_Run()
+        {
+            var run = Create(stageCount: 1);
+
+            PlayStage(run);
+
+            Assert.That((run.Stage, run.Wave, run.Phase), Is.EqualTo((1, 2, WavePhase.Completed)));
         }
 
         [Test]
@@ -311,7 +399,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         public void Defeating_The_Final_Boss_Does_Not_Complete_The_Run_While_Enemies_Remain()
         {
             // ボス役の fodder は約 0.5 秒で剣士に倒される。雑魚は 5 秒に出る。
-            var run = Create(waveCount: 1, waveRows: "1,0,fodder,S1,g,1\n1,5,fodder,S1,g,0\n");
+            var run = Create(stageCount: 1, wavesPerStage: 1, waveRows: "1,1,0,fodder,S1,g,1\n1,1,5,fodder,S1,g,0\n");
             Place(run, "sword", 1, 0);
             run.Start();
 

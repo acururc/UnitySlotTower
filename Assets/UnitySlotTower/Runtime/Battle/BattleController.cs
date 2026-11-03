@@ -9,9 +9,9 @@ using UnitySlotTower.Slot;
 namespace UnitySlotTower.Battle
 {
     /// <summary>
-    /// ウェーブの進行（<see cref="WaveRun"/>）を組み立てて実時間で進める。財布はスロット筐体と共有する（T301）。
+    /// ステージとウェーブの進行（<see cref="WaveRun"/>）を組み立てて実時間で進める。財布はスロット筐体と共有する（T301）。
     /// スロット操作中も止まらない（FR-011）。戦闘は ▶（<see cref="StartWave"/>）で始める。autoStart なら準備に入るとすぐ始める。
-    /// ウェーブ n はマップ w{n} で戦い、ウェーブが始まるとフィールドの表示を差し替える（T305）。
+    /// ステージ n はマップ s{n} で戦い、ステージが始まるとフィールドの表示を差し替える（T311）。
     /// </summary>
     [DefaultExecutionOrder(-10)]
     public sealed class BattleController : MonoBehaviour
@@ -27,14 +27,11 @@ namespace UnitySlotTower.Battle
         [SerializeField] private BattleFieldView fieldView;
         [Tooltip("所持コインを共有するスロット筐体。")]
         [SerializeField] private SlotCabinet slotCabinet;
-        [Tooltip("最後のウェーブの番号。waves.csv とフィールドのマップの表にそのウェーブまでが要る。")]
-        [SerializeField] private int waveCount = 5;
         [Tooltip("準備に入ったらすぐ戦闘を始める（確認用。通常は ▶ で始める）。")]
         [SerializeField] private bool autoStart;
 
         private SimulationClock _clock;
 
-        public int WaveCount => waveCount;
         public UnitTable Units { get; private set; }
         public WaveRun Run { get; private set; }
         public CoinWallet Wallet => Run?.Wallet;
@@ -69,14 +66,12 @@ namespace UnitySlotTower.Battle
                 var enemies = EnemyTable.Load(Parse(EnemyTable.FileName, enemiesTable));
                 var waves = Parse(WaveSchedule.FileName, wavesTable);
                 var wallet = slotCabinet.Wallet;
-                Run = new WaveRun(config, Units, ranges, new UnitUpgrades(upgradeTable, wallet), wallet, waveCount,
-                    wave =>
-                    {
-                        var map = wave == 1 ? fieldView.Map : fieldView.LoadWaveMap(wave);
-                        return new WaveStage(map, WaveSchedule.Load(waves, wave, map, enemies));
-                    },
+                Run = new WaveRun(config, Units, ranges, new UnitUpgrades(upgradeTable, wallet), wallet,
+                    WaveSchedule.StageCount, WaveSchedule.WavesPerStage,
+                    stage => stage == 1 ? fieldView.Map : fieldView.LoadStageMap(stage),
+                    (stage, wave, map) => WaveSchedule.Load(waves, stage, wave, map, enemies),
                     new SeededRandom((ulong)DateTime.UtcNow.Ticks));
-                Run.WaveBegan += OnWaveBegan;
+                Run.StageBegan += OnStageBegan;
             }
             catch (Exception e)
             {
@@ -128,11 +123,11 @@ namespace UnitySlotTower.Battle
 
             if (Run != null)
             {
-                Run.WaveBegan -= OnWaveBegan;
+                Run.StageBegan -= OnStageBegan;
             }
         }
 
-        private void OnWaveBegan(int wave) => fieldView.Show(Run.Map);
+        private void OnStageBegan() => fieldView.Show(Run.Map);
 
         private void Update()
         {

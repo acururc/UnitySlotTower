@@ -8,13 +8,12 @@ namespace UnitySlotTower.Editor.Setup
 {
     /// <summary>
     /// Game シーンの仮の地面（M0）を、マップ CSV から作る戦闘フィールド（T201）に置き換える。
-    /// ウェーブごとのマップ（T305）は既存のフィールドにも Assign Wave Maps で設定できる。
+    /// ステージごとのマップ（T311）は既存のフィールドにも Assign Stage Maps で設定できる。
     /// </summary>
     internal static class BattleFieldSetup
     {
         private const string TableFolder = "Assets/UnitySlotTower/Data/Tables/";
         private const string PlaceholderName = "Battle Field (Graybox)";
-        private const int WaveCount = 5;
 
         [MenuItem("Tools/UnitySlotTower/Setup/Build Battle Field")]
         private static void Build()
@@ -36,8 +35,8 @@ namespace UnitySlotTower.Editor.Setup
             Debug.Log("[SlotTower Setup] 戦闘フィールドを作成した。");
         }
 
-        [MenuItem("Tools/UnitySlotTower/Setup/Assign Wave Maps")]
-        private static void AssignWaveMaps()
+        [MenuItem("Tools/UnitySlotTower/Setup/Assign Stage Maps")]
+        private static void AssignStageMaps()
         {
             var field = Object.FindAnyObjectByType<BattleFieldView>(FindObjectsInactive.Include);
             if (field == null)
@@ -47,31 +46,23 @@ namespace UnitySlotTower.Editor.Setup
             }
 
             AssignTables(field);
-            Debug.Log($"[SlotTower Setup] 戦闘フィールドに W1〜W{WaveCount} のマップとウェーブ数を設定した。");
+            Debug.Log($"[SlotTower Setup] 戦闘フィールドに S1〜S{WaveSchedule.StageCount} のマップを設定した。");
         }
 
         private static void AssignTables(BattleFieldView field)
         {
             var serialized = new SerializedObject(field);
             var maps = serialized.FindProperty("mapTables");
-            maps.arraySize = WaveCount;
-            for (var i = 0; i < WaveCount; i++)
+            maps.arraySize = WaveSchedule.StageCount;
+            for (var i = 0; i < WaveSchedule.StageCount; i++)
             {
-                maps.GetArrayElementAtIndex(i).objectReferenceValue =
-                    AssetDatabase.LoadAssetAtPath<TextAsset>(TableFolder + BattleMap.MapFileName($"w{i + 1}"));
+                maps.GetArrayElementAtIndex(i).objectReferenceValue = AssetDatabase.LoadAssetAtPath<TextAsset>(
+                    TableFolder + BattleMap.MapFileName(WaveSchedule.MapId(i + 1)));
             }
 
             serialized.FindProperty("pathsTable").objectReferenceValue =
                 AssetDatabase.LoadAssetAtPath<TextAsset>(TableFolder + BattleMap.PathsFileName);
             serialized.ApplyModifiedPropertiesWithoutUndo();
-
-            var battle = field.GetComponent<BattleController>();
-            if (battle != null)
-            {
-                var battleSerialized = new SerializedObject(battle);
-                battleSerialized.FindProperty("waveCount").intValue = WaveCount;
-                battleSerialized.ApplyModifiedPropertiesWithoutUndo();
-            }
 
             EditorSceneManager.MarkSceneDirty(field.gameObject.scene);
             EditorSceneManager.SaveScene(field.gameObject.scene);

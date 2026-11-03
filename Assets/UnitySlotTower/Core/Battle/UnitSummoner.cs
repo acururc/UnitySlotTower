@@ -119,6 +119,9 @@ namespace UnitySlotTower.Core.Battle
             return _cooldownSteps[_indices[unitId]] * SimulationClock.StepSeconds;
         }
 
+        /// <summary>全種類の待ち時間を 0 にする（ステージ内の次のウェーブの準備、plan 4章）。</summary>
+        public void ResetCooldowns() => Array.Clear(_cooldownSteps, 0, _cooldownSteps.Length);
+
         public void Advance(int steps)
         {
             for (var i = 0; i < _cooldownSteps.Length; i++)

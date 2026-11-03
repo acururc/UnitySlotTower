@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Simulation;
@@ -56,7 +57,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             "archer,1,1,1,1,0\narcher,2,1.2,2,1,30\n" +
             "healer,1,1,1,1,0\nhealer,2,1,1.5,1,30\n";
 
-        public const string WavesHeader = "wave,time,enemy_id,spawn,path_id,is_boss\n";
+        public const string WavesHeader = "stage,wave,time,enemy_id,spawn,path_id,is_boss\n";
 
         public static BattleMap LoadMap() =>
             BattleMap.Load("m", Map, CsvParser.Parse(BattleMap.PathsFileName, Paths));
@@ -71,8 +72,14 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         public static UnitUpgradeTable LoadUpgrades(string csv = Upgrades) =>
             UnitUpgradeTable.Load(CsvParser.Parse(UnitUpgradeTable.FileName, csv), LoadUnits());
 
+        /// <summary>ステージ1のウェーブ。行は stage 列を省いて書く（wave,time,enemy_id,spawn,path_id,is_boss）。</summary>
         public static WaveSchedule LoadWave(string rows, int wave = 1) =>
-            WaveSchedule.Load(CsvParser.Parse(WaveSchedule.FileName, WavesHeader + rows), wave, LoadMap(), LoadEnemies());
+            LoadStageWave(Regex.Replace(rows, "^(?=.)", "1,", RegexOptions.Multiline), 1, wave);
+
+        /// <summary>行は stage 列から書く。</summary>
+        public static WaveSchedule LoadStageWave(string rows, int stage, int wave) =>
+            WaveSchedule.Load(CsvParser.Parse(WaveSchedule.FileName, WavesHeader + rows), stage, wave, LoadMap(),
+                LoadEnemies());
 
         /// <summary>既定はライフ10・シード1の戦闘。</summary>
         public static Battlefield CreateField(string waveRows, int life = 10, IRandom random = null) =>

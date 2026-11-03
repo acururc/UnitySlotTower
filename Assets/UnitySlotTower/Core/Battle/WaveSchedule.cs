@@ -14,7 +14,7 @@ namespace UnitySlotTower.Core.Battle
             IsBoss = isBoss;
         }
 
-        /// <summary>ウェーブ開始（戦闘開始）からの秒数。</summary>
+        /// <summary>そのウェーブの戦闘開始からの秒数。</summary>
         public double Time { get; }
 
         public EnemyDefinition Enemy { get; }
@@ -22,19 +22,31 @@ namespace UnitySlotTower.Core.Battle
         public bool IsBoss { get; }
     }
 
-    /// <summary>1 ウェーブ分の出現予定（plan 6・7章）。ウェーブ n はマップ w{n} で戦う。</summary>
+    /// <summary>
+    /// 1 ウェーブ分の出現予定（FR-010、plan 6・7章）。ゲームは <see cref="StageCount"/> ステージ × <see cref="WavesPerStage"/> ウェーブで、
+    /// ステージ n はマップ s{n} で戦う。
+    /// </summary>
     public sealed class WaveSchedule
     {
         public const string FileName = "waves.csv";
+        public const int StageCount = 3;
+        public const int WavesPerStage = 2;
 
         private readonly List<WaveSpawn> _spawns = new List<WaveSpawn>();
 
-        private WaveSchedule(int wave)
+        private WaveSchedule(int stage, int wave)
         {
+            Stage = stage;
             Wave = wave;
         }
 
+        public int Stage { get; }
+
+        /// <summary>ステージ内のウェーブ番号（1 から）。</summary>
         public int Wave { get; }
+
+        /// <summary>ステージ n のマップの id。</summary>
+        public static string MapId(int stage) => $"s{stage}";
 
         /// <summary>出現時刻の早い順（同時刻は CSV の行順）。</summary>
         public IReadOnlyList<WaveSpawn> Spawns => _spawns;
@@ -43,12 +55,12 @@ namespace UnitySlotTower.Core.Battle
         /// 不正な行（未知の敵・マップにない経路・出現口の食い違い・空中フラグの食い違い）は
         /// ファイル名・行・列つきの <see cref="CsvFormatException"/> にする。
         /// </summary>
-        public static WaveSchedule Load(CsvTable table, int wave, BattleMap map, EnemyTable enemies)
+        public static WaveSchedule Load(CsvTable table, int stage, int wave, BattleMap map, EnemyTable enemies)
         {
-            var schedule = new WaveSchedule(wave);
+            var schedule = new WaveSchedule(stage, wave);
             foreach (var row in table.Rows)
             {
-                if (row.GetInt("wave") != wave)
+                if (row.GetInt("stage") != stage || row.GetInt("wave") != wave)
                 {
                     continue;
                 }

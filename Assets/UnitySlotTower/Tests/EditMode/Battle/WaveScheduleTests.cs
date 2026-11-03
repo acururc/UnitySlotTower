@@ -38,6 +38,17 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
+        [Description("FR-010: ステージ番号とウェーブ番号の両方が合う行だけを読む")]
+        public void Only_Rows_Of_The_Stage_And_Wave_Are_Read()
+        {
+            var wave = BattleFixtures.LoadStageWave(
+                "1,2,0,melee,S1,g,0\n2,1,0,ranged,S1,g,0\n2,2,0,air,S2,a,0\n2,2,1,rich,S1,g,0\n", 2, 2);
+
+            Assert.That((wave.Stage, wave.Wave, string.Join(",", wave.Spawns.Select(s => s.Enemy.Id))),
+                Is.EqualTo((2, 2, "air,rich")));
+        }
+
+        [Test]
         public void Spawn_Resolves_The_Path_Of_The_Map()
         {
             var spawn = BattleFixtures.LoadWave("1,0,air,S2,a,1\n").Spawns.Single();
@@ -50,7 +61,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             var error = LoadError("1,0,melee,S1,g,0\n1,0,dragon,S1,g,0\n");
 
-            Assert.That((error.Line, error.Column), Is.EqualTo((3, 3)));
+            Assert.That((error.Line, error.Column), Is.EqualTo((3, 4)));
         }
 
         [Test]
@@ -58,7 +69,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             var error = LoadError("1,0,melee,S1,w1_g1,0\n");
 
-            Assert.That((error.Line, error.Column), Is.EqualTo((2, 5)));
+            Assert.That((error.Line, error.Column), Is.EqualTo((2, 6)));
         }
 
         [Test]
@@ -66,7 +77,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             var error = LoadError("1,0,melee,S2,g,0\n");
 
-            Assert.That((error.Line, error.Column), Is.EqualTo((2, 4)));
+            Assert.That((error.Line, error.Column), Is.EqualTo((2, 5)));
         }
 
         [Test]
@@ -75,7 +86,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             var error = LoadError("1,0,air,S1,g,0\n");
 
-            Assert.That((error.Line, error.Column), Is.EqualTo((2, 5)));
+            Assert.That((error.Line, error.Column), Is.EqualTo((2, 6)));
         }
 
         [Test]
@@ -83,21 +94,31 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             var error = LoadError("1,0,melee,S2,a,0\n");
 
-            Assert.That((error.Line, error.Column), Is.EqualTo((2, 5)));
+            Assert.That((error.Line, error.Column), Is.EqualTo((2, 6)));
         }
 
         [Test]
-        public void Project_Wave_1_Loads_On_Map_W1()
+        [Description("FR-010: 3ステージ × 2ウェーブのどれも、そのステージのマップで敵が出る")]
+        public void Project_Every_Stage_Wave_Loads_On_Its_Map()
         {
             var tables = TablePaths.ReadAll();
-            var map = BattleMap.Load("w1", tables[BattleMap.MapFileName("w1")],
-                CsvParser.Parse(BattleMap.PathsFileName, tables[BattleMap.PathsFileName]));
+            var paths = CsvParser.Parse(BattleMap.PathsFileName, tables[BattleMap.PathsFileName]);
+            var waves = CsvParser.Parse(WaveSchedule.FileName, tables[WaveSchedule.FileName]);
             var enemies = EnemyTable.Load(CsvParser.Parse(EnemyTable.FileName, tables[EnemyTable.FileName]));
+            var counts = new int[WaveSchedule.StageCount * WaveSchedule.WavesPerStage];
 
-            var wave = WaveSchedule.Load(CsvParser.Parse(WaveSchedule.FileName, tables[WaveSchedule.FileName]), 1, map,
-                enemies);
+            for (var stage = 1; stage <= WaveSchedule.StageCount; stage++)
+            {
+                var id = WaveSchedule.MapId(stage);
+                var map = BattleMap.Load(id, tables[BattleMap.MapFileName(id)], paths);
+                for (var wave = 1; wave <= WaveSchedule.WavesPerStage; wave++)
+                {
+                    counts[(stage - 1) * WaveSchedule.WavesPerStage + wave - 1] =
+                        WaveSchedule.Load(waves, stage, wave, map, enemies).Spawns.Count;
+                }
+            }
 
-            Assert.That(wave.Spawns.Count, Is.GreaterThan(0));
+            Assert.That((counts.Length, counts.All(c => c > 0)), Is.EqualTo((6, true)));
         }
     }
 }

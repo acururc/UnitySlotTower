@@ -232,7 +232,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That(
                 (Text(icon, "Cost"), Text(status, "Life"), Text(status, "Coins"), Text(status, "Wave"), Text(upgrade, "Cost")),
                 Is.EqualTo((_battle.Units.Get("archer").Cost.ToString(), _battle.Field.Life.ToString(),
-                    _battle.Wallet.Coins.ToString(), $"1/{_battle.WaveCount}",
+                    _battle.Wallet.Coins.ToString(), "1-1",
                     _battle.Upgrades.NextCost("archer").ToString())));
         }
 

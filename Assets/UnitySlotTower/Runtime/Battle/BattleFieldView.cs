@@ -8,14 +8,14 @@ namespace UnitySlotTower.Battle
     /// <summary>
     /// 上部の戦闘フィールドの仮表示（T201、plan 2・7章）。マップ CSV のマスを 1 単位の箱で並べ、経路を線で示す。
     /// グリッドの中心をこのオブジェクトの原点に置き、CSV の上の行ほど奥（+z）にする。
-    /// ウェーブ n のマップは maps/w{n}.csv（T305）。<see cref="Show"/> で表示を差し替える。
+    /// ステージ n のマップは maps/s{n}.csv（T311）。<see cref="Show"/> で表示を差し替える。
     /// </summary>
     public sealed class BattleFieldView : MonoBehaviour
     {
         private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
 
         [Header("Tables")]
-        [Tooltip("ウェーブ順のマップ（maps/w1.csv, w2.csv, …）。最初のマップを起動時に表示する。")]
+        [Tooltip("ステージ順のマップ（maps/s1.csv, s2.csv, s3.csv）。最初のマップを起動時に表示する。")]
         [SerializeField] private TextAsset[] mapTables;
         [SerializeField] private TextAsset pathsTable;
 
@@ -72,7 +72,7 @@ namespace UnitySlotTower.Battle
 
                 _paths = CsvParser.Parse(BattleMap.PathsFileName, pathsTable.text);
                 _block = new MaterialPropertyBlock();
-                Show(LoadWaveMap(1));
+                Show(LoadStageMap(1));
             }
             catch (Exception e)
             {
@@ -81,19 +81,19 @@ namespace UnitySlotTower.Battle
             }
         }
 
-        /// <summary>ウェーブ番号（1 から）のマップを読む。表示は変えない。</summary>
-        public BattleMap LoadWaveMap(int wave)
+        /// <summary>ステージ番号（1 から）のマップを読む。表示は変えない。</summary>
+        public BattleMap LoadStageMap(int stage)
         {
-            var index = wave - 1;
+            var index = stage - 1;
             if (mapTables == null || index < 0 || index >= mapTables.Length || mapTables[index] == null)
             {
-                throw new InvalidOperationException($"ウェーブ {wave} のマップの表が設定されていない");
+                throw new InvalidOperationException($"ステージ {stage} のマップの表が設定されていない");
             }
 
-            return BattleMap.Load($"w{wave}", mapTables[index].text, _paths);
+            return BattleMap.Load(WaveSchedule.MapId(stage), mapTables[index].text, _paths);
         }
 
-        /// <summary>マップの表示を作り直す（ウェーブの切り替え）。</summary>
+        /// <summary>マップの表示を作り直す（ステージの切り替え）。</summary>
         public void Show(BattleMap map)
         {
             if (map == Map)

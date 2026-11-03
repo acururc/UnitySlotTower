@@ -151,31 +151,31 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Unknown_Map_Tile_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["maps/w1.csv"] = "S1,G,Q\nX,G,E\n";
+            files["maps/s1.csv"] = "S1,G,Q\nX,G,E\n";
 
             var report = GameDataValidator.ValidateAll(files);
 
-            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("maps/w1.csv", 1, 3)));
+            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("maps/s1.csv", 1, 3)));
         }
 
         [Test]
         public void Wave_Spawn_Not_On_Its_Path_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["waves.csv"] += "1,0,melee,S2,w1_g1,0\n";
+            files["waves.csv"] += "1,1,0,melee,S2,s1_g1,0\n";
             var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
 
             var report = GameDataValidator.ValidateAll(files);
 
-            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("waves.csv", line, 4)));
+            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("waves.csv", line, 5)));
         }
 
         [Test]
         public void Map_Without_Paths_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["map_paths.csv"] = WithoutLinesStartingWith(files["map_paths.csv"], "w5,");
-            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "5,");
+            files["map_paths.csv"] = WithoutLinesStartingWith(files["map_paths.csv"], "s3,");
+            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "3,");
 
             var report = GameDataValidator.ValidateAll(files);
 
@@ -185,8 +185,9 @@ namespace UnitySlotTower.Tests.EditMode.Data
         [Test]
         public void Wave_Without_Enemies_Is_An_Error()
         {
+            // S3 の W1 だけを消す（ステージ内のウェーブごとに確かめる）。
             var files = TablePaths.ReadAll();
-            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "5,");
+            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "3,1,");
 
             var report = GameDataValidator.ValidateAll(files);
 

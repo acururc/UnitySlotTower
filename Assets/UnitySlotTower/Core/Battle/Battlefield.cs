@@ -5,13 +5,13 @@ using UnitySlotTower.Core.Simulation;
 namespace UnitySlotTower.Core.Battle
 {
     /// <summary>
-    /// 1 ウェーブの戦闘（FR-013, FR-024, FR-027, FR-028, FR-030〜033）。<see cref="WaveSchedule"/> どおりに敵を出し、経路を進め、
+    /// 1 ステージの戦闘（FR-013, FR-024, FR-027, FR-028, FR-030〜033）。<see cref="WaveSchedule"/> どおりに敵を出し、経路を進め、
     /// 地上の敵を味方にブロックさせ、敵と味方を攻撃させ（回復・強化を含む）、HP0 になった側を消す。ゴールに着いた敵はライフを減らし、
     /// 倒された敵はコインを落とす。1/60 秒の固定ステップで進め、ライフ0（ゲームオーバー）で止まる。
     /// </summary>
     public sealed class Battlefield
     {
-        private readonly WaveSchedule _wave;
+        private WaveSchedule _wave;
         private readonly UnitRanges _ranges;
         private readonly IRandom _random;
         private readonly List<BattleEnemy> _enemies = new List<BattleEnemy>();
@@ -41,7 +41,7 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>撃破ドロップで落ちたコインの合計（FR-033。財布への加算は T301）。</summary>
         public int DroppedCoins { get; private set; }
 
-        /// <summary>戦闘開始から進めたステップ数。</summary>
+        /// <summary>いまのウェーブの戦闘開始から進めたステップ数。</summary>
         public long Tick { get; private set; }
 
         /// <summary>フィールド上の敵（出現順）。ゴールに着いた敵は消える。</summary>
@@ -55,6 +55,21 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>出現予定の敵がすべて出て、フィールドに敵が残っていない（ゲームオーバーでない）。</summary>
         public bool IsCleared => !IsGameOver && _nextSpawn >= _wave.Spawns.Count && _enemies.Count == 0;
+
+        /// <summary>
+        /// 同じステージの次のウェーブに入る（FR-010）。味方とその HP・ライフ・撃破ドロップの合計はそのままで、出現予定と経過ステップだけを入れ替える。
+        /// </summary>
+        public void BeginWave(WaveSchedule wave)
+        {
+            if (!IsCleared)
+            {
+                throw new InvalidOperationException("いまのウェーブが終わっていない");
+            }
+
+            _wave = wave;
+            _nextSpawn = 0;
+            Tick = 0;
+        }
 
         /// <summary>配置できるマスかは呼び出し側（<see cref="UnitPlacement"/>、T208）で判定する。</summary>
         /// <param name="upgrade">その種類のいまの強化段階（FR-026）。null なら段階1。</param>

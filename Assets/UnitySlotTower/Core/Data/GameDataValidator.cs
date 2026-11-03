@@ -9,8 +9,6 @@ namespace UnitySlotTower.Core.Data
     /// </summary>
     public static class GameDataValidator
     {
-        public const int MapCount = 5;
-
         private static readonly string[] Settings =
             { "setting1", "setting2", "setting3", "setting4", "setting5", "setting6" };
 
@@ -85,7 +83,8 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Int("x", 0, 99),
                 ColumnRule.Int("y", 0, 99)),
             new TableSchema("waves.csv", null,
-                ColumnRule.Int("wave", 1, MapCount),
+                ColumnRule.Int("stage", 1, WaveSchedule.StageCount),
+                ColumnRule.Int("wave", 1, WaveSchedule.WavesPerStage),
                 ColumnRule.Float("time", 0, 3600),
                 ColumnRule.Id("enemy_id"),
                 ColumnRule.Id("spawn"),
@@ -138,9 +137,9 @@ namespace UnitySlotTower.Core.Data
             }
 
             var maps = new List<string>();
-            for (var i = 1; i <= MapCount; i++)
+            for (var i = 1; i <= WaveSchedule.StageCount; i++)
             {
-                var name = $"w{i}";
+                var name = WaveSchedule.MapId(i);
                 if (ValidateMap(files, $"maps/{name}.csv", report))
                 {
                     maps.Add(name);
@@ -280,7 +279,10 @@ namespace UnitySlotTower.Core.Data
             return loaded;
         }
 
-        /// <summary>ウェーブ n の行が、マップ w{n} の経路・出現口・空中フラグと合うかを <see cref="WaveSchedule"/> で確かめる。</summary>
+        /// <summary>
+        /// ステージ n の各ウェーブの行が、マップ s{n} の経路・出現口・空中フラグと合うかを <see cref="WaveSchedule"/> で確かめる。
+        /// 敵のいないウェーブもエラーにする。
+        /// </summary>
         private static void ValidateWaves(CsvTable waves, CsvTable enemyTable, Dictionary<string, BattleMap> maps,
             ValidationReport report)
         {
@@ -295,23 +297,26 @@ namespace UnitySlotTower.Core.Data
                 return;
             }
 
-            for (var wave = 1; wave <= MapCount; wave++)
+            for (var stage = 1; stage <= WaveSchedule.StageCount; stage++)
             {
-                if (!maps.TryGetValue($"w{wave}", out var map))
+                if (!maps.TryGetValue(WaveSchedule.MapId(stage), out var map))
                 {
                     continue;
                 }
 
-                try
+                for (var wave = 1; wave <= WaveSchedule.WavesPerStage; wave++)
                 {
-                    if (WaveSchedule.Load(waves, wave, map, enemies).Spawns.Count == 0)
+                    try
                     {
-                        report.Add(new CsvError(waves.FileName, 0, 0, $"ウェーブ {wave} の敵がない"));
+                        if (WaveSchedule.Load(waves, stage, wave, map, enemies).Spawns.Count == 0)
+                        {
+                            report.Add(new CsvError(waves.FileName, 0, 0, $"ステージ {stage} のウェーブ {wave} の敵がない"));
+                        }
                     }
-                }
-                catch (CsvFormatException ex)
-                {
-                    report.Add(ex.Error);
+                    catch (CsvFormatException ex)
+                    {
+                        report.Add(ex.Error);
+                    }
                 }
             }
         }

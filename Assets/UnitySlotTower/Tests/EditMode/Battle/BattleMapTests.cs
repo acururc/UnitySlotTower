@@ -25,31 +25,41 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
         [Test]
         [Description("plan 7章: グリッドは 9列×6行")]
-        public void Project_W1_Is_9_By_6()
+        public void Project_Stage_Maps_Are_9_By_6()
         {
-            var map = ProjectMap("w1");
+            var sizes = new[] { "s1", "s2", "s3" }.Select(ProjectMap).Select(m => (m.Width, m.Height));
 
-            Assert.That((map.Width, map.Height), Is.EqualTo((9, 6)));
+            Assert.That(sizes, Is.EqualTo(new[] { (9, 6), (9, 6), (9, 6) }));
         }
 
         [Test]
-        public void Project_W1_Reads_Tiles_From_The_Grid()
+        public void Project_S1_Reads_Tiles_From_The_Grid()
         {
-            var map = ProjectMap("w1");
+            var map = ProjectMap("s1");
 
-            Assert.That(new[] { (0, 0), (1, 0), (2, 0), (0, 2), (8, 2) }.Select(p => map.TileAt(new GridPoint(p.Item1, p.Item2))),
+            Assert.That(new[] { (0, 0), (1, 0), (1, 1), (0, 1), (8, 5) }.Select(p => map.TileAt(new GridPoint(p.Item1, p.Item2))),
                 Is.EqualTo(new[] { MapTile.Blocked, MapTile.HighGround, MapTile.Ground, MapTile.Spawn, MapTile.Goal }));
         }
 
         [Test]
-        [Description("plan 7章: W1 は出現口1・一本道")]
-        public void Project_W1_Has_One_Ground_Path_From_Spawn_1_To_Goal()
+        [Description("plan 7章: S1 は出現口1・S字の一本道（旧 w2）")]
+        public void Project_S1_Has_One_Ground_Path_From_Spawn_1_To_Goal()
         {
-            var map = ProjectMap("w1");
+            var map = ProjectMap("s1");
             var path = map.Paths.Single();
 
             Assert.That((path.IsAir, map.SpawnNumberAt(path.Cells[0]), map.TileAt(path.Cells[path.Cells.Count - 1]), path.Cells.Count),
-                Is.EqualTo((false, 1, MapTile.Goal, 9)));
+                Is.EqualTo((false, 1, MapTile.Goal, 21)));
+        }
+
+        [Test]
+        [Description("plan 7章: S2 は出現口2つ＋空中路、S3 は地上路2本＋空中路")]
+        public void Project_S2_And_S3_Have_Two_Ground_Paths_And_One_Air_Path()
+        {
+            var counts = new[] { "s2", "s3" }.Select(ProjectMap)
+                .Select(m => (m.Paths.Count(p => !p.IsAir), m.Paths.Count(p => p.IsAir)));
+
+            Assert.That(counts, Is.EqualTo(new[] { (2, 1), (2, 1) }));
         }
 
         [Test]
@@ -123,7 +133,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         public void Project_Validation_Reports_A_Ground_Path_Over_High_Ground()
         {
             var files = TablePaths.ReadAll();
-            files["map_paths.csv"] += "w1,bad,0,1,0,2\nw1,bad,0,2,1,2\nw1,bad,0,3,1,1\n";
+            files["map_paths.csv"] += "s1,bad,0,1,0,1\ns1,bad,0,2,1,1\ns1,bad,0,3,1,0\n";
 
             var report = GameDataValidator.ValidateAll(files);
 

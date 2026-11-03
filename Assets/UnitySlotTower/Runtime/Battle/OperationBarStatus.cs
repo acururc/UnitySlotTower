@@ -6,7 +6,7 @@ using UnitySlotTower.Core.Battle;
 namespace UnitySlotTower.Battle
 {
     /// <summary>
-    /// 操作バーの状態表示とボタン（T308、plan 2章）: ライフ・所持コイン・ウェーブ番号（n/最終）、
+    /// 操作バーの状態表示とボタン（T308、plan 2章）: ライフ・所持コイン・ステージ-ウェーブ番号（例 2-1、T312）、
     /// ▶（準備中だけ出す）・撤退（味方を選んでいるときだけ出す）・一時停止（一時停止中は色を変える）。
     /// </summary>
     public sealed class OperationBarStatus : MonoBehaviour
@@ -25,6 +25,7 @@ namespace UnitySlotTower.Battle
         private Color _pauseNormalColor;
         private int _shownLife = -1;
         private int _shownCoins = -1;
+        private int _shownStage = -1;
         private int _shownWave = -1;
         private bool _shownPaused;
 
@@ -57,10 +58,11 @@ namespace UnitySlotTower.Battle
 
             SetNumber(lifeText, run.Field.Life, ref _shownLife);
             SetNumber(coinText, run.Wallet.Coins, ref _shownCoins);
-            if (run.Wave != _shownWave)
+            if (run.Stage != _shownStage || run.Wave != _shownWave)
             {
+                _shownStage = run.Stage;
                 _shownWave = run.Wave;
-                waveText.SetText("{0}/{1}", (float)run.Wave, battle.WaveCount);
+                waveText.SetText("{0}-{1}", (float)run.Stage, run.Wave);
             }
 
             SetActive(startButton, run.Phase == WavePhase.Preparing);

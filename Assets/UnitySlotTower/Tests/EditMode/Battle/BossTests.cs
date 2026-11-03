@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
@@ -113,26 +115,33 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("FR-010: W1〜4 の最後に中ボス、W5 の最後に最終ボス")]
-        public void Project_Waves_End_With_Their_Boss()
+        [Description("FR-010: ボスはステージの最終ウェーブの最後だけ。S1・S2 は中ボス、S3 は最終ボス")]
+        public void Project_Stages_End_With_Their_Boss()
         {
             var tables = TablePaths.ReadAll();
             var paths = CsvParser.Parse(BattleMap.PathsFileName, tables[BattleMap.PathsFileName]);
             var waves = CsvParser.Parse(WaveSchedule.FileName, tables[WaveSchedule.FileName]);
             var enemies = ProjectEnemies();
-            var lastSpawns = new (string, bool)[5];
-            for (var wave = 1; wave <= 5; wave++)
+            var bosses = new List<(int, int, string)>();
+            var lastSpawns = new List<(string, bool)>();
+            for (var stage = 1; stage <= WaveSchedule.StageCount; stage++)
             {
-                var map = BattleMap.Load($"w{wave}", tables[BattleMap.MapFileName($"w{wave}")], paths);
-                var spawns = WaveSchedule.Load(waves, wave, map, enemies).Spawns;
-                var last = spawns[spawns.Count - 1];
-                lastSpawns[wave - 1] = (last.Enemy.Id, last.IsBoss);
+                var id = WaveSchedule.MapId(stage);
+                var map = BattleMap.Load(id, tables[BattleMap.MapFileName(id)], paths);
+                for (var wave = 1; wave <= WaveSchedule.WavesPerStage; wave++)
+                {
+                    var spawns = WaveSchedule.Load(waves, stage, wave, map, enemies).Spawns;
+                    bosses.AddRange(spawns.Where(s => s.IsBoss).Select(s => (stage, wave, s.Enemy.Id)));
+                    if (wave == WaveSchedule.WavesPerStage)
+                    {
+                        var last = spawns[spawns.Count - 1];
+                        lastSpawns.Add((last.Enemy.Id, last.IsBoss));
+                    }
+                }
             }
 
-            Assert.That(lastSpawns, Is.EqualTo(new[]
-            {
-                ("mid_boss", true), ("mid_boss", true), ("mid_boss", true), ("mid_boss", true), ("final_boss", true),
-            }));
+            Assert.That(bosses, Is.EqualTo(new[] { (1, 2, "mid_boss"), (2, 2, "mid_boss"), (3, 2, "final_boss") }));
+            Assert.That(lastSpawns, Is.EqualTo(new[] { ("mid_boss", true), ("mid_boss", true), ("final_boss", true) }));
         }
     }
 }
