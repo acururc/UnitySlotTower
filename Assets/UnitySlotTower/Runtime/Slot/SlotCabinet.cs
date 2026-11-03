@@ -81,6 +81,40 @@ namespace UnitySlotTower.Slot
         /// <summary>最後のリールが止まって図柄が揃ったとき（払い出しの後）に、その図柄を通知する（FR-042、T314）。</summary>
         public event Action<SlotSymbol> Aligned;
 
+        /// <summary>このプレイの難易度のハズレ率（0〜1、FR-045）。カスタム画面の表示に使う。</summary>
+        public double MissRate { get; private set; }
+
+        /// <summary>いま3本のリールに使っている配列。カスタムで確定するまでは既定配列（slot_default_reel.csv）。</summary>
+        public ReelLayout Layout => _pendingLayout ?? _machine?.Layout;
+
+        /// <summary>
+        /// カスタムで確定した配列を3本すべてに使う（FR-046）。リールが回っていればすべて止まってから替える
+        /// （回転中のゲームは前の配列のまま終える）。
+        /// </summary>
+        public void ApplyLayout(ReelLayout layout)
+        {
+            _pendingLayout = layout ?? throw new ArgumentNullException(nameof(layout));
+            ApplyPendingLayout();
+        }
+
+        private ReelLayout _pendingLayout;
+
+        private void ApplyPendingLayout()
+        {
+            if (_pendingLayout == null || _machine == null || _machine.IsSpinning || AnyReelSpinning())
+            {
+                return;
+            }
+
+            _machine.ChangeLayout(_pendingLayout);
+            for (var i = 0; i < reels.Length; i++)
+            {
+                reels[i].Initialize(_pendingLayout, 0);
+            }
+
+            _pendingLayout = null;
+        }
+
         private void Awake()
         {
             setting = GameSession.SelectedSetting ?? setting;
@@ -97,9 +131,10 @@ namespace UnitySlotTower.Slot
                     throw new InvalidOperationException($"{ReelLayout.FileName} が配列の条件（D-46）を満たさない");
                 }
 
+                MissRate = settings.MissRate(setting);
                 _wallet = new CoinWallet(config.InitialCoins);
                 _wait = new SlotWait(rules.WaitSeconds);
-                _machine = new SlotMachine(layout, settings.MissRate(setting), _wallet, config.Bet, rules,
+                _machine = new SlotMachine(layout, MissRate, _wallet, config.Bet, rules,
                     RandomOverride ?? new SeededRandom((ulong)DateTime.UtcNow.Ticks));
                 _machine.Aligned += symbol => Aligned?.Invoke(symbol);
             }
@@ -201,8 +236,10 @@ namespace UnitySlotTower.Slot
 
         private void Update()
         {
+            ApplyPendingLayout();
             var now = Time.timeAsDouble;
-            if (_wait.Consume(now))
+            // 操作を止めている間（一時停止・カスタム中）は、待っていたレバーも回さない。
+            if (!InputLocked && _wait.Consume(now))
             {
                 if (_machine.TryLever())
                 {

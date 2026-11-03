@@ -104,7 +104,7 @@ namespace UnitySlotTower.Battle
         public void SelectSlot(int slot)
         {
             var deployment = battle.Deployment;
-            if (deployment == null || battle.IsPaused || slot < 0 || slot >= battle.Units.All.Count)
+            if (deployment == null || battle.IsInputBlocked || slot < 0 || slot >= battle.Units.All.Count)
             {
                 return;
             }
@@ -134,7 +134,7 @@ namespace UnitySlotTower.Battle
         public UpgradeResult? UpgradeSlot(int slot)
         {
             var deployment = battle.Deployment;
-            if (deployment == null || battle.IsPaused || slot < 0 || slot >= battle.Units.All.Count)
+            if (deployment == null || battle.IsInputBlocked || slot < 0 || slot >= battle.Units.All.Count)
             {
                 return null;
             }
@@ -146,7 +146,7 @@ namespace UnitySlotTower.Battle
         public void RetreatSelected()
         {
             var deployment = battle.Deployment;
-            if (deployment == null || battle.IsPaused || !IsOnField(SelectedUnit))
+            if (deployment == null || battle.IsInputBlocked || !IsOnField(SelectedUnit))
             {
                 return;
             }
@@ -159,7 +159,7 @@ namespace UnitySlotTower.Battle
         public void CycleUnit()
         {
             var field = battle.Field;
-            if (field == null || battle.IsPaused || battle.Deployment.Phase != DeployPhase.Idle)
+            if (field == null || battle.IsInputBlocked || battle.Deployment.Phase != DeployPhase.Idle)
             {
                 return;
             }
@@ -219,7 +219,7 @@ namespace UnitySlotTower.Battle
             var dx = value.x != 0f && _lastCursorValue.x == 0f ? (int)Mathf.Sign(value.x) : 0;
             var dy = dx == 0 && value.y != 0f && _lastCursorValue.y == 0f ? -(int)Mathf.Sign(value.y) : 0;
             _lastCursorValue = value;
-            if ((dx != 0 || dy != 0) && !battle.IsPaused)
+            if ((dx != 0 || dy != 0) && !battle.IsInputBlocked)
             {
                 battle.Deployment?.MoveCursor(dx, dy);
             }
@@ -228,7 +228,7 @@ namespace UnitySlotTower.Battle
         private void OnConfirmAction(InputAction.CallbackContext context)
         {
             var deployment = battle.Deployment;
-            if (deployment == null || battle.IsPaused)
+            if (deployment == null || battle.IsInputBlocked)
             {
                 return;
             }
@@ -256,7 +256,7 @@ namespace UnitySlotTower.Battle
                 return;
             }
 
-            if (!battle.IsPaused && deployment.Phase != DeployPhase.Idle)
+            if (!battle.IsInputBlocked && deployment.Phase != DeployPhase.Idle)
             {
                 deployment.Cancel();
             }
@@ -283,7 +283,7 @@ namespace UnitySlotTower.Battle
         private void Update()
         {
             var deployment = battle.Deployment;
-            if (deployment == null || battle.IsPaused)
+            if (deployment == null || battle.IsInputBlocked)
             {
                 return;
             }

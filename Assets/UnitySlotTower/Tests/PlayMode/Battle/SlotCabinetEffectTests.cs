@@ -125,6 +125,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(_battle?.Field, Is.Not.Null, "Game シーンの戦闘が始まらない");
+            yield return ReelCustomTestUtil.CloseWithDefault(_battle);
             _reels = _cabinet.GetComponentsInChildren<SlotReelView>();
             _battle.StartWave();
         }

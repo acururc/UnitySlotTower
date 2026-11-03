@@ -53,6 +53,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(_battle.Run, Is.Not.Null, "Game シーンの進行が作られない");
+            yield return ReelCustomTestUtil.CloseWithDefault(_battle);
         }
 
         [TearDown]
@@ -88,6 +89,15 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             var tiles = _fieldView.transform.Find("Tiles");
             Assert.That((map.Id, map == _battle.Run.Map, _waveText.text, TileRoots(), tiles.childCount),
                 Is.EqualTo(("s2", true, "2-1", 1, map.Width * map.Height)));
+
+            // AC-044, FR-047: ステージの間でカスタム画面が開き、確定するまで S2 の戦闘は始まらない。
+            Assert.That(_battle.IsCustomizing, Is.True, "S1 を終えてもカスタム画面が開かない");
+            _battle.StartWave();
+            yield return null;
+            Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.Preparing), "カスタム中に戦闘が始まった");
+            yield return ReelCustomTestUtil.CloseWithDefault(_battle);
+            _battle.StartWave();
+            Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.Fighting), "カスタムを確定しても S2 の戦闘を始められない");
         }
 
         private int TileRoots()

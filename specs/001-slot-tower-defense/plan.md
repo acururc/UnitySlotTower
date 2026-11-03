@@ -155,7 +155,7 @@ Game: [リールのカスタム] → [S1-W1 準備] → [S1-W1 戦闘] → [S1-W
 
 ## 8. 文字を使わない UI（FR-003, FR-004）
 
-- フォントは数字（0-9）と記号（+ − × / %）だけを含む TextMeshPro フォントアセットを使う。それ以外の文字はそもそも表示できない作りにする。
+- フォントは数字（0-9）・小数点（カスタム画面の%用、T316）と記号（+ − × / %）だけを含む TextMeshPro フォントアセットを使う。それ以外の文字はそもそも表示できない作りにする。
 - 自動チェック: Title 以外のシーンとプレハブの全テキスト部品を走査し、数字・記号以外の文字があれば失敗する EditMode テストを用意する（AC-001 を補う）。
 - 説明の見せ方: 各要素を初めて使う場面（例: W1 開始時の召喚、初めてのボーナス）で画面を薄暗くし、対象を光らせて矢印と手のアイコンのアニメで操作を示す。一時停止中は「?」アイコンから、図柄＝効果（倍率・秒数・払い出し）の早見表と現在のハズレ率・各図柄の確率、味方の能力（範囲図・数値）を見られる。
 - 状態は色と形で区別する: 召喚可能（明るい）、コスト不足（暗い＋コインアイコン赤）、待ち時間中（円形ゲージ）、ストックあり（数字バッジ）。
@@ -215,7 +215,7 @@ Assets/UnitySlotTower/
 - 消すもの: Core/Slot の `SlotProbabilities`・`SlotReelControl`・`SlotPremonition`・`SlotTheory`・`SlotPayouts`・`SlotReels`・`SlotLines`（1ライン化で不要なら）と対応テスト、Editor `Slot/SlotTheoryReport`、旧スロット CSV、`maps/w1〜w5.csv`、味方 `buffer` の行と `buff` 処理、筐体の先バレ・確変・リプレイのランプと先バレ音。消す前に参照を検索し、シーン・アセットの参照切れがないことを Console で確かめる。
 - 作り直すもの: `SlotSymbol`（6図柄）、`SlotRules`（新キー）、`SlotMachine`（ハズレ抽選・配列比率・出目・ボーナス・効果の通知）、`WaveSchedule`/`WaveRun`（ステージ×ウェーブ）、`PortraitLayout`（6:4）、`SlotCabinet`/`SlotReelView`、操作バー（4種・効果の残り時間・S-W 表示）。
 - 新しく作るもの: Core `ReelLayout`（検証と確率）、`SlotSettings`、`SlotEffects`（戦闘側の倍率と残り時間）、Runtime のカスタム画面、Editor の組み立てメニュー。
-- 入力: InputActionAsset の `5`・`Shift+5` のバインドを外す。カスタム画面は UI ナビゲーション（Title と同じ方式）で扱う。
+- 入力: InputActionAsset の `5`・`Shift+5` のバインドを外す。カスタム画面のキーボード操作は既存の `Cursor`・`Confirm`・`Lever`（Space）を使い、マウスは UI のボタン（T316。Enter・Space が UI の Submit と重なるため EventSystem のナビゲーションは使わない）。
 - 順序: 戦闘側（バッファー廃止 → ステージ化）→ スロットの Core → 効果の結合 → 筐体表示 → カスタム画面 → 画面比率 → データ検証と文書。各タスクの終わりに EditMode/PlayMode を実行し、件数を tasks.md に残す。
 
 ## ユーザー確認事項の回答（2026-10-26）

@@ -77,5 +77,36 @@ namespace UnitySlotTower.Editor.Setup
             AssetDatabase.SaveAssets();
             Debug.Log($"[SlotTower Setup] {FontAssetPath} を作成し、TMP の既定フォントにした。");
         }
+
+        /// <summary>許可文字（<see cref="NumericText.AllowedCharacters"/>）に増えた字を既存のフォントに足す（T316 の小数点）。</summary>
+        [MenuItem("Tools/UnitySlotTower/Setup/Add Missing Characters To Numeric Font")]
+        private static void AddMissingCharacters()
+        {
+            var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+            if (font == null)
+            {
+                Debug.LogError($"[SlotTower Setup] {FontAssetPath} がない。先に Create Numeric Font を実行する。");
+                return;
+            }
+
+            if (font.HasCharacters(NumericText.AllowedCharacters))
+            {
+                Debug.LogWarning("[SlotTower Setup] 数字専用フォントは許可文字をすべて持っている。");
+                return;
+            }
+
+            font.atlasPopulationMode = AtlasPopulationMode.Dynamic;
+            var added = font.TryAddCharacters(NumericText.AllowedCharacters, out var missing);
+            font.atlasPopulationMode = AtlasPopulationMode.Static;
+            EditorUtility.SetDirty(font);
+            AssetDatabase.SaveAssets();
+            if (!added)
+            {
+                Debug.LogError($"[SlotTower Setup] 足せなかった文字: {missing}");
+                return;
+            }
+
+            Debug.Log("[SlotTower Setup] 数字専用フォントに足りない文字を足した。");
+        }
     }
 }

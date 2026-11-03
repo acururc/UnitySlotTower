@@ -57,6 +57,40 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         }
 
         [Test]
+        [Description("AC-044: 確定した配列に替えると、以後の抽選と停止はその配列で行う（7 を4つ目のマスへ動かした配列）")]
+        public void Changed_Layout_Is_Used_For_Next_Games()
+        {
+            var machine = Machine(new CoinWallet(100), 0.0);
+            var custom = Layout("atk atk coin seven speed coin bar heal coin heal speed coin");
+
+            machine.ChangeLayout(custom);
+            var hits = new HashSet<SlotSymbol>();
+            for (var game = 0; game < 50; game++)
+            {
+                machine.TryLever();
+                for (var reel = 0; reel < SlotMachine.ReelCount; reel++)
+                {
+                    var stop = machine.Stop(reel, 0);
+                    Assert.That(custom.At(stop), Is.EqualTo(machine.Result.Value));
+                }
+
+                hits.Add(machine.Result.Value);
+            }
+
+            Assert.That((machine.Layout, hits.Contains(SlotSymbol.Atk)), Is.EqualTo((custom, true)));
+        }
+
+        [Test]
+        [Description("回転中は配列を替えられない（出目が配列とずれるため）")]
+        public void Layout_Cannot_Change_While_Spinning()
+        {
+            var machine = Machine(new CoinWallet(10));
+            machine.TryLever();
+
+            Assert.Throws<InvalidOperationException>(() => machine.ChangeLayout(Layout(DefaultReel)));
+        }
+
+        [Test]
         [Description("D-43: ハズレ率 0 なら毎回当たり、1 なら毎回ハズレ")]
         public void Miss_Rate_Zero_Always_Hits_And_One_Always_Misses()
         {

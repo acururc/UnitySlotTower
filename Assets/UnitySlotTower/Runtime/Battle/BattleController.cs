@@ -28,10 +28,13 @@ namespace UnitySlotTower.Battle
         [SerializeField] private BattleFieldView fieldView;
         [Tooltip("所持コインを共有するスロット筐体。")]
         [SerializeField] private SlotCabinet slotCabinet;
+        [Tooltip("ゲーム開始前とステージの間に開くリールのカスタム画面（T316）。なければ開かない。")]
+        [SerializeField] private ReelCustomScreen reelCustomScreen;
         [Tooltip("準備に入ったらすぐ戦闘を始める（確認用。通常は ▶ で始める）。")]
         [SerializeField] private bool autoStart;
 
         private SimulationClock _clock;
+        private int _customizeClosedFrame = -1;
 
         public UnitTable Units { get; private set; }
         public WaveRun Run { get; private set; }
@@ -83,14 +86,31 @@ namespace UnitySlotTower.Battle
             }
 
             _clock = new SimulationClock();
+            OpenReelCustom();
         }
 
         /// <summary>一時停止中か（FR-012）。時間が止まり、配置・撤退・強化・スロットの操作を受け付けない。</summary>
         public bool IsPaused { get; private set; }
 
-        /// <summary>一時停止を切り替える。スロットのリールやウェイトも止めるため Time.timeScale を 0 にする。</summary>
+        /// <summary>
+        /// リールのカスタム画面を開いているか（FR-047、plan 4章）。そのあいだ戦闘は始まらず、配置・スロット・一時停止の操作を受け付けない。
+        /// </summary>
+        public bool IsCustomizing { get; private set; }
+
+        /// <summary>
+        /// 戦闘側の操作（配置・撤退・強化・▶）を受け付けないか。一時停止中・カスタム中と、カスタムを確定したフレーム
+        /// （確定の Enter で ▶ まで押されないように）。
+        /// </summary>
+        public bool IsInputBlocked => IsPaused || IsCustomizing || Time.frameCount == _customizeClosedFrame;
+
+        /// <summary>一時停止を切り替える。スロットのリールやウェイトも止めるため Time.timeScale を 0 にする。カスタム中は何もしない。</summary>
         public void SetPaused(bool paused)
         {
+            if (IsCustomizing)
+            {
+                return;
+            }
+
             IsPaused = paused;
             Time.timeScale = paused ? 0f : 1f;
             if (_clock != null)
@@ -98,20 +118,47 @@ namespace UnitySlotTower.Battle
                 _clock.IsPaused = paused;
             }
 
-            if (slotCabinet != null)
-            {
-                slotCabinet.InputLocked = paused;
-            }
+            UpdateSlotLock();
         }
 
         public void TogglePause() => SetPaused(!IsPaused);
 
-        /// <summary>準備中なら戦闘を始める（▶、plan 4章）。一時停止中は受け付けない。</summary>
+        /// <summary>準備中なら戦闘を始める（▶、plan 4章）。一時停止中・カスタム中は受け付けない。</summary>
         public void StartWave()
         {
-            if (!IsPaused)
+            if (!IsInputBlocked)
             {
                 Run?.Start();
+            }
+        }
+
+        // ゲーム開始前と各ステージの準備の前に開く（FR-047）。前回確定した配列から編集を始める。
+        private void OpenReelCustom()
+        {
+            if (reelCustomScreen == null)
+            {
+                return;
+            }
+
+            IsCustomizing = true;
+            UpdateSlotLock();
+            reelCustomScreen.Open(slotCabinet.Layout, slotCabinet.Rules.ReelLength, slotCabinet.MissRate,
+                OnReelCustomConfirmed);
+        }
+
+        private void OnReelCustomConfirmed(ReelLayout layout)
+        {
+            slotCabinet.ApplyLayout(layout);
+            IsCustomizing = false;
+            _customizeClosedFrame = Time.frameCount;
+            UpdateSlotLock();
+        }
+
+        private void UpdateSlotLock()
+        {
+            if (slotCabinet != null)
+            {
+                slotCabinet.InputLocked = IsPaused || IsCustomizing;
             }
         }
 
@@ -133,14 +180,19 @@ namespace UnitySlotTower.Battle
             }
         }
 
-        private void OnStageBegan() => fieldView.Show(Run.Map);
+        // ステージ1 の StageBegan は WaveRun を作る中で呼ばれ、まだ購読していない（開始前のカスタムは Start で開く）。
+        private void OnStageBegan()
+        {
+            fieldView.Show(Run.Map);
+            OpenReelCustom();
+        }
 
         // 揃った図柄の効果（攻撃力アップ・攻撃速度アップ・全体HP回復）を戦闘へ渡す（FR-042、T314）。
         private void OnSlotAligned(SlotSymbol symbol) => Run.ApplySlot(symbol, slotCabinet.Rules);
 
         private void Update()
         {
-            if (autoStart)
+            if (autoStart && !IsCustomizing)
             {
                 Run.Start();
             }

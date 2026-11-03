@@ -43,7 +43,18 @@ namespace UnitySlotTower.Core.Slot
             _rules = rules;
         }
 
-        public ReelLayout Layout { get; }
+        public ReelLayout Layout { get; private set; }
+
+        /// <summary>リールのカスタムで確定した配列に替える（FR-046）。3本とも同じ配列。回転中は替えられない。</summary>
+        public void ChangeLayout(ReelLayout layout)
+        {
+            if (IsSpinning)
+            {
+                throw new InvalidOperationException("回転中は配列を替えられない");
+            }
+
+            Layout = layout ?? throw new ArgumentNullException(nameof(layout));
+        }
 
         /// <summary>いまのボーナス状態（D-33/D-40）。</summary>
         public SlotBonus Bonus { get; private set; }
