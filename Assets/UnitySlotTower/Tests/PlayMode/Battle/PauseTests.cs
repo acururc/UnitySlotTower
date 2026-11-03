@@ -36,7 +36,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
             foreach (var device in InputSystem.devices)
             {
-                if ((device is Keyboard || device is Mouse) && device.enabled)
+                if (device.enabled)
                 {
                     _disabled.Add(device);
                 }

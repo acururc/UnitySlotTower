@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.SceneManagement;
@@ -21,7 +22,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         private InputSettings.EditorInputBehaviorInPlayMode _editorBehavior;
         private InputSettings.BackgroundBehavior _backgroundBehavior;
         private TitleScreen _title;
-
         [UnitySetUp]
         public IEnumerator SetUp()
         {
@@ -33,9 +33,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             InputSystem.settings.editorInputBehaviorInPlayMode =
                 InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            // 実機の入力（ゲームパッドを含む）は UI のナビゲーションや決定に混ざるので、全部止める。
             foreach (var device in InputSystem.devices)
             {
-                if ((device is Keyboard || device is Mouse) && device.enabled)
+                if (device.enabled)
                 {
                     _disabled.Add(device);
                 }
@@ -76,16 +77,19 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         {
             Assert.That(_title.IsChoosingDifficulty, Is.False, "最初からタイトルではなく難易度選択が出ている");
 
-            yield return Tap(Key.Enter);
+            yield return Press(Key.Enter, () => _title.IsChoosingDifficulty);
             Assert.That(_title.IsChoosingDifficulty, Is.True, "Enter で難易度選択に進まない");
 
-            yield return Tap(Key.Escape);
+            yield return Press(Key.Escape, () => !_title.IsChoosingDifficulty);
             Assert.That(_title.IsChoosingDifficulty, Is.False, "Esc でタイトルに戻らない");
 
-            yield return Tap(Key.Enter);
-            yield return Tap(Key.RightArrow);
-            yield return Tap(Key.RightArrow);
-            yield return Tap(Key.Enter);
+            yield return Press(Key.Enter, () => IsSelected("Setting 1"));
+            Assert.That(IsSelected("Setting 1"), Is.True, "難易度選択の初期選択が設定1ではない");
+            yield return Press(Key.RightArrow, () => IsSelected("Setting 2"));
+            Assert.That(IsSelected("Setting 2"), Is.True, "→ で設定2に移らない");
+            yield return Press(Key.RightArrow, () => IsSelected("Setting 3"));
+            Assert.That(IsSelected("Setting 3"), Is.True, "→ で設定3に移らない");
+            yield return Press(Key.Enter, () => GameSession.SelectedSetting == 3);
 
             yield return WaitForGame();
             Assert.That(Object.FindAnyObjectByType<SlotCabinet>().Setting, Is.EqualTo(3));
@@ -118,11 +122,28 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return null;
         }
 
-        private IEnumerator Tap(Key key)
+        private static bool IsSelected(string buttonName)
+        {
+            var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+            return selected != null && selected.name == buttonName;
+        }
+
+        // 1フレームだけ押すと、Editor のフレーム時間しだいで取りこぼしや（遅いフレームでの）ナビゲーションのリピートが起きる。
+        // 効果が出るまで押し続け、出たらすぐ離す。
+        private IEnumerator Press(Key key, System.Func<bool> done)
         {
             InputSystem.QueueStateEvent(_keyboard, new KeyboardState(key));
-            yield return null;
+            for (var i = 0; i < 60; i++)
+            {
+                yield return null;
+                if (done())
+                {
+                    break;
+                }
+            }
+
             InputSystem.QueueStateEvent(_keyboard, new KeyboardState());
+            yield return null;
             yield return null;
         }
 

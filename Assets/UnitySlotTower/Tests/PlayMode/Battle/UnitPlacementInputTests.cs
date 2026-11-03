@@ -35,10 +35,10 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             InputSystem.settings.editorInputBehaviorInPlayMode =
                 InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
-            // 実機のマウス・キーボードが試験中のポインターやキーに混ざらないよう止める。
+            // 実機の入力（ゲームパッドを含む）が試験中のポインターやキーに混ざらないよう全部止める。
             foreach (var device in InputSystem.devices)
             {
-                if ((device is Mouse || device is Keyboard) && device.enabled)
+                if (device.enabled)
                 {
                     _disabled.Add(device);
                 }
