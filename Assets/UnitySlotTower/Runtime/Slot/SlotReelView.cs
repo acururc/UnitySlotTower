@@ -4,7 +4,7 @@ using UnitySlotTower.Core.Slot;
 namespace UnitySlotTower.Slot
 {
     /// <summary>
-    /// 1本のリールの仮表示（plan 5章）。停止位置 s で上段 s-1・中段 s・下段 s+1 を表示し、
+    /// 1本のリールの仮表示（plan 5章）。3本とも同じ配列。停止位置 s で上段 s-1・中段 s・下段 s+1 を表示し、
     /// 下向きに回る（中段の位置が減っていく）。押した位置は中段より1つ上から下りてくる図柄の位置とする。
     /// </summary>
     public sealed class SlotReelView : MonoBehaviour
@@ -17,9 +17,8 @@ namespace UnitySlotTower.Slot
         [SerializeField] private float[] blurAlphas = { 0.45f, 0.2f };
         [SerializeField] private float blurSpacing = 0.12f;
 
-        private SlotReels _reels;
-        private int _reel;
-        private RectTransform _rect;
+        private ReelLayout _layout;
+                private RectTransform _rect;
         private int[] _shown;
         private RectTransform[] _ghosts;
         private int[] _ghostShown;
@@ -30,12 +29,11 @@ namespace UnitySlotTower.Slot
         public bool IsSpinning { get; private set; }
 
         /// <summary>今ストップを押したときの押し位置（中段へ下りてくる途中の図柄）。</summary>
-        public int PressPosition => SlotReels.Wrap((int)System.Math.Floor(_position));
+        public int PressPosition => _layout.Wrap((int)System.Math.Floor(_position));
 
-        public void Initialize(SlotReels reels, int reel, int stop)
+        public void Initialize(ReelLayout layout, int stop)
         {
-            _reels = reels;
-            _reel = reel;
+            _layout = layout;
             _rect = (RectTransform)transform;
             _shown = new int[cells.Length];
             var cellHeight = _rect.rect.height / 3f;
@@ -60,12 +58,12 @@ namespace UnitySlotTower.Slot
         public void StopAt(int stop)
         {
             var press = System.Math.Floor(_position);
-            _target = press - SlotReels.Wrap((int)press - stop);
+            _target = press - _layout.Wrap((int)press - stop);
         }
 
         private void Update()
         {
-            if (!IsSpinning || _reels == null)
+            if (!IsSpinning || _layout == null)
             {
                 return;
             }
@@ -73,7 +71,7 @@ namespace UnitySlotTower.Slot
             _position -= symbolsPerSecond * Time.deltaTime;
             if (_target.HasValue && _position <= _target.Value)
             {
-                _position = SlotReels.Wrap((int)_target.Value);
+                _position = _layout.Wrap((int)_target.Value);
                 _target = null;
                 IsSpinning = false;
             }
@@ -91,7 +89,7 @@ namespace UnitySlotTower.Slot
             {
                 var offset = i - center;
                 cells[i].anchoredPosition = new Vector2(0f, (fraction - offset) * cellHeight);
-                var symbol = (int)_reels.At(_reel, (int)top + offset);
+                var symbol = (int)_layout.At((int)top + offset);
                 if (_shown[i] == symbol)
                 {
                     continue;
@@ -157,7 +155,7 @@ namespace UnitySlotTower.Slot
                     var k = g * cells.Length + i;
                     var offset = i - center;
                     _ghosts[k].anchoredPosition = new Vector2(0f, (fraction - offset + lift) * cellHeight);
-                    var symbol = (int)_reels.At(_reel, (int)top + offset);
+                    var symbol = (int)_layout.At((int)top + offset);
                     if (_ghostShown[k] != symbol)
                     {
                         _ghostShown[k] = symbol;

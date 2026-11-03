@@ -2,39 +2,43 @@ using UnitySlotTower.Core.Data;
 
 namespace UnitySlotTower.Core.Slot
 {
-    /// <summary>リールの図柄（plan 5章）。</summary>
+    /// <summary>リールの図柄（D-10、plan 5章 スロット）。7 と BAR を先頭に置く（筐体の図柄の子の並びと合わせる）。</summary>
     public enum SlotSymbol
     {
         Seven,
         Bar,
-        Bell,
-        Watermelon,
-        Cherry,
-        Replay,
+        Atk,
+        Speed,
+        Heal,
+        Coin,
     }
 
     public static class SlotSymbols
     {
-        /// <summary>払い出し表で「どの図柄でもよい」を表す CSV の値。</summary>
-        public const string AnyId = "any";
+        public const int Count = 6;
 
-        /// <summary>CSV の図柄 ID（例 <c>seven</c>）を読む。</summary>
+        /// <summary>CSV の図柄 ID（<c>seven</c>・<c>bar</c>・<c>atk</c>・<c>speed</c>・<c>heal</c>・<c>coin</c>）。</summary>
+        public static readonly string[] Ids = { "seven", "bar", "atk", "speed", "heal", "coin" };
+
+        /// <summary>CSV の図柄 ID を読む。</summary>
         public static SlotSymbol Parse(CsvRow row, string column)
         {
-            switch (row.Get(column))
+            var id = row.Get(column);
+            for (var i = 0; i < Ids.Length; i++)
             {
-                case "seven": return SlotSymbol.Seven;
-                case "bar": return SlotSymbol.Bar;
-                case "bell": return SlotSymbol.Bell;
-                case "watermelon": return SlotSymbol.Watermelon;
-                case "cherry": return SlotSymbol.Cherry;
-                case "replay": return SlotSymbol.Replay;
-                default: throw row.Error(column, $"未知の図柄 '{row.Get(column)}'");
+                if (Ids[i] == id)
+                {
+                    return (SlotSymbol)i;
+                }
             }
+
+            throw row.Error(column, $"未知の図柄 '{id}'");
         }
 
-        /// <summary>図柄 ID か <c>any</c>（null を返す）を読む。</summary>
-        public static SlotSymbol? ParseOrAny(CsvRow row, string column) =>
-            row.Get(column) == AnyId ? (SlotSymbol?)null : Parse(row, column);
+        /// <summary>
+        /// 配列に必要な数（D-46）: 7・BAR はちょうど1つ、ほかの4図柄は1つ以上。
+        /// </summary>
+        public static bool IsCountAllowed(SlotSymbol symbol, int count) =>
+            symbol == SlotSymbol.Seven || symbol == SlotSymbol.Bar ? count == 1 : count >= 1;
     }
 }

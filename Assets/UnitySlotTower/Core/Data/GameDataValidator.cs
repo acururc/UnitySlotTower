@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnitySlotTower.Core.Battle;
+using UnitySlotTower.Core.Slot;
 
 namespace UnitySlotTower.Core.Data
 {
@@ -9,11 +10,6 @@ namespace UnitySlotTower.Core.Data
     /// </summary>
     public static class GameDataValidator
     {
-        private static readonly string[] Settings =
-            { "setting1", "setting2", "setting3", "setting4", "setting5", "setting6" };
-
-        private static readonly string[] Symbols = { "seven", "bar", "bell", "watermelon", "cherry", "replay" };
-
         private static readonly ColumnRule[] GameConfigKeys =
         {
             ColumnRule.Int("initial_coins", 0, 100000),
@@ -26,12 +22,18 @@ namespace UnitySlotTower.Core.Data
 
         private static readonly ColumnRule[] SlotRuleKeys =
         {
-            ColumnRule.Int("big_payout_limit", 1, 10000),
-            ColumnRule.Int("reg_payout_limit", 1, 10000),
-            ColumnRule.Int("kakuhen_games", 0, 10000),
-            ColumnRule.Float("kakuhen_entry_rate", 0, 1),
+            ColumnRule.Int("reel_length", 6, 99),
             ColumnRule.Float("wait_seconds", 0, 60),
-            ColumnRule.Int("max_slide", 0, 20),
+            ColumnRule.Int("coin_payout", 0, 10000),
+            ColumnRule.Int("big_games", 1, 1000),
+            ColumnRule.Int("big_payout", 0, 10000),
+            ColumnRule.Int("reg_games", 1, 1000),
+            ColumnRule.Int("reg_payout", 0, 10000),
+            ColumnRule.Float("atk_rate", 1, 100),
+            ColumnRule.Float("atk_seconds", 0, 3600),
+            ColumnRule.Float("speed_rate", 1, 100),
+            ColumnRule.Float("speed_seconds", 0, 3600),
+            ColumnRule.Float("heal_rate", 0, 1),
         };
 
         private static readonly TableSchema[] Schemas =
@@ -90,29 +92,12 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Id("spawn"),
                 ColumnRule.Id("path_id"),
                 ColumnRule.Bool("is_boss")),
-            new TableSchema("slot_reels.csv", new[] { "index" },
-                ColumnRule.Int("index", 0, 20),
-                ColumnRule.Enum("reel1", Symbols),
-                ColumnRule.Enum("reel2", Symbols),
-                ColumnRule.Enum("reel3", Symbols)),
-            new TableSchema("slot_payouts.csv", new[] { "role" },
-                ColumnRule.Id("role"),
-                ColumnRule.Int("payout", 0, 1000),
-                ColumnRule.Enum("symbol1", WithAny(Symbols)),
-                ColumnRule.Enum("symbol2", WithAny(Symbols)),
-                ColumnRule.Enum("symbol3", WithAny(Symbols))),
-            new TableSchema("slot_probabilities.csv", new[] { "role", "state" },
-                ColumnRule.Id("role"),
-                ColumnRule.Enum("state", "normal", "kakuhen", "bonus"),
-                ColumnRule.Probability("setting1"),
-                ColumnRule.Probability("setting2"),
-                ColumnRule.Probability("setting3"),
-                ColumnRule.Probability("setting4"),
-                ColumnRule.Probability("setting5"),
-                ColumnRule.Probability("setting6")),
-            new TableSchema("slot_premonition.csv", new[] { "role" },
-                ColumnRule.Id("role"),
-                ColumnRule.Probability("rate")),
+            new TableSchema("slot_settings.csv", new[] { "setting" },
+                ColumnRule.Int("setting", 1, 6),
+                ColumnRule.Probability("miss_rate")),
+            new TableSchema("slot_default_reel.csv", new[] { "index" },
+                ColumnRule.Int("index", 0, 98),
+                ColumnRule.Enum("symbol", SlotSymbols.Ids)),
         };
 
         private static readonly HashSet<string> MapTiles = new HashSet<string>
@@ -155,15 +140,8 @@ namespace UnitySlotTower.Core.Data
             TableValidator.ValidateReference(tables["unit_upgrades.csv"], "unit_id", tables["units.csv"], "id", report);
             TableValidator.ValidateReference(tables["waves.csv"], "enemy_id", tables["enemies.csv"], "id", report);
             TableValidator.ValidateReference(tables["waves.csv"], "path_id", tables["map_paths.csv"], "path_id", report);
-            // 重複当選は役を '+' でつなぐ（例 big+center_cherry）。
-            TableValidator.ValidateListReference(tables["slot_probabilities.csv"], "role", '+',
-                tables["slot_payouts.csv"], "role", report);
-            // ハズレは払い出し表にないが、先バレの「ガセ」として発生率を持てる（plan 5章）。
-            TableValidator.ValidateReference(tables["slot_premonition.csv"], "role", tables["slot_payouts.csv"], "role",
-                report, "hazure");
             ValidateMapIds(tables["map_paths.csv"], maps, report);
 
-            TableValidator.ValidateProbabilitySum(tables["slot_probabilities.csv"], "state", Settings, report);
             TableValidator.ValidatePathContinuity(tables["map_paths.csv"], report);
             var battleMaps = ValidateMapPaths(files, tables["map_paths.csv"], maps, report);
             ValidateWaves(tables["waves.csv"], tables["enemies.csv"], battleMaps, report);
@@ -319,14 +297,6 @@ namespace UnitySlotTower.Core.Data
                     }
                 }
             }
-        }
-
-        private static string[] WithAny(string[] symbols)
-        {
-            var values = new string[symbols.Length + 1];
-            symbols.CopyTo(values, 0);
-            values[symbols.Length] = "any";
-            return values;
         }
     }
 }

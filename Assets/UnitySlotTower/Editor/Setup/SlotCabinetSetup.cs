@@ -49,8 +49,8 @@ namespace UnitySlotTower.Editor.Setup
             var audio = slotArea.gameObject.AddComponent<AudioSource>();
             audio.playOnAwake = false;
 
-            var reels = new SlotReelView[SlotReels.ReelCount];
-            var stops = new Button[SlotReels.ReelCount];
+            var reels = new SlotReelView[SlotMachine.ReelCount];
+            var stops = new Button[SlotMachine.ReelCount];
             for (var i = 0; i < reels.Length; i++)
             {
                 var left = 0.03f + i * 0.32f;
@@ -84,11 +84,9 @@ namespace UnitySlotTower.Editor.Setup
 
             var serialized = new SerializedObject(cabinet);
             SetTable(serialized, "gameConfigTable", "game_config.csv");
-            SetTable(serialized, "reelsTable", SlotReels.FileName);
-            SetTable(serialized, "payoutsTable", SlotPayouts.FileName);
-            SetTable(serialized, "probabilitiesTable", SlotProbabilities.FileName);
-            SetTable(serialized, "premonitionTable", SlotPremonition.FileName);
+            SetTable(serialized, "settingsTable", SlotSettings.FileName);
             SetTable(serialized, "rulesTable", SlotRules.FileName);
+            SetTable(serialized, "defaultReelTable", ReelLayout.FileName);
             serialized.FindProperty("inputActions").objectReferenceValue =
                 AssetDatabase.LoadAssetAtPath<InputActionAsset>(InputActionsPath);
             serialized.FindProperty("leverButton").objectReferenceValue = lever;
