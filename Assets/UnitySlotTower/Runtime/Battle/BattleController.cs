@@ -126,6 +126,11 @@ namespace UnitySlotTower.Battle
 
         public void TogglePause() => SetPaused(!IsPaused);
 
+        /// <summary>
+        /// 文字なし説明（T403）を見せているあいだ true。戦闘の時間だけを止め、操作とスロット（Time.timeScale）は止めない。
+        /// </summary>
+        public bool IsHeldByGuide { get; set; }
+
         /// <summary>準備中なら戦闘を始める（▶、plan 4章）。一時停止中・カスタム中は受け付けない。</summary>
         public void StartWave()
         {
@@ -200,7 +205,7 @@ namespace UnitySlotTower.Battle
                 Run.Start();
             }
 
-            Run.Advance(_clock.Advance(Time.deltaTime));
+            Run.Advance(_clock.Advance(IsHeldByGuide ? 0d : Time.deltaTime));
             if (IsFinished && !slotCabinet.InputLocked)
             {
                 UpdateSlotLock();

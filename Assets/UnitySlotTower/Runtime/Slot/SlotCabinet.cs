@@ -81,6 +81,24 @@ namespace UnitySlotTower.Slot
         /// <summary>最後のリールが止まって図柄が揃ったとき（払い出しの後）に、その図柄を通知する（FR-042、T314）。</summary>
         public event Action<SlotSymbol> Aligned;
 
+        /// <summary>リールが回っているか（3本目を押したあと見た目の上で止まるまでを含む）。</summary>
+        public bool IsSpinning => _machine != null && (_machine.IsSpinning || AnyReelSpinning());
+
+        /// <summary>このプレイでリールを回した回数。</summary>
+        public int SpinCount { get; private set; }
+
+        /// <summary>ボーナス中か（表示と同じく、リールが見た目の上で止まってから切り替わる）。</summary>
+        public SlotBonus Bonus => _shownBonus ?? SlotBonus.None;
+
+        /// <summary>いまレバーを引けば回るだけのコインがあるか（ボーナス中は掛け金なし）。</summary>
+        public bool CanLever => _machine != null && (_machine.Bonus != SlotBonus.None || _wallet.Coins >= _bet);
+
+        public RectTransform LeverRect => (RectTransform)leverButton.transform;
+        public RectTransform BonusLampRect => bonusLamp.rectTransform;
+        public RectTransform StopRect(int reel) => (RectTransform)stopButtons[reel].transform;
+
+        private int _bet;
+
         /// <summary>このプレイの難易度のハズレ率（0〜1、FR-045）。カスタム画面の表示に使う。</summary>
         public double MissRate { get; private set; }
 
@@ -133,6 +151,7 @@ namespace UnitySlotTower.Slot
 
                 MissRate = settings.MissRate(setting);
                 _wallet = new CoinWallet(config.InitialCoins);
+                _bet = config.Bet;
                 _wait = new SlotWait(rules.WaitSeconds);
                 _machine = new SlotMachine(layout, MissRate, _wallet, config.Bet, rules,
                     RandomOverride ?? new SeededRandom((ulong)DateTime.UtcNow.Ticks));
@@ -244,6 +263,7 @@ namespace UnitySlotTower.Slot
                 if (_machine.TryLever())
                 {
                     _wait.Started(now);
+                    SpinCount++;
                     foreach (var reel in reels)
                     {
                         reel.StartSpin();
