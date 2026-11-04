@@ -55,6 +55,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             _mouse = InputSystem.AddDevice<Mouse>("Test Mouse");
 
             GuideOverlay.DisabledForTests = false;
+            // 当たりでコインが強化代に届くと、スロットの後に強化の説明が出てしまうので必ずハズレにする。
+            SlotCabinet.RandomOverride = new AlwaysMissRandom();
             yield return SceneManager.LoadSceneAsync(GameSession.GameScene);
             _battle = Object.FindAnyObjectByType<BattleController>();
             for (var i = 0; i < 300 && _battle.Deployment == null; i++)
@@ -75,6 +77,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         public void TearDown()
         {
             GuideOverlay.DisabledForTests = true;
+            SlotCabinet.RandomOverride = null;
             InputSystem.RemoveDevice(_keyboard);
             InputSystem.RemoveDevice(_mouse);
             foreach (var device in _disabled)
