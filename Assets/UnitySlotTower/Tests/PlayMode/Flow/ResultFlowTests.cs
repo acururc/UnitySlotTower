@@ -1,0 +1,269 @@
+using System.Collections;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Text;
+using NUnit.Framework;
+using TMPro;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.SceneManagement;
+using UnityEngine.TestTools;
+using UnitySlotTower.Battle;
+using UnitySlotTower.Core.Battle;
+using UnitySlotTower.Core.Slot;
+using UnitySlotTower.Flow;
+using UnitySlotTower.Slot;
+using UnitySlotTower.Tests.PlayMode.Battle;
+
+namespace UnitySlotTower.Tests.PlayMode.Flow
+{
+    [Description("AC-004 の一部: ゲームが終わるとリザルトが開き、リトライで同じ設定のまま初期化され、タイトルへも戻れる（FR-005, T402）")]
+    public sealed class ResultFlowTests
+    {
+        // ゲームオーバー用: S1-W1 に近接の敵 12 体（ライフ 10 より多い）。味方を置かないので全員ゴールに着く。
+        private const string LosingWaves =
+            "stage,wave,time,enemy_id,spawn,path_id,is_boss\n" +
+            "1,1,0,melee,S1,s1_g1,0\n1,1,1,melee,S1,s1_g1,0\n1,1,2,melee,S1,s1_g1,0\n1,1,3,melee,S1,s1_g1,0\n" +
+            "1,1,4,melee,S1,s1_g1,0\n1,1,5,melee,S1,s1_g1,0\n1,1,6,melee,S1,s1_g1,0\n1,1,7,melee,S1,s1_g1,0\n" +
+            "1,1,8,melee,S1,s1_g1,0\n1,1,9,melee,S1,s1_g1,0\n1,1,10,melee,S1,s1_g1,0\n1,1,11,melee,S1,s1_g1,0\n" +
+            "1,2,0,melee,S1,s1_g1,0\n2,1,0,melee,S1,s2_g1,0\n2,2,0,melee,S1,s2_g1,0\n" +
+            "3,1,0,melee,S1,s3_g1,0\n3,2,0,melee,S1,s3_g1,0\n";
+
+        // クリア用: 全6ウェーブとも近接の敵1体だけ（ライフ1ずつ減ってウェーブが終わる）。
+        private const string WinningWaves =
+            "stage,wave,time,enemy_id,spawn,path_id,is_boss\n" +
+            "1,1,0,melee,S1,s1_g1,0\n1,2,0,melee,S1,s1_g1,0\n2,1,0,melee,S1,s2_g1,0\n2,2,0,melee,S1,s2_g1,0\n" +
+            "3,1,0,melee,S1,s3_g1,0\n3,2,0,melee,S1,s3_g1,0\n";
+
+        private static string _waves;
+
+        private Keyboard _keyboard;
+        private readonly List<InputDevice> _disabled = new List<InputDevice>();
+        private bool _runInBackground;
+        private InputSettings.EditorInputBehaviorInPlayMode _editorBehavior;
+        private InputSettings.BackgroundBehavior _backgroundBehavior;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _runInBackground = Application.runInBackground;
+            Application.runInBackground = true;
+            _editorBehavior = InputSystem.settings.editorInputBehaviorInPlayMode;
+            _backgroundBehavior = InputSystem.settings.backgroundBehavior;
+            InputSystem.settings.editorInputBehaviorInPlayMode =
+                InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            // 実機の入力（ゲームパッド・マウスを含む）は止め、仮想キーボードだけにする。
+            foreach (var device in InputSystem.devices)
+            {
+                if (device.enabled)
+                {
+                    _disabled.Add(device);
+                }
+            }
+
+            foreach (var device in _disabled)
+            {
+                InputSystem.DisableDevice(device);
+            }
+
+            _keyboard = InputSystem.AddDevice<Keyboard>("Test Keyboard");
+            SceneManager.sceneLoaded += ReplaceWaves;
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            SceneManager.sceneLoaded -= ReplaceWaves;
+            _waves = null;
+            Time.timeScale = 1f;
+            InputSystem.RemoveDevice(_keyboard);
+            foreach (var device in _disabled)
+            {
+                InputSystem.EnableDevice(device);
+            }
+
+            _disabled.Clear();
+            InputSystem.settings.editorInputBehaviorInPlayMode = _editorBehavior;
+            InputSystem.settings.backgroundBehavior = _backgroundBehavior;
+            Application.runInBackground = _runInBackground;
+        }
+
+        [UnityTest]
+        public IEnumerator Game_Over_Shows_Result_And_Retry_Restarts_With_Same_Setting()
+        {
+            _waves = LosingWaves;
+            GameSession.StartGame(4);
+            yield return WaitForGame();
+            var battle = Object.FindAnyObjectByType<BattleController>();
+            var cabinet = Object.FindAnyObjectByType<SlotCabinet>();
+            var startCoins = battle.Wallet.Coins;
+            var startLife = battle.Field.Life;
+            var defaultLayout = Describe(cabinet.Layout);
+
+            // 既定と違う配列で始め、リトライで既定に戻ることを確かめる（plan 4章）。
+            // 図柄の数を変えないよう、違う図柄の隣り合う2マスを入れ替える。
+            var reelCustom = Object.FindAnyObjectByType<ReelCustomScreen>();
+            var customizer = reelCustom.Customizer;
+            var first = 0;
+            while (customizer.At(first) == customizer.At(first + 1))
+            {
+                first++;
+            }
+
+            var a = customizer.At(first);
+            var b = customizer.At(first + 1);
+            SetCell(customizer, first, b);
+            SetCell(customizer, first + 1, a);
+            Assert.That(reelCustom.Confirm(), Is.True, "配列を変えて確定できない");
+            yield return null;
+            Assert.That(Describe(cabinet.Layout), Is.Not.EqualTo(defaultLayout), "配列が変わっていない");
+
+            var result = Object.FindAnyObjectByType<ResultScreen>();
+            yield return PlayUntilFinished(battle);
+            Assert.That(battle.Run.Phase, Is.EqualTo(WavePhase.GameOver), "ライフ0でゲームオーバーにならない");
+            yield return null;
+            Assert.That((result.IsOpen, result.IsClear, Text(result, "waveText"), battle.IsInputBlocked, cabinet.InputLocked),
+                Is.EqualTo((true, false, "1-1", true, true)), "ゲームオーバーのリザルトが開かない／操作を止めない");
+            Assert.That(Text(result, "coinsText"), Is.EqualTo(battle.Wallet.Coins.ToString()));
+            battle.SetPaused(true);
+            Assert.That(battle.IsPaused, Is.False, "リザルト中に一時停止できてしまう");
+
+            // AC-004: Enter（初期選択の ▶）でリトライ。同じ設定で、進行・ライフ・コイン・リール配列が初期状態に戻る。
+            yield return Press(Key.Enter, () => SceneManager.GetActiveScene().name == GameSession.GameScene &&
+                                                Object.FindAnyObjectByType<BattleController>() != battle);
+            yield return WaitForGame();
+            battle = Object.FindAnyObjectByType<BattleController>();
+            cabinet = Object.FindAnyObjectByType<SlotCabinet>();
+            result = Object.FindAnyObjectByType<ResultScreen>();
+            Assert.That(battle.Run, Is.Not.Null, "リトライ後に進行が作られない");
+            Assert.That((GameSession.SelectedSetting, cabinet.Setting), Is.EqualTo(((int?)4, 4)), "リトライで設定が変わった");
+            Assert.That((battle.Run.Stage, battle.Run.Wave, battle.Run.Phase, battle.Field.Life, battle.Wallet.Coins),
+                Is.EqualTo((1, 1, WavePhase.Preparing, startLife, startCoins)), "リトライで進行が初期化されない");
+            Assert.That(Describe(cabinet.Layout), Is.EqualTo(defaultLayout), "リトライでリール配列が既定に戻らない");
+            Assert.That((battle.IsCustomizing, result.IsOpen), Is.EqualTo((true, false)), "リトライ後の開始画面がおかしい");
+        }
+
+        [UnityTest]
+        public IEnumerator Clear_Shows_Result_And_Keyboard_Returns_To_Title()
+        {
+            _waves = WinningWaves;
+            yield return SceneManager.LoadSceneAsync(GameSession.GameScene);
+            yield return WaitForGame();
+            var battle = Object.FindAnyObjectByType<BattleController>();
+            var result = Object.FindAnyObjectByType<ResultScreen>();
+            yield return ReelCustomTestUtil.CloseWithDefault(battle);
+
+            yield return PlayUntilFinished(battle);
+            Assert.That(battle.Run.Phase, Is.EqualTo(WavePhase.Completed), "最終ウェーブを終えてもクリアにならない");
+            yield return null;
+            Assert.That((result.IsOpen, result.IsClear, Text(result, "waveText")), Is.EqualTo((true, true, "3-2")),
+                "クリアのリザルトが開かない");
+
+            yield return Press(Key.RightArrow, () => result.Selected == 1);
+            Assert.That(result.Selected, Is.EqualTo(1), "→ で ◀（タイトル）を選べない");
+            yield return Press(Key.Enter, () => SceneManager.GetActiveScene().name == GameSession.TitleScene);
+            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(GameSession.TitleScene), "タイトルへ戻らない");
+        }
+
+        // ▶ を押し続け、ステージの間のカスタム画面は既定のまま閉じて、ゲームが終わるまで速めて進める。
+        private static IEnumerator PlayUntilFinished(BattleController battle)
+        {
+            Time.timeScale = 20f;
+            var limit = Time.realtimeSinceStartup + 60f;
+            while (!battle.IsFinished && Time.realtimeSinceStartup < limit)
+            {
+                if (battle.IsCustomizing)
+                {
+                    Object.FindAnyObjectByType<ReelCustomScreen>().Confirm();
+                }
+
+                battle.StartWave();
+                yield return null;
+            }
+
+            Time.timeScale = 1f;
+            Assert.That(battle.IsFinished, Is.True, "時間内にゲームが終わらない");
+        }
+
+        private static IEnumerator WaitForGame()
+        {
+            BattleController battle = null;
+            for (var i = 0; i < 300; i++)
+            {
+                battle = SceneManager.GetActiveScene().name == GameSession.GameScene
+                    ? Object.FindAnyObjectByType<BattleController>()
+                    : null;
+                if (battle != null && battle.Run != null)
+                {
+                    break;
+                }
+
+                yield return null;
+            }
+
+            Assert.That(battle != null && battle.Run != null, Is.True, "Game シーンの進行が作られない");
+            yield return null;
+        }
+
+        // 1フレームだけ押すと取りこぼすことがあるので、効果が出るまで押し続けて離す（TitleFlowTests と同じ）。
+        private IEnumerator Press(Key key, System.Func<bool> done)
+        {
+            InputSystem.QueueStateEvent(_keyboard, new KeyboardState(key));
+            for (var i = 0; i < 60; i++)
+            {
+                yield return null;
+                if (done())
+                {
+                    break;
+                }
+            }
+
+            InputSystem.QueueStateEvent(_keyboard, new KeyboardState());
+            yield return null;
+            yield return null;
+        }
+
+        private static string Text(ResultScreen result, string field) =>
+            ((TMP_Text)typeof(ResultScreen).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(result))
+            .text;
+
+        private static void SetCell(ReelCustomizer customizer, int index, SlotSymbol symbol)
+        {
+            customizer.Select(index);
+            for (var i = 0; i < SlotSymbols.Count && customizer.At(index) != symbol; i++)
+            {
+                customizer.CycleSelected(1);
+            }
+
+            Assert.That(customizer.At(index), Is.EqualTo(symbol), "マスの図柄を変えられない");
+        }
+
+        private static string Describe(ReelLayout layout)
+        {
+            var builder = new StringBuilder();
+            for (var i = 0; i < layout.Length; i++)
+            {
+                builder.Append((int)layout.At(i));
+            }
+
+            return builder.ToString();
+        }
+
+        // sceneLoaded は Awake の後・Start の前に呼ばれるので、BattleController が表を読む前に差し替えられる。リトライ後は本来の表。
+        private static void ReplaceWaves(Scene scene, LoadSceneMode mode)
+        {
+            if (_waves == null || scene.name != GameSession.GameScene)
+            {
+                return;
+            }
+
+            var battle = Object.FindAnyObjectByType<BattleController>();
+            typeof(BattleController)
+                .GetField("wavesTable", BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(battle, new TextAsset(_waves));
+            _waves = null;
+        }
+    }
+}

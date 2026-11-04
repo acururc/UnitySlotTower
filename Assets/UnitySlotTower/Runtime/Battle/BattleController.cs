@@ -97,16 +97,19 @@ namespace UnitySlotTower.Battle
         /// </summary>
         public bool IsCustomizing { get; private set; }
 
+        /// <summary>クリア（最終ウェーブを終えた）かゲームオーバーで、ゲームが終わったか（リザルトを出す: T402）。</summary>
+        public bool IsFinished => Run != null && (Run.Phase == WavePhase.Completed || Run.Phase == WavePhase.GameOver);
+
         /// <summary>
-        /// 戦闘側の操作（配置・撤退・強化・▶）を受け付けないか。一時停止中・カスタム中と、カスタムを確定したフレーム
+        /// 戦闘側の操作（配置・撤退・強化・▶）を受け付けないか。一時停止中・カスタム中・ゲーム終了後と、カスタムを確定したフレーム
         /// （確定の Enter で ▶ まで押されないように）。
         /// </summary>
-        public bool IsInputBlocked => IsPaused || IsCustomizing || Time.frameCount == _customizeClosedFrame;
+        public bool IsInputBlocked => IsPaused || IsCustomizing || IsFinished || Time.frameCount == _customizeClosedFrame;
 
-        /// <summary>一時停止を切り替える。スロットのリールやウェイトも止めるため Time.timeScale を 0 にする。カスタム中は何もしない。</summary>
+        /// <summary>一時停止を切り替える。スロットのリールやウェイトも止めるため Time.timeScale を 0 にする。カスタム中・ゲーム終了後は何もしない。</summary>
         public void SetPaused(bool paused)
         {
-            if (IsCustomizing)
+            if (IsCustomizing || IsFinished)
             {
                 return;
             }
@@ -158,7 +161,7 @@ namespace UnitySlotTower.Battle
         {
             if (slotCabinet != null)
             {
-                slotCabinet.InputLocked = IsPaused || IsCustomizing;
+                slotCabinet.InputLocked = IsPaused || IsCustomizing || IsFinished;
             }
         }
 
@@ -198,6 +201,10 @@ namespace UnitySlotTower.Battle
             }
 
             Run.Advance(_clock.Advance(Time.deltaTime));
+            if (IsFinished && !slotCabinet.InputLocked)
+            {
+                UpdateSlotLock();
+            }
         }
 
         private static CsvTable Parse(string fileName, TextAsset asset)

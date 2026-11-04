@@ -68,7 +68,7 @@ M0〜M3 の完了行は旧仕様（5種の味方・旧スロット・5ウェー�
 ## M4 外枠
 
 - [x] T401 (FR-005) `Title` シーン（ロゴのみ文字可）と難易度選択（設定1〜6） — 検証: PlayMode テスト（AC-004） → `Title`（ビルド先頭）はロゴ＋▶ と、設定1〜6の筐体プレート（3列×2段）＋◀ の2画面。キーボードは矢印＋Enter（UI ナビゲーション）、Esc で戻る。マウスはクリック。選んだ設定は `Flow/GameSession.SelectedSetting`（Play ごとに null に戻す）で渡し、`SlotCabinet.Setting` が使う（Game を直接開いたときは筐体の既定値）。シーンは Editor `Setup/TitleSceneSetup`（実行済み）。PlayMode 14/14（TitleFlowTests 2件: キーボードで設定3、マウスで ◀ 戻りと設定6）、EditMode 388/388、ハーネス 8/8、画像 `t401-title.png`・`t401-difficulty.png` を目視
-- [ ] T402 (FR-005) リザルト（クリア／ゲームオーバーをアイコンと数字で表示）、リトライ、タイトルへ戻る — 検証: PlayMode テスト（リトライで初期化: AC-004）
+- [x] T402 (FR-005) リザルト（クリア／ゲームオーバーをアイコンと数字で表示）、リトライ、タイトルへ戻る — 検証: PlayMode テスト（リトライで初期化: AC-004） — 結果: 2026-11-04 `Flow/ResultScreen`（Game 内オーバーレイ、不透明）。`BattleController.IsFinished`（Completed/GameOver）で開き、クリア＝金の王冠・ゲームオーバー＝灰色に赤い×、旗＋到達 S-W、コイン＋所持数。▶＝リトライ（`SceneManager.LoadScene(Game)`、設定は `GameSession.SelectedSetting` のまま）、◀＝タイトル。キーボードは ←→＋Enter（`Cursor`/`Confirm`、開いたフレームの Enter は無視）、マウスはクリック。終了後は `IsInputBlocked`・一時停止不可・スロット `InputLocked`。シーンは Editor「Build Result Screen (T402)」（実行済み）。テスト `Tests/PlayMode/Flow/ResultFlowTests` 2件（ゲームオーバー→Enter でリトライ: 設定4・S1-W1 準備・ライフ・コイン・既定リール配列に戻る／クリア 3-2 →→＋Enter でタイトル）。PlayMode 21/21、EditMode 383/383、Console エラー0、ハーネス 8/8、Editor 画像 `t402-gameover.png`・`t402-clear-2.png` を目視（王冠は再構築後の版）。未確認: 手動プレイ、マウスでのリトライ・タイトル（Button の onClick のみ）
 - [ ] T403 (FR-004) 文字なし説明（薄暗いオーバーレイ、矢印・手のアニメ、初回のみ表示）を召喚・配置・向き・スロット・ボーナス・強化・撤退・リールのカスタムに付ける — 検証: 手動プレイ、第三者確認（AC-003）
 - [ ] T404 (FR-012) 一時停止中の「?」: 図柄＝効果・払い出しの早見表と現在の確率、味方の範囲図と数値 — 検証: Editor 画像、文字チェックテスト
 - [ ] T405 (FR-002) キーボードだけ・マウスだけで1ウェーブ通せることの確認と不足操作の補完 — 検証: PlayMode テスト＋手動（AC-002）
