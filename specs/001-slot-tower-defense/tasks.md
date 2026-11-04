@@ -65,6 +65,14 @@ M0〜M3 の完了行は旧仕様（5種の味方・旧スロット・5ウェー�
 - [x] T317 (FR-001) 画面比率を戦闘60%・スロット40%に: `PortraitLayout`、戦闘カメラ、筐体と操作バーの詰め直し、マスの大きさ — 検証: EditMode（PortraitLayoutTests）、Editor 画像（AC-001 の比率）、文字チェックテスト — 結果: 2026-11-04 `PortraitLayout.BattleHeightRatio` 0.60。Editor `Setup/GameSceneSetup` の「Apply 6:4 Layout (T317)」（何度実行しても同じ配置。実行済み）で操作バー 0.32〜0.40・Slot Area 0〜0.32・筐体の中身・戦闘カメラ（FOV 45、位置 (0, 10.6, -4.94)、俯角 65°）を設定。マップは 9×6 のまま。`SlotCabinetEffectTests` の「スロットのあとも戦闘が進む」が2フレーム待ちでは実時間が足りず落ちたため、0.1 秒の実時間待ちに変更。操作バー右側の隙間は T315 の効果表示（Slot Effects）の位置なので詰めていない（効果がないときは薄く 0）。検証: EditMode 376/376、PlayMode 19/19、ハーネス 8/8、Editor 画像 `t317-battle.png`・`t317-reel-custom.png`（戦闘 60%・下部 40%、カスタム画面の崩れなし）。未確認: 戦闘中の敵・味方の大きさ（非フォーカスでフレームが進まず、敵が出る前の画像）、Console エラー（CLI が0件しか返さない不調あり）、手動プレイ
 - [x] T318 (FR-050) 新しい CSV（`slot_settings`・`slot_rules`・`slot_default_reel`・ステージ列）の検証を `GameDataValidator`/`TableValidator` に追加し、`docs/ai/PROJECT_CONTEXT.md` など文書の旧仕様の記述を更新 — 検証: 壊した CSV で失敗するテスト、EditMode/PlayMode 全件、ハーネス — 結果: 2026-11-04 `GameDataValidator` に表をまたぐ検査を追加（設定1〜6がそろう＝`SlotSettings.Load`、既定配列が 0 からの連番＝`ReelLayout.Load`、コマ数＝`reel_length`、図柄数が D-46）。`TableValidationTests` に壊した CSV のテスト7件（設定の欠け・ハズレ率>1・未知のルールキー・コマ数違い・7が2つ・index の欠番・ステージ範囲外）。PROJECT_CONTEXT の古い行（ゲーム内容未定・テスト0件・シーン・ビルド未実行）を更新。検証: EditMode 383/383、PlayMode 19/19、ハーネス 8/8。新テストのうち4件（設定の欠け・コマ数違い・7が2つ・欠番）は以前の検証では検出できない内容。red 実行は省略
 
+## M3S 仕様変更の反映（2026-11-04、plan 14章。M4 の残り〔T405 以降〕より先に行う）
+
+- [ ] T320 (FR-046, FR-048) Core `ReelLocks`（`slot_locked_reel.csv`、旧 `slot_default_reel.csv` を .meta ごと改名）と `ReelCustomizer` の作り直し（ロックは拒否、空き・入れたマスへの入れる／上書き／外す、空きがなければ確定、%は埋まったマスで計算）。`reel_length` を 18 に — 検証: EditMode テスト（tdd）、データ検証テスト
+- [ ] T321 (FR-041) `SlotMachine.Stop` を3段の最終形の探索に替える（当たりはちょうど1段、ハズレはどの段も揃わない）。データ検証: 空きの埋め方 4⁶ 通りすべてで全結果の最終形が作れる — 検証: EditMode テスト（全押し位置×全押し順×全結果: AC-041）、既存のシミュレーション（AC-040）
+- [ ] T322 (FR-046, FR-002) カスタム画面をドラッグ＆ドロップに作り直す（9×2 のマス、ロックの印、下に4図柄、外へドラッグで外す、空きの点滅）。キーボード（上下で図柄・左右でマス・Space・Backspace/Delete〔新アクション `ClearCell`〕・Enter） — 検証: PlayMode テスト（マウスのドラッグとキーボードで組んで確定: AC-044）、Editor 画像
+- [ ] T323 (FR-047) カスタムはゲーム開始時だけにする（ステージ間で開かない、リトライで空きからやり直す）。ゲームの PlayMode テストのカスタムを閉じる手順を直す — 検証: PlayMode テスト（ステージ切り替えで開かない: AC-044、リトライ: AC-004）
+- [ ] T324 (FR-004) カスタムの説明を、手が図柄を空きマスへドラッグする動きに替える（D-51） — 検証: Editor 画像、手動プレイ（AC-003 は T403 と一緒に）
+
 ## M4 外枠
 
 - [x] T401 (FR-005) `Title` シーン（ロゴのみ文字可）と難易度選択（設定1〜6） — 検証: PlayMode テスト（AC-004） → `Title`（ビルド先頭）はロゴ＋▶ と、設定1〜6の筐体プレート（3列×2段）＋◀ の2画面。キーボードは矢印＋Enter（UI ナビゲーション）、Esc で戻る。マウスはクリック。選んだ設定は `Flow/GameSession.SelectedSetting`（Play ごとに null に戻す）で渡し、`SlotCabinet.Setting` が使う（Game を直接開いたときは筐体の既定値）。シーンは Editor `Setup/TitleSceneSetup`（実行済み）。PlayMode 14/14（TitleFlowTests 2件: キーボードで設定3、マウスで ◀ 戻りと設定6）、EditMode 388/388、ハーネス 8/8、画像 `t401-title.png`・`t401-difficulty.png` を目視
