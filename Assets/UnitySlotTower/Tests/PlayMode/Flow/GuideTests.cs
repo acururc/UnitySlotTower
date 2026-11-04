@@ -8,6 +8,7 @@ using UnityEngine.TestTools;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Guide;
+using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Flow;
 using UnitySlotTower.Slot;
 
@@ -95,7 +96,11 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That((_guide.Current, overlay.gameObject.activeSelf, dim.activeSelf),
                 Is.EqualTo((GuideHint.ReelCustom, true, false)), "開始時はカスタムの説明（カスタム画面が暗くするので暗幕なし）");
 
-            yield return Click(Object.FindAnyObjectByType<ReelCustomScreen>().ConfirmButton.transform);
+            // 空きがあるうちは手が下の図柄から最初の空きマスへ動く。埋めたら ✔ を指す。
+            var reelCustom = Object.FindAnyObjectByType<ReelCustomScreen>();
+            Assert.That(reelCustom.FirstEmptyCell, Is.GreaterThanOrEqualTo(0));
+            Tests.PlayMode.Battle.ReelCustomTestUtil.FillEmpty(reelCustom.Customizer, SlotSymbol.Coin);
+            yield return Click(reelCustom.ConfirmButton.transform);
             Assert.That((_guide.Current, dim.activeSelf), Is.EqualTo((GuideHint.Summon, true)), "次は召喚");
 
             var bar = Object.FindAnyObjectByType<OperationBarStatus>();

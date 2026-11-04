@@ -144,7 +144,7 @@ namespace UnitySlotTower.Battle
             }
         }
 
-        // ゲーム開始前と各ステージの準備の前に開く（FR-047）。前回確定した配列から編集を始める。
+        // ゲーム開始時だけ開く（FR-047、D-48）。ロック以外を空きにして編集を始める。
         private void OpenReelCustom()
         {
             if (reelCustomScreen == null)
@@ -154,8 +154,7 @@ namespace UnitySlotTower.Battle
 
             IsCustomizing = true;
             UpdateSlotLock();
-            reelCustomScreen.Open(slotCabinet.Layout, slotCabinet.Rules.ReelLength, slotCabinet.MissRate,
-                OnReelCustomConfirmed);
+            reelCustomScreen.Open(slotCabinet.Locks, slotCabinet.MissRate, OnReelCustomConfirmed);
         }
 
         private void OnReelCustomConfirmed(ReelLayout layout)
@@ -192,11 +191,11 @@ namespace UnitySlotTower.Battle
             }
         }
 
-        // ステージ1 の StageBegan は WaveRun を作る中で呼ばれ、まだ購読していない（開始前のカスタムは Start で開く）。
+        // ステージ1 の StageBegan は WaveRun を作る中で呼ばれ、まだ購読していない（開始時のカスタムは Start で開く）。
+        // ステージ間ではカスタムを開かない（D-48、2026-11-04）。
         private void OnStageBegan()
         {
             fieldView.Show(Run.Map);
-            OpenReelCustom();
         }
 
         // 揃った図柄の効果（攻撃力アップ・攻撃速度アップ・全体HP回復）を戦闘へ渡す（FR-042、T314）。

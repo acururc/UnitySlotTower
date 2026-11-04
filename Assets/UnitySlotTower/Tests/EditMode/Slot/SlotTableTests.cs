@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using NUnit.Framework;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Slot;
@@ -40,7 +41,7 @@ namespace UnitySlotTower.Tests.EditMode.Slot
                     rules.ReelLength, rules.WaitSeconds, rules.CoinPayout, rules.BigGames, rules.BigPayout, rules.RegGames,
                     rules.RegPayout, rules.AtkRate, rules.AtkSeconds, rules.SpeedRate, rules.SpeedSeconds, rules.HealRate,
                 },
-                Is.EqualTo(new object[] { 12, 2.0, 15, 12, 10, 6, 8, 1.5, 20.0, 1.5, 20.0, 0.5 }));
+                Is.EqualTo(new object[] { 18, 2.0, 15, 12, 10, 6, 8, 1.5, 20.0, 1.5, 20.0, 0.5 }));
         }
 
         [Test]
@@ -53,13 +54,34 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         }
 
         [Test]
-        [Description("D-46: 既定の配列はルールのマス数と配列の条件を満たす")]
-        public void Project_Default_Reel_Is_Valid_For_The_Rules()
+        [Description("D-46: プロジェクトのロック配置はルールのマス数で、6図柄が2つずつ")]
+        public void Project_Locked_Reel_Is_Valid_For_The_Rules()
         {
             var rules = SlotRules.Load(ProjectTable(SlotRules.FileName));
-            var layout = ReelLayout.Load(ProjectTable(ReelLayout.FileName));
+            var locks = ReelLocks.Load(ProjectTable(ReelLocks.FileName));
 
-            Assert.That(layout.IsValid(rules.ReelLength), Is.True);
+            Assert.That(locks.Problems(rules.ReelLength), Is.Empty);
+        }
+
+        [Test]
+        [Description("D-54, AC-041: プロジェクトのロック配置は、空きをどう埋めても当たり（1段だけ）とハズレ（どの段も揃わない）の出目を作れる")]
+        public void Project_Locked_Reel_Can_Show_Every_Result_For_Every_Fill()
+        {
+            var locks = ReelLocks.Load(ProjectTable(ReelLocks.FileName));
+
+            var bad = SlotStops.FirstUnsolvableFill(locks);
+
+            Assert.That(bad == null ? "" : string.Join(" ", Enumerable.Range(0, bad.Length).Select(i => SlotSymbols.Ids[(int)bad.At(i)])),
+                Is.Empty);
+        }
+
+        [Test]
+        [Description("D-54: 7 の2つが同じ並びに挟まれていると、7 の当たりで上下の段も揃ってしまうので見つける")]
+        public void Locks_Whose_Sevens_Share_Neighbors_Are_Found_Unsolvable()
+        {
+            var locks = ReelCustomizerTests.Locks("coin seven atk coin seven atk bar speed heal bar speed heal _ _ _ _ _ _");
+
+            Assert.That(SlotStops.FirstUnsolvableFill(locks), Is.Not.Null);
         }
     }
 }

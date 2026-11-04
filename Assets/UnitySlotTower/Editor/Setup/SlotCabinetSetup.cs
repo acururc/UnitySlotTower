@@ -84,7 +84,7 @@ namespace UnitySlotTower.Editor.Setup
             SetTable(serialized, "gameConfigTable", "game_config.csv");
             SetTable(serialized, "settingsTable", SlotSettings.FileName);
             SetTable(serialized, "rulesTable", SlotRules.FileName);
-            SetTable(serialized, "defaultReelTable", ReelLayout.FileName);
+            SetTable(serialized, "lockedReelTable", ReelLocks.FileName);
             serialized.FindProperty("inputActions").objectReferenceValue =
                 AssetDatabase.LoadAssetAtPath<InputActionAsset>(InputActionsPath);
             serialized.FindProperty("leverButton").objectReferenceValue = lever;

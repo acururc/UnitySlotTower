@@ -1,6 +1,7 @@
 using System.Linq;
 using NUnit.Framework;
 using UnitySlotTower.Core.Data;
+using UnitySlotTower.Core.Slot;
 
 namespace UnitySlotTower.Tests.EditMode.Data
 {
@@ -228,36 +229,36 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        public void Default_Reel_Length_Not_Matching_Reel_Length_Is_An_Error()
+        public void Locked_Reel_Length_Not_Matching_Reel_Length_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["slot_rules.csv"] = files["slot_rules.csv"].Replace("reel_length,12", "reel_length,13");
+            files["slot_rules.csv"] = files["slot_rules.csv"].Replace("reel_length,18", "reel_length,19");
 
             var report = GameDataValidator.ValidateAll(files);
 
-            Assert.That(report.Errors.Select(e => e.File), Does.Contain("slot_default_reel.csv"));
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain(ReelLocks.FileName));
         }
 
         [Test]
-        public void Default_Reel_With_Two_Sevens_Is_An_Error()
+        public void Locked_Reel_With_Three_Sevens_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["slot_default_reel.csv"] = files["slot_default_reel.csv"].Replace("6,bar", "6,seven");
+            files[ReelLocks.FileName] = files[ReelLocks.FileName].Replace("6,empty", "6,seven");
 
             var report = GameDataValidator.ValidateAll(files);
 
-            Assert.That(report.Errors.Select(e => e.File), Does.Contain("slot_default_reel.csv"));
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain(ReelLocks.FileName));
         }
 
         [Test]
-        public void Default_Reel_With_An_Index_Gap_Is_An_Error()
+        public void Locked_Reel_With_An_Index_Gap_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["slot_default_reel.csv"] = files["slot_default_reel.csv"].Replace("11,coin", "12,coin");
+            files[ReelLocks.FileName] = files[ReelLocks.FileName].Replace("17,empty", "18,empty");
 
             var report = GameDataValidator.ValidateAll(files);
 
-            Assert.That(report.Errors.Select(e => e.File), Does.Contain("slot_default_reel.csv"));
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain(ReelLocks.FileName));
         }
 
         [Test]

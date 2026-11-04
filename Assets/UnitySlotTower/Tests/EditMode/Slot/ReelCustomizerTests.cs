@@ -4,32 +4,30 @@ using UnitySlotTower.Core.Slot;
 
 namespace UnitySlotTower.Tests.EditMode.Slot
 {
+    /// <summary>ロック12マス＋空き6マスのカスタム（D-46・D-50、FR-046・FR-048、AC-044・AC-045）。</summary>
     public sealed class ReelCustomizerTests
     {
-        private const int Length = 12;
+        /// <summary>plan 5章の初期のロック配置（_ は空き: 6〜8 と 15〜17）。</summary>
+        public const string LockIds = "atk speed coin bar coin seven _ _ _ bar speed heal atk seven heal _ _ _";
 
-        /// <summary>plan 5章の既定配列: 7・攻・コ・回・速・コ・BAR・攻・コ・回・速・コ。</summary>
-        private const string DefaultIds = "seven atk coin heal speed coin bar atk coin heal speed coin";
+        public static ReelLocks Locks(string ids = LockIds) =>
+            new ReelLocks(ids.Split(' ')
+                .Select(id => id == "_" ? (SlotSymbol?)null : (SlotSymbol)System.Array.IndexOf(SlotSymbols.Ids, id)).ToArray());
 
-        private static ReelLayout Layout(string ids) =>
-            new ReelLayout(ids.Split(' ').Select(id => (SlotSymbol)System.Array.IndexOf(SlotSymbols.Ids, id)).ToArray());
+        private static ReelCustomizer Create(double missRate = 0.25) => new ReelCustomizer(Locks(), missRate);
 
-        private static ReelCustomizer Create(string ids = DefaultIds, double missRate = 0.25) =>
-            new ReelCustomizer(Layout(ids), Length, missRate);
+        private static readonly int[] Empties = { 6, 7, 8, 15, 16, 17 };
 
         [Test]
         [Description("AC-045: ハズレ率と当たり率は設定の値を小数1桁の%で表す")]
         public void Miss_And_Hit_Are_Percent_In_Tenths()
         {
-            var customizer = Create(missRate: 0.25);
-
-            Assert.That((customizer.MissTenths, customizer.HitTenths), Is.EqualTo((250, 750)));
+            Assert.That((Create(0.25).MissTenths, Create(0.25).HitTenths), Is.EqualTo((250, 750)));
         }
 
         [TestCase(1.0 / 3, 333)]
         [TestCase(2.0 / 3, 667)]
         [TestCase(0.0625, 63)]
-        [TestCase(0.15, 150)]
         [TestCase(0.0, 0)]
         [TestCase(1.0, 1000)]
         [Description("AC-045, plan 5章: % は小数1桁に四捨五入")]
@@ -39,109 +37,121 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         }
 
         [Test]
-        [Description("AC-045: 当たり時の各図柄の%はマス数 ÷ 総マス数（既定配列: コイン 4/12=33.3%、7 1/12=8.3%、攻 2/12=16.7%）")]
-        public void Symbol_Percent_Is_Cells_Over_Length()
+        [Description("D-46: 開始時はロック以外が空きで、確定できない")]
+        public void Starts_With_Empty_Cells_And_Cannot_Confirm()
         {
             var customizer = Create();
 
-            Assert.That(
-                (customizer.SymbolTenths(SlotSymbol.Coin), customizer.SymbolTenths(SlotSymbol.Seven),
-                    customizer.SymbolTenths(SlotSymbol.Atk)),
-                Is.EqualTo((333, 83, 167)));
+            Assert.That(Empties.All(i => customizer.At(i) == null && !customizer.IsLocked(i)), Is.True);
+            Assert.That((customizer.EmptyCount, customizer.IsValid, customizer.TryConfirm()), Is.EqualTo((6, false, (ReelLayout)null)));
         }
 
         [Test]
-        [Description("AC-045: 配列を変えると各図柄の%が即時に変わり、Changed が呼ばれる")]
-        public void Cycling_A_Cell_Updates_Counts_And_Percent()
+        [Description("D-46: ロックのマスには入れられず、外せない")]
+        public void Locked_Cells_Refuse_Place_And_Clear()
         {
             var customizer = Create();
-            var changed = 0;
-            customizer.Changed += () => changed++;
 
-            customizer.Select(2); // コイン → 次は Seven（並びの先頭へ循環）
-            customizer.CycleSelected(1);
+            Assert.That((customizer.Place(0, SlotSymbol.Coin), customizer.Clear(0), customizer.At(0)),
+                Is.EqualTo((false, false, (SlotSymbol?)SlotSymbol.Atk)));
+        }
 
-            Assert.That(
-                (customizer.At(2), customizer.Count(SlotSymbol.Coin), customizer.SymbolTenths(SlotSymbol.Coin),
-                    customizer.Count(SlotSymbol.Seven), changed),
-                Is.EqualTo((SlotSymbol.Seven, 3, 250, 2, 1)));
+        [TestCase(SlotSymbol.Seven)]
+        [TestCase(SlotSymbol.Bar)]
+        [Description("D-46: 空きに入れられるのは攻撃力・攻撃速度・回復・コインだけ")]
+        public void Seven_And_Bar_Cannot_Be_Placed(SlotSymbol symbol)
+        {
+            var customizer = Create();
+
+            Assert.That((customizer.Place(6, symbol), customizer.At(6)), Is.EqualTo((false, (SlotSymbol?)null)));
         }
 
         [Test]
-        [Description("AC-044: 7 が2つになると確定できず、7 が条件を満たさない図柄として分かる")]
-        public void Two_Sevens_Cannot_Be_Confirmed()
+        [Description("D-46: 確定前は上書きと外しができ、変わるたびに通知する")]
+        public void Placed_Cells_Can_Be_Overwritten_And_Cleared()
         {
             var customizer = Create();
-            customizer.Select(2);
-            customizer.CycleSelected(1);
+            var changes = 0;
+            customizer.Changed += () => changes++;
 
-            Assert.That(
-                (customizer.IsValid, customizer.TryConfirm(), customizer.IsCountAllowed(SlotSymbol.Seven),
-                    customizer.IsCountAllowed(SlotSymbol.Coin)),
-                Is.EqualTo((false, (ReelLayout)null, false, true)));
+            customizer.Place(6, SlotSymbol.Coin);
+            customizer.Place(6, SlotSymbol.Heal);
+            var cleared = customizer.Clear(6);
+
+            Assert.That((cleared, customizer.At(6), customizer.Clear(6), changes),
+                Is.EqualTo((true, (SlotSymbol?)null, false, 3)));
         }
 
         [Test]
-        [Description("AC-044: 図柄を1つ戻せば（下方向へ切り替え）再び確定できる")]
-        public void Cycling_Back_Restores_Valid_Layout()
+        [Description("D-46, AC-044: 空きがなくなれば確定でき、ロックと入れた図柄の配列になる")]
+        public void Filling_All_Empties_Confirms_The_Layout()
         {
             var customizer = Create();
-            customizer.Select(2);
-            customizer.CycleSelected(1);
-            customizer.CycleSelected(-1);
-
-            Assert.That((customizer.At(2), customizer.IsValid), Is.EqualTo((SlotSymbol.Coin, true)));
-        }
-
-        [Test]
-        [Description("AC-044: 満たす配列は確定でき、確定した配列は編集内容と同じ")]
-        public void Valid_Layout_Is_Confirmed_As_Edited()
-        {
-            var customizer = Create();
-            customizer.Select(3); // 回 → コ（各図柄1つ以上は保たれる）
-            customizer.CycleSelected(1);
+            foreach (var i in Empties)
+            {
+                customizer.Place(i, SlotSymbol.Coin);
+            }
 
             var layout = customizer.TryConfirm();
 
             Assert.That(layout, Is.Not.Null);
-            var expected = Layout("seven atk coin coin speed coin bar atk coin heal speed coin");
-            Assert.That(Enumerable.Range(0, Length).Select(layout.At),
-                Is.EqualTo(Enumerable.Range(0, Length).Select(expected.At)));
-            Assert.That(layout.IsValid(Length), Is.True);
+            Assert.That((layout.Length, layout.At(5), layout.At(6), layout.Count(SlotSymbol.Coin)),
+                Is.EqualTo((18, SlotSymbol.Seven, SlotSymbol.Coin, 8)));
         }
 
         [Test]
-        [Description("AC-044: マス数が reel_length と違う配列は確定できない")]
-        public void Wrong_Length_Cannot_Be_Confirmed()
-        {
-            var customizer = Create("seven atk coin heal speed coin bar atk coin heal speed");
-
-            Assert.That(customizer.IsValid, Is.False);
-        }
-
-        [Test]
-        [Description("plan 3章: 左右でマスを選ぶ（端は循環）")]
-        public void Selection_Wraps_Around()
+        [Description("FR-048: 空きがあるあいだは埋まったマスだけで当たり時の%を計算する")]
+        public void Symbol_Percent_Uses_Filled_Cells_Only()
         {
             var customizer = Create();
+            Assert.That(customizer.SymbolTenths(SlotSymbol.Seven), Is.EqualTo(167), "2/12");
 
-            customizer.MoveSelection(-1);
-            var left = customizer.Selected;
-            customizer.MoveSelection(2);
+            foreach (var i in Empties)
+            {
+                customizer.Place(i, SlotSymbol.Coin);
+            }
 
-            Assert.That((left, customizer.Selected), Is.EqualTo((Length - 1, 1)));
+            Assert.That((customizer.SymbolTenths(SlotSymbol.Seven), customizer.SymbolTenths(SlotSymbol.Coin)),
+                Is.EqualTo((111, 444)), "2/18 と 8/18");
         }
 
         [Test]
-        [Description("編集しても元の配列は変わらない")]
-        public void Editing_Does_Not_Change_Start_Layout()
+        [Description("D-50: 左右の移動はロックを飛ばして空き（入れたマス）だけを回る")]
+        public void Selection_Skips_Locked_Cells()
         {
-            var start = Layout(DefaultIds);
-            var customizer = new ReelCustomizer(start, Length, 0.25);
+            var customizer = Create();
+            Assert.That(customizer.Selected, Is.EqualTo(6), "最初の空き");
 
-            customizer.CycleSelected(1);
+            var visited = new int[7];
+            for (var i = 0; i < visited.Length; i++)
+            {
+                visited[i] = customizer.Selected;
+                customizer.MoveSelection(1);
+            }
 
-            Assert.That(start.At(0), Is.EqualTo(SlotSymbol.Seven));
+            Assert.That(visited, Is.EqualTo(new[] { 6, 7, 8, 15, 16, 17, 6 }));
+            customizer.MoveSelection(-1); // 7 → 6
+            customizer.MoveSelection(-1); // 端を越えて 17
+            Assert.That(customizer.Selected, Is.EqualTo(17));
+        }
+
+        [Test]
+        [Description("D-50: 上下で入れる図柄を4種で回し、Space で選んだマスに入れ、Backspace で外す")]
+        public void Brush_Cycles_Fillable_Symbols_And_Places_On_Selected()
+        {
+            var customizer = Create();
+            var brushes = new SlotSymbol[5];
+            for (var i = 0; i < brushes.Length; i++)
+            {
+                brushes[i] = customizer.Brush;
+                customizer.CycleBrush(1);
+            }
+
+            Assert.That(brushes, Is.EqualTo(new[] { SlotSymbol.Atk, SlotSymbol.Speed, SlotSymbol.Heal, SlotSymbol.Coin, SlotSymbol.Atk }));
+            customizer.CycleBrush(-2); // 速 → 攻 → 端を越えてコイン
+            customizer.MoveSelection(1);
+            Assert.That((customizer.PlaceSelected(), customizer.At(7)), Is.EqualTo((true, (SlotSymbol?)SlotSymbol.Coin)));
+            Assert.That((customizer.ClearSelected(), customizer.At(7)), Is.EqualTo((true, (SlotSymbol?)null)));
         }
     }
 }

@@ -11,7 +11,32 @@ namespace UnitySlotTower.Tests.EditMode.Slot
     public sealed class SlotMachineTests
     {
         private const int Bet = 3;
-        private const string DefaultReel = "seven atk coin heal speed coin bar atk coin heal speed coin";
+        // plan 5章のロック配置（空きは 6〜8・15〜17）を混ぜて埋めた配列。
+        private const string DefaultReel = "atk speed coin bar coin seven coin heal coin bar speed heal atk seven heal coin atk coin";
+        private const int Length = 18;
+
+        /// <summary>上・中・下で3つ揃った段の図柄（D-52）。</summary>
+        private static List<SlotSymbol> AlignedRows(SlotMachine machine)
+        {
+            var rows = new List<SlotSymbol>();
+            for (var row = -1; row <= 1; row++)
+            {
+                var cells = Enumerable.Range(0, SlotMachine.ReelCount).Select(r => machine.Layout.At(machine.StopPosition(r) + row)).ToArray();
+                if (cells.All(s => s == cells[0]))
+                {
+                    rows.Add(cells[0]);
+                }
+            }
+
+            return rows;
+        }
+
+        /// <summary>当たりは結果の図柄がちょうど1段だけ、ハズレはどの段も揃わない（D-53）。</summary>
+        private static bool ShowsResult(SlotMachine machine, SlotSymbol? result)
+        {
+            var rows = AlignedRows(machine);
+            return result.HasValue ? rows.Count == 1 && rows[0] == result.Value : rows.Count == 0;
+        }
 
         private static ReelLayout Layout(string ids) =>
             new ReelLayout(ids.Split(' ').Select(id => (SlotSymbol)Array.IndexOf(SlotSymbols.Ids, id)).ToArray());
@@ -57,11 +82,11 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         }
 
         [Test]
-        [Description("AC-044: 確定した配列に替えると、以後の抽選と停止はその配列で行う（7 を4つ目のマスへ動かした配列）")]
+        [Description("AC-044: 確定した配列に替えると、以後の抽選と停止はその配列で行う（空きをすべて攻撃力アップにした配列）")]
         public void Changed_Layout_Is_Used_For_Next_Games()
         {
             var machine = Machine(new CoinWallet(100), 0.0);
-            var custom = Layout("atk atk coin seven speed coin bar heal coin heal speed coin");
+            var custom = Layout("atk speed coin bar coin seven atk atk atk bar speed heal atk seven heal atk atk atk");
 
             machine.ChangeLayout(custom);
             var hits = new HashSet<SlotSymbol>();
@@ -70,10 +95,10 @@ namespace UnitySlotTower.Tests.EditMode.Slot
                 machine.TryLever();
                 for (var reel = 0; reel < SlotMachine.ReelCount; reel++)
                 {
-                    var stop = machine.Stop(reel, 0);
-                    Assert.That(custom.At(stop), Is.EqualTo(machine.Result.Value));
+                    machine.Stop(reel, game);
                 }
 
+                Assert.That(ShowsResult(machine, machine.Result), Is.True, $"ゲーム {game}");
                 hits.Add(machine.Result.Value);
             }
 
@@ -139,10 +164,10 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         [TestCase(SlotSymbol.Heal)]
         [TestCase(SlotSymbol.Coin)]
         [TestCase(null)]
-        [Description("AC-041, FR-041: 全押し順×全押し位置で、中段の出目が決まった結果（揃う図柄／ハズレ）と一致する")]
+        [Description("AC-041, FR-041, D-53: 全押し順×全押し位置で、当たりは結果の図柄がちょうど1段に揃い、ハズレはどの段も揃わない")]
         public void Every_Press_Order_And_Position_Shows_The_Decided_Result(SlotSymbol? result)
         {
-            const int length = 12;
+            const int length = Length;
             var machine = Fixed(result, new CoinWallet(1_000_000_000));
             var mismatches = 0;
             foreach (var order in Orders)
@@ -156,10 +181,7 @@ namespace UnitySlotTower.Tests.EditMode.Slot
                         machine.Stop(reel, press[reel]);
                     }
 
-                    var middle = Enumerable.Range(0, SlotMachine.ReelCount)
-                        .Select(r => machine.Layout.At(machine.StopPosition(r))).ToArray();
-                    var aligned = middle.All(s => s == middle[0]);
-                    if (result.HasValue ? !(aligned && middle[0] == result.Value) : aligned)
+                    if (!ShowsResult(machine, result))
                     {
                         mismatches++;
                     }
@@ -170,24 +192,25 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         }
 
         [Test]
-        [Description("plan 5章: 当たりは押した位置から下へ進めて、結果の図柄が来る最初の位置で止める（既定配列の BAR はコマ6、最大11コマ）")]
-        public void Hit_Stops_At_The_First_Matching_Cell_From_The_Press()
+        [Description("plan 5章: 当たりの1本目は、押した位置で結果の図柄がどこかの段に見えていればそこで止まる（BAR はコマ3と9）")]
+        public void First_Hit_Reel_Stops_At_The_Press_When_The_Symbol_Is_Visible()
         {
             var machine = Fixed(SlotSymbol.Bar, new CoinWallet(10));
             machine.TryLever();
 
-            Assert.That((machine.Stop(0, 9), machine.Stop(1, 5), machine.Stop(2, 6)), Is.EqualTo((6, 6, 6)));
+            Assert.That(machine.Stop(0, 10), Is.EqualTo(10), "上段にコマ9の BAR");
         }
 
         [Test]
-        [Description("plan 5章: ハズレは押した位置で止め、最後のリールで揃うときだけ揃わない最初の位置まで進める")]
+        [Description("plan 5章: ハズレは押した位置で止め、最後のリールで段が揃うときだけ揃わない位置まで進める")]
         public void Miss_Stops_At_The_Press_Unless_The_Last_Reel_Would_Align()
         {
             var machine = Fixed(null, new CoinWallet(10));
             machine.TryLever();
 
-            // コマ2・5・8・11 はコイン。左と右をコマ2で止め、中をコマ5で押すと揃うので、下のコマ4（攻撃速度）で止まる。
-            Assert.That((machine.Stop(0, 2), machine.Stop(2, 2), machine.Stop(1, 5)), Is.EqualTo((2, 2, 4)));
+            // 3本とも同じ位置だと3段とも揃うので、最後のリールだけ下へ進む。
+            Assert.That((machine.Stop(0, 4), machine.Stop(2, 4), machine.Stop(1, 4) != 4, ShowsResult(machine, null)),
+                Is.EqualTo((4, 4, true, true)));
         }
 
         [Test]

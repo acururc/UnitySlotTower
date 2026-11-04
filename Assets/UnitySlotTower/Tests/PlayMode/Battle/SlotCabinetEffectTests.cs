@@ -17,9 +17,9 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
     [Description("AC-011 の一部・T315: キーでスロットを回して揃えた効果が戦闘に届き、操作バーと筐体の表示に出る（FR-042, FR-043）")]
     public sealed class SlotCabinetEffectTests
     {
-        // slot_default_reel.csv のコマ番号（0: seven、1: atk）。
-        private const int SevenIndex = 0;
-        private const int AttackIndex = 1;
+        // slot_locked_reel.csv のロックのコマ番号（0: atk、5: seven）。
+        private const int SevenIndex = 5;
+        private const int AttackIndex = 0;
 
         private Keyboard _keyboard;
         private readonly List<InputDevice> _disabled = new List<InputDevice>();

@@ -1158,6 +1158,15 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "ClearCell",
+                    "type": "Button",
+                    "id": "8a2c5e71-93d4-4f0b-b6e2-1d7f4a9c0b35",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "Help",
                     "type": "Button",
                     "id": "3f6d2a8e-4b1c-4e7a-9d35-0c8a1f6b2e47",
@@ -1546,6 +1555,28 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "Help",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "d4f1a8b2-6c3e-4a95-8b07-2e9c5f1d7a63",
+                    "path": "<Keyboard>/backspace",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "ClearCell",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "e83b7c19-4d2a-4f6e-9a50-7c1b3d8e2f94",
+                    "path": "<Keyboard>/delete",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "ClearCell",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

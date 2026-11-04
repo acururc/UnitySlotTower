@@ -34,11 +34,5 @@ namespace UnitySlotTower.Core.Slot
 
             throw row.Error(column, $"未知の図柄 '{id}'");
         }
-
-        /// <summary>
-        /// 配列に必要な数（D-46）: 7・BAR はちょうど1つ、ほかの4図柄は1つ以上。
-        /// </summary>
-        public static bool IsCountAllowed(SlotSymbol symbol, int count) =>
-            symbol == SlotSymbol.Seven || symbol == SlotSymbol.Bar ? count == 1 : count >= 1;
     }
 }

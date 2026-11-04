@@ -117,8 +117,9 @@ namespace UnitySlotTower.Core.Slot
         public int StopPosition(int reel) => _stops[reel];
 
         /// <summary>
-        /// リールを押した位置から下へ（コマ番号が減る向きに）進め、結果に合う最初の位置で止める。停止位置を返す（plan 5章）。
-        /// 当たりは中段に結果の図柄を止める。ハズレは押した位置で止め、最後のリールで中段が揃うときだけ揃わない位置まで進める。
+        /// リールを押した位置から下へ（コマ番号が減る向きに）1コマずつ進め、そこで止めても残りのリールで結果どおりの最終形
+        /// （<see cref="SlotStops.IsFinal"/>: 当たりは上・中・下のちょうど1段に結果の図柄、ハズレはどの段も揃わない）が作れる
+        /// 最初の位置で止める。停止位置を返す（plan 5章、D-53）。厳密な最終形が作れない配列では緩い条件で探し、それも無理なら押した位置で止める。
         /// </summary>
         public int Stop(int reel, int pressPosition)
         {
@@ -129,15 +130,7 @@ namespace UnitySlotTower.Core.Slot
 
             var press = Layout.Wrap(pressPosition);
             var isLast = Array.IndexOf(_stopped, false) == Array.LastIndexOf(_stopped, false);
-            var stop = press;
-            for (var slide = 0; slide < Layout.Length; slide++)
-            {
-                stop = Layout.Wrap(press - slide);
-                if (Fits(reel, Layout.At(stop), isLast))
-                {
-                    break;
-                }
-            }
+            var stop = FindStop(reel, press, true) ?? FindStop(reel, press, false) ?? press;
 
             _stops[reel] = stop;
             _stopped[reel] = true;
@@ -203,38 +196,26 @@ namespace UnitySlotTower.Core.Slot
             }
         }
 
-        private bool Fits(int reel, SlotSymbol symbol, bool isLast)
+        private int? FindStop(int reel, int press, bool strict)
         {
-            if (Result.HasValue)
+            _stopped[reel] = true;
+            try
             {
-                return symbol == Result.Value;
-            }
-
-            if (!isLast)
-            {
-                return true;
-            }
-
-            // 最後のリール: ほかの2本の中段が同じ図柄なら、それと違う図柄で止める。
-            var first = -1;
-            for (var i = 0; i < ReelCount; i++)
-            {
-                if (i == reel)
+                for (var slide = 0; slide < Layout.Length; slide++)
                 {
-                    continue;
+                    _stops[reel] = Layout.Wrap(press - slide);
+                    if (SlotStops.CanComplete(Layout, _stops, _stopped, Result, strict))
+                    {
+                        return _stops[reel];
+                    }
                 }
 
-                if (first < 0)
-                {
-                    first = i;
-                }
-                else if (Layout.At(_stops[first]) == Layout.At(_stops[i]))
-                {
-                    return symbol != Layout.At(_stops[i]);
-                }
+                return null;
             }
-
-            return true;
+            finally
+            {
+                _stopped[reel] = false;
+            }
         }
     }
 }

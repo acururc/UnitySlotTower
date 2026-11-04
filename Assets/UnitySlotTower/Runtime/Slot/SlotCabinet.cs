@@ -26,7 +26,8 @@ namespace UnitySlotTower.Slot
         [SerializeField] private TextAsset gameConfigTable;
         [SerializeField] private TextAsset settingsTable;
         [SerializeField] private TextAsset rulesTable;
-        [SerializeField] private TextAsset defaultReelTable;
+        [FormerlySerializedAs("defaultReelTable")]
+        [SerializeField] private TextAsset lockedReelTable;
 
         [Tooltip("難易度（設定1〜6）。Game シーンを直接開いたときだけ使う。難易度選択を通ったときはその設定（T401）。")]
         [SerializeField, Range(1, 6)] private int setting = 1;
@@ -102,7 +103,10 @@ namespace UnitySlotTower.Slot
         /// <summary>このプレイの難易度のハズレ率（0〜1、FR-045）。カスタム画面の表示に使う。</summary>
         public double MissRate { get; private set; }
 
-        /// <summary>いま3本のリールに使っている配列。カスタムで確定するまでは既定配列（slot_default_reel.csv）。</summary>
+        /// <summary>リールのロック配置（slot_locked_reel.csv、D-46）。カスタム画面に渡す。Awake で読む。</summary>
+        public ReelLocks Locks { get; private set; }
+
+        /// <summary>いま3本のリールに使っている配列。カスタムで確定するまでは、ロック配置の空きをコインで埋めた仮の配列。</summary>
         public ReelLayout Layout => _pendingLayout ?? _machine?.Layout;
 
         /// <summary>
@@ -111,7 +115,12 @@ namespace UnitySlotTower.Slot
         /// </summary>
         public void ApplyLayout(ReelLayout layout)
         {
-            _pendingLayout = layout ?? throw new ArgumentNullException(nameof(layout));
+            if (!Locks.Accepts(layout))
+            {
+                throw new ArgumentException("ロック配置と合わない配列", nameof(layout));
+            }
+
+            _pendingLayout = layout;
             ApplyPendingLayout();
         }
 
@@ -143,11 +152,14 @@ namespace UnitySlotTower.Slot
                 var settings = SlotSettings.Load(Parse(SlotSettings.FileName, settingsTable));
                 var rules = SlotRules.Load(Parse(SlotRules.FileName, rulesTable));
                 Rules = rules;
-                layout = ReelLayout.Load(Parse(ReelLayout.FileName, defaultReelTable));
-                if (!layout.IsValid(rules.ReelLength))
+                Locks = ReelLocks.Load(Parse(ReelLocks.FileName, lockedReelTable));
+                var problems = Locks.Problems(rules.ReelLength);
+                if (problems.Count > 0)
                 {
-                    throw new InvalidOperationException($"{ReelLayout.FileName} が配列の条件（D-46）を満たさない");
+                    throw new InvalidOperationException($"{ReelLocks.FileName}: {string.Join(" / ", problems)}");
                 }
+
+                layout = Locks.Fill(SlotSymbol.Coin);
 
                 MissRate = settings.MissRate(setting);
                 _wallet = new CoinWallet(config.InitialCoins);

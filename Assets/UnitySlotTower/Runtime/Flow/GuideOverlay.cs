@@ -175,14 +175,19 @@ namespace UnitySlotTower.Flow
             {
                 case GuideHint.ReelCustom:
                 {
-                    // マスを2回押して図柄を替え、✔ を押す。
-                    var cells = reelCustomScreen.Cells;
-                    var cell = cells.Count > 0 ? UiRect(cells[0].transform) : default;
-                    var confirm = UiRect(reelCustomScreen.ConfirmButton.transform);
-                    var phase = Mathf.Repeat(t, TapSeconds * 3f);
-                    var onCell = phase < TapSeconds * 2f;
-                    ShowTarget(onCell ? cell : confirm, false);
-                    Tap(onCell ? cell.center : confirm.center, Mathf.Repeat(phase, TapSeconds));
+                    // 空きがあれば下の図柄から空きマスへドラッグ、すべて埋まったら ✔ を押す（D-46）。
+                    var empty = reelCustomScreen.FirstEmptyCell;
+                    if (empty >= 0 && reelCustomScreen.PaletteItems.Count > 0)
+                    {
+                        var cell = UiRect(reelCustomScreen.Cells[empty]);
+                        ShowTarget(cell, false);
+                        Drag(UiRect(reelCustomScreen.PaletteItems[0]).center, cell.center, t);
+                    }
+                    else
+                    {
+                        TapTarget(UiRect(reelCustomScreen.ConfirmButton.transform), t, false);
+                    }
+
                     break;
                 }
                 case GuideHint.Summon:

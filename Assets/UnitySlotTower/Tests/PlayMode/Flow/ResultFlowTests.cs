@@ -102,21 +102,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var startLife = battle.Field.Life;
             var defaultLayout = Describe(cabinet.Layout);
 
-            // 既定と違う配列で始め、リトライで既定に戻ることを確かめる（plan 4章）。
-            // 図柄の数を変えないよう、違う図柄の隣り合う2マスを入れ替える。
+            // 空きを回復で埋めて始め、リトライで空きからやり直しになることを確かめる（plan 4章）。
             var reelCustom = Object.FindAnyObjectByType<ReelCustomScreen>();
-            var customizer = reelCustom.Customizer;
-            var first = 0;
-            while (customizer.At(first) == customizer.At(first + 1))
-            {
-                first++;
-            }
-
-            var a = customizer.At(first);
-            var b = customizer.At(first + 1);
-            SetCell(customizer, first, b);
-            SetCell(customizer, first + 1, a);
-            Assert.That(reelCustom.Confirm(), Is.True, "配列を変えて確定できない");
+            ReelCustomTestUtil.FillEmpty(reelCustom.Customizer, SlotSymbol.Heal);
+            Assert.That(reelCustom.Confirm(), Is.True, "空きを埋めて確定できない");
             yield return null;
             Assert.That(Describe(cabinet.Layout), Is.Not.EqualTo(defaultLayout), "配列が変わっていない");
 
@@ -143,6 +132,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 Is.EqualTo((1, 1, WavePhase.Preparing, startLife, startCoins)), "リトライで進行が初期化されない");
             Assert.That(Describe(cabinet.Layout), Is.EqualTo(defaultLayout), "リトライでリール配列が既定に戻らない");
             Assert.That((battle.IsCustomizing, result.IsOpen), Is.EqualTo((true, false)), "リトライ後の開始画面がおかしい");
+            var customizer = Object.FindAnyObjectByType<ReelCustomScreen>().Customizer;
+            Assert.That(customizer.EmptyCount, Is.EqualTo(cabinet.Locks.EmptyCount), "リトライでカスタムが空きからやり直しにならない");
         }
 
         [UnityTest]
@@ -228,17 +219,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         private static string Text(ResultScreen result, string field) =>
             ((TMP_Text)typeof(ResultScreen).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(result))
             .text;
-
-        private static void SetCell(ReelCustomizer customizer, int index, SlotSymbol symbol)
-        {
-            customizer.Select(index);
-            for (var i = 0; i < SlotSymbols.Count && customizer.At(index) != symbol; i++)
-            {
-                customizer.CycleSelected(1);
-            }
-
-            Assert.That(customizer.At(index), Is.EqualTo(symbol), "マスの図柄を変えられない");
-        }
 
         private static string Describe(ReelLayout layout)
         {

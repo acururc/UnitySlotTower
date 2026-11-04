@@ -67,11 +67,11 @@ M0〜M3 の完了行は旧仕様（5種の味方・旧スロット・5ウェー�
 
 ## M3S 仕様変更の反映（2026-11-04、plan 14章。M4 の残り〔T405 以降〕より先に行う）
 
-- [ ] T320 (FR-046, FR-048) Core `ReelLocks`（`slot_locked_reel.csv`、旧 `slot_default_reel.csv` を .meta ごと改名）と `ReelCustomizer` の作り直し（ロックは拒否、空き・入れたマスへの入れる／上書き／外す、空きがなければ確定、%は埋まったマスで計算）。`reel_length` を 18 に — 検証: EditMode テスト（tdd）、データ検証テスト
-- [ ] T321 (FR-041) `SlotMachine.Stop` を3段の最終形の探索に替える（当たりはちょうど1段、ハズレはどの段も揃わない）。データ検証: 空きの埋め方 4⁶ 通りすべてで全結果の最終形が作れる — 検証: EditMode テスト（全押し位置×全押し順×全結果: AC-041）、既存のシミュレーション（AC-040）
-- [ ] T322 (FR-046, FR-002) カスタム画面をドラッグ＆ドロップに作り直す（9×2 のマス、ロックの印、下に4図柄、外へドラッグで外す、空きの点滅）。キーボード（上下で図柄・左右でマス・Space・Backspace/Delete〔新アクション `ClearCell`〕・Enter） — 検証: PlayMode テスト（マウスのドラッグとキーボードで組んで確定: AC-044）、Editor 画像
-- [ ] T323 (FR-047) カスタムはゲーム開始時だけにする（ステージ間で開かない、リトライで空きからやり直す）。ゲームの PlayMode テストのカスタムを閉じる手順を直す — 検証: PlayMode テスト（ステージ切り替えで開かない: AC-044、リトライ: AC-004）
-- [ ] T324 (FR-004) カスタムの説明を、手が図柄を空きマスへドラッグする動きに替える（D-51） — 検証: Editor 画像、手動プレイ（AC-003 は T403 と一緒に）
+- [x] T320 (FR-046, FR-048) Core `ReelLocks`（`slot_locked_reel.csv`、旧 `slot_default_reel.csv` を .meta ごと改名）と `ReelCustomizer` の作り直し（ロックは拒否、空き・入れたマスへの入れる／上書き／外す、空きがなければ確定、%は埋まったマスで計算）。`reel_length` を 18 に — 検証: EditMode テスト（tdd）、データ検証テスト — 結果（2026-11-04: EditMode 404/404、PlayMode 24/24、ハーネス 8/8）: `ReelLocks`（`Fill`・`Accepts`・`Problems`）、`ReelCustomizer`（`Place`・`Clear`・`PlaceSelected`・`MoveSelection`・`CycleBrush`・`TryConfirm`）。旧 `ReelLayout.IsValid`・`SlotSymbol.IsCountAllowed` は削除
+- [x] T321 (FR-041) `SlotMachine.Stop` を3段の最終形の探索に替える（当たりはちょうど1段、ハズレはどの段も揃わない）。データ検証: 空きの埋め方 4⁶ 通りすべてで全結果の最終形が作れる — 検証: EditMode テスト（全押し位置×全押し順×全結果: AC-041）、既存のシミュレーション（AC-040） — 結果（2026-11-04: EditMode 404/404、PlayMode 24/24、ハーネス 8/8）: `SlotStops`（`IsFinal`・`CanComplete`・`FirstUnsolvableFill`）。停止は厳密→緩和→押した位置の順。全埋め方の検査は `SlotTableTests`（ValidateAll には入れない）
+- [x] T322 (FR-046, FR-002) カスタム画面をドラッグ＆ドロップに作り直す（9×2 のマス、ロックの印、下に4図柄、外へドラッグで外す、空きの点滅）。キーボード（上下で図柄・左右でマス・Space・Backspace/Delete〔新アクション `ClearCell`〕・Enter） — 検証: PlayMode テスト（マウスのドラッグとキーボードで組んで確定: AC-044）、Editor 画像 — 結果（2026-11-04: EditMode 404/404、PlayMode 24/24、ハーネス 8/8、画像 `m3s_custom.png`・`m3s_custom_partial.png`）: Editor「Build Reel Custom Screen (T322)」で作り直し（参照も付け替え）。`ReelCustomHandle` がドラッグを画面へ渡す。未確認: 実機でのドラッグの手触り、ドラッグ中の図柄の画像
+- [x] T323 (FR-047) カスタムはゲーム開始時だけにする（ステージ間で開かない、リトライで空きからやり直す）。ゲームの PlayMode テストのカスタムを閉じる手順を直す — 検証: PlayMode テスト（ステージ切り替えで開かない: AC-044、リトライ: AC-004） — 結果（2026-11-04: EditMode 404/404、PlayMode 24/24、ハーネス 8/8）: `ReelCustomTestUtil.CloseWithDefault` は空きをコインで埋めて確定、`FillEmpty` を追加
+- [x] T324 (FR-004) カスタムの説明を、手が図柄を空きマスへドラッグする動きに替える（D-51） — 検証: Editor 画像、手動プレイ（AC-003 は T403 と一緒に） — 結果（2026-11-04、画像 `m3s_custom.png`）: 空きがあれば下の攻撃力から最初の空きマスへドラッグ、埋まれば ✔ を押す手。手動プレイは T403 の確認と一緒に
 
 ## M4 外枠
 

@@ -99,8 +99,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(help.IsOpen, Is.True, "「?」で開かない");
             Assert.That(Text(help, "missText"), Is.EqualTo("79.0%"), "設定3のハズレ率");
             var chances = (TMP_Text[])Field(help, "chanceTexts");
-            Assert.That(chances[(int)SlotSymbol.Seven].text, Is.EqualTo("1.8%"), "既定配列の 7（21% × 1/12）");
-            Assert.That(chances[(int)SlotSymbol.Coin].text, Is.EqualTo("7.0%"), "既定配列のコイン（21% × 4/12）");
+            Assert.That(chances[(int)SlotSymbol.Seven].text, Is.EqualTo("2.3%"), "空きをコインで埋めた配列の 7（21% × 2/18）");
+            Assert.That(chances[(int)SlotSymbol.Coin].text, Is.EqualTo("9.3%"), "空きをコインで埋めた配列のコイン（21% × 8/18）");
             Assert.That(((TMP_Text[])Field(help, "effectTexts"))[(int)SlotSymbol.Seven].text, Is.EqualTo("+10×12"));
             foreach (var text in help.GetComponentsInChildren<TMP_Text>(true))
             {
