@@ -31,6 +31,7 @@ namespace UnitySlotTower.Tests.EditMode.Input
         [TestCase("StopCenter", "<Keyboard>/k")]
         [TestCase("StopRight", "<Keyboard>/l")]
         [TestCase("Pause", "<Keyboard>/p", "<Keyboard>/escape")]
+        [TestCase("Help", "<Keyboard>/slash")]
         [TestCase("Point", "<Mouse>/position")]
         [TestCase("Press", "<Mouse>/leftButton")]
         public void Action_Has_Planned_Bindings(string action, params string[] paths)

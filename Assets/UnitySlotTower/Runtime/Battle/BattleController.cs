@@ -37,6 +37,10 @@ namespace UnitySlotTower.Battle
         private int _customizeClosedFrame = -1;
 
         public UnitTable Units { get; private set; }
+
+        /// <summary>味方の攻撃範囲（一時停止中の説明の範囲図にも使う: T404）。</summary>
+        public UnitRanges Ranges { get; private set; }
+
         public WaveRun Run { get; private set; }
         public CoinWallet Wallet => Run?.Wallet;
         public UnitSummoner Summoner => Run?.Summoner;
@@ -65,12 +69,12 @@ namespace UnitySlotTower.Battle
             {
                 var config = GameConfig.Load(Parse(GameConfig.FileName, gameConfigTable));
                 Units = UnitTable.Load(Parse(UnitTable.FileName, unitsTable));
-                var ranges = UnitRanges.Load(Parse(UnitRanges.FileName, unitRangesTable), Units);
+                Ranges = UnitRanges.Load(Parse(UnitRanges.FileName, unitRangesTable), Units);
                 var upgradeTable = UnitUpgradeTable.Load(Parse(UnitUpgradeTable.FileName, unitUpgradesTable), Units);
                 var enemies = EnemyTable.Load(Parse(EnemyTable.FileName, enemiesTable));
                 var waves = Parse(WaveSchedule.FileName, wavesTable);
                 var wallet = slotCabinet.Wallet;
-                Run = new WaveRun(config, Units, ranges, new UnitUpgrades(upgradeTable, wallet), wallet,
+                Run = new WaveRun(config, Units, Ranges, new UnitUpgrades(upgradeTable, wallet), wallet,
                     WaveSchedule.StageCount, WaveSchedule.WavesPerStage,
                     stage => stage == 1 ? fieldView.Map : fieldView.LoadStageMap(stage),
                     (stage, wave, map) => WaveSchedule.Load(waves, stage, wave, map, enemies),

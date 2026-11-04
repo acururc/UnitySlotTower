@@ -46,6 +46,13 @@ namespace UnitySlotTower.Tests.EditMode.Ui
         }
 
         [Test]
+        public void Help_Mark_Is_Accepted()
+        {
+            // 一時停止中の説明を開く「?」（T404、plan 8章）。
+            Assert.That(TextAudit.FindViolations(CreateText("?"), "test"), Is.Empty);
+        }
+
+        [Test]
         public void Scenes_And_Prefabs_Use_No_Letters()
         {
             var violations = TextAudit.AuditProject();

@@ -25,6 +25,16 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>1つ前の段階からこの段階へ上げる費用（コイン）。段階1では使わない。</summary>
         public int Cost { get; }
+
+        /// <summary>この段階の最大 HP（基本値に倍率をかけて四捨五入）。攻撃・防御も同じ。</summary>
+        public int MaxHpOf(UnitDefinition unit) => Scale(unit.MaxHp, HpMult);
+
+        public int AtkOf(UnitDefinition unit) => Scale(unit.Atk, AtkMult);
+
+        public int DefOf(UnitDefinition unit) => Scale(unit.Def, DefMult);
+
+        private static int Scale(int value, double rate) =>
+            (int)System.Math.Round(value * rate, System.MidpointRounding.AwayFromZero);
     }
 
     /// <summary>unit_upgrades.csv の種類×段階ごとの倍率と費用。</summary>

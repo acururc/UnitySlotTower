@@ -1158,6 +1158,15 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "Help",
+                    "type": "Button",
+                    "id": "3f6d2a8e-4b1c-4e7a-9d35-0c8a1f6b2e47",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "Point",
                     "type": "PassThrough",
                     "id": "c153c90d-7b4e-4144-89dd-6567f2725d54",
@@ -1526,6 +1535,17 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "Pause",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "c71e4b90-2d58-4f3a-8e16-5a9b0d7c3f21",
+                    "path": "<Keyboard>/slash",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "Help",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

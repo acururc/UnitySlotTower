@@ -67,14 +67,11 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>基本ステータスに段階の倍率をかけ直す（端数は四捨五入）。最大 HP が増えた分は現在 HP にも足す（plan 5章）。</summary>
         internal void ApplyUpgrade(UnitUpgradeLevel upgrade)
         {
-            var maxHp = Scale(Definition.MaxHp, upgrade.HpMult);
+            var maxHp = upgrade.MaxHpOf(Definition);
             Hp += maxHp - MaxHp;
             MaxHp = maxHp;
-            Atk = Scale(Definition.Atk, upgrade.AtkMult);
-            Def = Scale(Definition.Def, upgrade.DefMult);
+            Atk = upgrade.AtkOf(Definition);
+            Def = upgrade.DefOf(Definition);
         }
-
-        private static int Scale(int value, double rate) =>
-            (int)Math.Round(value * rate, MidpointRounding.AwayFromZero);
     }
 }
