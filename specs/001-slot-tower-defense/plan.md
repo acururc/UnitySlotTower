@@ -225,7 +225,7 @@ Assets/UnitySlotTower/
 
 ## 14. 2026-11-04 仕様変更の移行方針
 
-- 対象: spec D-46・D-48・D-50〜D-53、FR-041・FR-046〜048、AC-041・AC-044（2026-11-04 承認）。
+- 対象: spec D-46・D-48・D-50〜D-54、FR-041・FR-046〜048、AC-041・AC-044（2026-11-04 承認）。
 - Core: `ReelCustomizer` をロックと空きの編集に作り直す（クリックで図柄を順に替える操作は廃止）。`ReelLayout.Load` は確定済みの配列だけを表し、ロック配置は新しい `ReelLocks`（`slot_locked_reel.csv` の読み込みと検証）で持つ。`SlotMachine.Stop` を3段の最終形の探索に替える（`Fits` の中段判定は廃止）。払い出し・ボーナス・抽選は変えない。
 - データ: `slot_rules.csv` の `reel_length` を 18 に、`slot_default_reel.csv` を `slot_locked_reel.csv` に改名（.meta ごと移して GUID を保つ）。`GameDataValidator` のリール配列の検証をロック配置の検証に替える。
 - Runtime: `ReelCustomScreen` をドラッグ＆ドロップに作り直し、`BattleController` のステージ間のカスタムを外す。`SlotReelView` の表示は3段のまま（コマ数はデータに従う）。入力に `ClearCell`（Backspace・Delete）を足す。シーンは Editor の組み立てメニューでカスタム画面を作り直す（古い画面を消してから）。
