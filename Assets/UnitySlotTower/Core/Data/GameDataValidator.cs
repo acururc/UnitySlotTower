@@ -109,7 +109,7 @@ namespace UnitySlotTower.Core.Data
             var tables = new Dictionary<string, CsvTable>();
 
             ValidateKeyValueFile(files, GameConfig.FileName, GameConfigKeys, report);
-            ValidateKeyValueFile(files, "slot_rules.csv", SlotRuleKeys, report);
+            var slotRules = ValidateKeyValueFile(files, "slot_rules.csv", SlotRuleKeys, report);
 
             foreach (var schema in Schemas)
             {
@@ -145,16 +145,78 @@ namespace UnitySlotTower.Core.Data
             TableValidator.ValidatePathContinuity(tables["map_paths.csv"], report);
             var battleMaps = ValidateMapPaths(files, tables["map_paths.csv"], maps, report);
             ValidateWaves(tables["waves.csv"], tables["enemies.csv"], battleMaps, report);
+            ValidateSlotSettings(tables[SlotSettings.FileName], report);
+            ValidateDefaultReel(tables[ReelLayout.FileName], slotRules, report);
             return report;
         }
 
-        private static void ValidateKeyValueFile(IReadOnlyDictionary<string, string> files, string fileName,
+        /// <summary>key,value 表を検証し、エラーがなければ表を返す（なければ null）。</summary>
+        private static CsvTable ValidateKeyValueFile(IReadOnlyDictionary<string, string> files, string fileName,
             IReadOnlyList<ColumnRule> keys, ValidationReport report)
         {
             var table = Parse(files, fileName, report);
-            if (table != null)
+            if (table == null)
             {
-                TableValidator.ValidateKeyValues(table, keys, report);
+                return null;
+            }
+
+            var before = report.Errors.Count;
+            TableValidator.ValidateKeyValues(table, keys, report);
+            return report.Errors.Count == before ? table : null;
+        }
+
+        /// <summary>設定1〜6がすべてそろっていることを <see cref="SlotSettings"/> で確かめる。</summary>
+        private static void ValidateSlotSettings(CsvTable table, ValidationReport report)
+        {
+            try
+            {
+                SlotSettings.Load(table);
+            }
+            catch (CsvFormatException ex)
+            {
+                report.Add(ex.Error);
+            }
+        }
+
+        /// <summary>
+        /// 既定のリール配列が 0 からの連番で、マス数が slot_rules の reel_length と一致し、
+        /// 図柄の数が D-46（7・BAR はちょうど1つ、ほかは1つ以上）を満たすことを確かめる。
+        /// slot_rules にエラーがあるとき（rules が null）はマス数と図柄数を確かめない。
+        /// </summary>
+        private static void ValidateDefaultReel(CsvTable table, CsvTable rules, ValidationReport report)
+        {
+            ReelLayout layout;
+            try
+            {
+                layout = ReelLayout.Load(table);
+            }
+            catch (CsvFormatException ex)
+            {
+                report.Add(ex.Error);
+                return;
+            }
+
+            if (rules == null)
+            {
+                return;
+            }
+
+            var reelLength = SlotRules.Load(rules).ReelLength;
+            if (layout.Length != reelLength)
+            {
+                report.Add(new CsvError(table.FileName, 0, 0,
+                    $"コマ数 {layout.Length} が slot_rules.csv の reel_length {reelLength} と違う"));
+            }
+
+            for (var s = 0; s < SlotSymbols.Count; s++)
+            {
+                var symbol = (SlotSymbol)s;
+                if (!SlotSymbols.IsCountAllowed(symbol, layout.Count(symbol)))
+                {
+                    var need = symbol == SlotSymbol.Seven || symbol == SlotSymbol.Bar ? "ちょうど1つ" : "1つ以上";
+                    report.Add(new CsvError(table.FileName, 0, 0,
+                        $"図柄 '{SlotSymbols.Ids[s]}' が {layout.Count(symbol)} 個（{need}にする）"));
+                }
             }
         }
 

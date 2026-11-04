@@ -194,6 +194,84 @@ namespace UnitySlotTower.Tests.EditMode.Data
             Assert.That(report.Errors.Select(e => e.File), Does.Contain("waves.csv"));
         }
 
+        [Test]
+        public void Missing_Slot_Setting_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["slot_settings.csv"] = WithoutLinesStartingWith(files["slot_settings.csv"], "4,");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain("slot_settings.csv"));
+        }
+
+        [Test]
+        public void Miss_Rate_Above_One_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["slot_settings.csv"] = "setting,miss_rate\n1,1.2\n2,0.8\n3,0.8\n4,0.8\n5,0.8\n6,0.8\n";
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => (e.File, e.Line)), Does.Contain(("slot_settings.csv", 2)));
+        }
+
+        [Test]
+        public void Unknown_Slot_Rule_Key_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["slot_rules.csv"] += "bonus_rate,2\n";
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain("slot_rules.csv"));
+        }
+
+        [Test]
+        public void Default_Reel_Length_Not_Matching_Reel_Length_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["slot_rules.csv"] = files["slot_rules.csv"].Replace("reel_length,12", "reel_length,13");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain("slot_default_reel.csv"));
+        }
+
+        [Test]
+        public void Default_Reel_With_Two_Sevens_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["slot_default_reel.csv"] = files["slot_default_reel.csv"].Replace("6,bar", "6,seven");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain("slot_default_reel.csv"));
+        }
+
+        [Test]
+        public void Default_Reel_With_An_Index_Gap_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["slot_default_reel.csv"] = files["slot_default_reel.csv"].Replace("11,coin", "12,coin");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain("slot_default_reel.csv"));
+        }
+
+        [Test]
+        public void Wave_Stage_Out_Of_Range_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["waves.csv"] += "4,1,0,melee,S1,s1_g1,0\n";
+            var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => (e.File, e.Line)), Does.Contain(("waves.csv", line)));
+        }
+
         private static string WithoutLinesStartingWith(string text, string prefix) =>
             string.Join("\n", text.Split('\n').Where(line => !line.StartsWith(prefix)));
     }

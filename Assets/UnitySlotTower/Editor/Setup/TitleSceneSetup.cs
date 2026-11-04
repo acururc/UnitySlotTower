@@ -27,7 +27,7 @@ namespace UnitySlotTower.Editor.Setup
         private const string LogoFontPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
         private const string InputActionsPath = "Assets/InputSystem_Actions.inputactions";
 
-        // 設定1（機械割が低く難しい）から6へ、青→赤に寄せる仮の色。
+        // 設定1（ハズレ率が高く難しい）から6へ、青→赤に寄せる仮の色。
         private static readonly Color[] PlateColors =
         {
             new Color(0.2f, 0.35f, 0.75f), new Color(0.2f, 0.55f, 0.7f), new Color(0.25f, 0.6f, 0.35f),
