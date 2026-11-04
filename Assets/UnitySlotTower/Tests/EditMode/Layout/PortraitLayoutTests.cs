@@ -3,7 +3,7 @@ using UnitySlotTower.Core.Layout;
 
 namespace UnitySlotTower.Tests.EditMode.Layout
 {
-    [Description("FR-001 縦長 3:4、上部 38% が戦闘、余白は黒帯")]
+    [Description("FR-001 縦長 3:4、上部 60% が戦闘、余白は黒帯")]
     public sealed class PortraitLayoutTests
     {
         private static (double, double, double, double) Tuple(NormalizedRect r) => (r.X, r.Y, r.Width, r.Height);
@@ -41,11 +41,11 @@ namespace UnitySlotTower.Tests.EditMode.Layout
         }
 
         [Test]
-        public void Battle_View_Is_Top_38_Percent_Of_Letterbox()
+        public void Battle_View_Is_Top_60_Percent_Of_Letterbox()
         {
             var battle = PortraitLayout.Battle(1080, 2400);
 
-            Assert.That(Tuple(battle), Is.EqualTo((0.0, 0.2 + 0.6 * 0.62, 1.0, 0.6 * 0.38)).Using(new Tolerance()));
+            Assert.That(Tuple(battle), Is.EqualTo((0.0, 0.2 + 0.6 * 0.4, 1.0, 0.6 * 0.6)).Using(new Tolerance()));
         }
 
         [Test]

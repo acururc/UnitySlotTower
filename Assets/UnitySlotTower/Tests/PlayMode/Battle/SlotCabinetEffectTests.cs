@@ -94,6 +94,9 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             Assert.That(int.Parse(seconds.text), Is.EqualTo((int)System.Math.Ceiling(effects.AttackSeconds)).Within(1));
             Assert.That(attack.GetComponent<CanvasGroup>().alpha, Is.EqualTo(1f));
+
+            // 戦闘は実時間の 1/60 秒ごとに進むため、フレームが速いと2フレームでは tick が増えない。実時間で待つ。
+            yield return new WaitForSeconds(0.1f);
             Assert.That(_battle.Field.Tick, Is.GreaterThan(tick), "スロットのあとも戦闘が進む");
         }
 

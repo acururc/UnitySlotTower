@@ -62,9 +62,9 @@ namespace UnitySlotTower.Editor.Setup
             field.transform.localScale = new Vector3(0.9f, 1f, 0.6f);
 
             var scaler = CreateCanvas(out var root);
-            CreatePanel("Operation Bar", root, new Vector2(0f, 0.54f), new Vector2(1f, 1f - (float)PortraitLayout.BattleHeightRatio),
+            CreatePanel("Operation Bar", root, new Vector2(0f, SlotAreaTop), new Vector2(1f, 1f - (float)PortraitLayout.BattleHeightRatio),
                 new Color(0.12f, 0.12f, 0.14f));
-            var slot = CreatePanel("Slot Area", root, Vector2.zero, new Vector2(1f, 0.54f), new Color(0.35f, 0.08f, 0.1f));
+            var slot = CreatePanel("Slot Area", root, Vector2.zero, new Vector2(1f, SlotAreaTop), new Color(0.35f, 0.08f, 0.1f));
             CreatePanel("Reel Window", slot, new Vector2(0.1f, 0.45f), new Vector2(0.9f, 0.9f), new Color(0.92f, 0.92f, 0.9f));
 
             new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
@@ -82,6 +82,84 @@ namespace UnitySlotTower.Editor.Setup
             ApplyPlayerSettings();
             AssetDatabase.SaveAssets();
             Debug.Log($"[SlotTower Setup] {ScenePath} を作成した。");
+        }
+
+        /// <summary>
+        /// 3:4 領域の 0〜SlotAreaTop がスロット筐体、SlotAreaTop〜(1 − 戦闘の割合) が操作バー（T317、plan 2章）。
+        /// 操作バーは T308 と同じ高さ（基準 154 px）を保つ。
+        /// </summary>
+        private const float SlotAreaTop = 0.32f;
+
+        /// <summary>
+        /// 既にある Game シーンを戦闘 60%・下部 40% に詰め直す（T317）。操作バーは高さを保って移し、
+        /// 筐体はリール窓の縦横比を保ったまま中央に置き、レバー・ボーナス表示を左、クレジット・払い出しを右下に寄せる。
+        /// 何度実行しても同じ配置になる。
+        /// </summary>
+        [MenuItem(MenuRoot + "Apply 6:4 Layout (T317)")]
+        private static void ApplySixFourLayout()
+        {
+            var bar = GameObject.Find("Operation Bar")?.GetComponent<RectTransform>();
+            var slot = GameObject.Find("Slot Area")?.GetComponent<RectTransform>();
+            var camera = GameObject.Find("Battle Camera")?.GetComponent<Camera>();
+            if (bar == null || slot == null || camera == null)
+            {
+                Debug.LogError("[SlotTower Setup] Game シーンの Operation Bar / Slot Area / Battle Camera が見つからない。");
+                return;
+            }
+
+            SetAnchors(bar, new Vector2(0f, SlotAreaTop), new Vector2(1f, 1f - (float)PortraitLayout.BattleHeightRatio));
+            SetAnchors(slot, Vector2.zero, new Vector2(1f, SlotAreaTop));
+
+            // 戦闘の領域が 1440×1152 px（5:4）になり横の画角が狭まるため、9 列が左右に収まるよう引いて俯角を深くする。
+            // 注視点はマップの中心（原点）のまま。
+            camera.fieldOfView = 45f;
+            camera.transform.SetPositionAndRotation(new Vector3(0f, 10.6f, -4.94f), Quaternion.Euler(65f, 0f, 0f));
+
+            // 筐体の中は 1440×614 px。リール窓は T315 と同じ縦横比（約 2.03:1）で 842×414 px。
+            var windowMin = new Vector2(0.208f, 0.293f);
+            var windowMax = new Vector2(0.792f, 0.967f);
+            var placed = new (string Name, Vector2 Min, Vector2 Max)[]
+            {
+                ("Reel Window", windowMin, windowMax),
+                ("Stop Button 1", new Vector2(0.255f, 0.08f), new Vector2(0.371f, 0.25f)),
+                ("Stop Button 2", new Vector2(0.442f, 0.08f), new Vector2(0.558f, 0.25f)),
+                ("Stop Button 3", new Vector2(0.629f, 0.08f), new Vector2(0.745f, 0.25f)),
+                ("Bonus Lamp", new Vector2(0.028f, 0.847f), new Vector2(0.181f, 0.966f)),
+                ("Bonus Games", new Vector2(0.014f, 0.69f), new Vector2(0.175f, 0.825f)),
+                ("Lever Button", new Vector2(0.03f, 0.065f), new Vector2(0.18f, 0.267f)),
+                ("Coin Icon", new Vector2(0.76f, 0.261f), new Vector2(0.819f, 0.362f)),
+                ("Credit", new Vector2(0.823f, 0.252f), new Vector2(0.986f, 0.371f)),
+                ("Payout", new Vector2(0.823f, 0.098f), new Vector2(0.986f, 0.217f)),
+            };
+            foreach (var (name, min, max) in placed)
+            {
+                if (slot.Find(name) is not RectTransform rect)
+                {
+                    Debug.LogError($"[SlotTower Setup] Slot Area / {name} が見つからない。");
+                    return;
+                }
+
+                SetAnchors(rect, min, max);
+            }
+
+            // 有効ラインの印は SlotCabinetSetup と同じ式で、リール窓の中段の左右に置く。
+            var y = (windowMin.y + windowMax.y) / 2f;
+            var half = (windowMax.y - windowMin.y) * 0.08f;
+            SetAnchors((RectTransform)slot.Find("Payline Mark Left"), new Vector2(windowMin.x - 0.035f, y - half),
+                new Vector2(windowMin.x - 0.005f, y + half));
+            SetAnchors((RectTransform)slot.Find("Payline Mark Right"), new Vector2(windowMax.x + 0.005f, y - half),
+                new Vector2(windowMax.x + 0.035f, y + half));
+
+            EditorSceneManager.MarkSceneDirty(slot.gameObject.scene);
+            EditorSceneManager.SaveScene(slot.gameObject.scene);
+            Debug.Log("[SlotTower Setup] Game シーンを戦闘 60%・下部 40% の配置にした。");
+        }
+
+        private static void SetAnchors(RectTransform rect, Vector2 anchorMin, Vector2 anchorMax)
+        {
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
         }
 
         private static Camera CreateCamera(string name, int priority)

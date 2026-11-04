@@ -5,7 +5,7 @@ using UnitySlotTower.Core.Layout;
 namespace UnitySlotTower.Layout
 {
     /// <summary>
-    /// 画面サイズに合わせて 3:4 の領域を中央に置く（plan 2章）。戦闘カメラは領域の上部 38%、
+    /// 画面サイズに合わせて 3:4 の領域を中央に置く（plan 2章）。戦闘カメラは領域の上部 60%、
     /// UI は 1440×1920 の基準領域に収め、領域の外は背景カメラの黒で塗る。
     /// </summary>
     [ExecuteAlways]
