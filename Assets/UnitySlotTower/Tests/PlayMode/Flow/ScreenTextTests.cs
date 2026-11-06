@@ -1,0 +1,238 @@
+using System.Collections;
+using System.Collections.Generic;
+using System.Reflection;
+using NUnit.Framework;
+using TMPro;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.TestTools;
+using UnityEngine.UI;
+using UnitySlotTower.Battle;
+using UnitySlotTower.Core.Battle;
+using UnitySlotTower.Core.Simulation;
+using UnitySlotTower.Core.Ui;
+using UnitySlotTower.Flow;
+using UnitySlotTower.Slot;
+using UnitySlotTower.Tests.PlayMode.Battle;
+
+namespace UnitySlotTower.Tests.PlayMode.Flow
+{
+    [Description("AC-001 / FR-003: 実行中にコードが入れる数字も含め、タイトルのロゴ以外の画面に文字がなく、数字専用フォントで描く（T406）")]
+    public sealed class ScreenTextTests
+    {
+        private const string NumericFontName = "NumericOnly SDF";
+        private const int AttackIndex = 0;
+        private const int SevenIndex = 5;
+
+        // ゲームオーバー用: S1-W1 に近接の敵 12 体（ライフ 10 より多い）。
+        private const string LosingWaves =
+            "stage,wave,time,enemy_id,spawn,path_id,is_boss\n" +
+            "1,1,0,melee,S1,s1_g1,0\n1,1,1,melee,S1,s1_g1,0\n1,1,2,melee,S1,s1_g1,0\n1,1,3,melee,S1,s1_g1,0\n" +
+            "1,1,4,melee,S1,s1_g1,0\n1,1,5,melee,S1,s1_g1,0\n1,1,6,melee,S1,s1_g1,0\n1,1,7,melee,S1,s1_g1,0\n" +
+            "1,1,8,melee,S1,s1_g1,0\n1,1,9,melee,S1,s1_g1,0\n1,1,10,melee,S1,s1_g1,0\n1,1,11,melee,S1,s1_g1,0\n" +
+            "1,2,0,melee,S1,s1_g1,0\n2,1,0,melee,S1,s2_g1,0\n2,2,0,melee,S1,s2_g1,0\n" +
+            "3,1,0,melee,S1,s3_g1,0\n3,2,0,melee,S1,s3_g1,0\n";
+
+        // クリア用: 全6ウェーブとも近接の敵1体だけ。
+        private const string WinningWaves =
+            "stage,wave,time,enemy_id,spawn,path_id,is_boss\n" +
+            "1,1,0,melee,S1,s1_g1,0\n1,2,0,melee,S1,s1_g1,0\n2,1,0,melee,S1,s2_g1,0\n2,2,0,melee,S1,s2_g1,0\n" +
+            "3,1,0,melee,S1,s3_g1,0\n3,2,0,melee,S1,s3_g1,0\n";
+
+        private static string _waves;
+        private HitRandom _random;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _random = new HitRandom();
+            SlotCabinet.RandomOverride = _random;
+            SceneManager.sceneLoaded += ReplaceWaves;
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            SceneManager.sceneLoaded -= ReplaceWaves;
+            _waves = null;
+            SlotCabinet.RandomOverride = null;
+            Time.timeScale = 1f;
+        }
+
+        [UnityTest]
+        public IEnumerator Title_And_Difficulty_Show_Only_The_Logo_As_Letters()
+        {
+            yield return SceneManager.LoadSceneAsync(GameSession.TitleScene);
+            yield return null;
+            AssertNoLetters("タイトル");
+
+            GameObject.Find("Start Button").GetComponent<Button>().onClick.Invoke();
+            yield return null;
+            Assert.That(Object.FindAnyObjectByType<TitleScreen>().IsChoosingDifficulty, Is.True);
+            AssertNoLetters("難易度選択");
+        }
+
+        [UnityTest]
+        public IEnumerator Game_Screens_Up_To_Game_Over_Show_No_Letters()
+        {
+            _waves = LosingWaves;
+            var battle = default(BattleController);
+            yield return LoadGame(b => battle = b);
+            AssertNoLetters("リールのカスタム");
+
+            yield return ReelCustomTestUtil.CloseWithDefault(battle);
+            AssertNoLetters("準備");
+
+            // 攻撃力を揃えて効果の秒数を出し、7 を揃えてボーナスの残りゲーム数を出す。
+            battle.StartWave();
+            var cabinet = Object.FindAnyObjectByType<SlotCabinet>();
+            _random.Index = AttackIndex;
+            yield return SpinAndStopAll(cabinet);
+            _random.Index = SevenIndex;
+            yield return SpinAndStopAll(cabinet);
+            yield return null;
+            Assert.That(cabinet.Bonus, Is.Not.EqualTo(Core.Slot.SlotBonus.None), "ボーナスに入らない");
+            AssertNoLetters("戦闘（効果とボーナス中）");
+
+            battle.SetPaused(true);
+            var help = Object.FindAnyObjectByType<HelpScreen>();
+            help.Open();
+            yield return null;
+            Assert.That(help.IsOpen, Is.True);
+            AssertNoLetters("一時停止と早見表");
+            battle.SetPaused(false);
+
+            yield return PlayUntilFinished(battle);
+            Assert.That(battle.Run.Phase, Is.EqualTo(WavePhase.GameOver));
+            AssertNoLetters("リザルト（ゲームオーバー）");
+        }
+
+        [UnityTest]
+        public IEnumerator Clear_Result_Shows_No_Letters()
+        {
+            _waves = WinningWaves;
+            var battle = default(BattleController);
+            yield return LoadGame(b => battle = b);
+            yield return ReelCustomTestUtil.CloseWithDefault(battle);
+
+            yield return PlayUntilFinished(battle);
+            Assert.That(battle.Run.Phase, Is.EqualTo(WavePhase.Completed));
+            AssertNoLetters("リザルト（クリア）");
+        }
+
+        // 表示中かどうかに関わらず、読み込まれた全シーンの文字部品を調べる（隠れた部品も後で出るため）。
+        private static void AssertNoLetters(string screen)
+        {
+            var violations = new List<string>();
+            var onTitle = SceneManager.GetActiveScene().name == GameSession.TitleScene;
+            foreach (var text in Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (onTitle && text.name == "Logo")
+                {
+                    continue;
+                }
+
+                var index = NumericText.FindInvalid(text.text);
+                if (index >= 0)
+                {
+                    violations.Add($"{PathOf(text.transform)}: '{text.text}' の '{text.text[index]}'");
+                }
+
+                if (text.font == null || text.font.name != NumericFontName)
+                {
+                    violations.Add($"{PathOf(text.transform)}: フォント {(text.font != null ? text.font.name : "なし")}");
+                }
+            }
+
+            Assert.That(violations, Is.Empty, $"{screen}: " + string.Join("\n", violations));
+        }
+
+        private static string PathOf(Transform transform)
+        {
+            var path = transform.name;
+            for (var parent = transform.parent; parent != null; parent = parent.parent)
+            {
+                path = parent.name + "/" + path;
+            }
+
+            return path;
+        }
+
+        private static IEnumerator LoadGame(System.Action<BattleController> found)
+        {
+            yield return SceneManager.LoadSceneAsync(GameSession.GameScene);
+            var battle = Object.FindAnyObjectByType<BattleController>();
+            for (var i = 0; i < 300 && battle.Run == null; i++)
+            {
+                yield return null;
+            }
+
+            Assert.That(battle.Run, Is.Not.Null, "Game シーンの進行が作られない");
+            yield return null;
+            found(battle);
+        }
+
+        // レバーと3つのストップボタンを押し、リールが止まるまで待つ。ウェイト中はレバーが効かないので回るまで押し直す。
+        private static IEnumerator SpinAndStopAll(SlotCabinet cabinet)
+        {
+            var lever = cabinet.LeverRect.GetComponent<Button>();
+            for (var i = 0; i < 300 && !cabinet.IsSpinning; i++)
+            {
+                lever.onClick.Invoke();
+                yield return null;
+            }
+
+            Assert.That(cabinet.IsSpinning, Is.True, "レバーで回らない");
+            for (var reel = 0; reel < 3; reel++)
+            {
+                cabinet.StopRect(reel).GetComponent<Button>().onClick.Invoke();
+                yield return null;
+            }
+
+            for (var i = 0; i < 300 && cabinet.IsSpinning; i++)
+            {
+                yield return null;
+            }
+
+            Assert.That(cabinet.IsSpinning, Is.False, "リールが止まらない");
+        }
+
+        private static IEnumerator PlayUntilFinished(BattleController battle)
+        {
+            Time.timeScale = 20f;
+            var limit = Time.realtimeSinceStartup + 60f;
+            while (!battle.IsFinished && Time.realtimeSinceStartup < limit)
+            {
+                battle.StartWave();
+                yield return null;
+            }
+
+            Time.timeScale = 1f;
+            Assert.That(battle.IsFinished, Is.True, "時間内にゲームが終わらない");
+            yield return null;
+        }
+
+        private static void ReplaceWaves(Scene scene, LoadSceneMode mode)
+        {
+            if (_waves == null || scene.name != GameSession.GameScene)
+            {
+                return;
+            }
+
+            var battle = Object.FindAnyObjectByType<BattleController>();
+            typeof(BattleController)
+                .GetField("wavesTable", BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(battle, new TextAsset(_waves));
+        }
+
+        // ハズレ抽選は必ず当たり、揃う図柄は Index のコマにする。
+        private sealed class HitRandom : IRandom
+        {
+            public int Index;
+
+            public int NextInt(int minInclusive, int maxExclusive) => Index;
+
+            public double NextDouble() => 0.999;
+        }
+    }
+}

@@ -53,6 +53,36 @@ namespace UnitySlotTower.Tests.EditMode.Ui
         }
 
         [Test]
+        public void Text_With_Another_Font_Is_Reported_When_The_Numeric_Font_Is_Required()
+        {
+            var numeric = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+            var other = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(
+                "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset");
+            Assert.That(numeric != null && other != null, Is.True, "フォントが見つからない");
+            var text = CreateText("3").GetComponentInChildren<TMP_Text>();
+
+            text.font = numeric;
+            var withNumeric = TextAudit.FindViolations(_root, "test", numeric).Count;
+            text.font = other;
+            var withOther = TextAudit.FindViolations(_root, "test", numeric).Count;
+
+            Assert.That((withNumeric, withOther), Is.EqualTo((0, 1)));
+        }
+
+        [Test]
+        public void Only_The_Exempt_Part_May_Use_Letters()
+        {
+            // Title シーンはロゴだけ文字を使ってよい（難易度選択などは走査する、T406）。
+            var root = CreateText("SLOT TOWER");
+            root.GetComponentInChildren<TMP_Text>().name = TextAudit.TitleLogoName;
+            var exempt = TextAudit.FindViolations(root, "test", null, TextAudit.TitleLogoName).Count;
+            root.GetComponentInChildren<TMP_Text>().name = "Plate";
+            var plate = TextAudit.FindViolations(root, "test", null, TextAudit.TitleLogoName).Count;
+
+            Assert.That((exempt, plate), Is.EqualTo((0, 1)));
+        }
+
+        [Test]
         public void Scenes_And_Prefabs_Use_No_Letters()
         {
             var violations = TextAudit.AuditProject();

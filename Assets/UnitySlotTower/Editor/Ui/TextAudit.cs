@@ -18,34 +18,64 @@ namespace UnitySlotTower.Editor.Ui
         public const string SceneFolder = "Assets/UnitySlotTower/Scenes";
         public const string TitleScene = SceneFolder + "/Title.unity";
         public const string PrefabFolder = "Assets/UnitySlotTower";
+        public const string NumericFontPath = "Assets/UnitySlotTower/Art/Fonts/NumericOnly SDF.asset";
 
-        public static List<string> FindViolations(GameObject root, string context)
+        /// <summary>タイトル画面のロゴ（文字を使ってよい唯一の部品、plan 4章）。Title シーンの難易度選択などは走査する。</summary>
+        public const string TitleLogoName = "Logo";
+
+        /// <summary>
+        /// root 以下の文字部品を走査する。requiredFont を渡すと、TextMeshPro がそのフォント以外を使っていても違反にする
+        /// （数字専用フォントなら文字は描けない、plan 8章）。exemptName と同じ名前の部品は飛ばす。
+        /// </summary>
+        public static List<string> FindViolations(GameObject root, string context, TMP_FontAsset requiredFont = null,
+            string exemptName = null)
         {
             var violations = new List<string>();
             foreach (var text in root.GetComponentsInChildren<TMP_Text>(true))
             {
+                if (exemptName != null && text.name == exemptName)
+                {
+                    continue;
+                }
+
                 Check(text.text, text.transform, context, violations);
+                if (requiredFont != null && text.font != requiredFont)
+                {
+                    violations.Add($"{context} {PathOf(text.transform)}: フォント {(text.font != null ? text.font.name : "なし")} は数字専用ではない");
+                }
             }
 
             foreach (var text in root.GetComponentsInChildren<Text>(true))
             {
+                if (exemptName != null && text.name == exemptName)
+                {
+                    continue;
+                }
+
                 Check(text.text, text.transform, context, violations);
             }
 
             return violations;
         }
 
-        /// <summary>プロジェクト全体を走査する。開いていなかったシーンは閉じ、開いていたシーンはそのまま残す。</summary>
+        /// <summary>
+        /// プロジェクト全体（Title シーンはロゴ以外）を走査し、文字とフォントを確かめる。開いていなかったシーンは閉じ、
+        /// 開いていたシーンはそのまま残す。
+        /// </summary>
         public static List<string> AuditProject()
         {
             var violations = new List<string>();
+            var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(NumericFontPath);
+            if (font == null)
+            {
+                violations.Add($"数字専用フォントがない: {NumericFontPath}");
+                return violations;
+            }
+
             foreach (var guid in AssetDatabase.FindAssets("t:Scene", new[] { SceneFolder }))
             {
                 var path = AssetDatabase.GUIDToAssetPath(guid);
-                if (path == TitleScene)
-                {
-                    continue;
-                }
+                var exempt = path == TitleScene ? TitleLogoName : null;
 
                 var scene = SceneManager.GetSceneByPath(path);
                 var wasLoaded = scene.isLoaded;
@@ -58,7 +88,7 @@ namespace UnitySlotTower.Editor.Ui
                 {
                     foreach (var root in scene.GetRootGameObjects())
                     {
-                        violations.AddRange(FindViolations(root, path));
+                        violations.AddRange(FindViolations(root, path, font, exempt));
                     }
                 }
                 finally
@@ -76,7 +106,7 @@ namespace UnitySlotTower.Editor.Ui
                 var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
                 if (prefab != null)
                 {
-                    violations.AddRange(FindViolations(prefab, path));
+                    violations.AddRange(FindViolations(prefab, path, font));
                 }
             }
 
