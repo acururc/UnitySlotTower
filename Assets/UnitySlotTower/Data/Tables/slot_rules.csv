@@ -11,3 +11,5 @@ atk_seconds,20
 speed_rate,1.5
 speed_seconds,20
 heal_rate,0.5
+early_games,20
+early_miss_reduction,0.2

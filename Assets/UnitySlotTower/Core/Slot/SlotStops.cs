@@ -1,23 +1,29 @@
 namespace UnitySlotTower.Core.Slot
 {
     /// <summary>
-    /// 3リール×3段の出目の条件（D-52〜D-54、plan 5章 スロット）。停止位置 s のリールは上段に s−1、中段に s、下段に s+1 を見せる。
-    /// 当たりは結果の図柄が上・中・下のちょうど1段に3つ揃い、残りの段は揃わない。ハズレはどの段も揃わない。
-    /// 配列によっては厳密な条件を満たせないので、そのときの緩い条件（当たりは結果の図柄がどこかの段に揃う）も持つ。
+    /// 3リール×3段の出目の条件（D-52〜D-54・D-58、plan 5章 スロット）。停止位置 s のリールは上段に s−1、中段に s、下段に s+1 を見せる。
+    /// 有効ラインは上・中・下と斜め2本の5本。当たりは結果の図柄がちょうど1本に3つ揃い、残りのラインは揃わない。ハズレはどのラインも揃わない。
+    /// 配列によっては厳密な条件を満たせないので、そのときの緩い条件（当たりは結果の図柄がどこかのラインに揃う）も持つ。
     /// </summary>
     public static class SlotStops
     {
         public const int Rows = 3;
+
+        /// <summary>有効ライン（D-52・D-58）。各リールで中段から何段ずれたマスを使うか。</summary>
+        private static readonly int[][] Lines =
+        {
+            new[] { -1, -1, -1 }, new[] { 0, 0, 0 }, new[] { 1, 1, 1 }, new[] { -1, 0, 1 }, new[] { 1, 0, -1 },
+        };
 
         /// <summary>3本の停止位置が結果どおりの最終形か。</summary>
         public static bool IsFinal(ReelLayout layout, int s0, int s1, int s2, SlotSymbol? result, bool strict = true)
         {
             var aligned = 0;
             var resultAligned = false;
-            for (var row = -1; row <= 1; row++)
+            foreach (var line in Lines)
             {
-                var a = layout.At(s0 + row);
-                if (a != layout.At(s1 + row) || a != layout.At(s2 + row))
+                var a = layout.At(s0 + line[0]);
+                if (a != layout.At(s1 + line[1]) || a != layout.At(s2 + line[2]))
                 {
                     continue;
                 }

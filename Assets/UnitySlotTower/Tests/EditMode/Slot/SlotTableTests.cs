@@ -76,10 +76,10 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         }
 
         [Test]
-        [Description("D-54: 7 の2つが同じ並びに挟まれていると、7 の当たりで上下の段も揃ってしまうので見つける")]
-        public void Locks_Whose_Sevens_Share_Neighbors_Are_Found_Unsolvable()
+        [Description("D-54: 当たりの最終形が作れない配置を見つける（斜めを含む5本では2つずつのロックでも解けてしまうため、7 をロックせず空きにも入らない配置で確かめる。D-58）")]
+        public void Locks_Without_A_Seven_Are_Found_Unsolvable()
         {
-            var locks = ReelCustomizerTests.Locks("coin seven atk coin seven atk bar speed heal bar speed heal _ _ _ _ _ _");
+            var locks = ReelCustomizerTests.Locks("atk atk bar bar speed speed heal heal coin coin _ _ _ _ _ _ _ _");
 
             Assert.That(SlotStops.FirstUnsolvableFill(locks), Is.Not.Null);
         }

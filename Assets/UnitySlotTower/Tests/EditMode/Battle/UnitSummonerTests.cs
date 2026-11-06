@@ -145,5 +145,15 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
             Assert.That(summoner.TrySummon("archer"), Is.EqualTo(SummonResult.Summoned));
         }
+
+        [Test]
+        [Description("AC-020, D-56: 説明の撤退の題目を表示中の撤退は召喚費用の全額が戻る")]
+        public void Full_Refund_Retreat_Returns_The_Whole_Cost()
+        {
+            var summoner = Create(30);
+            summoner.TrySummon("tank");
+
+            Assert.That((summoner.Retreat("tank", fullRefund: true), _wallet.Coins), Is.EqualTo((15, 30)));
+        }
     }
 }

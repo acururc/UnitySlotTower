@@ -159,12 +159,15 @@ namespace UnitySlotTower.Core.Battle
             return result;
         }
 
-        /// <summary>配置中の味方を撤退させ、返還する（FR-025）。フィールドに居なければ何もしない。</summary>
-        public void Retreat(BattleUnit unit)
+        /// <summary>
+        /// 配置中の味方を撤退させ、返還する（FR-025）。フィールドに居なければ何もしない。
+        /// <paramref name="fullRefund"/> は説明の撤退の題目を表示中（D-56）で、召喚コストの全額を返す。
+        /// </summary>
+        public void Retreat(BattleUnit unit, bool fullRefund = false)
         {
             if (_field.RemoveUnit(unit))
             {
-                _summoner.Retreat(unit.Definition.Id);
+                _summoner.Retreat(unit.Definition.Id, fullRefund);
             }
         }
 

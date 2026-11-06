@@ -135,6 +135,9 @@ namespace UnitySlotTower.Battle
         /// </summary>
         public bool IsHeldByGuide { get; set; }
 
+        /// <summary>説明の撤退の題目を表示中は true（D-56）。このあいだの撤退は召喚コストの全額を返す。</summary>
+        public bool FullRefundRetreat { get; set; }
+
         /// <summary>準備中なら戦闘を始める（▶、plan 4章）。一時停止中・カスタム中は受け付けない。</summary>
         public void StartWave()
         {

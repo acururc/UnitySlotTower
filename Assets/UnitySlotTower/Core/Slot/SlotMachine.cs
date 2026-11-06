@@ -32,6 +32,7 @@ namespace UnitySlotTower.Core.Slot
         private readonly SlotRules _rules;
         private readonly int[] _stops = new int[ReelCount];
         private readonly bool[] _stopped = new bool[ReelCount];
+        private int _normalGames;
 
         public SlotMachine(ReelLayout layout, double missRate, CoinWallet wallet, int bet, SlotRules rules, IRandom random)
         {
@@ -86,7 +87,12 @@ namespace UnitySlotTower.Core.Slot
             else if (_wallet.TrySpend(_bet))
             {
                 // まずハズレを抽選し、当たりならコマを1つ等確率で選んでその図柄を揃える（マス数 ÷ 総マス数、D-43）。
-                Result = _random.NextDouble() < _missRate
+                // 最初の early_games 通常ゲームはハズレ率を一律に下げる（D-57。ボーナス中は数えない）。
+                var missRate = _normalGames < _rules.EarlyGames
+                    ? Math.Max(0d, _missRate - _rules.EarlyMissReduction)
+                    : _missRate;
+                _normalGames++;
+                Result = _random.NextDouble() < missRate
                     ? (SlotSymbol?)null
                     : Layout.At(_random.NextInt(0, Layout.Length));
             }
@@ -118,7 +124,7 @@ namespace UnitySlotTower.Core.Slot
 
         /// <summary>
         /// リールを押した位置から下へ（コマ番号が減る向きに）1コマずつ進め、そこで止めても残りのリールで結果どおりの最終形
-        /// （<see cref="SlotStops.IsFinal"/>: 当たりは上・中・下のちょうど1段に結果の図柄、ハズレはどの段も揃わない）が作れる
+        /// （<see cref="SlotStops.IsFinal"/>: 当たりは5本の有効ラインのちょうど1本に結果の図柄、ハズレはどのラインも揃わない）が作れる
         /// 最初の位置で止める。停止位置を返す（plan 5章、D-53）。厳密な最終形が作れない配列では緩い条件で探し、それも無理なら押した位置で止める。
         /// </summary>
         public int Stop(int reel, int pressPosition)

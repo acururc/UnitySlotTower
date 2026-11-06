@@ -176,7 +176,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         private static IEnumerator SpinAndStopAll(SlotCabinet cabinet)
         {
             var lever = cabinet.LeverRect.GetComponent<Button>();
-            for (var i = 0; i < 300 && !cabinet.IsSpinning; i++)
+            // ウェイトは実時間（2秒）なので、フレームが速くても足りるよう時間で待つ。
+            var until = Time.realtimeSinceStartup + 5f;
+            while (!cabinet.IsSpinning && Time.realtimeSinceStartup < until)
             {
                 lever.onClick.Invoke();
                 yield return null;

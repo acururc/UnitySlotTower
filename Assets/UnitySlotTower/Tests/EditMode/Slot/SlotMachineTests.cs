@@ -15,13 +15,19 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         private const string DefaultReel = "atk speed coin bar coin seven coin heal coin bar speed heal atk seven heal coin atk coin";
         private const int Length = 18;
 
-        /// <summary>上・中・下で3つ揃った段の図柄（D-52）。</summary>
+        /// <summary>有効ライン5本（上・中・下と斜め2本、D-52・D-58）の、リールごとの段のずれ。</summary>
+        private static readonly int[][] Lines =
+        {
+            new[] { -1, -1, -1 }, new[] { 0, 0, 0 }, new[] { 1, 1, 1 }, new[] { -1, 0, 1 }, new[] { 1, 0, -1 },
+        };
+
+        /// <summary>5本の有効ラインのうち3つ揃ったラインの図柄（D-52・D-58）。</summary>
         private static List<SlotSymbol> AlignedRows(SlotMachine machine)
         {
             var rows = new List<SlotSymbol>();
-            for (var row = -1; row <= 1; row++)
+            foreach (var line in Lines)
             {
-                var cells = Enumerable.Range(0, SlotMachine.ReelCount).Select(r => machine.Layout.At(machine.StopPosition(r) + row)).ToArray();
+                var cells = Enumerable.Range(0, SlotMachine.ReelCount).Select(r => machine.Layout.At(machine.StopPosition(r) + line[r])).ToArray();
                 if (cells.All(s => s == cells[0]))
                 {
                     rows.Add(cells[0]);
@@ -31,7 +37,7 @@ namespace UnitySlotTower.Tests.EditMode.Slot
             return rows;
         }
 
-        /// <summary>当たりは結果の図柄がちょうど1段だけ、ハズレはどの段も揃わない（D-53）。</summary>
+        /// <summary>当たりは結果の図柄がちょうど1本だけ、ハズレはどのラインも揃わない（D-53・D-58）。</summary>
         private static bool ShowsResult(SlotMachine machine, SlotSymbol? result)
         {
             var rows = AlignedRows(machine);
@@ -382,6 +388,72 @@ namespace UnitySlotTower.Tests.EditMode.Slot
             var started = machine.TryLever();
 
             Assert.That((started, wallet.Coins), Is.EqualTo((false, 2)));
+        }
+
+        [Test]
+        [Description("AC-041, D-58: 斜め（左上→中央→右下）に揃った止め方はハズレの最終形ではなく、その図柄の当たりの最終形になる")]
+        public void Diagonal_Line_Counts_As_Aligned()
+        {
+            var layout = Layout(DefaultReel);
+
+            // 停止位置 1・12・15: 1本目の上段コマ0、2本目の中段コマ12、3本目の下段コマ16 がどれも攻撃力アップ。横の3段は揃わない。
+            Assert.That((SlotStops.IsFinal(layout, 1, 12, 15, null), SlotStops.IsFinal(layout, 1, 12, 15, SlotSymbol.Atk)),
+                Is.EqualTo((false, true)));
+        }
+
+        /// <summary>NextDouble は常に同じ値、NextInt は常に同じコマを返す乱数。</summary>
+        private sealed class ConstantRandom : IRandom
+        {
+            private readonly double _value;
+            private readonly int _cell;
+
+            public ConstantRandom(double value, int cell)
+            {
+                _value = value;
+                _cell = cell;
+            }
+
+            public int NextInt(int minInclusive, int maxExclusive) => _cell;
+            public double NextDouble() => _value;
+        }
+
+        private static SlotSymbol? PlayResult(SlotMachine machine)
+        {
+            machine.TryLever();
+            var result = machine.Result;
+            for (var reel = 0; reel < SlotMachine.ReelCount; reel++)
+            {
+                machine.Stop(reel, 0);
+            }
+
+            return result;
+        }
+
+        [Test]
+        [Description("AC-040, D-57: 最初の early_games 通常ゲームはハズレ率を early_miss_reduction だけ下げ（85%→65%）、その後は設定の値に戻る")]
+        public void Early_Games_Use_The_Reduced_Miss_Rate()
+        {
+            // 乱数 0.7: 65% では当たり、85% ではハズレ。コマ0は攻撃力アップ。
+            var machine = new SlotMachine(Layout(DefaultReel), 0.85, new CoinWallet(100), Bet,
+                SlotTestRules.Create(bigGames: 0, regGames: 0, earlyGames: 2, earlyMissReduction: 0.2), new ConstantRandom(0.7, 0));
+
+            var results = Enumerable.Range(0, 3).Select(_ => PlayResult(machine)).ToArray();
+
+            Assert.That(results, Is.EqualTo(new SlotSymbol?[] { SlotSymbol.Atk, SlotSymbol.Atk, null }));
+        }
+
+        [Test]
+        [Description("D-57: ボーナス中のゲームは序盤のゲーム数に数えない")]
+        public void Bonus_Games_Do_Not_Count_As_Early_Games()
+        {
+            // コマ5は 7。通常1回目で BIG（1ゲーム）、ボーナス、通常2回目も序盤で当たり（BIG）、ボーナス、通常3回目は通常のハズレ率。
+            var machine = new SlotMachine(Layout(DefaultReel), 0.85, new CoinWallet(100), Bet,
+                SlotTestRules.Create(bigGames: 1, earlyGames: 2, earlyMissReduction: 0.2), new ConstantRandom(0.7, 5));
+
+            var results = Enumerable.Range(0, 5).Select(_ => PlayResult(machine)).ToArray();
+
+            Assert.That(results,
+                Is.EqualTo(new SlotSymbol?[] { SlotSymbol.Seven, SlotSymbol.Coin, SlotSymbol.Seven, SlotSymbol.Coin, null }));
         }
     }
 }

@@ -162,11 +162,13 @@ namespace UnitySlotTower.Tests.EditMode.Guide
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.SelectUnit));
             o.UnitSelected = true;
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Retreat));
+            Assert.That(guide.ShowsRetreat, Is.True, "D-56: 撤退の題目を表示中");
 
             o.FieldUnits = 0;
             o.UnitSelected = false;
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None));
             Assert.That(guide.IsDone(GuideTopic.Retreat), Is.True);
+            Assert.That(guide.ShowsRetreat, Is.False, "題目の後は通常の返還率");
         }
 
         [Test]

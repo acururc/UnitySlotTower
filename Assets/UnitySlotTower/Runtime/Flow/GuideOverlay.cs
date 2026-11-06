@@ -80,6 +80,7 @@ namespace UnitySlotTower.Flow
             if (battle != null)
             {
                 battle.IsHeldByGuide = false;
+                battle.FullRefundRetreat = false;
             }
 
             root.gameObject.SetActive(false);
@@ -95,6 +96,7 @@ namespace UnitySlotTower.Flow
 
             var hint = _sequence.Update(Observe(run));
             battle.IsHeldByGuide = _sequence.HoldsBattle;
+            battle.FullRefundRetreat = _sequence.ShowsRetreat;
             if (hint != _shownHint)
             {
                 _shownHint = hint;

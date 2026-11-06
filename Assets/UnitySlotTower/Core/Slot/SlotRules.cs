@@ -31,6 +31,12 @@ namespace UnitySlotTower.Core.Slot
         /// <summary>全体HP回復で足す最大HPの割合。</summary>
         public double HealRate { get; private set; }
 
+        /// <summary>序盤の救済（D-57）: ハズレ率を下げる通常ゲームの回数。</summary>
+        public int EarlyGames { get; private set; }
+
+        /// <summary>序盤の救済（D-57）: 設定のハズレ率から引く幅。</summary>
+        public double EarlyMissReduction { get; private set; }
+
         public static SlotRules Load(CsvTable table)
         {
             var values = new KeyValueTable(table);
@@ -48,6 +54,8 @@ namespace UnitySlotTower.Core.Slot
                 SpeedRate = values.GetDouble("speed_rate"),
                 SpeedSeconds = values.GetDouble("speed_seconds"),
                 HealRate = values.GetDouble("heal_rate"),
+                EarlyGames = values.GetInt("early_games"),
+                EarlyMissReduction = values.GetDouble("early_miss_reduction"),
             };
         }
     }

@@ -151,7 +151,7 @@ namespace UnitySlotTower.Battle
                 return;
             }
 
-            deployment.Retreat(SelectedUnit);
+            deployment.Retreat(SelectedUnit, battle.FullRefundRetreat);
             SelectedUnit = null;
         }
 

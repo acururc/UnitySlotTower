@@ -34,6 +34,8 @@ namespace UnitySlotTower.Core.Data
             ColumnRule.Float("speed_rate", 1, 100),
             ColumnRule.Float("speed_seconds", 0, 3600),
             ColumnRule.Float("heal_rate", 0, 1),
+            ColumnRule.Int("early_games", 0, 1000),
+            ColumnRule.Float("early_miss_reduction", 0, 1),
         };
 
         // Schemas より前に置く（静的フィールドは書いた順に初期化される）。

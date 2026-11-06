@@ -79,6 +79,9 @@ namespace UnitySlotTower.Core.Guide
         /// <summary>説明を見せているあいだは戦闘の時間を止める（スロットは動かす）。</summary>
         public bool HoldsBattle => Current != GuideHint.None;
 
+        /// <summary>撤退の題目を表示中（D-56: このあいだの撤退は全額返還）。</summary>
+        public bool ShowsRetreat => _active == GuideTopic.Retreat && Current != GuideHint.None;
+
         public bool IsDone(GuideTopic topic) => _done[(int)topic];
 
         public GuideHint Update(in GuideObservation o)
