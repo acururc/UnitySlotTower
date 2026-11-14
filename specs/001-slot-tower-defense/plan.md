@@ -1,7 +1,7 @@
 # 実装計画: スロット × タワーディフェンス
 
-対象spec: [spec.md](spec.md)（2026-11-01 再承認、sha256 先頭 `bd5ae63f76a9`。初回承認 2026-10-26 `06d594c6250f`）
-状態: 確定（2026-10-26 ユーザー確認事項 C-1〜C-5 回答済み）。2026-11-01 の仕様変更を反映（旧仕様の記述は置き換え済み。移行は13章）
+対象spec: [spec.md](spec.md)（2026-11-15 承認、sha256 先頭 `9982cd2d8c00`。その前 2026-11-06 `375faf645838`、2026-11-01 `bd5ae63f76a9`、初回 2026-10-26 `06d594c6250f`）
+状態: 確定（2026-10-26 ユーザー確認事項 C-1〜C-5 回答済み）。2026-11-01 の仕様変更を反映（旧仕様の記述は置き換え済み。移行は13章）。**2026-11-14 の仕様変更（D-59〜D-74）は16章が正本**。2〜8章・10章の旧記述（3ステージ・旧スロット・リールのカスタム・ヒーラー・コイン1種類）と食い違うところは16章を優先する（2〜8章は M3U の実装が終わったら書き直す: T354）
 要求は spec の FR/AC を参照し、ここでは複製しない。数値はすべて仮の初期値で、データテーブルで調整する（FR-050）。
 
 ## 1. 技術方針
@@ -242,6 +242,98 @@ Assets/UnitySlotTower/
 - 序盤の救済（D-57）: `slot_rules.csv` に `early_games`（整数 0〜1000、初期値 20）と `early_miss_reduction`（0〜1、初期値 0.2）を足す。`SlotMachine` は通常ゲームのレバーオン回数を数え、回数が `early_games` 未満のあいだはハズレ率を `max(0, 設定の値 − early_miss_reduction)` にして抽選する（ボーナス中は数えない）。表示（カスタム画面・早見表）は設定の値のまま。
 - 説明中の撤退（D-56）: `GuideSequence` に「撤退の題目を表示中」（`ShowsRetreat`）を足し、`GuideOverlay` が毎フレーム `BattleController.FullRefundRetreat` に写す（`IsHeldByGuide` と同じ流れ）。`UnitPlacementInput.RetreatSelected` はそれを `UnitDeployment.Retreat(unit, fullRefund)` へ渡し、`UnitSummoner.Retreat` は全額のときコスト全額を返す。
 - テスト: EditMode に斜めの判定、序盤のハズレ率（N ゲーム目までと以降、ボーナス中は数えない、0 で切る）、全額返還を足す。PlayMode に説明中の撤退で全額戻ることを足す。
+
+## 16. 2026-11-14 仕様変更の移行方針（M3U）
+
+- 対象: spec D-59〜D-74 と【2026-11-14 変更/廃止】の付いた項目（2026-11-15 承認、sha256 `9982cd2d8c00`）。要求は spec の FR/AC を参照する。
+- 方針: 戦闘の核（グリッド・配置・向き・攻撃範囲・ブロック・敵・強化・撤退・一時停止・数字フォント・縦長レイアウト）は残す。スロットとゲームの進行（ステージ）は作り直す。Core を先に EditMode テスト先行（`tdd`）で作り、Runtime とシーンは Editor の組み立てメニュー（既存の `Setup/*` と同じやり方）で差し替える。
+
+### 16.1 消すもの・作り直すもの・残すもの
+
+| 区分 | 対象 |
+| --- | --- |
+| 消す | Core/Slot `ReelCustomizer`・`ReelLocks`・`SlotStops`・`SlotWait`・`SlotSettings`（ハズレ率）と BIG/REG・序盤の救済・払い出し（`SlotMachine` 内）。Runtime `ReelCustomScreen`・`ReelCustomHandle`、筐体のストップボタン・ボーナスランプ・残りゲーム数・払い出し表示。Editor `ReelCustomSetup`。CSV `slot_settings`・`slot_locked_reel`。`Battlefield.HealAll`・`UnitRole.Heal`・`healer` の行。`WaveRun` のライフボーナス・ステージ制（`StageCount`・`StageBegan`）、`game_config` の `life_bonus_per_life`。入力アクション `StopReel*`・`ClearCell`（機能ごと消えるため。D-55 の「キー操作を残す」は残る機能のキーが対象）。対応するテスト（`ReelCustomizerTests`・`ReelLocksTests`・`SlotWaitTests`・`ReelCustomTests`〔PlayMode〕・`SlotMachineTests` のボーナス/救済/払い出し・`WaveRunTests` のライフボーナス/ステージ）。`GuideTopic.ReelCustom`・`Bonus` |
+| 作り直す | `SlotMachine`（16.3）、`SlotSymbol`（6図柄）、`SlotRules`（新キー）、`SlotOdds`（20パターンの表から）、`SlotEffects` → `BattleBoosts`（16.4）、`WaveRun` → `BattleNodeRun`（16.6）、`WaveSchedule`（ステージ番号 → 出現表 id）、`SlotCabinet`・`SlotReelView`（レバーだけ・自動停止）、`BattleController`（1戦闘マスを受け持つ）、`OperationBarStatus`（お金2種・ライフ・ゲージ・倍率）、`HelpScreen` の上半分、`GuideSequence` の題目、`GameDataValidator` の表の組み合わせ、`BattleFieldView`（マップを id で読む・カメラ合わせ）、`ResultScreen`（到達階） |
+| 新しく作る | Core/Run（`RunState`・`RouteMap`・`RouteGenerator`・`RouteRules`・`Exchange`・`Shop`・`EncounterTable`）、Core/Battle `SkillGauges`・`SkillTable`・`BattleCameraFit`、Runtime `Flow/RunController`・`RouteScreen`・`ExchangeScreen`・`ShopScreen`・`RestScreen`・`Ui/TextModeLabel`、日本語フォント |
+| 残す | `BattleMap`・`UnitRanges`・`UnitPlacement`・`UnitDeployment`・`UnitSummoner`（コイン→所持金に読み替え）・`UnitUpgrades`・`UnitStock`・`Damage`・`EnemyTable`（列を足す）・CSV 基盤・乱数・時計・`PortraitLayout`・`NumericText`・`TextAudit`・タイトル・難易度選択・一時停止・撤退の全額返還（D-56）。`CoinWallet` はクラス名のまま「コイン」と「所持金」の2つのインスタンスで使う（改名による変更の広がりを避ける） |
+
+### 16.2 お金・ライフ・進行の状態（FR-013, FR-015, FR-017, FR-033）
+- `RunState`（Core/Run）がゲーム1回分の状態を持つ: `Coins`・`Money`（どちらも `CoinWallet`）、`Life`/`MaxLife`、`UnitUpgrades`、`UnitStock`、`SkillGauges`、難易度、ルートと現在地、乱数。リトライで作り直す（AC-004）。戦闘マスは `RunState` を受け取り、ライフ・お金・ストック・ゲージを直接書き換える。
+- `game_config.csv`: `initial_coins`（15＝5回）・`initial_money`（30）・`bet`（3）・`life`（10）・`deploy_limit`（8）・`retreat_refund_rate`（0.5）。`life_bonus_per_life` は消す。召喚・強化・撤退の返還は `Money`。
+- 敵ドロップ（D-30・D-67）: `enemies.csv` の `drop_rate/drop_min/drop_max` を `coin_rate/coin_min/coin_max/money_rate/money_min/money_max` に替える。撃破時に1回だけ抽選し、`coin_rate` で当たればコイン、外れて `money_rate` で当たれば所持金（2つの和は1以下を検証）。所持金は `量 × コインの倍率` を四捨五入して即加算。仮値: 近距離 コイン20%で3／所持金40%で2、遠距離 25%で3／40%で2〜3、空中 25%で3／40%で2〜3、中ボス 0／100%で15、最終ボス なし。
+- 両替所（D-69）: `exchange_money_per_coin`（仮 2）。1回の操作でコインを `bet` 枚（1回分）単位で売買する（所持金 → コイン 3枚に 6、コイン 3枚 → 所持金 6）。足りなければボタンが暗くなり押せない（AC-013）。
+- ショップ: `shop_items.csv`（`id, kind〔stock/gauge/upgrade〕, unit_id, price, weight`）。ショップマスに入ったとき重みで `shop_slots`（3）品を重複なしに選び、各品は1回だけ買える。強化が最大段階・ゲージが満タンの品は暗くして買えない。仮値: 無料ストック 1体 20、ゲージ1段 15、強化1段 = その種類の次の強化費用。
+- 回復マス: `rest_heal`（3）だけライフを回復、`MaxLife` で止まる（AC-012）。
+- 戦闘の報酬: `encounters.csv` の `reward_money`・`reward_coins`（16.6）を戦闘マスのクリア時に足す（仮: 通常 10/3、強敵 25/9）。
+
+### 16.3 スロット（FR-040〜042, FR-045）
+- データ: `slot_patterns.csv`（`setting, outcome, count`。outcome は `red7/blue7/green7/yellow7/bar/coin/miss`、設定ごとに合計20を検証）。仮値（spec D-63 の設定1、2〜6はハズレを増やす）:
+
+  | 設定 | 色7（各） | ハズレ | バー | コイン |
+  | --- | --- | --- | --- | --- |
+  | 1 | 3 | 4 | 2 | 2 |
+  | 2 | 3 | 5 | 2 | 1 |
+  | 3 | 3 | 6 | 1 | 1 |
+  | 4 | 2 | 8 | 2 | 2 |
+  | 5 | 2 | 9 | 2 | 1 |
+  | 6 | 2 | 10 | 1 | 1 |
+- `slot_reels.csv`（`reel, index, symbol`。3本×6マス、各リールに6図柄が1つずつ）。検証: どの図柄を中段に揃えても上段・下段が揃わない並び（3本とも違う並びにする）。仮の並び: 左 赤・青・緑・黄・バー・コイン、中 赤・緑・バー・青・コイン・黄、右 赤・バー・黄・緑・青・コイン（2026-11-15 に手で全6図柄を確かめ、上段・下段とも揃わない。データ検証テストでも確かめる）。
+- `SlotMachine(reels, patterns, coins, rules, random)`: `TryLever(fixedSpins)` → 回転中・一時停止中は拒否、通常は `bet` 枚を払う（足りなければ `NotEnoughCoins`）、回数固定の戦闘ではコインを使わず残り回数を1減らす（0なら拒否）。レバーの時点で20パターンから1つを一様に選び（D-60）、3本の停止位置を決める: 揃いはその図柄が中段に来る位置、ハズレはどの段（上・中・下）も揃わない組み合わせ（6³ のうち条件を満たすものから一様）。`Outcome`・`StopPositions` を公開し、`Settle()`（最後のリールが止まった時点で Runtime が呼ぶ）で `Aligned(outcome)` を通知する。
+- 自動停止: `slot_rules.csv` に `bet`・`first_stop_seconds`（1.0）・`stop_interval_seconds`（0.4）。表示側 `SlotCabinet` が左から順に止め、最後に `Settle`。回転中のレバーは無視（待たせない）。旧 `wait_seconds` は消す。
+- レバー: 筐体のレバーをクリック、または入力アクション `Lever`（Space。既存）。コイン不足ではコインのアイコンが点滅（従来どおり）。
+
+### 16.4 出目の効果とスキル（FR-029, FR-042）
+- `SkillGauges`（`RunState` が持つ）: 色ごとの段数、`gauge_max`（5）。色7で +1、満タンなら増えない。発動で0。戦闘マスをまたいで残る。
+- `BattleBoosts`（戦闘マスごとに新しく作る）: `AttackRate` = 1 + min(`bar_step` 0.1 × 回数, `bar_cap` 0.5)、`MoneyRate` = min(1 + `coin_step` 0.1 × 回数, `coin_cap` 1.5)（1回目 1.1）。値はすべて `slot_rules.csv`。
+- 攻撃力の掛け順: 基礎 × 強化（四捨五入）× バッファー × バー × スキル（最後に四捨五入）。攻撃速度はスキルだけが変える。
+- `skills.csv`（`color, unit_id, duration, block_add, damage_taken_rate, damage_rate, interval_rate, buff_add`）。色と職の割り当てもここ（仮: 赤=剣士・青=弓・緑=バッファー・黄=タンク）。仮値: タンク 10秒 ブロック+1・被ダメージ×0.5、剣士 即時に範囲内の敵全員へ攻撃力×3、弓 8秒 攻撃間隔÷2.5、バッファー 10秒 倍率+0.3。
+- 発動: `Battlefield.ActivateSkill(skill)` が配置中のその職全員に効果時間を付ける（戦闘ステップで減る、一時停止・説明中は減らない）。`BattleNodeRun.TryActivateSkill(color)` は満タン・配置1体以上・戦闘中（準備中も可）を確かめ、拒否なら何も変えない（AC-023）。効果中に置いた同職の個体には付けない（発動時にいた全員だけ）。
+
+### 16.5 バッファー（FR-028）
+- `units.csv` の `healer` を `buffer`（役割 `buff`、列 `buff_rate` 1.3 を足す。費用 18・待ち時間 25 は旧ヒーラーのまま）。範囲は前方 4×3（旧ヒーラーの範囲を引き継ぐ）。範囲内の味方（自分以外）の攻撃力に、効いているバッファーのうち最大の倍率を1つだけ掛ける（重ねがけしない）。2026-11-01 に消した `buff` 処理（T206 の実装、git 履歴にある）を参考に戻す。バッファーは攻撃しない。強化は HP・防御に効き、倍率は強化しない。
+
+### 16.6 戦闘マス（FR-010, FR-013, FR-015, FR-016, FR-018）
+- `encounters.csv`（`id, kind〔first/battle/elite/boss〕, map_id, min_floor, max_floor, fixed_spins, reward_money, reward_coins`）。戦闘マスに入ったとき、種類と階が合う行から一様に選ぶ。最初のマスは `first`、強敵・ボスは専用マップ。`waves.csv` は `encounter_id, wave(1〜2), time, enemy_id, spawn, path_id, is_boss`（`stage` 列を置き換え）。
+- マップ: `maps/<id>.csv`（10列×5行を基本、9×4〜10×5 の範囲）。初期セット: `first`（中3行が出現口からゴールまでまっすぐな地上、上下が高台）、通常3枚、強敵1枚、ボス1枚。旧 `s1〜s3` は 9×6 なので作り直して消す。
+- `BattleNodeRun`（旧 `WaveRun`）: 準備 → W1 → 準備（配置・HP保持）→ W2（強敵・ボスは最後に中ボス・最終ボス）→ 終了。ライフは `RunState.Life` を使い、0でゲームオーバー。終了時: 配置中の味方を種類ごとにストックへ、報酬を加算、`BattleBoosts` は捨てる。ボスマスの終了でクリア。準備中の待ち時間なしとストックからの配置は従来どおり。
+- 回数固定（D-68）: `fixed_spins` > 0 の戦闘ではその回数だけコインなしで回せる。仮値: `first` に 6（最初の戦闘でスロットを試してもらうため）、ほかは 0。プレイで調整。
+- カメラ（D-71）: Core `BattleCameraFit`（マップの列数・行数、俯角 65°、縦の画角 45°、戦闘領域の縦横比 1440:1152 から、マップ全体が収まる距離と注視点を計算）。`BattleFieldView` が戦闘マスごとに当てる。EditMode でマップの四隅が視野に入ることを確かめる（AC-014）。
+
+### 16.7 ルート（FR-010, FR-017）
+- `route_rules.csv`（キーと値: `floors`〔8〕・`columns`〔4〕・`paths`〔4〕・`weight_battle`〔50〕・`weight_elite`〔14〕・`weight_exchange`〔10〕・`weight_shop`〔12〕・`weight_rest`〔14〕・`elite_min_floor`〔3〕・`rest_heal`〔3〕・`shop_slots`〔3〕・`exchange_money_per_coin`〔2〕）。
+- 生成（Slay the Spire 式）: 1階は `first` の1マス、最上階はボスの1マス、その直前の階は全部回復。間の階は、`paths` 本の道を1階から列を ±1 ずつ動かしながら上へ引き（交差しない）、通ったマスを残す。各マスの種類は重みで選ぶ（`elite_min_floor` 未満は強敵なし、同じ道で両替所・ショップ・回復が続かない）。同じシードで同じルート（AC-010）。
+- マスの種類は文字列 id（`battle` など）で持ち、Core `RouteNodeKinds` の登録表と Runtime の画面の登録表（id → 画面）を足せば増やせる（D-69）。検証器は `route_rules` と登録表の食い違いをエラーにする。
+- `RouteMap.CanMove(from, to)`、`RunState.Enter(node)` で現在地を進める。選べるのは今のマスにつながった上の階のマスだけ。
+- 画面: Game シーンの全画面オーバーレイ（3:4）。下から上へ階を並べ、マスは種類のアイコン、つながりは線、選べるマスは光る。上端にライフ・所持金・コイン・ゲージ。両替所・ショップ・回復も全画面オーバーレイで、◀ でルートに戻る（回復は入った時点で回復して ◀ だけ）。戦闘マスでは戦闘フィールドと筐体を出し、終わったらルートに戻る。
+
+### 16.8 画面と流れ（FR-005）
+- シーンは `Title` と `Game` のまま。Game に `RunController`（`RunState` を作り、ルート → 各マス → ルート を回す。戦闘は `BattleController` に `BattleNodeRun` を渡す）。リザルトは到達した階・所持金・コインを出す（クリアは王冠）。リトライは Game の再読み込みでルートも作り直す。
+- 筐体（下部40%）: リール窓（3×3）、レバー、コインの数、回数固定の残り回数（コインの代わりに表示）。ストップボタン・ボーナスランプ・払い出しは消す。
+- 操作バー: 味方4種のアイコン（コストは所持金のアイコンに）、各アイコンにその色のゲージ（5つの点）、満タンで光りクリックで発動（アイコン本体のクリックは召喚の選択のまま。ゲージ部分を別ボタンにする）、ライフ、所持金、ウェーブ n/2、バーの倍率（攻撃力の印に `×1.3` など）、コインの倍率（所持金の印に `×1.2`）、一時停止。旧 攻撃力・攻撃速度アップの残り秒数は消す。
+
+### 16.9 文字あり版（FR-006, D-74）
+- `GameSession.TextMode`（static、`RuntimeInitializeOnLoadMethod` で起動ごとに false）。タイトル画面のロゴ右下に透明のボタンを置き、クリックで切り替える（切り替わったことはロゴの横の小さな「あ」の印で示す。タイトルは文字可）。
+- `TextModeLabel`（Runtime/Ui）: 日本語フォントの TMP を持ち、`TextMode` のときだけ表示。文言は `ui_texts.csv`（`id, ja`）。既存の部品の配置は変えず、ラベルを足すだけ（文字なし版の見た目は変わらない）。
+- 文字チェック（`TextAudit`・`ScreenTextTests`）: `TextModeLabel` の子は対象外にし、代わりに「文字なしでは `TextModeLabel` がすべて非表示」を確かめる。文字ありの画面は別の PlayMode テストで「主な画面にラベルが出る」を確かめる（AC-005）。
+- フォント: 商用利用できる日本語フォント（候補 Noto Sans JP、SIL OFL）を TMP の動的フォントアセットにする。ライセンスは T501 の一覧に記録。
+
+### 16.10 説明と早見表（FR-004, FR-012）
+- 題目: 召喚・配置・向き（最初の戦闘）→ スロット（レバーを指す。リールが止まるまで）→ スキル（初めてゲージが満タンになったとき。光るゲージを指す）→ 強化 → 撤退（全額返還は従来どおり）→ ルート（初めてルート画面に戻ったとき。選べるマスを指す）。両替所・ショップは画面自体の絵で伝える（矢印のアニメ）。`ReelCustom`・`Bonus` は消す。
+- 早見表の上半分: 現在の設定の20パターンの内訳（図柄ごとの % ＝ 個数×5）と効果（色7 → その職のアイコンとゲージ+1、バー → 攻撃力 +10%（上限 +50%）、コイン → 所持金 ×1.1〜×1.5）。下半分の味方はヒーラー → バッファー（攻撃の代わりに倍率）とスキルの印。
+
+### 16.11 テストと順序
+- 順序: お金とライフ（Core）→ スロット（Core）→ 出目の効果・バッファー・スキル（Core）→ 戦闘マス（Core）→ ルート（Core）→ データ（マップ・出現・検証）→ 筐体 → 操作バー → 流れ（ルート・各マスの画面）→ 説明・早見表 → 文字あり版 → 文字チェックとマウス通し → 掃除と文書。各タスクで消す機能のテストは機能と一緒に消し、EditMode/PlayMode の件数の増減を tasks.md に書く。
+- 途中は Game シーンが動かない期間ができる（Core を替えてから Runtime を替えるまで）。PlayMode テストのうち動かなくなるものは、そのタスクの結果に「一時的に失敗」と件数を書き、筐体・流れのタスクで直すか書き直す。Core のタスクは EditMode が全件通ることを完了条件にする。
+- PlayMode の既存の知見（`SlotCabinet.RandomOverride`・`GuideOverlay.DisabledForTests`・実時間待ち・実機デバイスを止める）は新しいテストでも使う。`AlwaysMissRandom` は20パターンの「ハズレ」を選ぶ乱数に直す。
+
+### 16.12 リスク
+| リスク | 対策 |
+| --- | --- |
+| 作り直しが大きく、途中でゲームが通しで動かない期間が長い | Core を先に固め、Runtime は筐体 → 流れの順で早めに通す。各タスクの終わりに EditMode を全件通す |
+| ルートの生成で行き止まりやボスに着けないマスができる | 生成後に全マスからボスへ行けることを検証し、多数シードの EditMode テストで確かめる（AC-010） |
+| 色の偏りで「詰む」 | spec の柱どおり許容する。両替所とショップのゲージ品で救える量を T355 で調整する |
+| 日本語フォントのサイズと文字チェックの抜け | 動的フォントでアトラスを小さく保つ。文字なしでラベルが非表示なことを PlayMode で毎回確かめる |
+| プレイヤービルドで戦闘マスがマゼンタ（既知、未調査） | 新しいマップ素材の差し替え（T502）の前に T505 で原因を調べる |
 
 ## ユーザー確認事項の回答（2026-10-26）
 
