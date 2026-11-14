@@ -5,6 +5,7 @@ using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Run;
 using UnitySlotTower.Core.Simulation;
+using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Slot;
 
 namespace UnitySlotTower.Flow
@@ -12,19 +13,22 @@ namespace UnitySlotTower.Flow
     /// <summary>
     /// ゲーム1回分の進行（plan 16.8）。<see cref="RunState"/> を作ってルートを生成し、ルート → 各マス → ルート を回す。
     /// 戦闘マスは <see cref="BattleController.BeginNode"/> に渡す。リトライは Game の再読み込みで作り直す。
-    /// T350a の段階ではルート画面がまだないため、戦闘マスが終わると次のマスへ自動で進む（戦闘マスを優先し、
-    /// 回復マスは入った時点で回復、ショップは何もせず通り過ぎる）。ルート画面とリール選びは T350b。
+    /// 戦闘マスが終わるとルート画面を開き、筐体のルート選びのモードで止めたリールの方向のマスへ進む（D-75）。
+    /// 戦闘以外のマスの画面は T350c まで仮で、回復マスは入った時点で回復、ショップは何もせずにルート画面へ戻る。
     /// </summary>
     [DefaultExecutionOrder(-20)]
     public sealed class RunController : MonoBehaviour
     {
         [SerializeField] private TextAsset routeRulesTable;
         [SerializeField] private BattleController battle;
-        [Tooltip("コインを RunState と共有するスロット筐体。")]
+        [Tooltip("コインを RunState と共有し、ルート選びにも使うスロット筐体。")]
         [SerializeField] private SlotCabinet slotCabinet;
+        [SerializeField] private RouteScreen routeScreen;
 
         private readonly List<RouteNode> _visited = new List<RouteNode>();
+        private readonly bool[] _directions = new bool[SlotMachine.ReelCount];
         private IRandom _random;
+        private bool _choosingRoute;
 
         /// <summary>テスト用: 設定するとルートの乱数をこのシードで作る（TearDown で null に戻す）。</summary>
         public static ulong? SeedOverride { get; set; }
@@ -40,11 +44,17 @@ namespace UnitySlotTower.Flow
         /// <summary>マスに入った（戦闘以外も含む）。</summary>
         public event Action<RouteNode> NodeEntered;
 
+        /// <summary>ルート画面で次のマスを選んでいる（行き先のリールを止めて進むまで）。</summary>
+        public bool IsChoosingRoute => _choosingRoute;
+
+        /// <summary>ルート画面を開いた。</summary>
+        public event Action RouteShown;
+
         private void Start()
         {
-            if (battle == null || slotCabinet == null || slotCabinet.Wallet == null)
+            if (battle == null || slotCabinet == null || slotCabinet.Wallet == null || routeScreen == null)
             {
-                Debug.LogError("戦闘の進行かスロット筐体がない", this);
+                Debug.LogError("戦闘の進行・スロット筐体・ルート画面のどれかがない", this);
                 enabled = false;
                 return;
             }
@@ -64,6 +74,9 @@ namespace UnitySlotTower.Flow
                 slotCabinet.UseWallet(State.Coins);
                 State.BeginRoute(RouteGenerator.Generate(Rules, _random));
                 battle.NodeCompleted += OnNodeCompleted;
+                slotCabinet.RouteReelChosen += OnRouteReelChosen;
+                routeScreen.ArrowClicked += OnArrowClicked;
+                routeScreen.Hide();
                 Enter(State.Route.Start);
             }
             catch (Exception e)
@@ -80,38 +93,74 @@ namespace UnitySlotTower.Flow
             {
                 battle.NodeCompleted -= OnNodeCompleted;
             }
-        }
 
-        // T350a の仮: 行き先を自動で選ぶ。戦闘マスがあればその最初（列の順）、なければ最初の行き先。
-        private void OnNodeCompleted()
-        {
-            while (true)
+            if (slotCabinet != null)
             {
-                var next = ChooseNext(State.Current);
-                if (next == null)
-                {
-                    Debug.LogError($"{State.Current.Floor}階のマスから先がない", this);
-                    return;
-                }
+                slotCabinet.RouteReelChosen -= OnRouteReelChosen;
+            }
 
-                if (Enter(next))
-                {
-                    return;
-                }
+            if (routeScreen != null)
+            {
+                routeScreen.ArrowClicked -= OnArrowClicked;
             }
         }
 
-        private static RouteNode ChooseNext(RouteNode current)
+        private void OnNodeCompleted() => ShowRoute();
+
+        // 今のマスから先を、ルート画面と筐体のルート選びのモードで選ばせる。
+        private void ShowRoute()
         {
-            foreach (var next in current.Next)
+            var current = State.Current;
+            var any = false;
+            for (var reel = 0; reel < _directions.Length; reel++)
             {
-                if (RouteNodeKinds.Get(next.Kind).IsBattle)
-                {
-                    return next;
-                }
+                _directions[reel] = current.NextOnReel(reel) != null;
+                any |= _directions[reel];
             }
 
-            return current.Next.Count > 0 ? current.Next[0] : null;
+            if (!any)
+            {
+                Debug.LogError($"{current.Floor}階のマスから先がない", this);
+                return;
+            }
+
+            _choosingRoute = true;
+            routeScreen.Show(State, _visited);
+            slotCabinet.BeginRouteChoice(_directions);
+            RouteShown?.Invoke();
+        }
+
+        private void OnArrowClicked(int reel)
+        {
+            if (_choosingRoute)
+            {
+                slotCabinet.PickRouteReel(reel);
+            }
+        }
+
+        private void OnRouteReelChosen(int reel)
+        {
+            // 筐体のルート選びはこの進行が始めたときだけ受け取る。
+            if (!_choosingRoute)
+            {
+                return;
+            }
+
+            var next = State.Current.NextOnReel(reel);
+            if (next == null)
+            {
+                Debug.LogError($"リール {reel} の先にマスがない", this);
+                ShowRoute();
+                return;
+            }
+
+            _choosingRoute = false;
+            routeScreen.Hide();
+            if (!Enter(next))
+            {
+                // 戦闘以外のマスの画面は T350c。今は済ませてすぐルート画面に戻る。
+                ShowRoute();
+            }
         }
 
         /// <summary>マスに入る。戦闘マスなら戦闘を始めて true、それ以外はその場で済ませて false。</summary>

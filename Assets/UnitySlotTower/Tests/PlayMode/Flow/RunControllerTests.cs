@@ -104,7 +104,12 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             first.Ended += Snapshot;
             Time.timeScale = 20f;
             _battle.StartWave();
-            yield return WaitUntil(() => _battle.Run != first || first.Phase == WavePhase.GameOver, 30f);
+            var limit = Time.realtimeSinceStartup + 30f;
+            while (_battle.Run == first && first.Phase != WavePhase.GameOver && Time.realtimeSinceStartup < limit)
+            {
+                RouteTestUtil.Step();
+                yield return null;
+            }
             Time.timeScale = 1f;
             _battle.NodeCompleted -= OnCompleted;
             first.Ended -= Snapshot;

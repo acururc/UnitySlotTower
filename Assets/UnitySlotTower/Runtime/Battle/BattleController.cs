@@ -122,9 +122,9 @@ namespace UnitySlotTower.Battle
         public bool IsFinished => Run != null && (Run.IsRunCleared || Run.Phase == WavePhase.GameOver);
 
         /// <summary>
-        /// 戦闘側の操作（配置・撤退・強化・▶）を受け付けないか。一時停止中・ゲーム終了後。
+        /// 戦闘側の操作（配置・撤退・強化・▶・スキル）を受け付けないか。一時停止中・ゲーム終了後・戦闘マスの終了後（ルート画面: T350b）。
         /// </summary>
-        public bool IsInputBlocked => IsPaused || IsFinished;
+        public bool IsInputBlocked => IsPaused || IsFinished || (Run != null && Run.Phase == WavePhase.Completed);
 
         /// <summary>一時停止を切り替える。スロットのリールやウェイトも止めるため Time.timeScale を 0 にする。ゲーム終了後は何もしない。</summary>
         public void SetPaused(bool paused)

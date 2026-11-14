@@ -207,10 +207,11 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         private static IEnumerator PlayUntilFinished(BattleController battle)
         {
             Time.timeScale = 20f;
-            var limit = Time.realtimeSinceStartup + 60f;
+            var limit = Time.realtimeSinceStartup + 90f;
             while (!battle.IsFinished && Time.realtimeSinceStartup < limit)
             {
                 battle.StartWave();
+                RouteTestUtil.Step();
                 yield return null;
             }
 

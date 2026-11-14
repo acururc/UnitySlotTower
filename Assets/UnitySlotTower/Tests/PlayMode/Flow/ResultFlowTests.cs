@@ -154,14 +154,15 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(GameSession.TitleScene), "タイトルへ戻らない");
         }
 
-        // ▶ を押し続け、ゲームが終わるまで速めて進める。
+        // ▶ を押し続け、ルート画面では行き先を選び（T350b）、ゲームが終わるまで速めて進める。
         private static IEnumerator PlayUntilFinished(BattleController battle)
         {
             Time.timeScale = 20f;
-            var limit = Time.realtimeSinceStartup + 60f;
+            var limit = Time.realtimeSinceStartup + 90f;
             while (!battle.IsFinished && Time.realtimeSinceStartup < limit)
             {
                 battle.StartWave();
+                RouteTestUtil.Step();
                 yield return null;
             }
 

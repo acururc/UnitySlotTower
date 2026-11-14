@@ -77,11 +77,12 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                    Time.realtimeSinceStartup < limit)
             {
                 _battle.StartWave();
+                RouteTestUtil.Step();
                 yield return null;
             }
 
             Time.timeScale = 1f;
-            // 次の戦闘マスはルート次第（ショップ・回復を挟むと3階以上: T350a）。
+            // 次の戦闘マスはルート画面で選ぶ（ショップ・回復を挟むと3階以上: T350b）。
             Assert.That((_battle.Floor >= 2, _battle.Run.Wave, _battle.Run.Phase),
                 Is.EqualTo((true, 1, WavePhase.Preparing)), "最初の戦闘マスを終えて次の戦闘マスの準備に入らない");
 
