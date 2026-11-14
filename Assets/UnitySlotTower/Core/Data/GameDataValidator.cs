@@ -24,11 +24,12 @@ namespace UnitySlotTower.Core.Data
         {
             ColumnRule.Float("first_stop_seconds", 0, 60),
             ColumnRule.Float("stop_interval_seconds", 0, 60),
-            ColumnRule.Float("atk_rate", 1, 100),
-            ColumnRule.Float("atk_seconds", 0, 3600),
-            ColumnRule.Float("speed_rate", 1, 100),
-            ColumnRule.Float("speed_seconds", 0, 3600),
             ColumnRule.Float("heal_rate", 0, 1),
+            ColumnRule.Int("gauge_max", 1, 100),
+            ColumnRule.Float("bar_step", 0, 10),
+            ColumnRule.Float("bar_cap", 0, 10),
+            ColumnRule.Float("coin_step", 0, 10),
+            ColumnRule.Float("coin_cap", 1, 10),
         };
 
         // Schemas より前に置く（静的フィールドは書いた順に初期化される）。

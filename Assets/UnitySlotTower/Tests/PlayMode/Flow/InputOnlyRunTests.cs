@@ -327,7 +327,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
         private IEnumerator WaitForReelsToStop()
         {
-            for (var i = 0; i < 300 && _cabinet.IsSpinning; i++)
+            // 自動停止は実時間（1.0 + 0.4×2 秒）で止まるので、フレーム数ではなく実時間で待つ。
+            var until = Time.realtimeSinceStartup + 5f;
+            while (_cabinet.IsSpinning && Time.realtimeSinceStartup < until)
             {
                 yield return null;
             }

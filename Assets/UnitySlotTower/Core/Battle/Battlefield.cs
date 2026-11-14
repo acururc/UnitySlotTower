@@ -24,18 +24,18 @@ namespace UnitySlotTower.Core.Battle
 
         /// <param name="life">ウェーブ開始時のライフ（満タン、FR-013）。</param>
         /// <param name="random">撃破ドロップの抽選に使う（FR-033）。</param>
-        /// <param name="effects">スロットの効果。ステージをまたいで持ち越すときは前のステージと同じものを渡す。null なら新しく作る。</param>
-        public Battlefield(WaveSchedule wave, UnitRanges ranges, int life, IRandom random, SlotEffects effects = null)
+        /// <param name="boosts">この戦闘マスの出目の効果（バー・コインの倍率）。null なら倍率なし。</param>
+        public Battlefield(WaveSchedule wave, UnitRanges ranges, int life, IRandom random, BattleBoosts boosts = null)
         {
             _wave = wave;
             _ranges = ranges;
             _random = random;
             Life = life;
-            Effects = effects ?? new SlotEffects();
+            Boosts = boosts;
         }
 
-        /// <summary>スロットの効果（攻撃力アップ・攻撃速度アップの倍率と残り時間、D-45）。</summary>
-        public SlotEffects Effects { get; }
+        /// <summary>この戦闘マスの出目の効果（plan 16.4）。null なら倍率なし。</summary>
+        public BattleBoosts Boosts { get; }
 
         /// <summary>全体HP回復（D-45）。配置中の味方全員に最大HP×<paramref name="rate"/>（四捨五入）を足す。最大HPは超えない。</summary>
         public void HealAll(double rate)
@@ -49,9 +49,13 @@ namespace UnitySlotTower.Core.Battle
             }
         }
 
-        /// <summary>攻撃力アップを掛けた攻撃力（回復量にも使う。端数は四捨五入）。</summary>
-        private int EffectiveAtk(BattleUnit unit) =>
-            (int)Math.Round(unit.Atk * Effects.AttackRate, MidpointRounding.AwayFromZero);
+        /// <summary>
+        /// 攻撃に使う攻撃力（回復量にも使う）。基礎×強化（<see cref="BattleUnit.Atk"/>、四捨五入済み）にバーの倍率を掛けて
+        /// 四捨五入する（plan 16.4 の掛け順。バッファー・スキルは T343・T344 でバーの後に足す）。
+        /// </summary>
+        private int EffectiveAtk(BattleUnit unit) => Boosts == null
+            ? unit.Atk
+            : (int)Math.Round(unit.Atk * Boosts.AttackRate, MidpointRounding.AwayFromZero);
 
         /// <summary>残りライフ。</summary>
         public int Life { get; private set; }
@@ -147,7 +151,6 @@ namespace UnitySlotTower.Core.Battle
                 RemoveFallenUnits();
                 Act();
                 RemoveDefeatedEnemies();
-                Effects.Step();
                 Tick++;
             }
         }
@@ -375,9 +378,8 @@ namespace UnitySlotTower.Core.Battle
                     target.TakeDamage(Damage.Calculate(EffectiveAtk(unit), target.Definition.Def));
                 }
 
-                // 攻撃速度アップは攻撃間隔を倍率で割る（D-45）。
                 unit.AttackCooldownSteps = (int)Math.Round(
-                    unit.Definition.AttackInterval * SimulationClock.StepsPerSecond / Effects.SpeedRate);
+                    unit.Definition.AttackInterval * SimulationClock.StepsPerSecond);
             }
         }
 
@@ -463,7 +465,9 @@ namespace UnitySlotTower.Core.Battle
                 }
                 else if (roll < definition.CoinRate + definition.MoneyRate)
                 {
-                    DroppedMoney += _random.NextInt(definition.MoneyMin, definition.MoneyMax + 1);
+                    // 所持金だけにコインの倍率を掛ける（四捨五入、plan 16.2）。
+                    var money = _random.NextInt(definition.MoneyMin, definition.MoneyMax + 1);
+                    DroppedMoney += Boosts == null ? money : Boosts.ApplyMoneyRate(money);
                 }
 
                 _enemies.RemoveAt(i);

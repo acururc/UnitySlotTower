@@ -72,7 +72,7 @@ namespace UnitySlotTower.Battle
                 var enemies = EnemyTable.Load(Parse(EnemyTable.FileName, enemiesTable));
                 var waves = Parse(WaveSchedule.FileName, wavesTable);
                 // コインは筐体と共有し、召喚・強化は所持金で払う（plan 16.2）。ルートと流れ（T350）までは戦闘ごとに作る。
-                var state = new RunState(config, upgradeTable, slotCabinet.Setting);
+                var state = new RunState(config, upgradeTable, slotCabinet.Rules, slotCabinet.Setting);
                 slotCabinet.UseWallet(state.Coins);
                 Run = new WaveRun(config, Units, Ranges, state,
                     WaveSchedule.StageCount, WaveSchedule.WavesPerStage,
@@ -177,7 +177,7 @@ namespace UnitySlotTower.Battle
         }
 
         // 揃った図柄の効果を戦闘へ渡す（FR-042。T342 までのつなぎはバーの攻撃力アップだけ）。
-        private void OnSlotAligned(SlotSymbol symbol) => Run.ApplySlot(symbol, slotCabinet.Rules);
+        private void OnSlotAligned(SlotSymbol symbol) => Run.ApplySlot(symbol);
 
         private void Update()
         {

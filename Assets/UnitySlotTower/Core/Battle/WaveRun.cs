@@ -21,7 +21,7 @@ namespace UnitySlotTower.Core.Battle
     /// ステージとウェーブの進行（FR-010, FR-013〜016、plan 4章）。ステージごとに 準備 → 戦闘 を各ウェーブで繰り返し、
     /// 最後のウェーブを終えるとステージ終了（ライフボーナス・ストック化）→ 次のステージの準備 と進める。
     /// ステージ内のウェーブ切り替えでは、配置・HP・ライフ・召喚の状態をそのまま残す。
-    /// <see cref="RunState"/>（コイン・所持金・強化・ストック）とスロットの効果はステージをまたいで同じものを使い、戦闘・召喚・配置操作はステージごとに作り直す（ライフも満タンに戻る）。
+    /// <see cref="RunState"/>（コイン・所持金・強化・ストック・スキルゲージ）はステージをまたいで同じものを使い、戦闘（バー・コインの倍率を含む）・召喚・配置操作はステージごとに作り直す（ライフも満タンに戻る）。
     /// </summary>
     public sealed class WaveRun
     {
@@ -74,18 +74,23 @@ namespace UnitySlotTower.Core.Battle
         public UnitUpgrades Upgrades { get; }
         public UnitStock Stock => State.Stock;
 
-        /// <summary>スロットの効果（D-45）。各ステージの <see cref="Field"/> に同じものを渡す。</summary>
-        public SlotEffects Effects { get; } = new SlotEffects();
-
         /// <summary>
-        /// 揃った図柄の効果を戦闘に渡す（FR-042）。T342（出目の効果）までのつなぎで、バーだけが旧効果の攻撃力アップを
-        /// <see cref="Effects"/> に足す。色7・コインは何もしない。
+        /// 揃った図柄の効果を渡す（FR-042、plan 16.4）。色7はその色のスキルゲージ（<see cref="RunState.Gauges"/>）、
+        /// バー・コインはいまの戦闘の倍率（<see cref="Battlefield.Boosts"/>）に足す。
         /// </summary>
-        public void ApplySlot(SlotSymbol symbol, SlotRules rules)
+        public void ApplySlot(SlotSymbol symbol)
         {
-            if (symbol == SlotSymbol.Bar)
+            switch (symbol)
             {
-                Effects.GrantAttack(rules.AtkRate, rules.AtkSeconds);
+                case SlotSymbol.Bar:
+                    Field.Boosts.AddBar();
+                    break;
+                case SlotSymbol.Coin:
+                    Field.Boosts.AddCoin();
+                    break;
+                default:
+                    State.Gauges.Add(symbol);
+                    break;
             }
         }
 
@@ -193,7 +198,7 @@ namespace UnitySlotTower.Core.Battle
             Wave = 1;
             Phase = WavePhase.Preparing;
             Map = map;
-            Field = new Battlefield(schedule, _ranges, _config.Life, _random, Effects);
+            Field = new Battlefield(schedule, _ranges, _config.Life, _random, new BattleBoosts(State.SlotRules));
             _collectedCoins = 0;
             _collectedMoney = 0;
             Summoner = new UnitSummoner(_units, Wallet, _config.DeployLimit, _config.RetreatRefundRate, Stock)

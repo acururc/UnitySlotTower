@@ -34,7 +34,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var config = GameConfig.Load(CsvParser.Parse(GameConfig.FileName,
                 $"key,value\ninitial_coins,{coins}\ninitial_money,{money}\nbet,3\nlife,{life}\n" +
                 $"deploy_limit,{deployLimit}\nretreat_refund_rate,0.5\n"));
-            _state = new RunState(config, BattleFixtures.LoadUpgrades(), 1);
+            _state = new RunState(config, BattleFixtures.LoadUpgrades(), SlotTestRules.Create(), 1);
             var units = BattleFixtures.LoadUnits();
             return new WaveRun(config, units, BattleFixtures.LoadRanges(), _state, stageCount, wavesPerStage,
                 stage => _maps[stage] = BattleFixtures.LoadMap(),
@@ -464,43 +464,79 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             Assert.That((run.Field.Enemies.Count, run.Phase), Is.EqualTo((0, WavePhase.Fighting)));
         }
 
-        // T342（出目の効果）までのつなぎ: バーだけが旧効果の攻撃力アップを足す。
-        [TestCase(SlotSymbol.Bar, 1.5)]
-        [TestCase(SlotSymbol.Coin, 1.0)]
-        [TestCase(SlotSymbol.Red7, 1.0)]
-        [Description("FR-042（つなぎ）: バーの図柄だけが戦闘の攻撃力の倍率を上げる")]
-        public void Slot_Symbol_Grants_Its_Effect(SlotSymbol symbol, double attackRate)
+        [TestCase(SlotSymbol.Red7)]
+        [TestCase(SlotSymbol.Yellow7)]
+        [Description("AC-042: 色7が揃うとその色のスキルゲージが1段たまる")]
+        public void Color_Seven_Fills_Its_Skill_Gauge(SlotSymbol color)
         {
             var run = Create();
 
-            run.ApplySlot(symbol, SlotTestRules.Create(atkRate: 1.5));
+            run.ApplySlot(color);
 
-            Assert.That((run.Field.Effects.AttackRate, run.Field.Effects.SpeedRate), Is.EqualTo((attackRate, 1.0)));
+            Assert.That(_state.Gauges.Level(color), Is.EqualTo(1));
         }
 
         [Test]
-        [Description("plan 5章: 効果の残り時間は準備中は減らない")]
-        public void Effects_Do_Not_Wear_Off_While_Preparing()
+        [Description("AC-042: バーは戦闘の攻撃力の倍率を上げ、所持金の倍率は変えない")]
+        public void Bar_Raises_The_Attack_Rate_Of_The_Battle()
         {
             var run = Create();
-            run.ApplySlot(SlotSymbol.Bar, SlotTestRules.Create(atkSeconds: 20));
 
-            run.Advance(600);
+            run.ApplySlot(SlotSymbol.Bar);
 
-            Assert.That(run.Field.Effects.AttackSeconds, Is.EqualTo(20.0));
+            Assert.That((run.Field.Boosts.AttackRate, run.Field.Boosts.MoneyRate), Is.EqualTo((1.1, 1.0)));
         }
 
         [Test]
-        [Description("plan 5章: 効果はステージをまたいで持ち越す")]
-        public void Effects_Carry_Over_To_The_Next_Stage()
+        [Description("AC-042: コインは所持金の倍率を上げ、攻撃力の倍率は変えない")]
+        public void Coin_Raises_The_Money_Rate_Of_The_Battle()
+        {
+            var run = Create();
+
+            run.ApplySlot(SlotSymbol.Coin);
+
+            Assert.That((run.Field.Boosts.AttackRate, run.Field.Boosts.MoneyRate), Is.EqualTo((1.0, 1.1)));
+        }
+
+        [Test]
+        [Description("AC-042: バーとコインはゲージをためない")]
+        public void Bar_And_Coin_Do_Not_Fill_Gauges()
+        {
+            var run = Create();
+
+            run.ApplySlot(SlotSymbol.Bar);
+            run.ApplySlot(SlotSymbol.Coin);
+
+            Assert.That(_state.Gauges.Level(SlotSymbol.Red7) + _state.Gauges.Level(SlotSymbol.Blue7) +
+                _state.Gauges.Level(SlotSymbol.Green7) + _state.Gauges.Level(SlotSymbol.Yellow7), Is.EqualTo(0));
+        }
+
+        [Test]
+        [Description("plan 16.4: バー・コインの倍率は戦闘マスごとに新しくなる（ステージ制が残る間はステージごと）")]
+        public void Boosts_Reset_For_The_Next_Battle()
         {
             var run = Create();
             Place(run, "sword", 1, 0);
-            run.ApplySlot(SlotSymbol.Bar, SlotTestRules.Create(atkRate: 1.5, atkSeconds: 100));
+            run.ApplySlot(SlotSymbol.Bar);
+            run.ApplySlot(SlotSymbol.Coin);
 
             PlayStage(run);
 
-            Assert.That((run.Stage, run.Field.Effects.AttackRate), Is.EqualTo((2, 1.5)));
+            Assert.That((run.Stage, run.Field.Boosts.AttackRate, run.Field.Boosts.MoneyRate),
+                Is.EqualTo((2, 1.0, 1.0)));
+        }
+
+        [Test]
+        [Description("plan 16.4: スキルゲージは戦闘マスをまたいで残る")]
+        public void Skill_Gauges_Carry_Over_To_The_Next_Battle()
+        {
+            var run = Create();
+            Place(run, "sword", 1, 0);
+            run.ApplySlot(SlotSymbol.Green7);
+
+            PlayStage(run);
+
+            Assert.That((run.Stage, _state.Gauges.Level(SlotSymbol.Green7)), Is.EqualTo((2, 1)));
         }
     }
 }

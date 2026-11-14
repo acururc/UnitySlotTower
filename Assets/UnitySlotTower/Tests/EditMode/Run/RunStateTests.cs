@@ -2,19 +2,32 @@ using NUnit.Framework;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Run;
+using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Tests.EditMode.Battle;
+using UnitySlotTower.Tests.EditMode.Slot;
 
 namespace UnitySlotTower.Tests.EditMode.Run
 {
     [Description("plan 16.2 / FR-013, FR-033: ゲーム1回分の状態（コイン・所持金・ライフ・強化・ストック・難易度）")]
     public sealed class RunStateTests
     {
-        private static RunState Create(int coins = 15, int money = 30, int life = 10, int setting = 4)
+        private static RunState Create(int coins = 15, int money = 30, int life = 10, int setting = 4,
+            int gaugeMax = 5)
         {
             var config = GameConfig.Load(CsvParser.Parse(GameConfig.FileName,
                 $"key,value\ninitial_coins,{coins}\ninitial_money,{money}\nbet,3\nlife,{life}\n" +
                 "deploy_limit,8\nretreat_refund_rate,0.5\n"));
-            return new RunState(config, BattleFixtures.LoadUpgrades(), setting);
+            return new RunState(config, BattleFixtures.LoadUpgrades(), SlotTestRules.Create(gaugeMax: gaugeMax),
+                setting);
+        }
+
+        [Test]
+        [Description("plan 16.4: スキルゲージは空で始まり、満タンの段数は slot_rules の gauge_max")]
+        public void New_Run_Starts_With_Empty_Gauges_Of_The_Configured_Size()
+        {
+            var run = Create(gaugeMax: 4);
+
+            Assert.That((run.Gauges.Level(SlotSymbol.Blue7), run.Gauges.Max), Is.EqualTo((0, 4)));
         }
 
         [Test]

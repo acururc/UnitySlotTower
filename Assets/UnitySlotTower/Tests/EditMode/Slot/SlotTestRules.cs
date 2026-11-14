@@ -14,13 +14,12 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         public const string PlanCenter = "red7 green7 bar blue7 coin yellow7";
         public const string PlanRight = "red7 bar yellow7 green7 blue7 coin";
 
-        public static SlotRules Create(double atkRate = 1.5, double atkSeconds = 20, double speedRate = 1.5,
-            double speedSeconds = 20, double healRate = 0.5) =>
+        public static SlotRules Create(double healRate = 0.5, int gaugeMax = 5, double barStep = 0.1,
+            double barCap = 0.5, double coinStep = 0.1, double coinCap = 1.5) =>
             SlotRules.Load(CsvParser.Parse(SlotRules.FileName,
                 "key,value\nfirst_stop_seconds,1\nstop_interval_seconds,0.4\n" +
-                $"atk_rate,{N(atkRate)}\natk_seconds,{N(atkSeconds)}\n" +
-                $"speed_rate,{N(speedRate)}\nspeed_seconds,{N(speedSeconds)}\n" +
-                $"heal_rate,{N(healRate)}\n"));
+                $"heal_rate,{N(healRate)}\ngauge_max,{gaugeMax}\n" +
+                $"bar_step,{N(barStep)}\nbar_cap,{N(barCap)}\ncoin_step,{N(coinStep)}\ncoin_cap,{N(coinCap)}\n"));
 
         /// <summary>3本の並び（図柄 ID を空白区切り）から slot_reels を作る。</summary>
         public static SlotReels Reels(string left = PlanLeft, string center = PlanCenter, string right = PlanRight) =>

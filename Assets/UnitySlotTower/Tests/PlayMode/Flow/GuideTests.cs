@@ -128,7 +128,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 yield return Click(cabinet.StopRect(reel));
             }
 
-            for (var i = 0; i < 300 && cabinet.IsSpinning; i++)
+            // 自動停止は実時間（1.0 + 0.4×2 秒）で止まるので、フレーム数ではなく実時間で待つ。
+            var until = Time.realtimeSinceStartup + 5f;
+            while (cabinet.IsSpinning && Time.realtimeSinceStartup < until)
             {
                 yield return null;
             }

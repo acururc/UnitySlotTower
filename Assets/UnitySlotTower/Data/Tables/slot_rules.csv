@@ -1,8 +1,9 @@
 key,value
 first_stop_seconds,1.0
 stop_interval_seconds,0.4
-atk_rate,1.5
-atk_seconds,20
-speed_rate,1.5
-speed_seconds,20
 heal_rate,0.5
+gauge_max,5
+bar_step,0.1
+bar_cap,0.5
+coin_step,0.1
+coin_cap,1.5

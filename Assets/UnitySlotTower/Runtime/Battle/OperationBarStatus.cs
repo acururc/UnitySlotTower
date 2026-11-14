@@ -73,8 +73,11 @@ namespace UnitySlotTower.Battle
                 waveText.SetText("{0}-{1}", (float)run.Stage, run.Wave);
             }
 
-            SetEffect(attackEffect, attackSecondsText, run.Effects.AttackSeconds, ref _shownAttackSeconds);
-            SetEffect(speedEffect, speedSecondsText, run.Effects.SpeedSeconds, ref _shownSpeedSeconds);
+            // 操作バーの作り直し（T349）までのつなぎ: 攻撃力の欄にバーの上がり幅（%）を出す。攻撃速度アップはなくなったので常に 0。
+            var boosts = run.Field.Boosts;
+            var attackPercent = boosts == null ? 0 : (int)System.Math.Round((boosts.AttackRate - 1) * 100);
+            SetEffect(attackEffect, attackSecondsText, attackPercent, ref _shownAttackSeconds);
+            SetEffect(speedEffect, speedSecondsText, 0, ref _shownSpeedSeconds);
 
             SetActive(startButton, run.Phase == WavePhase.Preparing);
             SetActive(retreatButton, placementInput.SelectedUnit != null);
@@ -85,9 +88,8 @@ namespace UnitySlotTower.Battle
             }
         }
 
-        private void SetEffect(CanvasGroup group, TMP_Text text, double seconds, ref int shown)
+        private void SetEffect(CanvasGroup group, TMP_Text text, int value, ref int shown)
         {
-            var value = (int)System.Math.Ceiling(seconds);
             if (value != shown)
             {
                 group.alpha = value > 0 ? 1f : inactiveEffectAlpha;

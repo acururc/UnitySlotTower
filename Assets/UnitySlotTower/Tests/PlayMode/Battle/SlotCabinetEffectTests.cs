@@ -70,25 +70,24 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        public IEnumerator Aligning_Attack_Grants_The_Effect_To_The_Battle_And_Shows_Its_Seconds()
+        // 操作バーの作り直し（T349）までは、旧「攻撃力アップ」の表示にバーの上がり幅（%）を出す。
+        public IEnumerator Aligning_Bar_Raises_The_Attack_Rate_Of_The_Battle_And_Shows_It()
         {
             yield return LoadGame();
             var status = Object.FindAnyObjectByType<OperationBarStatus>();
             var attack = status.transform.parent.Find("Slot Effects/Attack Effect");
-            var seconds = attack.Find("Seconds").GetComponent<TMP_Text>();
-            Assert.That((seconds.text, attack.GetComponent<CanvasGroup>().alpha < 1f), Is.EqualTo(("0", true)),
+            var percent = attack.Find("Seconds").GetComponent<TMP_Text>();
+            Assert.That((percent.text, attack.GetComponent<CanvasGroup>().alpha < 1f), Is.EqualTo(("0", true)),
                 "効果がないときは薄く 0");
 
             yield return SpinAndStopAll();
 
-            var effects = _battle.Run.Effects;
             var tick = _battle.Field.Tick;
-            Assert.That(effects.AttackSeconds, Is.GreaterThan(_cabinet.Rules.AtkSeconds - 2.0).And.AtMost(_cabinet.Rules.AtkSeconds));
-            Assert.That(effects.AttackRate, Is.EqualTo(_cabinet.Rules.AtkRate));
+            Assert.That(_battle.Field.Boosts.AttackRate, Is.EqualTo(1 + _cabinet.Rules.BarStep).Within(1e-9));
             yield return null;
             yield return null;
 
-            Assert.That(int.Parse(seconds.text), Is.EqualTo((int)System.Math.Ceiling(effects.AttackSeconds)).Within(1));
+            Assert.That(percent.text, Is.EqualTo(((int)System.Math.Round(_cabinet.Rules.BarStep * 100)).ToString()));
             Assert.That(attack.GetComponent<CanvasGroup>().alpha, Is.EqualTo(1f));
 
             // 戦闘は実時間の 1/60 秒ごとに進むため、フレームが速いと2フレームでは tick が増えない。実時間で待つ。

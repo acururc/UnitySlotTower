@@ -190,5 +190,35 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
             Assert.That(field.Enemies[0].Hp, Is.EqualTo(1000));
         }
+
+        // 全体HP回復（旧 D-45）。T343（ヒーラー → バッファー）で回復の処理ごと消す。
+        [Test]
+        [Description("AC-042, D-45: 全体HP回復は配置中の味方全員に最大HP×割合を足す（最大HPまで）")]
+        public void Heal_All_Restores_A_Rate_Of_Max_Hp_To_Every_Unit()
+        {
+            // 0 ステップ目に ranged が弓を撃ち 450/700、89 ステップ目に brute がタンクを打って 1100/1800。
+            var field = Create("1,0,ranged,S1,g,0\n1,0,brute,S1,g,0\n");
+            var archer = Place(field, "archer", 1, 1);
+            var tank = Place(field, "tank", 2, 0);
+            field.Advance(90);
+            var before = (archer.Hp, tank.Hp);
+
+            field.HealAll(0.25);
+
+            Assert.That((before, (archer.Hp, tank.Hp)), Is.EqualTo(((450, 1100), (625, 1550))));
+        }
+
+        [Test]
+        public void Heal_All_Does_Not_Exceed_Max_Hp()
+        {
+            var field = Create("1,0,ranged,S1,g,0\n1,0,brute,S1,g,0\n");
+            var archer = Place(field, "archer", 1, 1);
+            var tank = Place(field, "tank", 2, 0);
+            field.Advance(90);
+
+            field.HealAll(0.5);
+
+            Assert.That((archer.Hp, tank.Hp), Is.EqualTo((700, 1800)));
+        }
     }
 }

@@ -2,6 +2,7 @@ using System.Linq;
 using NUnit.Framework;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Simulation;
+using UnitySlotTower.Tests.EditMode.Slot;
 
 namespace UnitySlotTower.Tests.EditMode.Battle
 {
@@ -47,7 +48,8 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         /// 1 体だけ出る敵を剣士（(1,0) 右向き）に倒させる戦闘を、1 つの固定シード乱数で何度も行い、各戦闘で落ちたコインと所持金を返す。
         /// 敵は HP1 で、出現から 30 ステップで剣士の範囲に入り倒される。
         /// </summary>
-        private static (int Coins, int Money)[] DropsOfDefeats(string enemyId, int trials)
+        /// <param name="coinBoosts">戦闘の前にコインが揃った回数（所持金の倍率、1回 +0.1・上限 1.5）。</param>
+        private static (int Coins, int Money)[] DropsOfDefeats(string enemyId, int trials, int coinBoosts = 0)
         {
             var wave = BattleFixtures.LoadWave($"1,0,{enemyId},S1,g,0\n");
             var ranges = BattleFixtures.LoadRanges();
@@ -56,7 +58,13 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var drops = new (int, int)[trials];
             for (var i = 0; i < trials; i++)
             {
-                var field = new Battlefield(wave, ranges, 10, random);
+                var boosts = new BattleBoosts(SlotTestRules.Create(coinStep: 0.1, coinCap: 1.5));
+                for (var c = 0; c < coinBoosts; c++)
+                {
+                    boosts.AddCoin();
+                }
+
+                var field = new Battlefield(wave, ranges, 10, random, boosts);
                 field.AddUnit(sword, new GridPoint(1, 0), Facing.Right);
                 field.Advance(60);
                 drops[i] = (field.DroppedCoins, field.DroppedMoney);
@@ -117,6 +125,24 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var drops = DropsOfDefeats("banker", 200);
 
             Assert.That(drops.Distinct().OrderBy(d => d.Money).ToArray(), Is.EqualTo(new[] { (0, 2), (0, 3) }));
+        }
+
+        [Test]
+        [Description("AC-042, plan 16.2: コインの倍率 1.5 なら所持金のドロップは 2→3、3→4.5→5（四捨五入）")]
+        public void Money_Drop_Is_Multiplied_By_The_Coin_Boost()
+        {
+            var drops = DropsOfDefeats("banker", 200, coinBoosts: 5);
+
+            Assert.That(drops.Select(d => d.Money).Distinct().OrderBy(d => d), Is.EqualTo(new[] { 3, 5 }));
+        }
+
+        [Test]
+        [Description("plan 16.2: コインの倍率は所持金にだけ掛かり、コインのドロップは変わらない")]
+        public void Coin_Drop_Is_Not_Multiplied_By_The_Coin_Boost()
+        {
+            var drops = DropsOfDefeats("rich", 200, coinBoosts: 5);
+
+            Assert.That(drops.Select(d => d.Coins).Distinct().OrderBy(d => d), Is.EqualTo(new[] { 2, 3 }));
         }
 
         [Test]

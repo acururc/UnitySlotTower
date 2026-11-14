@@ -2,6 +2,7 @@ using System;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Economy;
+using UnitySlotTower.Core.Slot;
 
 namespace UnitySlotTower.Core.Run
 {
@@ -11,9 +12,12 @@ namespace UnitySlotTower.Core.Run
     /// </summary>
     public sealed class RunState
     {
+        /// <param name="slotRules">スロットの値（スキルゲージの段数など）。</param>
         /// <param name="setting">難易度（スロットの設定 1〜6）。</param>
-        public RunState(GameConfig config, UnitUpgradeTable upgradeTable, int setting)
+        public RunState(GameConfig config, UnitUpgradeTable upgradeTable, SlotRules slotRules, int setting)
         {
+            SlotRules = slotRules ?? throw new ArgumentNullException(nameof(slotRules));
+            Gauges = new SkillGauges(slotRules.GaugeMax);
             Coins = new CoinWallet(config.InitialCoins);
             Money = new CoinWallet(config.InitialMoney);
             MaxLife = config.Life;
@@ -33,6 +37,12 @@ namespace UnitySlotTower.Core.Run
         public int Setting { get; }
         public UnitUpgrades Upgrades { get; }
         public UnitStock Stock { get; } = new UnitStock();
+
+        /// <summary>スロットの値。戦闘マスごとの <see cref="BattleBoosts"/> もこれで作る。</summary>
+        public SlotRules SlotRules { get; }
+
+        /// <summary>色ごとのスキルゲージ（plan 16.4）。戦闘マスをまたいで残る。</summary>
+        public SkillGauges Gauges { get; }
 
         /// <summary>ライフが 0 になった（FR-013）。</summary>
         public bool IsGameOver => Life <= 0;
