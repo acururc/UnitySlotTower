@@ -37,6 +37,19 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
+        [Description("plan 16.4: 掛け順は 強化後の攻撃力 × バッファー × バー（弓 350 × 1.5 × 1.2 = 630）")]
+        public void Buffer_And_Bar_Multiply_Together()
+        {
+            var field = Create("1,0,melee,S1,g,0\n", 2);
+            PlaceArcher(field);
+            field.AddUnit(BattleFixtures.LoadUnits().Get("buffer"), new GridPoint(0, 1), Facing.Right);
+
+            field.Advance(45);
+
+            Assert.That(field.Enemies[0].Hp, Is.EqualTo(1000 - (630 - 50)));
+        }
+
+        [Test]
         [Description("plan 16.4: 攻撃速度はスキルだけが変える（バーがあっても弓は75ステップで1回だけ撃つ）")]
         public void Bar_Boost_Does_Not_Change_The_Attack_Interval()
         {

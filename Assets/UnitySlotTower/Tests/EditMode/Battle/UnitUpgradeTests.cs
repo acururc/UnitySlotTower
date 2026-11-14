@@ -223,35 +223,21 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("plan 5章: 回復量は強化後の攻撃力で、強化後の最大HPを超えない")]
-        public void Healer_Heals_Up_To_The_Upgraded_Max_Hp()
+        [Description("plan 16.5: バッファーの強化は HP・防御に効き、倍率は変わらない（弓 350×1.5 = 525 のまま）")]
+        public void Upgraded_Buffer_Keeps_Its_Buff_Rate()
         {
-            // 剣士は 1050/1200 で強化して 1650/1800。強化したヒーラーの回復 300 は 1800 で止まる。
-            var deployment = Create("1,0,melee,S1,g,0\n");
-            var sword = Deploy(deployment, "sword", 1, 0);
-            _field.Advance(40);
-            deployment.Upgrade("sword");
-            deployment.Upgrade("healer");
-            Deploy(deployment, "healer", 1, 1);
+            // 高台が2マスしかないので、配置操作を通さずに強化後の段階で置く（(0,1) から前方 2×3 に弓が入る）。
+            var field = BattleFixtures.CreateField("1,0,melee,S1,g,0\n");
+            var units = BattleFixtures.LoadUnits();
+            var upgrades = new UnitUpgrades(BattleFixtures.LoadUpgrades(), new CoinWallet(100));
+            upgrades.TryUpgrade("buffer");
+            field.AddUnit(units.Get("archer"), new GridPoint(1, 1), Facing.Right);
+            var buffer = field.AddUnit(units.Get("buffer"), new GridPoint(0, 1), Facing.Right,
+                upgrades.Current("buffer"));
 
-            _field.Advance(1);
+            field.Advance(45);
 
-            Assert.That(sword.Hp, Is.EqualTo(1800));
-        }
-
-        [Test]
-        public void Upgraded_Healer_Heals_By_Its_Upgraded_Attack()
-        {
-            // 近距離の敵に2回殴られて 1200 − 2 × 150 = 900（2回目は1回目の 1.5 秒後）。
-            var deployment = Create("1,0,melee,S1,g,0\n");
-            var sword = Deploy(deployment, "sword", 1, 0);
-            _field.Advance(130);
-            deployment.Upgrade("healer");
-            Deploy(deployment, "healer", 1, 1);
-
-            _field.Advance(1);
-
-            Assert.That(sword.Hp, Is.EqualTo(900 + 300));
+            Assert.That((field.Enemies[0].Hp, buffer.MaxHp), Is.EqualTo((1000 - (525 - 50), 1200)));
         }
     }
 }

@@ -2783,9 +2783,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnitySlotTower.Runtime::UnitySlotTower.Slot.SlotCabinet
   gameConfigTable: {fileID: 4900000, guid: 2d933355fbebe6842832dd894f5231c3, type: 3}
-  settingsTable: {fileID: 4900000, guid: 6292a87648d05b64fae786853cfa084f, type: 3}
+  patternsTable: {fileID: 4900000, guid: 6292a87648d05b64fae786853cfa084f, type: 3}
   rulesTable: {fileID: 4900000, guid: b24406b749f319c4bb2123c4e97d711a, type: 3}
-  lockedReelTable: {fileID: 4900000, guid: 48f4088d84843e44aa653c91dbd70a2a, type: 3}
+  reelsTable: {fileID: 4900000, guid: 48f4088d84843e44aa653c91dbd70a2a, type: 3}
   setting: 1
   inputActions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   leverButton: {fileID: 1694752606}
@@ -2802,9 +2802,6 @@ MonoBehaviour:
   creditText: {fileID: 1059488654}
   payoutText: {fileID: 504394238}
   bonusGamesText: {fileID: 104415808}
-  lampOffColor: {r: 0.18, g: 0.18, b: 0.2, a: 1}
-  bigColor: {r: 1, g: 0.2, b: 0.2, a: 1}
-  regColor: {r: 0.3, g: 0.55, b: 1, a: 1}
 --- !u!1 &83874368
 GameObject:
   m_ObjectHideFlags: 0
@@ -8016,7 +8013,7 @@ MonoBehaviour:
     shape: 2
     size: {x: 0.45, y: 0.4, z: 0.45}
     color: {r: 0.35, g: 0.75, b: 0.35, a: 1}
-  - id: healer
+  - id: buffer
     shape: 0
     size: {x: 0.6, y: 0.6, z: 0.6}
     color: {r: 0.95, g: 0.75, b: 0.85, a: 1}
@@ -18966,7 +18963,6 @@ MonoBehaviour:
   battle: {fileID: 1813959776}
   placementInput: {fileID: 1813959775}
   slotCabinet: {fileID: 83309650}
-  reelCustomScreen: {fileID: 1262535364}
   fieldView: {fileID: 1813959773}
   battleCamera: {fileID: 163673590}
   unitIcons:
@@ -51430,7 +51426,6 @@ MonoBehaviour:
   wavesTable: {fileID: 4900000, guid: 16fe09eb21bd7ef4f923eb9f40a16d3d, type: 3}
   fieldView: {fileID: 1813959773}
   slotCabinet: {fileID: 83309650}
-  reelCustomScreen: {fileID: 1262535364}
   autoStart: 0
 --- !u!1 &1816543696
 GameObject:

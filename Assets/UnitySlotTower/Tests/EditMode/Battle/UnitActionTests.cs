@@ -151,74 +151,56 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("AC-022: ヒーラーは範囲内で HP 割合が最も低い味方を回復する（HP の値ではなく割合）")]
-        public void Healer_Heals_The_Ally_With_The_Lowest_Hp_Ratio()
+        [Description("AC-022: バッファーは範囲内の味方の攻撃力に倍率をかける（弓 350×1.5 = 525）")]
+        public void Buffer_Raises_The_Attack_Of_Allies_In_Range()
         {
-            // 0 ステップ目に ranged が弓を撃ち 450/700、89 ステップ目に brute がタンクを打って 1100/1800。
-            var field = Create("1,0,ranged,S1,g,0\n1,0,brute,S1,g,0\n");
-            var archer = Place(field, "archer", 1, 1);
-            var tank = Place(field, "tank", 2, 0);
-            field.Advance(90);
-            Place(field, "healer", 2, 1, Facing.Left);
+            var field = Create("1,0,melee,S1,g,0\n");
+            Place(field, "archer", 1, 1);
+            Place(field, "buffer", 0, 1);
 
-            field.Advance(1);
+            field.Advance(45);
 
-            Assert.That((tank.Hp, archer.Hp), Is.EqualTo((1100 + 200, 450)));
+            Assert.That(field.Enemies[0].Hp, Is.EqualTo(1000 - (525 - 50)));
         }
 
         [Test]
-        public void Heal_Does_Not_Exceed_Max_Hp()
+        [Description("AC-022: 範囲の外の味方の攻撃力は上がらない（左向きのバッファーの範囲に弓はいない）")]
+        public void Ally_Outside_The_Buffer_Range_Is_Not_Raised()
         {
             var field = Create("1,0,melee,S1,g,0\n");
-            var sword = Place(field, "sword", 1, 0);
-            field.Advance(30);
-            Place(field, "healer", 1, 1);
+            Place(field, "archer", 1, 1);
+            Place(field, "buffer", 0, 1, Facing.Left);
 
-            field.Advance(1);
+            field.Advance(45);
 
-            Assert.That(sword.Hp, Is.EqualTo(1200));
+            Assert.That(field.Enemies[0].Hp, Is.EqualTo(1000 - (350 - 50)));
         }
 
         [Test]
-        [Description("FR-028: ヒーラーは敵を攻撃しない")]
-        public void Healer_Does_Not_Attack_Enemies()
+        [Description("AC-022, plan 16.5: 重ねがけせず、効いているバッファーのうち最大の倍率だけが効く")]
+        public void Only_The_Highest_Buff_Applies()
         {
             var field = Create("1,0,melee,S1,g,0\n");
-            Place(field, "healer", 1, 1);
+            Place(field, "archer", 1, 1);
+            Place(field, "weak_buffer", 0, 1);
+            Place(field, "buffer", 0, 1);
+
+            field.Advance(45);
+
+            Assert.That(field.Enemies[0].Hp, Is.EqualTo(1000 - (525 - 50)));
+        }
+
+        [Test]
+        [Description("FR-028: バッファーは敵を攻撃しない（攻撃力100を持っていても）")]
+        public void Buffer_Does_Not_Attack_Enemies()
+        {
+            var field = Create("1,0,melee,S1,g,0\n");
+            Place(field, "buffer", 1, 1);
+            Place(field, "weak_buffer", 0, 1);
 
             field.Advance(45);
 
             Assert.That(field.Enemies[0].Hp, Is.EqualTo(1000));
-        }
-
-        // 全体HP回復（旧 D-45）。T343（ヒーラー → バッファー）で回復の処理ごと消す。
-        [Test]
-        [Description("AC-042, D-45: 全体HP回復は配置中の味方全員に最大HP×割合を足す（最大HPまで）")]
-        public void Heal_All_Restores_A_Rate_Of_Max_Hp_To_Every_Unit()
-        {
-            // 0 ステップ目に ranged が弓を撃ち 450/700、89 ステップ目に brute がタンクを打って 1100/1800。
-            var field = Create("1,0,ranged,S1,g,0\n1,0,brute,S1,g,0\n");
-            var archer = Place(field, "archer", 1, 1);
-            var tank = Place(field, "tank", 2, 0);
-            field.Advance(90);
-            var before = (archer.Hp, tank.Hp);
-
-            field.HealAll(0.25);
-
-            Assert.That((before, (archer.Hp, tank.Hp)), Is.EqualTo(((450, 1100), (625, 1550))));
-        }
-
-        [Test]
-        public void Heal_All_Does_Not_Exceed_Max_Hp()
-        {
-            var field = Create("1,0,ranged,S1,g,0\n1,0,brute,S1,g,0\n");
-            var archer = Place(field, "archer", 1, 1);
-            var tank = Place(field, "tank", 2, 0);
-            field.Advance(90);
-
-            field.HealAll(0.5);
-
-            Assert.That((archer.Hp, tank.Hp), Is.EqualTo((700, 1800)));
         }
     }
 }

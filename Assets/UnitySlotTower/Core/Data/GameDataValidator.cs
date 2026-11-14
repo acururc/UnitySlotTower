@@ -24,7 +24,6 @@ namespace UnitySlotTower.Core.Data
         {
             ColumnRule.Float("first_stop_seconds", 0, 60),
             ColumnRule.Float("stop_interval_seconds", 0, 60),
-            ColumnRule.Float("heal_rate", 0, 1),
             ColumnRule.Int("gauge_max", 1, 100),
             ColumnRule.Float("bar_step", 0, 10),
             ColumnRule.Float("bar_cap", 0, 10),
@@ -48,7 +47,8 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Enum("tile", "ground", "high"),
                 ColumnRule.Int("cost", 0, 10000),
                 ColumnRule.Float("cooldown", 0, 600),
-                ColumnRule.Enum("role", "melee", "ranged", "heal")),
+                ColumnRule.Enum("role", "melee", "ranged", "buff"),
+                ColumnRule.Float("buff_rate", 1, 10)),
             new TableSchema("unit_ranges.csv", new[] { "unit_id", "dx", "dy" },
                 ColumnRule.Id("unit_id"),
                 ColumnRule.Int("dx", -9, 9),

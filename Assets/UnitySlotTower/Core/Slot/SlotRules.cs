@@ -28,9 +28,6 @@ namespace UnitySlotTower.Core.Slot
         /// <summary>所持金の倍率の上限（倍率そのもの。1.5 なら最大 1.5 倍）。</summary>
         public double CoinCap { get; private set; }
 
-        // 旧効果の全体HP回復の割合。バッファー（T343）で消す。
-        public double HealRate { get; private set; }
-
         public static SlotRules Load(CsvTable table)
         {
             var values = new KeyValueTable(table);
@@ -38,7 +35,6 @@ namespace UnitySlotTower.Core.Slot
             {
                 FirstStopSeconds = values.GetDouble("first_stop_seconds"),
                 StopIntervalSeconds = values.GetDouble("stop_interval_seconds"),
-                HealRate = values.GetDouble("heal_rate"),
                 GaugeMax = values.GetInt("gauge_max"),
                 BarStep = values.GetDouble("bar_step"),
                 BarCap = values.GetDouble("bar_cap"),

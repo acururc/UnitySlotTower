@@ -37,25 +37,36 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>この戦闘マスの出目の効果（plan 16.4）。null なら倍率なし。</summary>
         public BattleBoosts Boosts { get; }
 
-        /// <summary>全体HP回復（D-45）。配置中の味方全員に最大HP×<paramref name="rate"/>（四捨五入）を足す。最大HPは超えない。</summary>
-        public void HealAll(double rate)
+        /// <summary>
+        /// 攻撃に使う攻撃力。基礎×強化（<see cref="BattleUnit.Atk"/>、四捨五入済み）× バッファー × バーを最後に四捨五入する
+        /// （plan 16.4 の掛け順。スキルは T344 でバーの後に足す）。
+        /// </summary>
+        private int EffectiveAtk(BattleUnit unit)
         {
-            foreach (var unit in _units)
+            var rate = BuffRateOf(unit);
+            if (Boosts != null)
             {
-                if (unit.IsAlive)
-                {
-                    unit.Heal((int)Math.Round(unit.MaxHp * rate, MidpointRounding.AwayFromZero));
-                }
+                rate *= Boosts.AttackRate;
             }
+
+            return (int)Math.Round(unit.Atk * rate, MidpointRounding.AwayFromZero);
         }
 
-        /// <summary>
-        /// 攻撃に使う攻撃力（回復量にも使う）。基礎×強化（<see cref="BattleUnit.Atk"/>、四捨五入済み）にバーの倍率を掛けて
-        /// 四捨五入する（plan 16.4 の掛け順。バッファー・スキルは T343・T344 でバーの後に足す）。
-        /// </summary>
-        private int EffectiveAtk(BattleUnit unit) => Boosts == null
-            ? unit.Atk
-            : (int)Math.Round(unit.Atk * Boosts.AttackRate, MidpointRounding.AwayFromZero);
+        /// <summary>範囲に <paramref name="unit"/> を含む、自分以外の生きているバッファーのうち最大の倍率（重ねがけしない、FR-028）。いなければ1。</summary>
+        private double BuffRateOf(BattleUnit unit)
+        {
+            var rate = 1.0;
+            foreach (var buffer in _units)
+            {
+                if (buffer != unit && buffer.IsAlive && buffer.Definition.Role == UnitRole.Buff &&
+                    buffer.Definition.BuffRate > rate && buffer.InRange(unit.Cell))
+                {
+                    rate = buffer.Definition.BuffRate;
+                }
+            }
+
+            return rate;
+        }
 
         /// <summary>残りライフ。</summary>
         public int Life { get; private set; }
@@ -341,12 +352,18 @@ namespace UnitySlotTower.Core.Battle
         }
 
         /// <summary>
-        /// 攻撃間隔ごとに、範囲内の敵を攻撃する（ヒーラーは攻撃力ぶん味方を回復する）。対象がなければ待たずに次のステップで探す。
+        /// 攻撃間隔ごとに、範囲内の敵を攻撃する。対象がなければ待たずに次のステップで探す。
+        /// バッファーは攻撃せず、<see cref="EffectiveAtk"/> で範囲内の味方の攻撃力を上げる。
         /// </summary>
         private void Act()
         {
             foreach (var unit in _units)
             {
+                if (unit.Definition.Role == UnitRole.Buff)
+                {
+                    continue;
+                }
+
                 if (unit.AttackCooldownSteps > 0)
                 {
                     unit.AttackCooldownSteps--;
@@ -357,26 +374,13 @@ namespace UnitySlotTower.Core.Battle
                     continue;
                 }
 
-                if (unit.Definition.Role == UnitRole.Heal)
+                var target = FindTarget(unit);
+                if (target == null)
                 {
-                    var patient = FindPatient(unit);
-                    if (patient == null)
-                    {
-                        continue;
-                    }
-
-                    patient.Heal(EffectiveAtk(unit));
+                    continue;
                 }
-                else
-                {
-                    var target = FindTarget(unit);
-                    if (target == null)
-                    {
-                        continue;
-                    }
 
-                    target.TakeDamage(Damage.Calculate(EffectiveAtk(unit), target.Definition.Def));
-                }
+                target.TakeDamage(Damage.Calculate(EffectiveAtk(unit), target.Definition.Def));
 
                 unit.AttackCooldownSteps = (int)Math.Round(
                     unit.Definition.AttackInterval * SimulationClock.StepsPerSecond);
@@ -414,28 +418,6 @@ namespace UnitySlotTower.Core.Battle
             }
 
             return target;
-        }
-
-        /// <summary>範囲内で HP が減っている味方のうち、HP 割合が最も低い味方（同じなら先に配置した味方）。</summary>
-        private BattleUnit FindPatient(BattleUnit healer)
-        {
-            BattleUnit patient = null;
-            foreach (var unit in _units)
-            {
-                if (!unit.IsAlive || unit.Hp >= unit.MaxHp || !healer.InRange(unit.Cell))
-                {
-                    continue;
-                }
-
-                // Hp / MaxHp の比較を整数の掛け算で行う。
-                if (patient == null ||
-                    (long)unit.Hp * patient.MaxHp < (long)patient.Hp * unit.MaxHp)
-                {
-                    patient = unit;
-                }
-            }
-
-            return patient;
         }
 
         /// <summary>

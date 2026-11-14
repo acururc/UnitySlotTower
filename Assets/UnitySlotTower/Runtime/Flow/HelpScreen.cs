@@ -176,9 +176,10 @@ namespace UnitySlotTower.Flow
                 var row = unitRows[i];
                 var unit = units[i];
                 var level = battle.Upgrades.Current(unit.Id);
-                var heals = unit.Role == UnitRole.Heal;
-                row.attackIcon.SetActive(!heals);
-                row.healIcon.SetActive(heals);
+                // バッファーは攻撃しないので攻撃の絵を隠し、旧ヒーラーの欄の絵を仮に出す（説明の作り直しは T351）。
+                var buffs = unit.Role == UnitRole.Buff;
+                row.attackIcon.SetActive(!buffs);
+                row.healIcon.SetActive(buffs);
                 row.hpText.SetText("{0}", level.MaxHpOf(unit));
                 row.atkText.SetText("{0}", level.AtkOf(unit));
                 row.defText.SetText("{0}", level.DefOf(unit));
