@@ -1,0 +1,13 @@
+id,kind,unit_id,price,weight
+stock_tank,stock,tank,20,1
+stock_sword,stock,sword,20,1
+stock_archer,stock,archer,20,1
+stock_buffer,stock,buffer,20,1
+gauge_tank,gauge,tank,15,1
+gauge_sword,gauge,sword,15,1
+gauge_archer,gauge,archer,15,1
+gauge_buffer,gauge,buffer,15,1
+upgrade_tank,upgrade,tank,0,1
+upgrade_sword,upgrade,sword,0,1
+upgrade_archer,upgrade,archer,0,1
+upgrade_buffer,upgrade,buffer,0,1

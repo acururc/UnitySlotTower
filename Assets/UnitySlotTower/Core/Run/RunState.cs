@@ -47,6 +47,58 @@ namespace UnitySlotTower.Core.Run
         /// <summary>ライフが 0 になった（FR-013）。</summary>
         public bool IsGameOver => Life <= 0;
 
+        /// <summary>このゲームのルート（<see cref="BeginRoute"/> まで null）。</summary>
+        public RouteMap Route { get; private set; }
+
+        /// <summary>いまいるマス。ルートに入る前は null。</summary>
+        public RouteNode Current { get; private set; }
+
+        /// <summary>いまの階（ルートに入る前は 0）。</summary>
+        public int Floor => Current?.Floor ?? 0;
+
+        /// <summary>ルートを決める。現在地はルートの外（次に入れるのは1階の最初の戦闘だけ）。</summary>
+        public void BeginRoute(RouteMap route)
+        {
+            Route = route ?? throw new ArgumentNullException(nameof(route));
+            Current = null;
+        }
+
+        /// <summary>そのマスに進めるか（ルートの外からは1階、以後はいまのマスにつながった上の階のマス）。</summary>
+        public bool CanEnter(RouteNode node)
+        {
+            if (Route == null || node == null)
+            {
+                return false;
+            }
+
+            return Current == null ? node == Route.Start : Route.CanMove(Current, node);
+        }
+
+        /// <summary>そのマスへ進む。進めなければ false で何も変えない。</summary>
+        public bool Enter(RouteNode node)
+        {
+            if (!CanEnter(node))
+            {
+                return false;
+            }
+
+            Current = node;
+            return true;
+        }
+
+        /// <summary>ライフを回復する。最大値で止まる（AC-012）。実際に増えた量を返す。</summary>
+        public int Heal(int amount)
+        {
+            if (amount < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(amount), amount, "回復量が負");
+            }
+
+            var healed = Math.Min(amount, MaxLife - Life);
+            Life += healed;
+            return healed;
+        }
+
         /// <summary>ライフを減らす。0 より下にはならない。</summary>
         public void LoseLife(int amount)
         {

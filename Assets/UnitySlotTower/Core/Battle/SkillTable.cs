@@ -82,6 +82,22 @@ namespace UnitySlotTower.Core.Battle
             return _skills[(int)color];
         }
 
+        /// <summary>その職のスキルの色。スキルを持たない職なら false。</summary>
+        public bool TryGetColor(string unitId, out SlotSymbol color)
+        {
+            foreach (var skill in _skills)
+            {
+                if (skill.UnitId == unitId)
+                {
+                    color = skill.Color;
+                    return true;
+                }
+            }
+
+            color = default;
+            return false;
+        }
+
         public static SkillTable Load(CsvTable table)
         {
             var skills = new SkillTable();

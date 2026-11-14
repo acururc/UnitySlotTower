@@ -1,0 +1,13 @@
+key,value
+floors,8
+columns,4
+paths,4
+weight_battle,50
+weight_elite,14
+weight_exchange,10
+weight_shop,12
+weight_rest,14
+elite_min_floor,3
+rest_heal,3
+shop_slots,3
+exchange_money_per_coin,2

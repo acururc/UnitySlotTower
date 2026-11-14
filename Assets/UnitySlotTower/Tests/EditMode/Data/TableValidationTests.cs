@@ -339,6 +339,53 @@ namespace UnitySlotTower.Tests.EditMode.Data
             Assert.That(report.Errors.Select(e => e.Message), Has.Some.Contains("'extra'"));
         }
 
+        [Test]
+        [Description("D-69: 登録表の種類の重みが route_rules にない")]
+        public void Route_Rules_Missing_A_Registered_Weight_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["route_rules.csv"] = WithoutLinesStartingWith(files["route_rules.csv"], "weight_shop,");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain("route_rules.csv"));
+        }
+
+        [Test]
+        [Description("D-69: 登録表にない種類の重みが route_rules にある")]
+        public void Route_Rules_With_An_Unregistered_Weight_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["route_rules.csv"] += "weight_casino,5\n";
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain("route_rules.csv"));
+        }
+
+        [Test]
+        public void Shop_Item_Of_An_Unknown_Unit_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["shop_items.csv"] += "stock_ghost,stock,ghost,20,1\n";
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain("shop_items.csv"));
+        }
+
+        [Test]
+        [Description("plan 16.2: ゲージの品の職にはスキルが要る")]
+        public void Shop_Gauge_Item_Of_A_Unit_Without_A_Skill_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["skills.csv"] = files["skills.csv"].Replace("green7,buffer,", "green7,tank,");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain("shop_items.csv"));
+        }
+
         private static string WithoutLinesStartingWith(string text, string prefix) =>
             string.Join("\n", text.Split('\n').Where(line => !line.StartsWith(prefix)));
     }

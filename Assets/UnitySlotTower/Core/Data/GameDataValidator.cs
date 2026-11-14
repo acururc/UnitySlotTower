@@ -122,6 +122,12 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Float("damage_rate", 0, 10),
                 ColumnRule.Float("interval_rate", 0.1, 1),
                 ColumnRule.Float("buff_add", 0, 5)),
+            new TableSchema(ShopTable.FileName, new[] { "id" },
+                ColumnRule.Id("id"),
+                ColumnRule.Enum("kind", ShopTable.KindIds),
+                ColumnRule.Id("unit_id"),
+                ColumnRule.Int("price", 0, 100000),
+                ColumnRule.Int("weight", 0, 10000)),
         };
 
         private static readonly HashSet<string> MapTiles = new HashSet<string>
@@ -134,6 +140,7 @@ namespace UnitySlotTower.Core.Data
 
             ValidateKeyValueFile(files, GameConfig.FileName, GameConfigKeys, report);
             ValidateKeyValueFile(files, SlotRules.FileName, SlotRuleKeys, report);
+            ValidateKeyValueFile(files, RouteRules.FileName, RouteRuleKeys(), report);
 
             foreach (var schema in Schemas)
             {
@@ -179,7 +186,55 @@ namespace UnitySlotTower.Core.Data
             ValidateSlotReels(tables[SlotReels.FileName], report);
             TableValidator.ValidateReference(tables[SkillTable.FileName], "unit_id", tables["units.csv"], "id", report);
             ValidateSkills(tables[SkillTable.FileName], report);
+            TableValidator.ValidateReference(tables[ShopTable.FileName], "unit_id", tables["units.csv"], "id", report);
+            ValidateShopGauges(tables[ShopTable.FileName], tables[SkillTable.FileName], report);
             return report;
+        }
+
+        /// <summary>
+        /// route_rules.csv のキー（plan 16.7）。重みのキーはマスの種類の登録表から作るので、
+        /// 登録にある種類の重みがない・登録にない種類の重みがある、のどちらもエラーになる（D-69）。
+        /// </summary>
+        private static List<ColumnRule> RouteRuleKeys()
+        {
+            var keys = new List<ColumnRule>
+            {
+                ColumnRule.Int("floors", RouteRules.MinFloors, 30),
+                ColumnRule.Int("columns", 1, 9),
+                ColumnRule.Int("paths", 1, 10),
+                ColumnRule.Int("elite_min_floor", 1, 99),
+                ColumnRule.Int("rest_heal", 0, 1000),
+                ColumnRule.Int("shop_slots", 0, 10),
+                ColumnRule.Int("exchange_money_per_coin", 1, 10000),
+            };
+            foreach (var kind in RouteNodeKinds.All)
+            {
+                if (kind.IsWeighted)
+                {
+                    keys.Add(ColumnRule.Int(kind.WeightKey, 0, 10000));
+                }
+            }
+
+            return keys;
+        }
+
+        /// <summary>ゲージの品の職にスキル（skills.csv の unit_id）があることを確かめる（plan 16.2）。</summary>
+        private static void ValidateShopGauges(CsvTable shop, CsvTable skills, ValidationReport report)
+        {
+            var skilled = new HashSet<string>();
+            foreach (var row in skills.Rows)
+            {
+                skilled.Add(row.Get("unit_id"));
+            }
+
+            var gauge = ShopTable.KindIds[(int)ShopItemKind.Gauge];
+            foreach (var row in shop.Rows)
+            {
+                if (row.Get("kind") == gauge && !skilled.Contains(row.Get("unit_id")))
+                {
+                    report.Add(row.Error("unit_id", $"ゲージの品の職 '{row.Get("unit_id")}' にスキルがない").Error);
+                }
+            }
         }
 
         /// <summary>key,value 表を検証し、エラーがなければ表を返す（なければ null）。</summary>
