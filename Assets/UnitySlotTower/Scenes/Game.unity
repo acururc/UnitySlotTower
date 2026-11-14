@@ -18783,6 +18783,53 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 849321060}
   m_CullTransparentMesh: 1
+--- !u!1 &849331362
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 849331364}
+  - component: {fileID: 849331363}
+  m_Layer: 0
+  m_Name: Run Controller
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &849331363
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 849331362}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 48de4a1f1c29ad44a8e38d5f5492d591, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnitySlotTower.Runtime::UnitySlotTower.Flow.RunController
+  routeRulesTable: {fileID: 4900000, guid: 69fd469c667a5054e8d3261ba6915a07, type: 3}
+  battle: {fileID: 1813959776}
+  slotCabinet: {fileID: 83309650}
+--- !u!4 &849331364
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 849331362}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &855199574
 GameObject:
   m_ObjectHideFlags: 0
@@ -39608,6 +39655,7 @@ MonoBehaviour:
   - {fileID: 4900000, guid: 44a9b43f958575b4781ec0b4f88ffd02, type: 3}
   - {fileID: 4900000, guid: 275be3b68aff56249903dbf84fd9b901, type: 3}
   pathsTable: {fileID: 4900000, guid: 90f28fb97f36826468ce4a184e7822fa, type: 3}
+  battleCamera: {fileID: 163673590}
   groundHeight: 0.1
   highGroundHeight: 0.5
   airPathHeight: 1.2
@@ -45503,3 +45551,4 @@ SceneRoots:
   - {fileID: 1569994503}
   - {fileID: 913357291}
   - {fileID: 1813959774}
+  - {fileID: 849331364}

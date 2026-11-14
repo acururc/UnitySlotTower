@@ -20,6 +20,8 @@ namespace UnitySlotTower.Battle
         [SerializeField] private TextAsset pathsTable;
 
         [Header("View")]
+        [Tooltip("マップ全体が収まるよう、マップを表示するたびに置き直すカメラ（D-71）。未設定なら動かさない。")]
+        [SerializeField] private Camera battleCamera;
         [SerializeField] private float groundHeight = 0.1f;
         [SerializeField] private float highGroundHeight = 0.5f;
         [SerializeField] private float airPathHeight = 1.2f;
@@ -117,6 +119,22 @@ namespace UnitySlotTower.Battle
             Map = map;
             BuildTiles();
             BuildPaths();
+            FitCamera();
+        }
+
+        // 戦闘の領域の縦横比は縦長レイアウトで 1440:1152 に固定なので、BattleCameraFit の既定値で計算する（plan 16.6）。
+        private void FitCamera()
+        {
+            if (battleCamera == null)
+            {
+                return;
+            }
+
+            var pose = BattleCameraFit.Fit(Map.Width, Map.Height, height: airPathHeight);
+            battleCamera.fieldOfView = (float)pose.VerticalFovDegrees;
+            battleCamera.transform.SetPositionAndRotation(
+                transform.TransformPoint(new Vector3(0f, (float)pose.PositionY, (float)pose.PositionZ)),
+                transform.rotation * Quaternion.Euler((float)pose.PitchDegrees, 0f, 0f));
         }
 
         private Vector3 CellToLocal(GridPoint point) =>

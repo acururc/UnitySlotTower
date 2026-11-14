@@ -35,6 +35,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         private const string WinningWaves =
             "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
             "first,1,0,melee,S1,first_g1,0\nfirst,2,0,melee,S1,first_g1,0\nbattle_a,1,0,melee,S1,battle_a_g1,0\nbattle_b,1,0,melee,S1,battle_b_g1,0\nbattle_c,1,0,melee,S1,battle_c_g1,0\nbattle_a,2,0,melee,S1,battle_a_g1,0\nbattle_b,2,0,melee,S1,battle_b_g1,0\nbattle_c,2,0,melee,S1,battle_c_g1,0\n" +
+            "elite_a,1,0,melee,S1,elite_a_g1,0\nelite_a,2,0,melee,S1,elite_a_g1,0\n" +
             "boss_a,1,0,melee,S1,boss_a_g1,0\nboss_a,2,0,melee,S1,boss_a_g1,0\n";
 
         private static string _waves;
@@ -118,8 +119,13 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var battle = default(BattleController);
             yield return LoadGame(b => battle = b);
             yield return ReelCustomTestUtil.CloseWithDefault(battle);
+            // ルートは最長7戦（T350a）で、敵1体ずつでもライフ 10 では足りないため、戦闘マスごとにライフを戻す。
+            var run = Object.FindAnyObjectByType<RunController>();
+            void Refill() => run.State.Heal(run.State.MaxLife);
+            battle.NodeBegan += Refill;
 
             yield return PlayUntilFinished(battle);
+            battle.NodeBegan -= Refill;
             Assert.That(battle.Run.Phase, Is.EqualTo(WavePhase.Completed));
             AssertNoLetters("リザルト（クリア）");
         }

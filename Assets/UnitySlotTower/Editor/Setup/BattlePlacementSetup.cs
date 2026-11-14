@@ -7,6 +7,7 @@ using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Run;
+using UnitySlotTower.Flow;
 using UnitySlotTower.Slot;
 
 namespace UnitySlotTower.Editor.Setup
@@ -107,6 +108,34 @@ namespace UnitySlotTower.Editor.Setup
             EditorSceneManager.MarkSceneDirty(battle.gameObject.scene);
             EditorSceneManager.SaveScene(battle.gameObject.scene);
             Debug.Log("[SlotTower Setup] 戦闘の進行に出現表とスキル表を設定した。");
+        }
+
+        /// <summary>
+        /// ゲーム1回分の進行（RunController: T350a）を Game シーンに置き、戦闘フィールドにカメラ合わせのカメラを設定して保存する。
+        /// 何度実行しても同じ結果になる。
+        /// </summary>
+        [MenuItem("Tools/UnitySlotTower/Setup/Add Run Controller (T350a)")]
+        private static void AddRunController()
+        {
+            var battle = Object.FindAnyObjectByType<BattleController>(FindObjectsInactive.Include);
+            var field = Object.FindAnyObjectByType<BattleFieldView>(FindObjectsInactive.Include);
+            var cabinet = Object.FindAnyObjectByType<SlotCabinet>(FindObjectsInactive.Include);
+            var camera = GameObject.Find("Battle Camera")?.GetComponent<Camera>();
+            if (battle == null || field == null || cabinet == null || camera == null)
+            {
+                Debug.LogError("[SlotTower Setup] Game シーンの BattleController / BattleFieldView / SlotCabinet / Battle Camera が見つからない。");
+                return;
+            }
+
+            var run = Object.FindAnyObjectByType<RunController>(FindObjectsInactive.Include)
+                ?? new GameObject("Run Controller").AddComponent<RunController>();
+            Assign(run, "routeRulesTable", Table(RouteRules.FileName));
+            Assign(run, "battle", battle);
+            Assign(run, "slotCabinet", cabinet);
+            Assign(field, "battleCamera", camera);
+            EditorSceneManager.MarkSceneDirty(battle.gameObject.scene);
+            EditorSceneManager.SaveScene(battle.gameObject.scene);
+            Debug.Log("[SlotTower Setup] RunController を置き、戦闘フィールドにカメラを設定した。");
         }
 
         private static TextAsset Table(string fileName) => AssetDatabase.LoadAssetAtPath<TextAsset>(TableFolder + fileName);
