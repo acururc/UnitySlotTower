@@ -5,7 +5,7 @@ using UnitySlotTower.Tests.EditMode.Slot;
 
 namespace UnitySlotTower.Tests.EditMode.Run
 {
-    /// <summary>ルート・両替所・ショップのテスト用の小さなデータ。</summary>
+    /// <summary>ルート・両替・ショップのテスト用の小さなデータ。</summary>
     internal static class RunFixtures
     {
         public const string RulesHeader = "key,value\n";
@@ -13,7 +13,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
         // plan 16.7 の仮値。
         public const string RulesBody =
             "floors,8\ncolumns,4\npaths,4\n" +
-            "weight_battle,50\nweight_elite,14\nweight_exchange,10\nweight_shop,12\nweight_rest,14\n" +
+            "weight_battle,50\nweight_elite,14\nweight_shop,22\nweight_rest,14\n" +
             "elite_min_floor,3\nrest_heal,3\nshop_slots,3\nexchange_money_per_coin,2\n";
 
         public static RouteRules LoadRules(string body = RulesBody) =>

@@ -166,7 +166,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
         }
 
         [Test]
-        [Description("AC-010: つながりは1つ上の階、道の途中は隣の列まで")]
+        [Description("AC-010, D-75: つながりは1つ上の階、ボスへ以外は隣の列まで（1階からも）")]
         public void Links_Go_Up_One_Floor_And_At_Most_One_Column()
         {
             foreach (var (rules, map) in Routes())
@@ -176,7 +176,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
                     foreach (var next in node.Next)
                     {
                         Assert.That(next.Floor, Is.EqualTo(node.Floor + 1));
-                        if (node.Floor > 1 && next.Floor < rules.Floors)
+                        if (next.Floor < rules.Floors)
                         {
                             Assert.That(Math.Abs(next.Column - node.Column), Is.LessThanOrEqualTo(1));
                         }
@@ -218,7 +218,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
         }
 
         [Test]
-        [Description("plan 16.7: 同じ道で両替所・ショップ・回復が続かない")]
+        [Description("plan 16.7: 同じ道でショップ・回復が続かない")]
         public void Non_Battle_Nodes_Are_Not_Consecutive()
         {
             foreach (var (_, map) in Routes())
@@ -228,6 +228,72 @@ namespace UnitySlotTower.Tests.EditMode.Run
                     Assert.That(node.Next.Where(IsNonBattle), Is.Empty, $"{node.Floor}階 {node.Column}列 {node.Kind}");
                 }
             }
+        }
+
+        [Test]
+        [Description("D-75: 行き先はリール（左・中・右）に1つずつ。どのマスでも同じリールに2つ載らない")]
+        public void Each_Reel_Has_At_Most_One_Destination()
+        {
+            foreach (var (_, map) in Routes())
+            {
+                foreach (var node in map.All)
+                {
+                    var reels = node.Next.Select(node.ReelOf).ToList();
+                    Assert.That(reels, Is.Unique.And.All.InRange(0, 2), $"{node.Floor}階 {node.Column}列");
+                }
+            }
+        }
+
+        [Test]
+        [Description("D-75: 左のリールは左上、中は真上、右は右上の行き先")]
+        public void Reel_Follows_The_Direction_Of_The_Destination()
+        {
+            foreach (var (_, map) in Routes())
+            {
+                foreach (var node in map.All.Where(n => n.Floor < map.Floors - 1))
+                {
+                    Assert.That(node.NextOnReel(0)?.Column, Is.Null.Or.EqualTo(node.Column - 1));
+                    Assert.That(node.NextOnReel(1)?.Column, Is.Null.Or.EqualTo(node.Column));
+                    Assert.That(node.NextOnReel(2)?.Column, Is.Null.Or.EqualTo(node.Column + 1));
+                }
+            }
+        }
+
+        [Test]
+        [Description("D-75: どの行き先もどれかのリールで選べる")]
+        public void Every_Destination_Is_On_Its_Reel()
+        {
+            foreach (var (_, map) in Routes())
+            {
+                foreach (var node in map.All)
+                {
+                    foreach (var next in node.Next)
+                    {
+                        Assert.That(node.NextOnReel(node.ReelOf(next)), Is.SameAs(next));
+                    }
+                }
+            }
+        }
+
+        [Test]
+        [Description("D-75: ボスは1つだけなので、回復の階のどの列からも列の向きのリールに載る（4列: 0列→右、2列→中、3列→左）")]
+        public void Boss_Is_On_The_Reel_Toward_Its_Column()
+        {
+            var map = Generate(7);
+            var reels = map.NodesOn(map.Floors - 1).ToDictionary(n => n.Column, n => n.ReelOf(map.Boss));
+
+            foreach (var (column, reel) in reels)
+            {
+                Assert.That(reel, Is.EqualTo(column < 2 ? 2 : column == 2 ? 1 : 0), $"{column}列");
+            }
+        }
+
+        [Test]
+        public void Reel_Without_A_Destination_Gives_Nothing()
+        {
+            var map = Generate(7);
+
+            Assert.That(map.Boss.NextOnReel(1), Is.Null);
         }
 
         [Test]
@@ -256,7 +322,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
             var total = 0;
             for (ulong seed = 1; seed <= 500; seed++)
             {
-                var map = Generate(seed, ("weight_battle", "3"), ("weight_elite", "1"), ("weight_exchange", "0"),
+                var map = Generate(seed, ("weight_battle", "3"), ("weight_elite", "1"),
                     ("weight_shop", "0"), ("weight_rest", "0"), ("elite_min_floor", "1"));
                 var middle = map.All.Where(n => n.Floor > 1 && n.Floor < map.Floors - 1).ToList();
                 elites += middle.Count(n => n.Kind == "elite");

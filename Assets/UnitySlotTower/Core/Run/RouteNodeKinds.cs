@@ -15,7 +15,7 @@ namespace UnitySlotTower.Core.Run
         /// <summary>マスの種類の id（route_rules.csv の <c>weight_&lt;id&gt;</c>、Runtime の画面の登録表のキー）。</summary>
         public string Id { get; }
 
-        /// <summary>戦闘マスなら出現表の種類、それ以外（両替所・ショップ・回復）は null。</summary>
+        /// <summary>戦闘マスなら出現表の種類、それ以外（ショップ・回復）は null。</summary>
         public EncounterKind? Encounter { get; }
 
         /// <summary>戦闘マス（最初の戦闘・通常・強敵・ボス）。</summary>
@@ -39,7 +39,6 @@ namespace UnitySlotTower.Core.Run
         public const string First = "first";
         public const string Battle = "battle";
         public const string Elite = "elite";
-        public const string Exchange = "exchange";
         public const string Shop = "shop";
         public const string Rest = "rest";
         public const string Boss = "boss";
@@ -49,7 +48,6 @@ namespace UnitySlotTower.Core.Run
             new RouteNodeKind(First, EncounterKind.First, false),
             new RouteNodeKind(Battle, EncounterKind.Battle, true),
             new RouteNodeKind(Elite, EncounterKind.Elite, true),
-            new RouteNodeKind(Exchange, null, true),
             new RouteNodeKind(Shop, null, true),
             new RouteNodeKind(Rest, null, true),
             new RouteNodeKind(Boss, EncounterKind.Boss, false),

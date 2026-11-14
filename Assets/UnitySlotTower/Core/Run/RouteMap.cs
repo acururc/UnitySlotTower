@@ -27,6 +27,31 @@ namespace UnitySlotTower.Core.Run
         /// <summary>つながっている1つ上の階のマス（列の順）。</summary>
         public IReadOnlyList<RouteNode> Next => _next;
 
+        /// <summary>D-75: 行き先を選ぶリールの番号（0=左・1=中・2=右）。列の差の符号で決める。</summary>
+        public int ReelOf(RouteNode next)
+        {
+            if (next == null)
+            {
+                throw new ArgumentNullException(nameof(next));
+            }
+
+            return Math.Sign(next.Column - Column) + 1;
+        }
+
+        /// <summary>D-75: そのリールで選べる行き先。なければ null。</summary>
+        public RouteNode NextOnReel(int reel)
+        {
+            foreach (var next in _next)
+            {
+                if (ReelOf(next) == reel)
+                {
+                    return next;
+                }
+            }
+
+            return null;
+        }
+
         internal void Link(RouteNode next)
         {
             if (!_next.Contains(next))
@@ -133,7 +158,7 @@ namespace UnitySlotTower.Core.Run
     /// ルートの生成（plan 16.7）。1階は最初の戦闘の1マス、最上階はボスの1マス、その直前の階は全部回復。
     /// 間の階は道を1階から列を ±1 ずつ動かしながら上へ引き（交差しない）、通ったマスの種類を重みで選ぶ。
     /// 同じ乱数の列で同じルートになる（AC-010）。
-    /// 両替所・ショップ・回復（戦闘でないマス）はつながった2マスで続かない（回復の階の直前の階は戦闘だけ）。
+    /// ショップ・回復（戦闘でないマス）はつながった2マスで続かない（回復の階の直前の階は戦闘だけ）。
     /// </summary>
     public static class RouteGenerator
     {
@@ -155,14 +180,17 @@ namespace UnitySlotTower.Core.Run
             var map = new RouteMap(floors, columns);
             var start = map.GetOrAdd(1, columns / 2);
 
+            // D-75: 2階は1階の列 ±1 から始め、行き先を左・中・右のリールに1つずつ載せる。
+            var minColumn = Math.Max(0, start.Column - 1);
+            var maxColumn = Math.Min(columns - 1, start.Column + 1);
             var firstColumn = -1;
             for (var path = 0; path < rules.Paths; path++)
             {
-                var column = random.NextInt(0, columns);
+                var column = random.NextInt(minColumn, maxColumn + 1);
                 // 2本目は1本目と別の列から始め、2階で選べるようにする。
-                while (path == 1 && columns > 1 && column == firstColumn)
+                while (path == 1 && maxColumn > minColumn && column == firstColumn)
                 {
-                    column = random.NextInt(0, columns);
+                    column = random.NextInt(minColumn, maxColumn + 1);
                 }
 
                 if (path == 0)

@@ -31,7 +31,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
         [Description("D-69: 登録表の種類に重みがなければエラー")]
         public void Missing_Weight_Of_A_Registered_Kind_Is_An_Error()
         {
-            var body = RunFixtures.RulesBody.Replace("weight_shop,12\n", "");
+            var body = RunFixtures.RulesBody.Replace("weight_shop,22\n", "");
 
             Assert.Throws<CsvFormatException>(() => RunFixtures.LoadRules(body));
         }
@@ -43,7 +43,14 @@ namespace UnitySlotTower.Tests.EditMode.Run
             var error = Assert.Throws<CsvFormatException>(() =>
                 RunFixtures.LoadRules(RunFixtures.RulesBody + "weight_casino,5\n")).Error;
 
-            Assert.That(error.Line, Is.EqualTo(14));
+            Assert.That(error.Line, Is.EqualTo(13));
+        }
+
+        [Test]
+        [Description("D-75: 両替所のマスは廃止したので weight_exchange はエラー")]
+        public void Exchange_Weight_Is_An_Error()
+        {
+            Assert.Throws<CsvFormatException>(() => RunFixtures.LoadRules(RunFixtures.RulesBody + "weight_exchange,10\n"));
         }
 
         [Test]
