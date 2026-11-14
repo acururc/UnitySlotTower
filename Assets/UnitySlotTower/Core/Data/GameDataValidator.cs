@@ -130,6 +130,12 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Int("weight", 0, 10000)),
         };
 
+        /// <summary>マップの大きさの範囲（D-71、plan 16.6）。</summary>
+        public const int MinMapWidth = 9;
+        public const int MaxMapWidth = 10;
+        public const int MinMapHeight = 4;
+        public const int MaxMapHeight = 5;
+
         private static readonly HashSet<string> MapTiles = new HashSet<string>
             { "G", "H", "X", "E", "S1", "S2", "S3", "S4" };
 
@@ -140,7 +146,7 @@ namespace UnitySlotTower.Core.Data
 
             ValidateKeyValueFile(files, GameConfig.FileName, GameConfigKeys, report);
             ValidateKeyValueFile(files, SlotRules.FileName, SlotRuleKeys, report);
-            ValidateKeyValueFile(files, RouteRules.FileName, RouteRuleKeys(), report);
+            var routeTable = ValidateKeyValueFile(files, RouteRules.FileName, RouteRuleKeys(), report);
 
             foreach (var schema in Schemas)
             {
@@ -182,6 +188,7 @@ namespace UnitySlotTower.Core.Data
             TableValidator.ValidatePathContinuity(tables["map_paths.csv"], report);
             var battleMaps = ValidateMapPaths(files, tables["map_paths.csv"], maps, report);
             ValidateWaves(tables["waves.csv"], tables[EncounterTable.FileName], tables["enemies.csv"], battleMaps, report);
+            ValidateEncounters(tables[EncounterTable.FileName], tables["waves.csv"], routeTable, report);
             ValidateSlotPatterns(tables[SlotPatterns.FileName], report);
             ValidateSlotReels(tables[SlotReels.FileName], report);
             TableValidator.ValidateReference(tables[SkillTable.FileName], "unit_id", tables["units.csv"], "id", report);
@@ -360,7 +367,168 @@ namespace UnitySlotTower.Core.Data
                 }
             }
 
+            if (width < MinMapWidth || width > MaxMapWidth || records.Count < MinMapHeight || records.Count > MaxMapHeight)
+            {
+                report.Add(new CsvError(fileName, 0, 0,
+                    $"大きさ {width}×{records.Count} が 横{MinMapWidth}〜{MaxMapWidth}×縦{MinMapHeight}〜{MaxMapHeight} の外"));
+            }
+
             return true;
+        }
+
+        /// <summary>
+        /// 出現表の組み合わせ（plan 16.6）: 強敵・ボスのマップは専用、ボス（is_boss）は強敵・ボスマスの最後のウェーブだけ、
+        /// ルートの各階に置かれうる戦闘マスの種類に合う行がある。
+        /// </summary>
+        private static void ValidateEncounters(CsvTable encounterTable, CsvTable waves, CsvTable routeTable,
+            ValidationReport report)
+        {
+            EncounterTable encounters;
+            try
+            {
+                encounters = EncounterTable.Load(encounterTable);
+            }
+            catch (CsvFormatException)
+            {
+                return; // ValidateWaves で報告済み。
+            }
+
+            ValidateDedicatedMaps(encounterTable, encounters, report);
+            ValidateBosses(waves, encounters, report);
+            if (routeTable == null)
+            {
+                return;
+            }
+
+            RouteRules rules;
+            try
+            {
+                rules = RouteRules.Load(routeTable);
+            }
+            catch (CsvFormatException ex)
+            {
+                report.Add(ex.Error);
+                return;
+            }
+
+            ValidateFloorCoverage(encounters, rules, report);
+        }
+
+        private static bool IsBossKind(EncounterKind kind) => kind == EncounterKind.Elite || kind == EncounterKind.Boss;
+
+        /// <summary>強敵・ボスのマップを最初の戦闘・通常の戦闘で使っていればエラー（FR-018）。</summary>
+        private static void ValidateDedicatedMaps(CsvTable table, EncounterTable encounters, ValidationReport report)
+        {
+            var dedicated = new HashSet<string>();
+            foreach (var encounter in encounters.All)
+            {
+                if (IsBossKind(encounter.Kind))
+                {
+                    dedicated.Add(encounter.MapId);
+                }
+            }
+
+            foreach (var row in table.Rows)
+            {
+                var encounter = encounters.Get(row.Get("id"));
+                if (!IsBossKind(encounter.Kind) && dedicated.Contains(encounter.MapId))
+                {
+                    report.Add(row.Error("map_id", $"マップ '{encounter.MapId}' は強敵・ボスの専用").Error);
+                }
+            }
+        }
+
+        /// <summary>ボス（is_boss）は強敵・ボスマスの最後のウェーブにだけ出て、強敵・ボスマスには必ず出る（FR-010）。</summary>
+        private static void ValidateBosses(CsvTable waves, EncounterTable encounters, ValidationReport report)
+        {
+            var withBoss = new HashSet<string>();
+            foreach (var row in waves.Rows)
+            {
+                var id = row.Get("encounter_id");
+                if (!encounters.Contains(id))
+                {
+                    continue; // 参照の検証で報告済み。
+                }
+
+                bool isBoss;
+                int wave;
+                try
+                {
+                    isBoss = row.GetBool("is_boss");
+                    wave = row.GetInt("wave");
+                }
+                catch (CsvFormatException)
+                {
+                    continue; // 列の検証で報告済み。
+                }
+
+                if (!isBoss)
+                {
+                    continue;
+                }
+
+                if (IsBossKind(encounters.Get(id).Kind) && wave == WaveSchedule.WavesPerEncounter)
+                {
+                    withBoss.Add(id);
+                }
+                else
+                {
+                    report.Add(row.Error("is_boss",
+                        $"ボスが出られるのは強敵・ボスマスの W{WaveSchedule.WavesPerEncounter} だけ（'{id}' の W{wave}）").Error);
+                }
+            }
+
+            foreach (var encounter in encounters.All)
+            {
+                if (IsBossKind(encounter.Kind) && !withBoss.Contains(encounter.Id))
+                {
+                    report.Add(new CsvError(waves.FileName, 0, 0,
+                        $"戦闘マス '{encounter.Id}' の W{WaveSchedule.WavesPerEncounter} にボス（is_boss）がいない"));
+                }
+            }
+        }
+
+        /// <summary>
+        /// ルートの生成（plan 16.7）が置きうる戦闘マスの種類と階のすべてに、出現表の行があることを確かめる。
+        /// 1階は first、最上階は boss、間の階は通常（重みが全部0のときの代わりでもある）と、重みが正の戦闘マスの種類
+        /// （強敵は elite_min_floor 以上）。
+        /// </summary>
+        private static void ValidateFloorCoverage(EncounterTable encounters, RouteRules rules, ValidationReport report)
+        {
+            RequireEncounter(encounters, EncounterKind.First, 1, report);
+            RequireEncounter(encounters, EncounterKind.Boss, rules.Floors, report);
+            var restFloor = rules.Floors - 1;
+            for (var floor = 2; floor < restFloor; floor++)
+            {
+                foreach (var kind in RouteNodeKinds.All)
+                {
+                    if (!kind.IsWeighted || !kind.Encounter.HasValue)
+                    {
+                        continue;
+                    }
+
+                    var placed = kind.Id == RouteNodeKinds.Battle || rules.WeightOf(kind.Id) > 0;
+                    if (placed && (kind.Id != RouteNodeKinds.Elite || floor >= rules.EliteMinFloor))
+                    {
+                        RequireEncounter(encounters, kind.Encounter.Value, floor, report);
+                    }
+                }
+            }
+        }
+
+        private static void RequireEncounter(EncounterTable encounters, EncounterKind kind, int floor,
+            ValidationReport report)
+        {
+            foreach (var encounter in encounters.All)
+            {
+                if (encounter.Kind == kind && encounter.IsOnFloor(floor))
+                {
+                    return;
+                }
+            }
+
+            report.Add(new CsvError(EncounterTable.FileName, 0, 0,
+                $"{EncounterTable.KindIds[(int)kind]} の {floor} 階に合う戦闘マスがない（{RouteRules.FileName} のルートで置かれうる）"));
         }
 
         private static void ValidateMapIds(CsvTable paths, List<string> maps, ValidationReport report)

@@ -13,12 +13,12 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
     [Description("FR-010, T312: ステージが終わると戦闘フィールドが次のステージのマップに替わり、操作バーが S-W を表示する")]
     public sealed class StageTransitionTests
     {
-        // どのウェーブも近接の敵1体だけ（S1 は2ウェーブ、S2-W1 まで）。味方を置かないので敵はゴールに着き、ライフ1ずつ減ってウェーブが終わる。
+        // どのウェーブも近接の敵1体だけ（最初の戦闘は2ウェーブ、通常の戦闘は W1 まで）。味方を置かないので敵はゴールに着き、ライフ1ずつ減ってウェーブが終わる。
         private const string ShortWaves =
             "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "first_s1,1,0,melee,S1,s1_g1,0\n" +
-            "first_s1,2,0,melee,S1,s1_g1,0\n" +
-            "battle_s2,1,0,melee,S1,s2_g1,0\n";
+            "first,1,0,melee,S1,first_g1,0\n" +
+            "first,2,0,melee,S1,first_g1,0\n" +
+            "battle_a,1,0,melee,S1,battle_a_g1,0\nbattle_b,1,0,melee,S1,battle_b_g1,0\nbattle_c,1,0,melee,S1,battle_c_g1,0\n";
 
         private bool _runInBackground;
         private BattleController _battle;
@@ -67,7 +67,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         public IEnumerator Clearing_Stage_1_Shows_Stage_2_Map_And_Label()
         {
             yield return null;
-            Assert.That((_fieldView.Map.Id, _waveText.text, TileRoots()), Is.EqualTo(("s1", "1-1", 1)));
+            Assert.That((_fieldView.Map.Id, _waveText.text, TileRoots()), Is.EqualTo(("first", "1-1", 1)));
 
             // 敵が歩き切るまで速める（1体あたり実時間で約1秒）。
             Time.timeScale = 20f;
@@ -87,8 +87,9 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return null;
             var map = _fieldView.Map;
             var tiles = _fieldView.transform.Find("Tiles");
-            Assert.That((map.Id, map == _battle.Run.Map, _waveText.text, TileRoots(), tiles.childCount),
-                Is.EqualTo(("s2", true, "2-1", 1, map.Width * map.Height)));
+            // 通常の戦闘マスは battle_a〜c からランダムに選ばれる（plan 16.6）。
+            Assert.That((map.Id.StartsWith("battle_"), map == _battle.Run.Map, _waveText.text, TileRoots(), tiles.childCount),
+                Is.EqualTo((true, true, "2-1", 1, map.Width * map.Height)), map.Id);
 
             // ステージの間で止まらず、すぐ S2 の戦闘を始められる（カスタムは 2026-11-14 に廃止）。
             _battle.StartWave();

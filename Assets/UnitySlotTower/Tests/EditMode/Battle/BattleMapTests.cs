@@ -23,43 +23,48 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         private static CsvError SmallError(string pathRows) =>
             Assert.Throws<CsvFormatException>(() => Small(pathRows)).Error;
 
-        [Test]
-        [Description("plan 7章: グリッドは 9列×6行")]
-        public void Project_Stage_Maps_Are_9_By_6()
-        {
-            var sizes = new[] { "s1", "s2", "s3" }.Select(ProjectMap).Select(m => (m.Width, m.Height));
+        private static readonly string[] ProjectMapIds = { "first", "battle_a", "battle_b", "battle_c", "elite_a", "boss_a" };
 
-            Assert.That(sizes, Is.EqualTo(new[] { (9, 6), (9, 6), (9, 6) }));
+        [Test]
+        [Description("D-71・plan 16.6: マップは横9〜10×縦4〜5")]
+        public void Project_Maps_Are_9_To_10_By_4_To_5()
+        {
+            var sizes = ProjectMapIds.Select(ProjectMap).Select(m => (m.Width, m.Height));
+
+            Assert.That(sizes, Is.EqualTo(new[] { (10, 5), (10, 5), (9, 5), (10, 4), (10, 5), (10, 5) }));
         }
 
         [Test]
-        public void Project_S1_Reads_Tiles_From_The_Grid()
+        public void Project_First_Reads_Tiles_From_The_Grid()
         {
-            var map = ProjectMap("s1");
+            var map = ProjectMap("first");
 
-            Assert.That(new[] { (0, 0), (1, 0), (1, 1), (0, 1), (8, 5) }.Select(p => map.TileAt(new GridPoint(p.Item1, p.Item2))),
-                Is.EqualTo(new[] { MapTile.Blocked, MapTile.HighGround, MapTile.Ground, MapTile.Spawn, MapTile.Goal }));
+            Assert.That(new[] { (0, 0), (0, 1), (1, 2), (9, 3), (9, 4) }.Select(p => map.TileAt(new GridPoint(p.Item1, p.Item2))),
+                Is.EqualTo(new[] { MapTile.HighGround, MapTile.Spawn, MapTile.Ground, MapTile.Goal, MapTile.HighGround }));
         }
 
         [Test]
-        [Description("plan 7章: S1 は出現口1・S字の一本道（旧 w2）")]
-        public void Project_S1_Has_One_Ground_Path_From_Spawn_1_To_Goal()
+        [Description("AC-014・D-71: 最初の戦闘は中3行が出現口からゴールまでまっすぐな地上（3列一直線）")]
+        public void Project_First_Has_Three_Straight_Ground_Lanes()
         {
-            var map = ProjectMap("s1");
-            var path = map.Paths.Single();
+            var map = ProjectMap("first");
+            var lanes = map.Paths.Select(p => (p.IsAir, map.SpawnNumberAt(p.Cells[0]), p.Cells.Select(c => c.Y).Distinct().Single(),
+                p.Cells.Count, map.TileAt(p.Cells[p.Cells.Count - 1])));
 
-            Assert.That((path.IsAir, map.SpawnNumberAt(path.Cells[0]), map.TileAt(path.Cells[path.Cells.Count - 1]), path.Cells.Count),
-                Is.EqualTo((false, 1, MapTile.Goal, 21)));
+            Assert.That(lanes, Is.EqualTo(new[]
+            {
+                (false, 1, 1, 10, MapTile.Goal), (false, 2, 2, 10, MapTile.Goal), (false, 3, 3, 10, MapTile.Goal),
+            }));
         }
 
         [Test]
-        [Description("plan 7章: S2 は出現口2つ＋空中路、S3 は地上路2本＋空中路")]
-        public void Project_S2_And_S3_Have_Two_Ground_Paths_And_One_Air_Path()
+        [Description("plan 16.6: 最初の戦闘以外のマップは空中路が1本ずつ（地上路の数はマップごと）")]
+        public void Project_Maps_After_First_Have_Ground_Paths_And_One_Air_Path()
         {
-            var counts = new[] { "s2", "s3" }.Select(ProjectMap)
+            var counts = ProjectMapIds.Skip(1).Select(ProjectMap)
                 .Select(m => (m.Paths.Count(p => !p.IsAir), m.Paths.Count(p => p.IsAir)));
 
-            Assert.That(counts, Is.EqualTo(new[] { (2, 1), (2, 1) }));
+            Assert.That(counts, Is.EqualTo(new[] { (1, 1), (2, 1), (1, 1), (2, 1), (3, 1) }));
         }
 
         [Test]

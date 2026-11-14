@@ -154,18 +154,18 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Unknown_Map_Tile_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["maps/s1.csv"] = "S1,G,Q\nX,G,E\n";
+            files["maps/first.csv"] = "S1,G,Q\nX,G,E\n";
 
             var report = GameDataValidator.ValidateAll(files);
 
-            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("maps/s1.csv", 1, 3)));
+            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("maps/first.csv", 1, 3)));
         }
 
         [Test]
         public void Wave_Spawn_Not_On_Its_Path_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["waves.csv"] += "first_s1,1,0,melee,S2,s1_g1,0\n";
+            files["waves.csv"] += "first,1,0,melee,S2,first_g1,0\n";
             var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
 
             var report = GameDataValidator.ValidateAll(files);
@@ -177,8 +177,8 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Map_Without_Paths_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["map_paths.csv"] = WithoutLinesStartingWith(files["map_paths.csv"], "s3,");
-            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "boss_s3,");
+            files["map_paths.csv"] = WithoutLinesStartingWith(files["map_paths.csv"], "boss_a,");
+            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "boss_a,");
 
             var report = GameDataValidator.ValidateAll(files);
 
@@ -190,7 +190,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         {
             // ボスマスの W1 だけを消す（戦闘マスのウェーブごとに確かめる）。
             var files = TablePaths.ReadAll();
-            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "boss_s3,1,");
+            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "boss_a,1,");
 
             var report = GameDataValidator.ValidateAll(files);
 
@@ -295,7 +295,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Wave_Of_An_Unknown_Encounter_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["waves.csv"] += "nowhere,1,0,melee,S1,s1_g1,0\n";
+            files["waves.csv"] += "nowhere,1,0,melee,S1,first_g1,0\n";
             var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
 
             var report = GameDataValidator.ValidateAll(files);
@@ -308,7 +308,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Encounter_Unknown_Kind_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files[EncounterTable.FileName] = files[EncounterTable.FileName].Replace("battle_s2,battle,", "battle_s2,shop,");
+            files[EncounterTable.FileName] = files[EncounterTable.FileName].Replace("battle_a,battle,", "battle_a,shop,");
 
             var report = GameDataValidator.ValidateAll(files);
 
@@ -320,7 +320,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Encounter_With_A_Missing_Map_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files[EncounterTable.FileName] = files[EncounterTable.FileName].Replace("battle_s2,battle,s2,", "battle_s2,battle,s9,");
+            files[EncounterTable.FileName] = files[EncounterTable.FileName].Replace("battle_a,battle,battle_a,", "battle_a,battle,s9,");
 
             var report = GameDataValidator.ValidateAll(files);
 
@@ -332,7 +332,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Encounter_Without_Waves_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files[EncounterTable.FileName] += "extra,battle,s2,2,7,0,10,3\n";
+            files[EncounterTable.FileName] += "extra,battle,battle_a,2,7,0,10,3\n";
 
             var report = GameDataValidator.ValidateAll(files);
 
@@ -384,6 +384,104 @@ namespace UnitySlotTower.Tests.EditMode.Data
             var report = GameDataValidator.ValidateAll(files);
 
             Assert.That(report.Errors.Select(e => e.File), Does.Contain("shop_items.csv"));
+        }
+
+        [Test]
+        [Description("D-71・plan 16.6: 横9〜10×縦4〜5 を外れるマップはエラー（6行目を足す）")]
+        public void Map_Outside_The_Size_Range_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["maps/first.csv"] += "H,H,H,H,H,H,H,H,H,H\n";
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain("maps/first.csv"));
+        }
+
+        [Test]
+        [Description("plan 16.6: ルートの階（10階なら通常・強敵は8階まで）に合う戦闘マスがなければエラー")]
+        public void Encounters_Not_Covering_Every_Route_Floor_Are_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files[RouteRules.FileName] = files[RouteRules.FileName].Replace("floors,8", "floors,10");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            var messages = report.Errors.Where(e => e.File == EncounterTable.FileName).Select(e => e.Message).ToList();
+            Assert.That(messages, Has.Some.Contains("battle の 8 階"));
+            Assert.That(messages, Has.Some.Contains("elite の 8 階"));
+        }
+
+        [Test]
+        [Description("plan 16.6: 強敵の重みが正なのに強敵の戦闘マスがなければエラー")]
+        public void Missing_Elite_Encounter_Is_An_Error()
+        {
+            var files = WithoutElite(TablePaths.ReadAll());
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Where(e => e.File == EncounterTable.FileName).Select(e => e.Message),
+                Has.Some.Contains("elite"));
+        }
+
+        [Test]
+        [Description("plan 16.6: 強敵の重みが0なら強敵の戦闘マスはなくてよい")]
+        public void Elite_Encounter_Is_Not_Needed_When_Its_Weight_Is_0()
+        {
+            var files = WithoutElite(TablePaths.ReadAll());
+            files[RouteRules.FileName] = files[RouteRules.FileName].Replace("weight_elite,14", "weight_elite,0");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.IsValid, Is.True, report.ToString());
+        }
+
+        [Test]
+        [Description("FR-010・plan 16.6: 強敵マスの W2 には中ボス（is_boss）が要る")]
+        public void Elite_Without_A_Boss_In_Wave_2_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["waves.csv"] = string.Join("\n", files["waves.csv"].Split('\n').Where(line => !line.Contains(",mid_boss,")));
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Where(e => e.File == "waves.csv").Select(e => e.Message), Has.Some.Contains("'elite_a'"));
+        }
+
+        [Test]
+        [Description("plan 16.6: ボス（is_boss）が出るのは強敵・ボスマスの W2 だけ")]
+        public void Boss_In_A_Normal_Battle_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["waves.csv"] += "battle_a,2,70,mid_boss,S1,battle_a_g1,1\n";
+            var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => (e.File, e.Line)), Does.Contain(("waves.csv", line)));
+        }
+
+        [Test]
+        [Description("FR-018・AC-014: 強敵・ボスのマップは専用（最初の戦闘・通常の戦闘で使うとエラー）")]
+        public void Elite_Or_Boss_Map_Used_By_A_Normal_Battle_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files[EncounterTable.FileName] += "battle_d,battle,boss_a,2,7,0,10,3\n";
+            var line = files[EncounterTable.FileName].TrimEnd('\n').Split('\n').Length;
+            files["waves.csv"] += "battle_d,1,0,melee,S1,boss_a_g1,0\nbattle_d,2,0,melee,S1,boss_a_g1,0\n";
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => (e.File, e.Line)), Does.Contain((EncounterTable.FileName, line)));
+        }
+
+        private static System.Collections.Generic.Dictionary<string, string> WithoutElite(
+            System.Collections.Generic.Dictionary<string, string> files)
+        {
+            files[EncounterTable.FileName] = WithoutLinesStartingWith(files[EncounterTable.FileName], "elite_a,");
+            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "elite_a,");
+            files["map_paths.csv"] = WithoutLinesStartingWith(files["map_paths.csv"], "elite_a,");
+            return files;
         }
 
         private static string WithoutLinesStartingWith(string text, string prefix) =>

@@ -25,17 +25,17 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         // ゲームオーバー用: S1-W1 に近接の敵 12 体（ライフ 10 より多い）。
         private const string LosingWaves =
             "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "first_s1,1,0,melee,S1,s1_g1,0\nfirst_s1,1,1,melee,S1,s1_g1,0\nfirst_s1,1,2,melee,S1,s1_g1,0\nfirst_s1,1,3,melee,S1,s1_g1,0\n" +
-            "first_s1,1,4,melee,S1,s1_g1,0\nfirst_s1,1,5,melee,S1,s1_g1,0\nfirst_s1,1,6,melee,S1,s1_g1,0\nfirst_s1,1,7,melee,S1,s1_g1,0\n" +
-            "first_s1,1,8,melee,S1,s1_g1,0\nfirst_s1,1,9,melee,S1,s1_g1,0\nfirst_s1,1,10,melee,S1,s1_g1,0\nfirst_s1,1,11,melee,S1,s1_g1,0\n" +
-            "first_s1,2,0,melee,S1,s1_g1,0\nbattle_s2,1,0,melee,S1,s2_g1,0\nbattle_s2,2,0,melee,S1,s2_g1,0\n" +
-            "boss_s3,1,0,melee,S1,s3_g1,0\nboss_s3,2,0,melee,S1,s3_g1,0\n";
+            "first,1,0,melee,S1,first_g1,0\nfirst,1,1,melee,S1,first_g1,0\nfirst,1,2,melee,S1,first_g1,0\nfirst,1,3,melee,S1,first_g1,0\n" +
+            "first,1,4,melee,S1,first_g1,0\nfirst,1,5,melee,S1,first_g1,0\nfirst,1,6,melee,S1,first_g1,0\nfirst,1,7,melee,S1,first_g1,0\n" +
+            "first,1,8,melee,S1,first_g1,0\nfirst,1,9,melee,S1,first_g1,0\nfirst,1,10,melee,S1,first_g1,0\nfirst,1,11,melee,S1,first_g1,0\n" +
+            "first,2,0,melee,S1,first_g1,0\nbattle_a,1,0,melee,S1,battle_a_g1,0\nbattle_b,1,0,melee,S1,battle_b_g1,0\nbattle_c,1,0,melee,S1,battle_c_g1,0\nbattle_a,2,0,melee,S1,battle_a_g1,0\nbattle_b,2,0,melee,S1,battle_b_g1,0\nbattle_c,2,0,melee,S1,battle_c_g1,0\n" +
+            "boss_a,1,0,melee,S1,boss_a_g1,0\nboss_a,2,0,melee,S1,boss_a_g1,0\n";
 
         // クリア用: 全6ウェーブとも近接の敵1体だけ。
         private const string WinningWaves =
             "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "first_s1,1,0,melee,S1,s1_g1,0\nfirst_s1,2,0,melee,S1,s1_g1,0\nbattle_s2,1,0,melee,S1,s2_g1,0\nbattle_s2,2,0,melee,S1,s2_g1,0\n" +
-            "boss_s3,1,0,melee,S1,s3_g1,0\nboss_s3,2,0,melee,S1,s3_g1,0\n";
+            "first,1,0,melee,S1,first_g1,0\nfirst,2,0,melee,S1,first_g1,0\nbattle_a,1,0,melee,S1,battle_a_g1,0\nbattle_b,1,0,melee,S1,battle_b_g1,0\nbattle_c,1,0,melee,S1,battle_c_g1,0\nbattle_a,2,0,melee,S1,battle_a_g1,0\nbattle_b,2,0,melee,S1,battle_b_g1,0\nbattle_c,2,0,melee,S1,battle_c_g1,0\n" +
+            "boss_a,1,0,melee,S1,boss_a_g1,0\nboss_a,2,0,melee,S1,boss_a_g1,0\n";
 
         private static string _waves;
         private HitRandom _random;

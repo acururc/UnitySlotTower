@@ -51358,9 +51358,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnitySlotTower.Runtime::UnitySlotTower.Battle.BattleFieldView
   mapTables:
-  - {fileID: 4900000, guid: b4c2ad0028ff9ff4a9dc633af14cc3fd, type: 3}
-  - {fileID: 4900000, guid: c45907e68810a8241bec2abf2504e4a0, type: 3}
-  - {fileID: 4900000, guid: 5c7b5e4ad9f506b49ade36eaf29cbc13, type: 3}
+  - {fileID: 4900000, guid: 47b66a35c3c214c429544b5d1e4baa81, type: 3}
+  - {fileID: 4900000, guid: c40bebfdb222bd34ebe51ea6ae1ceba6, type: 3}
+  - {fileID: 4900000, guid: dbdc5ac54b67d7e40b2b42cd10d54831, type: 3}
+  - {fileID: 4900000, guid: 00ea076e2d545854fb4630d714adc2fc, type: 3}
+  - {fileID: 4900000, guid: 44a9b43f958575b4781ec0b4f88ffd02, type: 3}
+  - {fileID: 4900000, guid: 275be3b68aff56249903dbf84fd9b901, type: 3}
   pathsTable: {fileID: 4900000, guid: 90f28fb97f36826468ce4a184e7822fa, type: 3}
   groundHeight: 0.1
   highGroundHeight: 0.5
