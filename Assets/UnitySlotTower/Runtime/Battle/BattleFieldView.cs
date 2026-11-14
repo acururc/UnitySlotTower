@@ -8,14 +8,14 @@ namespace UnitySlotTower.Battle
     /// <summary>
     /// 上部の戦闘フィールドの仮表示（T201、plan 2・7章）。マップ CSV のマスを 1 単位の箱で並べ、経路を線で示す。
     /// グリッドの中心をこのオブジェクトの原点に置き、CSV の上の行ほど奥（+z）にする。
-    /// ステージ n のマップは maps/s{n}.csv（T311）。<see cref="Show"/> で表示を差し替える。
+    /// マップは id（maps/&lt;id&gt;.csv）で読み（<see cref="LoadMap"/>）、戦闘マスごとに <see cref="Show"/> で表示を差し替える。
     /// </summary>
     public sealed class BattleFieldView : MonoBehaviour
     {
         private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
 
         [Header("Tables")]
-        [Tooltip("ステージ順のマップ（maps/s1.csv, s2.csv, s3.csv）。最初のマップを起動時に表示する。")]
+        [Tooltip("戦闘マップ（maps/*.csv）。名前がマップ id。最初のマップを起動時に表示する。")]
         [SerializeField] private TextAsset[] mapTables;
         [SerializeField] private TextAsset pathsTable;
 
@@ -72,7 +72,12 @@ namespace UnitySlotTower.Battle
 
                 _paths = CsvParser.Parse(BattleMap.PathsFileName, pathsTable.text);
                 _block = new MaterialPropertyBlock();
-                Show(LoadStageMap(1));
+                if (mapTables == null || mapTables.Length == 0 || mapTables[0] == null)
+                {
+                    throw new InvalidOperationException("マップの表が設定されていない");
+                }
+
+                Show(LoadMap(mapTables[0].name));
             }
             catch (Exception e)
             {
@@ -81,16 +86,18 @@ namespace UnitySlotTower.Battle
             }
         }
 
-        /// <summary>ステージ番号（1 から）のマップを読む。表示は変えない。</summary>
-        public BattleMap LoadStageMap(int stage)
+        /// <summary>マップ id（maps/&lt;id&gt;.csv のファイル名）のマップを読む。表示は変えない。</summary>
+        public BattleMap LoadMap(string id)
         {
-            var index = stage - 1;
-            if (mapTables == null || index < 0 || index >= mapTables.Length || mapTables[index] == null)
+            foreach (var table in mapTables)
             {
-                throw new InvalidOperationException($"ステージ {stage} のマップの表が設定されていない");
+                if (table != null && table.name == id)
+                {
+                    return BattleMap.Load(id, table.text, _paths);
+                }
             }
 
-            return BattleMap.Load(WaveSchedule.MapId(stage), mapTables[index].text, _paths);
+            throw new InvalidOperationException($"マップ '{id}' の表が設定されていない");
         }
 
         /// <summary>マップの表示を作り直す（ステージの切り替え）。</summary>

@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
+using UnitySlotTower.Core.Run;
 using UnitySlotTower.Tests.EditMode.Data;
 
 namespace UnitySlotTower.Tests.EditMode.Battle
@@ -38,14 +39,14 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("FR-010: ステージ番号とウェーブ番号の両方が合う行だけを読む")]
-        public void Only_Rows_Of_The_Stage_And_Wave_Are_Read()
+        [Description("FR-010: 戦闘マスの id とウェーブ番号の両方が合う行だけを読む")]
+        public void Only_Rows_Of_The_Encounter_And_Wave_Are_Read()
         {
-            var wave = BattleFixtures.LoadStageWave(
-                "1,2,0,melee,S1,g,0\n2,1,0,ranged,S1,g,0\n2,2,0,air,S2,a,0\n2,2,1,rich,S1,g,0\n", 2, 2);
+            var wave = BattleFixtures.LoadEncounterWave(
+                "a,2,0,melee,S1,g,0\nb,1,0,ranged,S1,g,0\nb,2,0,air,S2,a,0\nb,2,1,rich,S1,g,0\n", "b", 2);
 
-            Assert.That((wave.Stage, wave.Wave, string.Join(",", wave.Spawns.Select(s => s.Enemy.Id))),
-                Is.EqualTo((2, 2, "air,rich")));
+            Assert.That((wave.EncounterId, wave.Wave, string.Join(",", wave.Spawns.Select(s => s.Enemy.Id))),
+                Is.EqualTo(("b", 2, "air,rich")));
         }
 
         [Test]
@@ -98,27 +99,27 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("FR-010: 3ステージ × 2ウェーブのどれも、そのステージのマップで敵が出る")]
-        public void Project_Every_Stage_Wave_Loads_On_Its_Map()
+        [Description("FR-010: 出現表のどの戦闘マスも、2ウェーブともそのマップで敵が出る")]
+        public void Project_Every_Encounter_Wave_Loads_On_Its_Map()
         {
             var tables = TablePaths.ReadAll();
             var paths = CsvParser.Parse(BattleMap.PathsFileName, tables[BattleMap.PathsFileName]);
             var waves = CsvParser.Parse(WaveSchedule.FileName, tables[WaveSchedule.FileName]);
             var enemies = EnemyTable.Load(CsvParser.Parse(EnemyTable.FileName, tables[EnemyTable.FileName]));
-            var counts = new int[WaveSchedule.StageCount * WaveSchedule.WavesPerStage];
+            var encounters = EncounterTable.Load(CsvParser.Parse(EncounterTable.FileName, tables[EncounterTable.FileName]));
+            var counts = new System.Collections.Generic.List<int>();
 
-            for (var stage = 1; stage <= WaveSchedule.StageCount; stage++)
+            foreach (var encounter in encounters.All)
             {
-                var id = WaveSchedule.MapId(stage);
-                var map = BattleMap.Load(id, tables[BattleMap.MapFileName(id)], paths);
-                for (var wave = 1; wave <= WaveSchedule.WavesPerStage; wave++)
+                var map = BattleMap.Load(encounter.MapId, tables[BattleMap.MapFileName(encounter.MapId)], paths);
+                for (var wave = 1; wave <= WaveSchedule.WavesPerEncounter; wave++)
                 {
-                    counts[(stage - 1) * WaveSchedule.WavesPerStage + wave - 1] =
-                        WaveSchedule.Load(waves, stage, wave, map, enemies).Spawns.Count;
+                    counts.Add(WaveSchedule.Load(waves, encounter.Id, wave, map, enemies).Spawns.Count);
                 }
             }
 
-            Assert.That((counts.Length, counts.All(c => c > 0)), Is.EqualTo((6, true)));
+            Assert.That((counts.Count, counts.All(c => c > 0)),
+                Is.EqualTo((encounters.All.Count * WaveSchedule.WavesPerEncounter, true)));
         }
     }
 }

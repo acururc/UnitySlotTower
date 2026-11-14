@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnitySlotTower.Core.Battle;
+using UnitySlotTower.Core.Run;
 using UnitySlotTower.Core.Slot;
 
 namespace UnitySlotTower.Core.Data
@@ -87,9 +88,18 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Int("step", 1, 1000),
                 ColumnRule.Int("x", 0, 99),
                 ColumnRule.Int("y", 0, 99)),
+            new TableSchema(EncounterTable.FileName, new[] { "id" },
+                ColumnRule.Id("id"),
+                ColumnRule.Enum("kind", EncounterTable.KindIds),
+                ColumnRule.Id("map_id"),
+                ColumnRule.Int("min_floor", 1, 99),
+                ColumnRule.Int("max_floor", 1, 99),
+                ColumnRule.Int("fixed_spins", 0, 100),
+                ColumnRule.Int("reward_money", 0, 100000),
+                ColumnRule.Int("reward_coins", 0, 100000)),
             new TableSchema("waves.csv", null,
-                ColumnRule.Int("stage", 1, WaveSchedule.StageCount),
-                ColumnRule.Int("wave", 1, WaveSchedule.WavesPerStage),
+                ColumnRule.Id("encounter_id"),
+                ColumnRule.Int("wave", 1, WaveSchedule.WavesPerEncounter),
                 ColumnRule.Float("time", 0, 3600),
                 ColumnRule.Id("enemy_id"),
                 ColumnRule.Id("spawn"),
@@ -135,13 +145,17 @@ namespace UnitySlotTower.Core.Data
                 }
             }
 
+            // 検証するマップは出現表（encounters.csv）が使うもの（plan 16.6）。
             var maps = new List<string>();
-            for (var i = 1; i <= WaveSchedule.StageCount; i++)
+            if (tables.TryGetValue(EncounterTable.FileName, out var encounterRows))
             {
-                var name = WaveSchedule.MapId(i);
-                if (ValidateMap(files, $"maps/{name}.csv", report))
+                foreach (var row in encounterRows.Rows)
                 {
-                    maps.Add(name);
+                    var name = row.Get("map_id");
+                    if (!maps.Contains(name) && ValidateMap(files, BattleMap.MapFileName(name), report))
+                    {
+                        maps.Add(name);
+                    }
                 }
             }
 
@@ -152,13 +166,15 @@ namespace UnitySlotTower.Core.Data
 
             TableValidator.ValidateReference(tables["unit_ranges.csv"], "unit_id", tables["units.csv"], "id", report);
             TableValidator.ValidateReference(tables["unit_upgrades.csv"], "unit_id", tables["units.csv"], "id", report);
+            TableValidator.ValidateReference(tables["waves.csv"], "encounter_id", tables[EncounterTable.FileName], "id",
+                report);
             TableValidator.ValidateReference(tables["waves.csv"], "enemy_id", tables["enemies.csv"], "id", report);
             TableValidator.ValidateReference(tables["waves.csv"], "path_id", tables["map_paths.csv"], "path_id", report);
             ValidateMapIds(tables["map_paths.csv"], maps, report);
 
             TableValidator.ValidatePathContinuity(tables["map_paths.csv"], report);
             var battleMaps = ValidateMapPaths(files, tables["map_paths.csv"], maps, report);
-            ValidateWaves(tables["waves.csv"], tables["enemies.csv"], battleMaps, report);
+            ValidateWaves(tables["waves.csv"], tables[EncounterTable.FileName], tables["enemies.csv"], battleMaps, report);
             ValidateSlotPatterns(tables[SlotPatterns.FileName], report);
             ValidateSlotReels(tables[SlotReels.FileName], report);
             TableValidator.ValidateReference(tables[SkillTable.FileName], "unit_id", tables["units.csv"], "id", report);
@@ -327,16 +343,18 @@ namespace UnitySlotTower.Core.Data
         }
 
         /// <summary>
-        /// ステージ n の各ウェーブの行が、マップ s{n} の経路・出現口・空中フラグと合うかを <see cref="WaveSchedule"/> で確かめる。
+        /// 各戦闘マス（encounters.csv）の各ウェーブの行が、そのマップの経路・出現口・空中フラグと合うかを <see cref="WaveSchedule"/> で確かめる。
         /// 敵のいないウェーブもエラーにする。
         /// </summary>
-        private static void ValidateWaves(CsvTable waves, CsvTable enemyTable, Dictionary<string, BattleMap> maps,
-            ValidationReport report)
+        private static void ValidateWaves(CsvTable waves, CsvTable encounterTable, CsvTable enemyTable,
+            Dictionary<string, BattleMap> maps, ValidationReport report)
         {
             EnemyTable enemies;
+            EncounterTable encounters;
             try
             {
                 enemies = EnemyTable.Load(enemyTable);
+                encounters = EncounterTable.Load(encounterTable);
             }
             catch (CsvFormatException ex)
             {
@@ -344,20 +362,21 @@ namespace UnitySlotTower.Core.Data
                 return;
             }
 
-            for (var stage = 1; stage <= WaveSchedule.StageCount; stage++)
+            foreach (var encounter in encounters.All)
             {
-                if (!maps.TryGetValue(WaveSchedule.MapId(stage), out var map))
+                if (!maps.TryGetValue(encounter.MapId, out var map))
                 {
                     continue;
                 }
 
-                for (var wave = 1; wave <= WaveSchedule.WavesPerStage; wave++)
+                for (var wave = 1; wave <= WaveSchedule.WavesPerEncounter; wave++)
                 {
                     try
                     {
-                        if (WaveSchedule.Load(waves, stage, wave, map, enemies).Spawns.Count == 0)
+                        if (WaveSchedule.Load(waves, encounter.Id, wave, map, enemies).Spawns.Count == 0)
                         {
-                            report.Add(new CsvError(waves.FileName, 0, 0, $"ステージ {stage} のウェーブ {wave} の敵がない"));
+                            report.Add(new CsvError(waves.FileName, 0, 0,
+                                $"戦闘マス '{encounter.Id}' のウェーブ {wave} の敵がない"));
                         }
                     }
                     catch (CsvFormatException ex)

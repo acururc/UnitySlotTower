@@ -11,9 +11,10 @@ using UnitySlotTower.Slot;
 namespace UnitySlotTower.Battle
 {
     /// <summary>
-    /// ステージとウェーブの進行（<see cref="WaveRun"/>）を組み立てて実時間で進める。財布はスロット筐体と共有する（T301）。
+    /// 戦闘マスの進行（<see cref="BattleNodeRun"/>）を組み立てて実時間で進める。コインはスロット筐体と共有する（T301）。
     /// スロット操作中も止まらない（FR-011）。戦闘は ▶（<see cref="StartWave"/>）で始める。autoStart なら準備に入るとすぐ始める。
-    /// ステージ n はマップ s{n} で戦い、ステージが始まるとフィールドの表示を差し替える（T311）。
+    /// ルートと流れ（T350）までのつなぎとして、<see cref="Sequence"/> の順（最初の戦闘 → 通常 → ボス）に戦闘マスを続け、
+    /// 戦闘マスが始まるとフィールドの表示をそのマップに差し替える。
     /// </summary>
     [DefaultExecutionOrder(-10)]
     public sealed class BattleController : MonoBehaviour
@@ -25,6 +26,7 @@ namespace UnitySlotTower.Battle
         [SerializeField] private TextAsset unitUpgradesTable;
         [SerializeField] private TextAsset enemiesTable;
         [SerializeField] private TextAsset wavesTable;
+        [SerializeField] private TextAsset encountersTable;
 
         [SerializeField] private BattleFieldView fieldView;
         [Tooltip("所持コインを共有するスロット筐体。")]
@@ -32,14 +34,30 @@ namespace UnitySlotTower.Battle
         [Tooltip("準備に入ったらすぐ戦闘を始める（確認用。通常は ▶ で始める）。")]
         [SerializeField] private bool autoStart;
 
+        /// <summary>T350 までのつなぎで続ける戦闘マスの種類（i 番目が i+1 階）。</summary>
+        private static readonly EncounterKind[] Sequence = { EncounterKind.First, EncounterKind.Battle, EncounterKind.Boss };
+
         private SimulationClock _clock;
+        private GameConfig _config;
+        private RunState _state;
+        private EncounterTable _encounters;
+        private EnemyTable _enemies;
+        private CsvTable _waves;
+        private IRandom _random;
 
         public UnitTable Units { get; private set; }
 
         /// <summary>味方の攻撃範囲（一時停止中の説明の範囲図にも使う: T404）。</summary>
         public UnitRanges Ranges { get; private set; }
 
-        public WaveRun Run { get; private set; }
+        /// <summary>いまの戦闘マス。戦闘マスが変わると別のものになる。</summary>
+        public BattleNodeRun Run { get; private set; }
+
+        /// <summary>いまの戦闘マスの階（1 から）。</summary>
+        public int Floor { get; private set; }
+
+        /// <summary>新しい戦闘マスの準備に入った（最初の戦闘マスは Start の中なので起きない）。</summary>
+        public event Action NodeBegan;
         public CoinWallet Wallet => Run?.Wallet;
         public UnitSummoner Summoner => Run?.Summoner;
         public UnitUpgrades Upgrades => Run?.Upgrades;
@@ -65,21 +83,18 @@ namespace UnitySlotTower.Battle
 
             try
             {
-                var config = GameConfig.Load(Parse(GameConfig.FileName, gameConfigTable));
+                _config = GameConfig.Load(Parse(GameConfig.FileName, gameConfigTable));
                 Units = UnitTable.Load(Parse(UnitTable.FileName, unitsTable));
                 Ranges = UnitRanges.Load(Parse(UnitRanges.FileName, unitRangesTable), Units);
                 var upgradeTable = UnitUpgradeTable.Load(Parse(UnitUpgradeTable.FileName, unitUpgradesTable), Units);
-                var enemies = EnemyTable.Load(Parse(EnemyTable.FileName, enemiesTable));
-                var waves = Parse(WaveSchedule.FileName, wavesTable);
-                // コインは筐体と共有し、召喚・強化は所持金で払う（plan 16.2）。ルートと流れ（T350）までは戦闘ごとに作る。
-                var state = new RunState(config, upgradeTable, slotCabinet.Rules, slotCabinet.Setting);
-                slotCabinet.UseWallet(state.Coins);
-                Run = new WaveRun(config, Units, Ranges, state,
-                    WaveSchedule.StageCount, WaveSchedule.WavesPerStage,
-                    stage => stage == 1 ? fieldView.Map : fieldView.LoadStageMap(stage),
-                    (stage, wave, map) => WaveSchedule.Load(waves, stage, wave, map, enemies),
-                    new SeededRandom((ulong)DateTime.UtcNow.Ticks));
-                Run.StageBegan += OnStageBegan;
+                _enemies = EnemyTable.Load(Parse(EnemyTable.FileName, enemiesTable));
+                _waves = Parse(WaveSchedule.FileName, wavesTable);
+                _encounters = EncounterTable.Load(Parse(EncounterTable.FileName, encountersTable));
+                _random = new SeededRandom((ulong)DateTime.UtcNow.Ticks);
+                // コインは筐体と共有し、召喚・強化は所持金で払う（plan 16.2）。RunState はルートと流れ（T350）で RunController に移す。
+                _state = new RunState(_config, upgradeTable, slotCabinet.Rules, slotCabinet.Setting);
+                slotCabinet.UseWallet(_state.Coins);
+                BeginNode(1);
                 slotCabinet.Aligned += OnSlotAligned;
             }
             catch (Exception e)
@@ -99,7 +114,7 @@ namespace UnitySlotTower.Battle
         public bool IsCustomizing => false;
 
         /// <summary>クリア（最終ウェーブを終えた）かゲームオーバーで、ゲームが終わったか（リザルトを出す: T402）。</summary>
-        public bool IsFinished => Run != null && (Run.Phase == WavePhase.Completed || Run.Phase == WavePhase.GameOver);
+        public bool IsFinished => Run != null && (Run.IsRunCleared || Run.Phase == WavePhase.GameOver);
 
         /// <summary>
         /// 戦闘側の操作（配置・撤退・強化・▶）を受け付けないか。一時停止中・ゲーム終了後。
@@ -159,24 +174,27 @@ namespace UnitySlotTower.Battle
                 Time.timeScale = 1f;
             }
 
-            if (Run != null)
+            if (Run != null && slotCabinet != null)
             {
-                Run.StageBegan -= OnStageBegan;
-                if (slotCabinet != null)
-                {
-                    slotCabinet.Aligned -= OnSlotAligned;
-                }
+                slotCabinet.Aligned -= OnSlotAligned;
             }
         }
 
-        // ステージ1 の StageBegan は WaveRun を作る中で呼ばれ、まだ購読していない（開始時のカスタムは Start で開く）。
-        // ステージ間ではカスタムを開かない（D-48、2026-11-04）。
-        private void OnStageBegan()
+        /// <summary>
+        /// floor 階の戦闘マスを出現表から選んで準備に入り、フィールドの表示をそのマップに差し替える。
+        /// 回数固定（<see cref="Encounter.FixedSpins"/>）を筐体へ渡すのは筐体の作り直し（T348）で行う。
+        /// </summary>
+        private void BeginNode(int floor)
         {
-            fieldView.Show(Run.Map);
+            var encounter = _encounters.Pick(Sequence[floor - 1], floor, _random);
+            var map = fieldView.LoadMap(encounter.MapId);
+            Floor = floor;
+            Run = new BattleNodeRun(_config, Units, Ranges, _state, encounter, map,
+                wave => WaveSchedule.Load(_waves, encounter.Id, wave, map, _enemies), _random);
+            fieldView.Show(map);
         }
 
-        // 揃った図柄の効果を戦闘へ渡す（FR-042。T342 までのつなぎはバーの攻撃力アップだけ）。
+        // 揃った図柄の効果を戦闘へ渡す（FR-042）。
         private void OnSlotAligned(SlotSymbol symbol) => Run.ApplySlot(symbol);
 
         private void Update()
@@ -187,6 +205,12 @@ namespace UnitySlotTower.Battle
             }
 
             Run.Advance(_clock.Advance(IsHeldByGuide ? 0d : Time.deltaTime));
+            if (Run.Phase == WavePhase.Completed && !Run.IsRunCleared && Floor < Sequence.Length)
+            {
+                BeginNode(Floor + 1);
+                NodeBegan?.Invoke();
+            }
+
             if (IsFinished && !slotCabinet.InputLocked)
             {
                 UpdateSlotLock();

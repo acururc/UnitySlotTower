@@ -24,18 +24,18 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
         // ゲームオーバー用: S1-W1 に近接の敵 12 体（ライフ 10 より多い）。
         private const string LosingWaves =
-            "stage,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "1,1,0,melee,S1,s1_g1,0\n1,1,1,melee,S1,s1_g1,0\n1,1,2,melee,S1,s1_g1,0\n1,1,3,melee,S1,s1_g1,0\n" +
-            "1,1,4,melee,S1,s1_g1,0\n1,1,5,melee,S1,s1_g1,0\n1,1,6,melee,S1,s1_g1,0\n1,1,7,melee,S1,s1_g1,0\n" +
-            "1,1,8,melee,S1,s1_g1,0\n1,1,9,melee,S1,s1_g1,0\n1,1,10,melee,S1,s1_g1,0\n1,1,11,melee,S1,s1_g1,0\n" +
-            "1,2,0,melee,S1,s1_g1,0\n2,1,0,melee,S1,s2_g1,0\n2,2,0,melee,S1,s2_g1,0\n" +
-            "3,1,0,melee,S1,s3_g1,0\n3,2,0,melee,S1,s3_g1,0\n";
+            "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
+            "first_s1,1,0,melee,S1,s1_g1,0\nfirst_s1,1,1,melee,S1,s1_g1,0\nfirst_s1,1,2,melee,S1,s1_g1,0\nfirst_s1,1,3,melee,S1,s1_g1,0\n" +
+            "first_s1,1,4,melee,S1,s1_g1,0\nfirst_s1,1,5,melee,S1,s1_g1,0\nfirst_s1,1,6,melee,S1,s1_g1,0\nfirst_s1,1,7,melee,S1,s1_g1,0\n" +
+            "first_s1,1,8,melee,S1,s1_g1,0\nfirst_s1,1,9,melee,S1,s1_g1,0\nfirst_s1,1,10,melee,S1,s1_g1,0\nfirst_s1,1,11,melee,S1,s1_g1,0\n" +
+            "first_s1,2,0,melee,S1,s1_g1,0\nbattle_s2,1,0,melee,S1,s2_g1,0\nbattle_s2,2,0,melee,S1,s2_g1,0\n" +
+            "boss_s3,1,0,melee,S1,s3_g1,0\nboss_s3,2,0,melee,S1,s3_g1,0\n";
 
         // クリア用: 全6ウェーブとも近接の敵1体だけ。
         private const string WinningWaves =
-            "stage,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "1,1,0,melee,S1,s1_g1,0\n1,2,0,melee,S1,s1_g1,0\n2,1,0,melee,S1,s2_g1,0\n2,2,0,melee,S1,s2_g1,0\n" +
-            "3,1,0,melee,S1,s3_g1,0\n3,2,0,melee,S1,s3_g1,0\n";
+            "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
+            "first_s1,1,0,melee,S1,s1_g1,0\nfirst_s1,2,0,melee,S1,s1_g1,0\nbattle_s2,1,0,melee,S1,s2_g1,0\nbattle_s2,2,0,melee,S1,s2_g1,0\n" +
+            "boss_s3,1,0,melee,S1,s3_g1,0\nboss_s3,2,0,melee,S1,s3_g1,0\n";
 
         private static string _waves;
         private HitRandom _random;

@@ -84,12 +84,13 @@ namespace UnitySlotTower.Flow
             Open(run);
         }
 
-        private void Open(WaveRun run)
+        private void Open(BattleNodeRun run)
         {
-            IsClear = run.Phase == WavePhase.Completed;
+            IsClear = run.IsRunCleared;
             clearIcon.SetActive(IsClear);
             gameOverIcon.SetActive(!IsClear);
-            waveText.SetText("{0}-{1}", (float)run.Stage, run.Wave);
+            // 到達した階とウェーブ（到達階の表示への作り直しは T350）。
+            waveText.SetText("{0}-{1}", (float)battle.Floor, run.Wave);
             coinsText.SetText("{0}", (float)run.Wallet.Coins);
             _openedFrame = Time.frameCount;
             Select(0);

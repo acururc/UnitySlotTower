@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
+using UnitySlotTower.Core.Run;
 using UnitySlotTower.Slot;
 
 namespace UnitySlotTower.Editor.Setup
@@ -53,6 +54,7 @@ namespace UnitySlotTower.Editor.Setup
             Assign(battle, "unitUpgradesTable", Table(UnitUpgradeTable.FileName));
             Assign(battle, "enemiesTable", Table(EnemyTable.FileName));
             Assign(battle, "wavesTable", Table(WaveSchedule.FileName));
+            Assign(battle, "encountersTable", Table(EncounterTable.FileName));
             Assign(battle, "fieldView", field);
             Assign(battle, "slotCabinet", Object.FindAnyObjectByType<SlotCabinet>(FindObjectsInactive.Include));
 
@@ -87,6 +89,23 @@ namespace UnitySlotTower.Editor.Setup
             EditorSceneManager.MarkSceneDirty(field.gameObject.scene);
             EditorSceneManager.SaveScene(field.gameObject.scene);
             Debug.Log("[SlotTower Setup] 配置操作と操作バーの仮アイコンを作成した。");
+        }
+
+        /// <summary>既にある戦闘の進行に、後から足した表（encounters.csv: T345）を設定してシーンを保存する。</summary>
+        [MenuItem("Tools/UnitySlotTower/Setup/Assign Battle Tables")]
+        private static void AssignBattleTables()
+        {
+            var battle = Object.FindAnyObjectByType<BattleController>(FindObjectsInactive.Include);
+            if (battle == null)
+            {
+                Debug.LogError("[SlotTower Setup] 戦闘の進行（BattleController）が見つからない。");
+                return;
+            }
+
+            Assign(battle, "encountersTable", Table(EncounterTable.FileName));
+            EditorSceneManager.MarkSceneDirty(battle.gameObject.scene);
+            EditorSceneManager.SaveScene(battle.gameObject.scene);
+            Debug.Log("[SlotTower Setup] 戦闘の進行に出現表を設定した。");
         }
 
         private static TextAsset Table(string fileName) => AssetDatabase.LoadAssetAtPath<TextAsset>(TableFolder + fileName);

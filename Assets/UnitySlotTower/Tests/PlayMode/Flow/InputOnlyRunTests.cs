@@ -22,18 +22,18 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
     {
         // S1-W1 は近接の敵1体だけにして、1ウェーブを短く終わらせる。
         private const string ShortWaves =
-            "stage,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "1,1,0,melee,S1,s1_g1,0\n1,2,0,melee,S1,s1_g1,0\n2,1,0,melee,S1,s2_g1,0\n2,2,0,melee,S1,s2_g1,0\n" +
-            "3,1,0,melee,S1,s3_g1,0\n3,2,0,melee,S1,s3_g1,0\n";
+            "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
+            "first_s1,1,0,melee,S1,s1_g1,0\nfirst_s1,2,0,melee,S1,s1_g1,0\nbattle_s2,1,0,melee,S1,s2_g1,0\nbattle_s2,2,0,melee,S1,s2_g1,0\n" +
+            "boss_s3,1,0,melee,S1,s3_g1,0\nboss_s3,2,0,melee,S1,s3_g1,0\n";
 
         // ゲームオーバー用: S1-W1 に近接の敵 12 体（ライフ 10 より多い）。味方を置かないので全員ゴールに着く。
         private const string LosingWaves =
-            "stage,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "1,1,0,melee,S1,s1_g1,0\n1,1,1,melee,S1,s1_g1,0\n1,1,2,melee,S1,s1_g1,0\n1,1,3,melee,S1,s1_g1,0\n" +
-            "1,1,4,melee,S1,s1_g1,0\n1,1,5,melee,S1,s1_g1,0\n1,1,6,melee,S1,s1_g1,0\n1,1,7,melee,S1,s1_g1,0\n" +
-            "1,1,8,melee,S1,s1_g1,0\n1,1,9,melee,S1,s1_g1,0\n1,1,10,melee,S1,s1_g1,0\n1,1,11,melee,S1,s1_g1,0\n" +
-            "1,2,0,melee,S1,s1_g1,0\n2,1,0,melee,S1,s2_g1,0\n2,2,0,melee,S1,s2_g1,0\n" +
-            "3,1,0,melee,S1,s3_g1,0\n3,2,0,melee,S1,s3_g1,0\n";
+            "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
+            "first_s1,1,0,melee,S1,s1_g1,0\nfirst_s1,1,1,melee,S1,s1_g1,0\nfirst_s1,1,2,melee,S1,s1_g1,0\nfirst_s1,1,3,melee,S1,s1_g1,0\n" +
+            "first_s1,1,4,melee,S1,s1_g1,0\nfirst_s1,1,5,melee,S1,s1_g1,0\nfirst_s1,1,6,melee,S1,s1_g1,0\nfirst_s1,1,7,melee,S1,s1_g1,0\n" +
+            "first_s1,1,8,melee,S1,s1_g1,0\nfirst_s1,1,9,melee,S1,s1_g1,0\nfirst_s1,1,10,melee,S1,s1_g1,0\nfirst_s1,1,11,melee,S1,s1_g1,0\n" +
+            "first_s1,2,0,melee,S1,s1_g1,0\nbattle_s2,1,0,melee,S1,s2_g1,0\nbattle_s2,2,0,melee,S1,s2_g1,0\n" +
+            "boss_s3,1,0,melee,S1,s3_g1,0\nboss_s3,2,0,melee,S1,s3_g1,0\n";
 
         // テスト中は Game シーンを読むたびに差し替える（リトライ後も同じ表）。
         private static string _waves;
@@ -254,7 +254,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
 
             yield return WaitForGame();
-            Assert.That((_battle != before, _battle.Run.Stage, _battle.Run.Wave),
+            Assert.That((_battle != before, _battle.Floor, _battle.Run.Wave),
                 Is.EqualTo((true, 1, 1)), "↻ のクリックでリトライしない");
 
             yield return LoseTheGame();
@@ -321,7 +321,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
 
             Time.timeScale = 1f;
-            Assert.That((_battle.Run.Stage, _battle.Run.Wave, _battle.Run.Phase), Is.EqualTo((1, 2, WavePhase.Preparing)),
+            Assert.That((_battle.Floor, _battle.Run.Wave, _battle.Run.Phase), Is.EqualTo((1, 2, WavePhase.Preparing)),
                 "1ウェーブを終えて次の準備に進まない");
         }
 

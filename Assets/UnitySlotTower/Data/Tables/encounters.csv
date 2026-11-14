@@ -1,0 +1,4 @@
+﻿id,kind,map_id,min_floor,max_floor,fixed_spins,reward_money,reward_coins
+first_s1,first,s1,1,1,6,10,3
+battle_s2,battle,s2,2,7,0,10,3
+boss_s3,boss,s3,1,99,0,0,0

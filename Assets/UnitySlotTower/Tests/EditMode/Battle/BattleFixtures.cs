@@ -78,7 +78,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         public static SkillTable LoadSkills(string csv = Skills) =>
             SkillTable.Load(CsvParser.Parse(SkillTable.FileName, csv));
 
-        public const string WavesHeader ="stage,wave,time,enemy_id,spawn,path_id,is_boss\n";
+        public const string WavesHeader ="encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n";
 
         public static BattleMap LoadMap() =>
             BattleMap.Load("m", Map, CsvParser.Parse(BattleMap.PathsFileName, Paths));
@@ -93,13 +93,13 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         public static UnitUpgradeTable LoadUpgrades(string csv = Upgrades) =>
             UnitUpgradeTable.Load(CsvParser.Parse(UnitUpgradeTable.FileName, csv), LoadUnits());
 
-        /// <summary>ステージ1のウェーブ。行は stage 列を省いて書く（wave,time,enemy_id,spawn,path_id,is_boss）。</summary>
+        /// <summary>戦闘マス "e" のウェーブ。行は encounter_id 列を省いて書く（wave,time,enemy_id,spawn,path_id,is_boss）。</summary>
         public static WaveSchedule LoadWave(string rows, int wave = 1) =>
-            LoadStageWave(Regex.Replace(rows, "^(?=.)", "1,", RegexOptions.Multiline), 1, wave);
+            LoadEncounterWave(Regex.Replace(rows, "^(?=.)", "e,", RegexOptions.Multiline), "e", wave);
 
-        /// <summary>行は stage 列から書く。</summary>
-        public static WaveSchedule LoadStageWave(string rows, int stage, int wave) =>
-            WaveSchedule.Load(CsvParser.Parse(WaveSchedule.FileName, WavesHeader + rows), stage, wave, LoadMap(),
+        /// <summary>行は encounter_id 列から書く。</summary>
+        public static WaveSchedule LoadEncounterWave(string rows, string encounterId, int wave) =>
+            WaveSchedule.Load(CsvParser.Parse(WaveSchedule.FileName, WavesHeader + rows), encounterId, wave, LoadMap(),
                 LoadEnemies());
 
         /// <summary>既定はライフ10・シード1の戦闘。</summary>

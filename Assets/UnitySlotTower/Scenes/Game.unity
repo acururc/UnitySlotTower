@@ -51424,6 +51424,7 @@ MonoBehaviour:
   unitUpgradesTable: {fileID: 4900000, guid: 9889e692075915d48ba1cc06d6e744a4, type: 3}
   enemiesTable: {fileID: 4900000, guid: bac7ea120bee583418e621197ec22cb5, type: 3}
   wavesTable: {fileID: 4900000, guid: 16fe09eb21bd7ef4f923eb9f40a16d3d, type: 3}
+  encountersTable: {fileID: 4900000, guid: d6b23010218bb954a969dff478239782, type: 3}
   fieldView: {fileID: 1813959773}
   slotCabinet: {fileID: 83309650}
   autoStart: 0

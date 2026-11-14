@@ -66,11 +66,11 @@ namespace UnitySlotTower.Battle
 
             SetNumber(lifeText, run.Field.Life, ref _shownLife);
             SetNumber(coinText, run.Wallet.Coins, ref _shownCoins);
-            if (run.Stage != _shownStage || run.Wave != _shownWave)
+            if (battle.Floor != _shownStage || run.Wave != _shownWave)
             {
-                _shownStage = run.Stage;
+                _shownStage = battle.Floor;
                 _shownWave = run.Wave;
-                waveText.SetText("{0}-{1}", (float)run.Stage, run.Wave);
+                waveText.SetText("{0}-{1}", (float)battle.Floor, run.Wave);
             }
 
             // 操作バーの作り直し（T349）までのつなぎ: 攻撃力の欄にバーの上がり幅（%）を出す。攻撃速度アップはなくなったので常に 0。

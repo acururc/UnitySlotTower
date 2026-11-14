@@ -23,30 +23,29 @@ namespace UnitySlotTower.Core.Battle
     }
 
     /// <summary>
-    /// 1 ウェーブ分の出現予定（FR-010、plan 6・7章）。ゲームは <see cref="StageCount"/> ステージ × <see cref="WavesPerStage"/> ウェーブで、
-    /// ステージ n はマップ s{n} で戦う。
+    /// 1 ウェーブ分の出現予定（FR-010、plan 16.6）。戦闘マス（encounters.csv の id）ごとに <see cref="WavesPerEncounter"/> ウェーブで、
+    /// 同じマップで続けて戦う。
     /// </summary>
     public sealed class WaveSchedule
     {
         public const string FileName = "waves.csv";
-        public const int StageCount = 3;
-        public const int WavesPerStage = 2;
+
+        /// <summary>1つの戦闘マスのウェーブ数。</summary>
+        public const int WavesPerEncounter = 2;
 
         private readonly List<WaveSpawn> _spawns = new List<WaveSpawn>();
 
-        private WaveSchedule(int stage, int wave)
+        private WaveSchedule(string encounterId, int wave)
         {
-            Stage = stage;
+            EncounterId = encounterId;
             Wave = wave;
         }
 
-        public int Stage { get; }
+        /// <summary>encounters.csv の id。</summary>
+        public string EncounterId { get; }
 
-        /// <summary>ステージ内のウェーブ番号（1 から）。</summary>
+        /// <summary>戦闘マス内のウェーブ番号（1 から）。</summary>
         public int Wave { get; }
-
-        /// <summary>ステージ n のマップの id。</summary>
-        public static string MapId(int stage) => $"s{stage}";
 
         /// <summary>出現時刻の早い順（同時刻は CSV の行順）。</summary>
         public IReadOnlyList<WaveSpawn> Spawns => _spawns;
@@ -55,12 +54,12 @@ namespace UnitySlotTower.Core.Battle
         /// 不正な行（未知の敵・マップにない経路・出現口の食い違い・空中フラグの食い違い）は
         /// ファイル名・行・列つきの <see cref="CsvFormatException"/> にする。
         /// </summary>
-        public static WaveSchedule Load(CsvTable table, int stage, int wave, BattleMap map, EnemyTable enemies)
+        public static WaveSchedule Load(CsvTable table, string encounterId, int wave, BattleMap map, EnemyTable enemies)
         {
-            var schedule = new WaveSchedule(stage, wave);
+            var schedule = new WaveSchedule(encounterId, wave);
             foreach (var row in table.Rows)
             {
-                if (row.GetInt("stage") != stage || row.GetInt("wave") != wave)
+                if (row.Get("encounter_id") != encounterId || row.GetInt("wave") != wave)
                 {
                     continue;
                 }

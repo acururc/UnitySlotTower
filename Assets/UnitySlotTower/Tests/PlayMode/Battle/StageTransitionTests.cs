@@ -15,10 +15,10 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
     {
         // どのウェーブも近接の敵1体だけ（S1 は2ウェーブ、S2-W1 まで）。味方を置かないので敵はゴールに着き、ライフ1ずつ減ってウェーブが終わる。
         private const string ShortWaves =
-            "stage,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "1,1,0,melee,S1,s1_g1,0\n" +
-            "1,2,0,melee,S1,s1_g1,0\n" +
-            "2,1,0,melee,S1,s2_g1,0\n";
+            "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
+            "first_s1,1,0,melee,S1,s1_g1,0\n" +
+            "first_s1,2,0,melee,S1,s1_g1,0\n" +
+            "battle_s2,1,0,melee,S1,s2_g1,0\n";
 
         private bool _runInBackground;
         private BattleController _battle;
@@ -72,7 +72,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             // 敵が歩き切るまで速める（1体あたり実時間で約1秒）。
             Time.timeScale = 20f;
             var limit = Time.realtimeSinceStartup + 30f;
-            while (_battle.Run.Stage == 1 && _battle.Run.Phase != WavePhase.GameOver &&
+            while (_battle.Floor == 1 && _battle.Run.Phase != WavePhase.GameOver &&
                    Time.realtimeSinceStartup < limit)
             {
                 _battle.StartWave();
@@ -80,7 +80,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Time.timeScale = 1f;
-            Assert.That((_battle.Run.Stage, _battle.Run.Wave, _battle.Run.Phase),
+            Assert.That((_battle.Floor, _battle.Run.Wave, _battle.Run.Phase),
                 Is.EqualTo((2, 1, WavePhase.Preparing)), "S1 を終えて S2 の準備に入らない");
 
             // 古いマスの Destroy はフレームの終わりに効く。

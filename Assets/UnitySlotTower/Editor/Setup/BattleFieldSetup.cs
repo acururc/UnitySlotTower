@@ -46,18 +46,26 @@ namespace UnitySlotTower.Editor.Setup
             }
 
             AssignTables(field);
-            Debug.Log($"[SlotTower Setup] 戦闘フィールドに S1〜S{WaveSchedule.StageCount} のマップを設定した。");
+            Debug.Log("[SlotTower Setup] 戦闘フィールドに maps/ のマップをすべて設定した。");
         }
 
+        /// <summary>maps/ の CSV をすべて名前順に設定する（マップ id はファイル名。戦闘マスが id で選ぶ: plan 16.6）。</summary>
         private static void AssignTables(BattleFieldView field)
         {
             var serialized = new SerializedObject(field);
             var maps = serialized.FindProperty("mapTables");
-            maps.arraySize = WaveSchedule.StageCount;
-            for (var i = 0; i < WaveSchedule.StageCount; i++)
+            var guids = AssetDatabase.FindAssets("t:TextAsset", new[] { TableFolder + "maps" });
+            var paths = new string[guids.Length];
+            for (var i = 0; i < guids.Length; i++)
             {
-                maps.GetArrayElementAtIndex(i).objectReferenceValue = AssetDatabase.LoadAssetAtPath<TextAsset>(
-                    TableFolder + BattleMap.MapFileName(WaveSchedule.MapId(i + 1)));
+                paths[i] = AssetDatabase.GUIDToAssetPath(guids[i]);
+            }
+
+            System.Array.Sort(paths, System.StringComparer.Ordinal);
+            maps.arraySize = paths.Length;
+            for (var i = 0; i < paths.Length; i++)
+            {
+                maps.GetArrayElementAtIndex(i).objectReferenceValue = AssetDatabase.LoadAssetAtPath<TextAsset>(paths[i]);
             }
 
             serialized.FindProperty("pathsTable").objectReferenceValue =

@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
+using UnitySlotTower.Core.Run;
 using UnitySlotTower.Tests.EditMode.Data;
 
 namespace UnitySlotTower.Tests.EditMode.Battle
@@ -115,33 +116,40 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("FR-010: ボスはステージの最終ウェーブの最後だけ。S1・S2 は中ボス、S3 は最終ボス")]
-        public void Project_Stages_End_With_Their_Boss()
+        [Description("FR-010: ボスは戦闘マスの W2 の最後に1体だけ。ボスマスは最終ボスで終わり、最終ボスはボスマスにだけ出る")]
+        public void Project_Bosses_Appear_Only_At_The_End_Of_Wave_2()
         {
+            // 通常の戦闘マスにボスを出さない決まり（強敵は中ボス）は、出現データを作り直す T347 で確かめる。
             var tables = TablePaths.ReadAll();
             var paths = CsvParser.Parse(BattleMap.PathsFileName, tables[BattleMap.PathsFileName]);
             var waves = CsvParser.Parse(WaveSchedule.FileName, tables[WaveSchedule.FileName]);
+            var encounters = EncounterTable.Load(CsvParser.Parse(EncounterTable.FileName, tables[EncounterTable.FileName]));
             var enemies = ProjectEnemies();
-            var bosses = new List<(int, int, string)>();
-            var lastSpawns = new List<(string, bool)>();
-            for (var stage = 1; stage <= WaveSchedule.StageCount; stage++)
+            var problems = new List<string>();
+            foreach (var encounter in encounters.All)
             {
-                var id = WaveSchedule.MapId(stage);
-                var map = BattleMap.Load(id, tables[BattleMap.MapFileName(id)], paths);
-                for (var wave = 1; wave <= WaveSchedule.WavesPerStage; wave++)
+                var map = BattleMap.Load(encounter.MapId, tables[BattleMap.MapFileName(encounter.MapId)], paths);
+                for (var wave = 1; wave <= WaveSchedule.WavesPerEncounter; wave++)
                 {
-                    var spawns = WaveSchedule.Load(waves, stage, wave, map, enemies).Spawns;
-                    bosses.AddRange(spawns.Where(s => s.IsBoss).Select(s => (stage, wave, s.Enemy.Id)));
-                    if (wave == WaveSchedule.WavesPerStage)
+                    var spawns = WaveSchedule.Load(waves, encounter.Id, wave, map, enemies).Spawns;
+                    for (var i = 0; i < spawns.Count; i++)
                     {
-                        var last = spawns[spawns.Count - 1];
-                        lastSpawns.Add((last.Enemy.Id, last.IsBoss));
+                        var isLast = wave == WaveSchedule.WavesPerEncounter && i == spawns.Count - 1;
+                        if (spawns[i].IsBoss && !isLast)
+                        {
+                            problems.Add($"{encounter.Id} W{wave} の {i + 1} 体目がボス");
+                        }
+
+                        var isFinal = spawns[i].Enemy.Id == "final_boss";
+                        if (isFinal != (isLast && encounter.Kind == EncounterKind.Boss))
+                        {
+                            problems.Add($"{encounter.Id} W{wave} の {i + 1} 体目: 最終ボスの位置が違う");
+                        }
                     }
                 }
             }
 
-            Assert.That(bosses, Is.EqualTo(new[] { (1, 2, "mid_boss"), (2, 2, "mid_boss"), (3, 2, "final_boss") }));
-            Assert.That(lastSpawns, Is.EqualTo(new[] { ("mid_boss", true), ("mid_boss", true), ("final_boss", true) }));
+            Assert.That(problems, Is.Empty);
         }
     }
 }

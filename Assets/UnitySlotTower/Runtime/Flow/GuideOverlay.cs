@@ -109,7 +109,7 @@ namespace UnitySlotTower.Flow
             }
         }
 
-        private GuideObservation Observe(WaveRun run)
+        private GuideObservation Observe(BattleNodeRun run)
         {
             var units = battle.Units.All;
             var field = run.Field.Units;
@@ -168,7 +168,7 @@ namespace UnitySlotTower.Flow
             return false;
         }
 
-        private void Draw(GuideHint hint, WaveRun run, float t)
+        private void Draw(GuideHint hint, BattleNodeRun run, float t)
         {
             var dimmed = hint != GuideHint.ReelCustom;
             SetArrows(false, default);
@@ -346,7 +346,7 @@ namespace UnitySlotTower.Flow
         }
 
         // 選んだ味方を置けるマスのうち、マップ中央に一番近いマス（ポインターを動かしても示す先が動かないようにする）。
-        private static GridPoint PlaceTarget(WaveRun run)
+        private static GridPoint PlaceTarget(BattleNodeRun run)
         {
             var deployment = run.Deployment;
             var cursor = new GridPoint(run.Map.Width / 2, run.Map.Height / 2);
@@ -369,7 +369,7 @@ namespace UnitySlotTower.Flow
             return best;
         }
 
-        private int SelectedSlot(WaveRun run)
+        private int SelectedSlot(BattleNodeRun run)
         {
             var selected = run.Deployment.Selected;
             var units = battle.Units.All;
@@ -384,7 +384,7 @@ namespace UnitySlotTower.Flow
             return 0;
         }
 
-        private static GridPoint FirstUnitCell(WaveRun run)
+        private static GridPoint FirstUnitCell(BattleNodeRun run)
         {
             var units = run.Field.Units;
             for (var i = 0; i < units.Count; i++)
