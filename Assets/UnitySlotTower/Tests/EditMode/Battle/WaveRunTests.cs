@@ -538,5 +538,83 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
             Assert.That((run.Stage, _state.Gauges.Level(SlotSymbol.Green7)), Is.EqualTo((2, 1)));
         }
+
+        private static readonly SkillTable Skills = BattleFixtures.LoadSkills();
+
+        private void FillGauge(SlotSymbol color)
+        {
+            while (!_state.Gauges.IsFull(color))
+            {
+                _state.Gauges.Add(color);
+            }
+        }
+
+        [Test]
+        [Description("AC-023: 満タンで配置1体以上なら発動し、ゲージが0になり、配置中のタンクに効果が付く（準備中でも可）")]
+        public void Full_Gauge_Activates_The_Skill_And_Empties_The_Gauge()
+        {
+            var run = Create();
+            Place(run, "tank", 1, 0);
+            FillGauge(SlotSymbol.Yellow7);
+
+            var result = run.TryActivateSkill(Skills.For(SlotSymbol.Yellow7));
+
+            Assert.That((result, _state.Gauges.Level(SlotSymbol.Yellow7), run.Field.Units[0].SkillStepsLeft),
+                Is.EqualTo((SkillResult.Activated, 0, 600)));
+        }
+
+        [Test]
+        public void Skill_Can_Be_Activated_While_Fighting()
+        {
+            var run = Create();
+            Place(run, "tank", 1, 0);
+            run.Start();
+            run.Advance(10);
+            FillGauge(SlotSymbol.Yellow7);
+
+            Assert.That(run.TryActivateSkill(Skills.For(SlotSymbol.Yellow7)), Is.EqualTo(SkillResult.Activated));
+        }
+
+        [Test]
+        [Description("AC-023: 満タンでなければ発動せず、ゲージも効果も変わらない")]
+        public void Gauge_Not_Full_Refuses_And_Changes_Nothing()
+        {
+            var run = Create();
+            Place(run, "tank", 1, 0);
+            _state.Gauges.Add(SlotSymbol.Yellow7);
+
+            var result = run.TryActivateSkill(Skills.For(SlotSymbol.Yellow7));
+
+            Assert.That((result, _state.Gauges.Level(SlotSymbol.Yellow7), run.Field.Units[0].SkillStepsLeft),
+                Is.EqualTo((SkillResult.NotFull, 1, 0)));
+        }
+
+        [Test]
+        [Description("AC-023: その職が配置されていなければ発動せず、ゲージは満タンのまま")]
+        public void No_Placed_Unit_Refuses_And_Keeps_The_Gauge()
+        {
+            var run = Create();
+            Place(run, "sword", 1, 0);
+            FillGauge(SlotSymbol.Yellow7);
+
+            var result = run.TryActivateSkill(Skills.For(SlotSymbol.Yellow7));
+
+            Assert.That((result, _state.Gauges.IsFull(SlotSymbol.Yellow7)), Is.EqualTo((SkillResult.NoUnits, true)));
+        }
+
+        [Test]
+        [Description("plan 16.4: 戦闘中でない（ゲームオーバー後）なら発動せず、ゲージは満タンのまま")]
+        public void Skill_After_Game_Over_Is_Refused()
+        {
+            var run = Create(life: 1);
+            Place(run, "buffer", 1, 1);
+            PlayWave(run);
+            Assert.That(run.Phase, Is.EqualTo(WavePhase.GameOver), "ゲームオーバーにならない");
+            FillGauge(SlotSymbol.Green7);
+
+            var result = run.TryActivateSkill(Skills.For(SlotSymbol.Green7));
+
+            Assert.That((result, _state.Gauges.IsFull(SlotSymbol.Green7)), Is.EqualTo((SkillResult.NotInBattle, true)));
+        }
     }
 }

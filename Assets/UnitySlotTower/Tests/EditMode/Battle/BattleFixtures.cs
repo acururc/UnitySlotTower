@@ -64,7 +64,21 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             "archer,1,1,1,1,0\narcher,2,1.2,2,1,30\n" +
             "buffer,1,1,1,1,0\nbuffer,2,1.5,1.5,1,30\n";
 
-        public const string WavesHeader = "stage,wave,time,enemy_id,spawn,path_id,is_boss\n";
+        // plan 16.4 の仮値: 黄=タンク 10秒 ブロック+1・被ダメージ×0.5、赤=剣士 即時に範囲の敵へ攻撃力×3、
+        // 青=弓 8秒 攻撃間隔×0.4（÷2.5）、緑=バッファー 10秒 倍率+0.3。
+        public const string SkillsHeader =
+            "color,unit_id,duration,block_add,damage_taken_rate,damage_rate,interval_rate,buff_add\n";
+
+        public const string Skills = SkillsHeader +
+            "red7,sword,0,0,1,3,1,0\n" +
+            "blue7,archer,8,0,1,0,0.4,0\n" +
+            "green7,buffer,10,0,1,0,1,0.3\n" +
+            "yellow7,tank,10,1,0.5,0,1,0\n";
+
+        public static SkillTable LoadSkills(string csv = Skills) =>
+            SkillTable.Load(CsvParser.Parse(SkillTable.FileName, csv));
+
+        public const string WavesHeader ="stage,wave,time,enemy_id,spawn,path_id,is_boss\n";
 
         public static BattleMap LoadMap() =>
             BattleMap.Load("m", Map, CsvParser.Parse(BattleMap.PathsFileName, Paths));

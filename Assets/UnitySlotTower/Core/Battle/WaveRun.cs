@@ -17,6 +17,18 @@ namespace UnitySlotTower.Core.Battle
         GameOver,
     }
 
+    /// <summary><see cref="WaveRun.TryActivateSkill"/> の結果（plan 16.4、AC-023）。</summary>
+    public enum SkillResult
+    {
+        Activated,
+        /// <summary>その色のゲージが満タンでない。</summary>
+        NotFull,
+        /// <summary>その職が1体も配置されていない。</summary>
+        NoUnits,
+        /// <summary>準備中・戦闘中でない（クリア後・ゲームオーバー）。</summary>
+        NotInBattle,
+    }
+
     /// <summary>
     /// ステージとウェーブの進行（FR-010, FR-013〜016、plan 4章）。ステージごとに 準備 → 戦闘 を各ウェーブで繰り返し、
     /// 最後のウェーブを終えるとステージ終了（ライフボーナス・ストック化）→ 次のステージの準備 と進める。
@@ -92,6 +104,31 @@ namespace UnitySlotTower.Core.Battle
                     State.Gauges.Add(symbol);
                     break;
             }
+        }
+
+        /// <summary>
+        /// スキルを発動する（FR-029、AC-023）。準備中・戦闘中で、その色のゲージが満タンで、その職が1体以上配置されているときだけ、
+        /// 配置中の全員に効果を出してゲージを0に戻す。拒否なら何も変えない。一時停止中の拒否は Runtime（T349）。
+        /// </summary>
+        public SkillResult TryActivateSkill(SkillDefinition skill)
+        {
+            if (Phase != WavePhase.Preparing && Phase != WavePhase.Fighting)
+            {
+                return SkillResult.NotInBattle;
+            }
+
+            if (!State.Gauges.IsFull(skill.Color))
+            {
+                return SkillResult.NotFull;
+            }
+
+            if (!Field.ActivateSkill(skill))
+            {
+                return SkillResult.NoUnits;
+            }
+
+            State.Gauges.Clear(skill.Color);
+            return SkillResult.Activated;
         }
 
         /// <summary>いまのステージのマップ。</summary>

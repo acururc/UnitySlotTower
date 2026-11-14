@@ -103,6 +103,15 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Int("reel", 0, SlotReels.ReelCount - 1),
                 ColumnRule.Int("index", 0, SlotReels.ReelLength - 1),
                 ColumnRule.Enum("symbol", SlotSymbols.Ids)),
+            new TableSchema(SkillTable.FileName, new[] { "color" },
+                ColumnRule.Enum("color", SkillTable.ColorIds),
+                ColumnRule.Id("unit_id"),
+                ColumnRule.Float("duration", 0, 60),
+                ColumnRule.Int("block_add", 0, 10),
+                ColumnRule.Float("damage_taken_rate", 0.05, 1),
+                ColumnRule.Float("damage_rate", 0, 10),
+                ColumnRule.Float("interval_rate", 0.1, 1),
+                ColumnRule.Float("buff_add", 0, 5)),
         };
 
         private static readonly HashSet<string> MapTiles = new HashSet<string>
@@ -152,6 +161,8 @@ namespace UnitySlotTower.Core.Data
             ValidateWaves(tables["waves.csv"], tables["enemies.csv"], battleMaps, report);
             ValidateSlotPatterns(tables[SlotPatterns.FileName], report);
             ValidateSlotReels(tables[SlotReels.FileName], report);
+            TableValidator.ValidateReference(tables[SkillTable.FileName], "unit_id", tables["units.csv"], "id", report);
+            ValidateSkills(tables[SkillTable.FileName], report);
             return report;
         }
 
@@ -168,6 +179,19 @@ namespace UnitySlotTower.Core.Data
             var before = report.Errors.Count;
             TableValidator.ValidateKeyValues(table, keys, report);
             return report.Errors.Count == before ? table : null;
+        }
+
+        /// <summary>色7の4色がそろっていることを <see cref="SkillTable"/> で確かめる（plan 16.4）。</summary>
+        private static void ValidateSkills(CsvTable table, ValidationReport report)
+        {
+            try
+            {
+                SkillTable.Load(table);
+            }
+            catch (CsvFormatException ex)
+            {
+                report.Add(ex.Error);
+            }
         }
 
         /// <summary>設定1〜6がそろい、各設定の合計が20であることを <see cref="SlotPatterns"/> で確かめる（D-60）。</summary>

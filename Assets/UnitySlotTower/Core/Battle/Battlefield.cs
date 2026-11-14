@@ -39,11 +39,11 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>
         /// 攻撃に使う攻撃力。基礎×強化（<see cref="BattleUnit.Atk"/>、四捨五入済み）× バッファー × バーを最後に四捨五入する
-        /// （plan 16.4 の掛け順。スキルは T344 でバーの後に足す）。
+        /// （plan 16.4 の掛け順。<paramref name="skillRate"/> はスキルの範囲攻撃の倍率で、バーの後に掛ける）。
         /// </summary>
-        private int EffectiveAtk(BattleUnit unit)
+        private int EffectiveAtk(BattleUnit unit, double skillRate = 1)
         {
-            var rate = BuffRateOf(unit);
+            var rate = BuffRateOf(unit) * skillRate;
             if (Boosts != null)
             {
                 rate *= Boosts.AttackRate;
@@ -59,9 +59,9 @@ namespace UnitySlotTower.Core.Battle
             foreach (var buffer in _units)
             {
                 if (buffer != unit && buffer.IsAlive && buffer.Definition.Role == UnitRole.Buff &&
-                    buffer.Definition.BuffRate > rate && buffer.InRange(unit.Cell))
+                    buffer.BuffRate > rate && buffer.InRange(unit.Cell))
                 {
-                    rate = buffer.Definition.BuffRate;
+                    rate = buffer.BuffRate;
                 }
             }
 
@@ -133,6 +133,50 @@ namespace UnitySlotTower.Core.Battle
             }
         }
 
+        /// <summary>スキル（FR-029、plan 16.4）。配置中のその職の全員に効く。その職が1体もいなければ何もせず false。</summary>
+        /// <remarks>
+        /// 効果時間は発動時にいた個体だけに付き、戦闘ステップ（<see cref="Advance"/>）でだけ減る。
+        /// <see cref="SkillDefinition.DamageRate"/> があれば、その場で範囲内（ブロック中を含む）の敵全員に1回ずつ攻撃し、倒れた敵はすぐ消す。
+        /// </remarks>
+        public bool ActivateSkill(SkillDefinition skill)
+        {
+            var activated = false;
+            foreach (var unit in _units)
+            {
+                if (!unit.IsAlive || unit.Definition.Id != skill.UnitId)
+                {
+                    continue;
+                }
+
+                activated = true;
+                unit.StartSkill(skill);
+                if (skill.DamageRate > 0)
+                {
+                    SkillAttack(unit, skill.DamageRate);
+                }
+            }
+
+            if (activated && skill.DamageRate > 0)
+            {
+                RemoveDefeatedEnemies();
+            }
+
+            return activated;
+        }
+
+        /// <summary>範囲内（ブロック中を含む）で狙える敵全員に、攻撃力×<paramref name="rate"/> で1回ずつ攻撃する。通常攻撃の間隔は変えない。</summary>
+        private void SkillAttack(BattleUnit unit, double rate)
+        {
+            var atk = EffectiveAtk(unit, rate);
+            foreach (var enemy in _enemies)
+            {
+                if (enemy.IsAlive && CanTarget(unit, enemy))
+                {
+                    enemy.TakeDamage(Damage.Calculate(atk, enemy.Definition.Def));
+                }
+            }
+        }
+
         /// <summary>HP0 で味方が消えたとき（FR-024）。撤退では呼ばれない。</summary>
         public event Action<BattleUnit> UnitFell;
 
@@ -162,7 +206,16 @@ namespace UnitySlotTower.Core.Battle
                 RemoveFallenUnits();
                 Act();
                 RemoveDefeatedEnemies();
+                TickSkills();
                 Tick++;
+            }
+        }
+
+        private void TickSkills()
+        {
+            foreach (var unit in _units)
+            {
+                unit.TickSkill();
             }
         }
 
@@ -238,8 +291,8 @@ namespace UnitySlotTower.Core.Battle
 
                 foreach (var unit in _units)
                 {
-                    if (unit.IsAlive && unit.Definition.Block > 0 && unit.Cell.Equals(cells[k]) &&
-                        unit.Definition.Block - unit.BlockUsed >= enemy.Definition.BlockCost)
+                    if (unit.IsAlive && unit.Block > 0 && unit.Cell.Equals(cells[k]) &&
+                        unit.Block - unit.BlockUsed >= enemy.Definition.BlockCost)
                     {
                         stopAt = Math.Max(entry, enemy.Distance);
                         return unit;
@@ -383,7 +436,7 @@ namespace UnitySlotTower.Core.Battle
                 target.TakeDamage(Damage.Calculate(EffectiveAtk(unit), target.Definition.Def));
 
                 unit.AttackCooldownSteps = (int)Math.Round(
-                    unit.Definition.AttackInterval * SimulationClock.StepsPerSecond);
+                    unit.Definition.AttackInterval * unit.IntervalRate * SimulationClock.StepsPerSecond);
             }
         }
 
@@ -402,12 +455,12 @@ namespace UnitySlotTower.Core.Battle
                     continue;
                 }
 
-                var blocked = enemy.BlockedBy == unit;
-                if (!blocked && (!unit.InRange(enemy.Cell) ||
-                                 enemy.Definition.IsAir && unit.Definition.Role != UnitRole.Ranged))
+                if (!CanTarget(unit, enemy))
                 {
                     continue;
                 }
+
+                var blocked = enemy.BlockedBy == unit;
 
                 if (target == null || blocked && !targetBlocked ||
                     blocked == targetBlocked && enemy.RemainingDistance < target.RemainingDistance)
@@ -419,6 +472,11 @@ namespace UnitySlotTower.Core.Battle
 
             return target;
         }
+
+        /// <summary>ブロック中の敵か、範囲内の敵（空中の敵は遠距離職だけ、FR-031）なら狙える。</summary>
+        private static bool CanTarget(BattleUnit unit, BattleEnemy enemy) =>
+            enemy.BlockedBy == unit ||
+            unit.InRange(enemy.Cell) && (!enemy.Definition.IsAir || unit.Definition.Role == UnitRole.Ranged);
 
         /// <summary>
         /// HP0 の敵を消し、使っていたブロックの空きを戻す。ドロップ確率に当たれば、最小〜最大の量（両端を含む一様）を落とす（FR-033）。

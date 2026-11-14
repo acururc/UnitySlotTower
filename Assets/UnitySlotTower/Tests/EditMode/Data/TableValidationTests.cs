@@ -267,6 +267,30 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
+        [Description("plan 16.4: スキルの職が units.csv にないとエラー")]
+        public void Skill_With_Unknown_Unit_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["skills.csv"] = files["skills.csv"].Replace("red7,sword,", "red7,healer,");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain("skills.csv"));
+        }
+
+        [Test]
+        [Description("plan 16.4: 色7のどれかが欠けたスキル表はエラー")]
+        public void Skill_Table_Missing_A_Color_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["skills.csv"] = WithoutLinesStartingWith(files["skills.csv"], "green7,");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain("skills.csv"));
+        }
+
+        [Test]
         public void Wave_Stage_Out_Of_Range_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
