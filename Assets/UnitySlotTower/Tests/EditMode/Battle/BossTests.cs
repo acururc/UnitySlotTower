@@ -74,7 +74,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
             var ex = Assert.Throws<CsvFormatException>(() => EnemyTable.Load(CsvParser.Parse(EnemyTable.FileName, text)));
 
-            Assert.That((ex.Error.Line, ex.Error.Column), Is.EqualTo((9, 16)));
+            Assert.That((ex.Error.Line, ex.Error.Column), Is.EqualTo((11, 19)));
         }
 
         private static EnemyTable ProjectEnemies() =>
@@ -93,15 +93,15 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("plan 5章: 中ボスは 100% で 10 枚、最終ボスは落とさない")]
+        [Description("plan 16.2: 中ボスはコインなし・所持金 100% で 15、最終ボスは落とさない")]
         public void Project_Boss_Drops_Follow_Plan()
         {
             var enemies = ProjectEnemies();
             var mid = enemies.Get("mid_boss");
             var final = enemies.Get("final_boss");
 
-            Assert.That((mid.DropRate, mid.DropMin, mid.DropMax, final.DropRate),
-                Is.EqualTo((1.0, 10, 10, 0.0)));
+            Assert.That((mid.CoinRate, mid.MoneyRate, mid.MoneyMin, mid.MoneyMax, final.CoinRate, final.MoneyRate),
+                Is.EqualTo((0.0, 1.0, 15, 15, 0.0, 0.0)));
         }
 
         [Test]

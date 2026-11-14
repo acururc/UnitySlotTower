@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
-using UnitySlotTower.Core.Economy;
+using UnitySlotTower.Core.Run;
 using UnitySlotTower.Core.Simulation;
 using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Tests.EditMode.Slot;
@@ -24,20 +24,19 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         // 10 秒あればどのウェーブも終わる。
         private const int WaveSteps = 600;
 
-        private CoinWallet _wallet;
+        private RunState _state;
         private Dictionary<int, BattleMap> _maps;
 
-        private WaveRun Create(int coins = 100, int stageCount = 3, int wavesPerStage = 2, int life = 10,
-            int lifeBonus = 3, int deployLimit = 8, string waveRows = OneFodderPerWave)
+        private WaveRun Create(int money = 100, int coins = 50, int stageCount = 3, int wavesPerStage = 2,
+            int life = 10, int deployLimit = 8, string waveRows = OneFodderPerWave)
         {
-            _wallet = new CoinWallet(coins);
             _maps = new Dictionary<int, BattleMap>();
             var config = GameConfig.Load(CsvParser.Parse(GameConfig.FileName,
-                $"key,value\ninitial_coins,{coins}\nbet,3\nlife,{life}\nlife_bonus_per_life,{lifeBonus}\n" +
+                $"key,value\ninitial_coins,{coins}\ninitial_money,{money}\nbet,3\nlife,{life}\n" +
                 $"deploy_limit,{deployLimit}\nretreat_refund_rate,0.5\n"));
+            _state = new RunState(config, BattleFixtures.LoadUpgrades(), 1);
             var units = BattleFixtures.LoadUnits();
-            return new WaveRun(config, units, BattleFixtures.LoadRanges(),
-                new UnitUpgrades(BattleFixtures.LoadUpgrades(), _wallet), _wallet, stageCount, wavesPerStage,
+            return new WaveRun(config, units, BattleFixtures.LoadRanges(), _state, stageCount, wavesPerStage,
                 stage => _maps[stage] = BattleFixtures.LoadMap(),
                 (stage, wave, map) => BattleFixtures.LoadStageWave(waveRows, stage, wave), new SeededRandom(1));
         }
@@ -68,9 +67,9 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         /// <summary>S1 で剣士を1体置いて終え、S2 の準備に入った状態（剣士のストック1）。</summary>
-        private WaveRun ClearStage1WithSword(int coins = 100, int lifeBonus = 3, int deployLimit = 8)
+        private WaveRun ClearStage1WithSword(int money = 100, int deployLimit = 8)
         {
-            var run = Create(coins: coins, lifeBonus: lifeBonus, deployLimit: deployLimit);
+            var run = Create(money: money, deployLimit: deployLimit);
             Place(run, "sword", 1, 0);
             PlayStage(run);
             Assert.That((run.Stage, run.Stock.Count("sword")), Is.EqualTo((2, 1)), "S1 を剣士1体で終えられない");
@@ -168,11 +167,11 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         public void Clearing_Wave_1_Keeps_The_Life_And_Gives_No_Bonus()
         {
             // fodder がゴールに着いてライフ 9。ゴールに着いた敵は落とさない。
-            var run = Create(coins: 100, life: 10);
+            var run = Create(money: 100, life: 10);
 
             PlayWave(run);
 
-            Assert.That((run.Field.Life, _wallet.Coins), Is.EqualTo((9, 100)));
+            Assert.That((run.Field.Life, _state.Money.Coins), Is.EqualTo((9, 100)));
         }
 
         [Test]
@@ -201,15 +200,15 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("AC-012: ステージ終了で残りライフ分のコインが加算され、コインが残る")]
-        public void Clearing_A_Stage_Adds_Life_Bonus_To_The_Coins()
+        [Description("plan 16.2: ライフボーナスは廃止。ステージを終えても残りライフ分のお金は入らない")]
+        public void Clearing_A_Stage_Adds_No_Life_Bonus()
         {
-            // 2 体の fodder がゴールに着いてライフ 8。ボーナスは 8 × 3 = 24。
-            var run = Create(coins: 100);
+            // 2 体の fodder がゴールに着いてライフ 8。ゴールに着いた敵は落とさない。
+            var run = Create(money: 100);
 
             PlayStage(run);
 
-            Assert.That((_wallet.Coins, run.LastLifeBonus), Is.EqualTo((124, 24)));
+            Assert.That(_state.Money.Coins, Is.EqualTo(100));
         }
 
         [Test]
@@ -291,18 +290,18 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         public void Placing_From_Stock_Costs_No_Coins()
         {
             var run = ClearStage1WithSword();
-            var coins = _wallet.Coins;
+            var coins = _state.Money.Coins;
 
             Place(run, "sword", 1, 0);
 
-            Assert.That((_wallet.Coins, run.Stock.Count("sword")), Is.EqualTo((coins, 0)));
+            Assert.That((_state.Money.Coins, run.Stock.Count("sword")), Is.EqualTo((coins, 0)));
         }
 
         [Test]
         public void Stock_Can_Be_Placed_Without_Enough_Coins()
         {
-            // 剣士 12 枚をちょうど払い、ライフボーナスなし。fodder のドロップ（40%で1枚）があっても 12 枚には届かない。
-            var run = ClearStage1WithSword(coins: 12, lifeBonus: 0);
+            // 剣士 12 枚をちょうど払う。fodder のドロップ（40%で1枚）があっても 12 枚には届かない。
+            var run = ClearStage1WithSword(money: 12);
 
             Assert.That(Place(run, "sword", 1, 0), Is.EqualTo(SummonResult.Summoned));
         }
@@ -349,40 +348,95 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             var run = ClearStage1WithSword();
             Place(run, "sword", 1, 0);
-            var coins = _wallet.Coins;
+            var money = _state.Money.Coins;
 
             run.Deployment.Retreat(run.Field.Units[0]);
 
-            Assert.That(_wallet.Coins - coins, Is.EqualTo(6));
+            Assert.That(_state.Money.Coins - money, Is.EqualTo(6));
         }
 
         [Test]
-        [Description("FR-033: 撃破ドロップは戦闘中に財布へ入る")]
-        public void Drops_Go_Into_The_Wallet_During_The_Fight()
+        [Description("plan 16.2: 召喚は所持金で払い、コインは減らない（剣士 12）")]
+        public void Summoning_Pays_With_Money_Not_Coins()
         {
-            // rich は倒されると必ず 2〜3 枚落とす。
-            var run = Create(coins: 100, waveRows: "1,1,0,rich,S1,g,0\n1,1,5,fodder,S1,g,0\n");
+            var run = Create(money: 100, coins: 50);
+
             Place(run, "sword", 1, 0);
-            var coins = _wallet.Coins;
+
+            Assert.That((_state.Money.Coins, _state.Coins.Coins), Is.EqualTo((88, 50)));
+        }
+
+        [Test]
+        [Description("plan 16.2: 撤退の返還は所持金に入る（剣士 12 の半分）")]
+        public void Retreat_Refunds_Into_Money()
+        {
+            var run = Create(money: 100, coins: 50);
+            Place(run, "sword", 1, 0);
+
+            run.Deployment.Retreat(run.Field.Units[0]);
+
+            Assert.That((_state.Money.Coins, _state.Coins.Coins), Is.EqualTo((94, 50)));
+        }
+
+        [Test]
+        [Description("plan 16.2: 強化は所持金で払う（剣士の段階2は 20）")]
+        public void Upgrading_Pays_With_Money()
+        {
+            var run = Create(money: 100, coins: 50);
+
+            run.Deployment.Upgrade("sword");
+
+            Assert.That((_state.Money.Coins, _state.Coins.Coins), Is.EqualTo((80, 50)));
+        }
+
+        [Test]
+        [Description("FR-033: コインのドロップは戦闘中にコインへ入り、所持金は変わらない")]
+        public void Coin_Drops_Go_Into_The_Coins_During_The_Fight()
+        {
+            // rich は倒されると必ずコインを 2〜3 枚落とす。
+            var run = Create(waveRows: "1,1,0,rich,S1,g,0\n1,1,5,fodder,S1,g,0\n");
+            Place(run, "sword", 1, 0);
+            var coins = _state.Coins.Coins;
+            var money = _state.Money.Coins;
             run.Start();
 
             run.Advance(120);
 
-            Assert.That(_wallet.Coins - coins, Is.InRange(2, 3));
+            Assert.That((_state.Coins.Coins - coins is >= 2 and <= 3, _state.Money.Coins - money),
+                Is.EqualTo((true, 0)));
         }
 
         [Test]
-        [Description("FR-033: W2 の撃破ドロップも二重に数えず財布へ入る")]
+        [Description("plan 16.2: 所持金のドロップは戦闘中に所持金へ入り、コインは変わらない")]
+        public void Money_Drops_Go_Into_The_Money_During_The_Fight()
+        {
+            // banker は倒されると必ず所持金を 2〜3 落とす。
+            var run = Create(waveRows: "1,1,0,banker,S1,g,0\n1,1,5,fodder,S1,g,0\n");
+            Place(run, "sword", 1, 0);
+            var coins = _state.Coins.Coins;
+            var money = _state.Money.Coins;
+            run.Start();
+
+            run.Advance(120);
+
+            Assert.That((_state.Money.Coins - money is >= 2 and <= 3, _state.Coins.Coins - coins),
+                Is.EqualTo((true, 0)));
+        }
+
+        [Test]
+        [Description("FR-033: W2 の撃破ドロップも二重に数えず入る")]
         public void Drops_Of_Wave_2_Are_Added_Once()
         {
-            var run = Create(coins: 100, lifeBonus: 0, waveRows: "1,1,0,rich,S1,g,0\n1,2,0,rich,S1,g,0\n");
+            var run = Create(waveRows: "1,1,0,rich,S1,g,0\n1,2,0,banker,S1,g,0\n");
             Place(run, "sword", 1, 0);
             PlayWave(run);
-            var coins = _wallet.Coins;
+            var coins = _state.Coins.Coins;
+            var money = _state.Money.Coins;
 
             PlayWave(run);
 
-            Assert.That(_wallet.Coins - coins, Is.InRange(2, 3));
+            Assert.That((_state.Coins.Coins - coins, _state.Money.Coins - money is >= 2 and <= 3),
+                Is.EqualTo((0, true)));
         }
 
         [Test]

@@ -148,9 +148,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.Fighting), "Enter で戦闘が始まらない");
 
             // スロット: Space でベット＋レバー、J/K/L で止める。
-            var coins = _battle.Wallet.Coins;
+            var coins = _cabinet.Wallet.Coins;
             yield return Tap(Key.Space);
-            Assert.That((_cabinet.IsSpinning, _battle.Wallet.Coins < coins), Is.EqualTo((true, true)), "Space でレバーを引けない");
+            Assert.That((_cabinet.IsSpinning, _cabinet.Wallet.Coins < coins), Is.EqualTo((true, true)), "Space でレバーを引けない");
             foreach (var key in new[] { Key.J, Key.K, Key.L })
             {
                 yield return Tap(key);
@@ -219,9 +219,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.Fighting), "▶ で戦闘が始まらない");
 
             // スロット: レバーと3つのストップボタン。
-            var coins = _battle.Wallet.Coins;
+            var coins = _cabinet.Wallet.Coins;
             yield return Click(_cabinet.LeverRect);
-            Assert.That((_cabinet.IsSpinning, _battle.Wallet.Coins < coins), Is.EqualTo((true, true)), "レバーのクリックで回らない");
+            Assert.That((_cabinet.IsSpinning, _cabinet.Wallet.Coins < coins), Is.EqualTo((true, true)), "レバーのクリックで回らない");
             for (var reel = 0; reel < SlotMachine.ReelCount; reel++)
             {
                 yield return Click(_cabinet.StopRect(reel));

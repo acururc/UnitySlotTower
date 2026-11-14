@@ -13,9 +13,9 @@ namespace UnitySlotTower.Core.Data
         private static readonly ColumnRule[] GameConfigKeys =
         {
             ColumnRule.Int("initial_coins", 0, 100000),
+            ColumnRule.Int("initial_money", 0, 100000),
             ColumnRule.Int("bet", 1, 100),
             ColumnRule.Int("life", 1, 1000),
-            ColumnRule.Int("life_bonus_per_life", 0, 1000),
             ColumnRule.Int("deploy_limit", 1, 100),
             ColumnRule.Float("retreat_refund_rate", 0, 1),
         };
@@ -77,9 +77,12 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Bool("is_air"),
                 ColumnRule.Int("block_cost", 1, 10),
                 ColumnRule.Int("life_damage", 0, 1000),
-                ColumnRule.Probability("drop_rate"),
-                ColumnRule.Int("drop_min", 0, 10000),
-                ColumnRule.Int("drop_max", 0, 10000),
+                ColumnRule.Probability("coin_rate"),
+                ColumnRule.Int("coin_min", 0, 10000),
+                ColumnRule.Int("coin_max", 0, 10000),
+                ColumnRule.Probability("money_rate"),
+                ColumnRule.Int("money_min", 0, 10000),
+                ColumnRule.Int("money_max", 0, 10000),
                 ColumnRule.Int("area_atk", 0, 1000000),
                 ColumnRule.Float("area_radius", 0, 20),
                 ColumnRule.Float("area_interval", 0, 60)),

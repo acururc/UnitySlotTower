@@ -59,8 +59,11 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>ライフが0になった（FR-013）。</summary>
         public bool IsGameOver => Life <= 0;
 
-        /// <summary>撃破ドロップで落ちたコインの合計（FR-033。財布への加算は T301）。</summary>
+        /// <summary>撃破ドロップで落ちたコインの合計（FR-033。財布への加算は進行側）。</summary>
         public int DroppedCoins { get; private set; }
+
+        /// <summary>撃破ドロップで落ちた所持金の合計（plan 16.2）。</summary>
+        public int DroppedMoney { get; private set; }
 
         /// <summary>いまのウェーブの戦闘開始から進めたステップ数。</summary>
         public long Tick { get; private set; }
@@ -452,9 +455,15 @@ namespace UnitySlotTower.Core.Battle
                 }
 
                 var definition = enemy.Definition;
-                if (_random.NextDouble() < definition.DropRate)
+                // 1回の抽選で [0, コイン率) ならコイン、[コイン率, コイン率 + 所持金率) なら所持金（plan 16.2）。
+                var roll = _random.NextDouble();
+                if (roll < definition.CoinRate)
                 {
-                    DroppedCoins += _random.NextInt(definition.DropMin, definition.DropMax + 1);
+                    DroppedCoins += _random.NextInt(definition.CoinMin, definition.CoinMax + 1);
+                }
+                else if (roll < definition.CoinRate + definition.MoneyRate)
+                {
+                    DroppedMoney += _random.NextInt(definition.MoneyMin, definition.MoneyMax + 1);
                 }
 
                 _enemies.RemoveAt(i);

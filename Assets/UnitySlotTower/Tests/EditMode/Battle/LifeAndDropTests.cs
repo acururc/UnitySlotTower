@@ -44,54 +44,90 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         /// <summary>
-        /// 1 体だけ出る敵を剣士（(1,0) 右向き）に倒させる戦闘を、1 つの固定シード乱数で何度も行い、各戦闘のドロップ合計を返す。
+        /// 1 体だけ出る敵を剣士（(1,0) 右向き）に倒させる戦闘を、1 つの固定シード乱数で何度も行い、各戦闘で落ちたコインと所持金を返す。
         /// 敵は HP1 で、出現から 30 ステップで剣士の範囲に入り倒される。
         /// </summary>
-        private static int[] DropsOfDefeats(string enemyId, int trials)
+        private static (int Coins, int Money)[] DropsOfDefeats(string enemyId, int trials)
         {
             var wave = BattleFixtures.LoadWave($"1,0,{enemyId},S1,g,0\n");
             var ranges = BattleFixtures.LoadRanges();
             var sword = BattleFixtures.LoadUnits().Get("sword");
             var random = new SeededRandom(42);
-            var drops = new int[trials];
+            var drops = new (int, int)[trials];
             for (var i = 0; i < trials; i++)
             {
                 var field = new Battlefield(wave, ranges, 10, random);
                 field.AddUnit(sword, new GridPoint(1, 0), Facing.Right);
                 field.Advance(60);
-                drops[i] = field.DroppedCoins;
+                drops[i] = (field.DroppedCoins, field.DroppedMoney);
             }
 
             return drops;
         }
 
         [Test]
-        [Description("AC-030: 40% で 1 枚落とす敵を 2000 回倒すと、落とす割合は 40% ± 4%（標準偏差の約 3.6 倍）")]
-        public void Defeated_Enemy_Drops_Coins_At_Its_Drop_Rate()
+        [Description("AC-030: コイン40%で1枚の敵を 2000 回倒すと、コインを落とす割合は 40% ± 4%（標準偏差の約 3.6 倍）")]
+        public void Defeated_Enemy_Drops_Coins_At_Its_Coin_Rate()
         {
             var drops = DropsOfDefeats("fodder", 2000);
 
-            Assert.That(drops.Sum() / 2000.0, Is.EqualTo(0.4).Within(0.04));
+            Assert.That(drops.Sum(d => d.Coins) / 2000.0, Is.EqualTo(0.4).Within(0.04));
+        }
+
+        [Test]
+        [Description("AC-030: コイン25%で3枚の敵を 2000 回倒すと、コインを落とす割合は 25% ± 3.5%（標準偏差の約 3.6 倍）")]
+        public void Split_Drop_Gives_Coins_At_The_Coin_Rate()
+        {
+            var drops = DropsOfDefeats("purse", 2000);
+
+            Assert.That(drops.Count(d => d.Coins == 3) / 2000.0, Is.EqualTo(0.25).Within(0.035));
+        }
+
+        [Test]
+        [Description("AC-030: 所持金40%で2の敵を 2000 回倒すと、所持金を落とす割合は 40% ± 4%")]
+        public void Split_Drop_Gives_Money_At_The_Money_Rate()
+        {
+            var drops = DropsOfDefeats("purse", 2000);
+
+            Assert.That(drops.Count(d => d.Money == 2) / 2000.0, Is.EqualTo(0.4).Within(0.04));
+        }
+
+        [Test]
+        [Description("plan 16.2: 撃破時の抽選は1回だけ。コインと所持金を同時には落とさない")]
+        public void One_Defeat_Never_Drops_Both_Coins_And_Money()
+        {
+            var drops = DropsOfDefeats("purse", 2000);
+
+            Assert.That(drops.Count(d => d.Coins > 0 && d.Money > 0), Is.EqualTo(0));
         }
 
         [Test]
         [Description("AC-030: 必ず 2〜3 枚落とす敵を 200 回倒すと、量は 2 と 3 だけが出る")]
-        public void Drop_Amount_Ranges_From_Min_To_Max()
+        public void Coin_Drop_Amount_Ranges_From_Min_To_Max()
         {
             var drops = DropsOfDefeats("rich", 200);
 
-            Assert.That(drops.Distinct().OrderBy(d => d), Is.EqualTo(new[] { 2, 3 }));
+            Assert.That(drops.Select(d => d.Coins).Distinct().OrderBy(d => d), Is.EqualTo(new[] { 2, 3 }));
+        }
+
+        [Test]
+        [Description("AC-030: 必ず所持金 2〜3 を落とす敵を 200 回倒すと、量は 2 と 3 だけが出て、コインは落ちない")]
+        public void Money_Drop_Amount_Ranges_From_Min_To_Max()
+        {
+            var drops = DropsOfDefeats("banker", 200);
+
+            Assert.That(drops.Distinct().OrderBy(d => d.Money).ToArray(), Is.EqualTo(new[] { (0, 2), (0, 3) }));
         }
 
         [Test]
         [Description("FR-033: ドロップは撃破時だけ。ゴールに着いた敵は落とさない")]
         public void Enemy_Reaching_The_Goal_Drops_Nothing()
         {
-            var field = BattleFixtures.CreateField("1,0,rich,S1,g,0\n");
+            var field = BattleFixtures.CreateField("1,0,purse,S1,g,0\n1,0,banker,S1,g,0\n1,0,rich,S1,g,0\n");
 
             field.Advance(180);
 
-            Assert.That((field.ArrivedCount, field.DroppedCoins), Is.EqualTo((1, 0)));
+            Assert.That((field.ArrivedCount, field.DroppedCoins, field.DroppedMoney), Is.EqualTo((3, 0, 0)));
         }
     }
 }

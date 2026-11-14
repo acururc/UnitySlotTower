@@ -80,14 +80,14 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         [UnityTest]
         public IEnumerator Enemies_Keep_Moving_While_The_Reels_Spin_And_The_Bet_Comes_From_The_Shared_Wallet()
         {
-            Assert.That(_battle.Wallet, Is.SameAs(_cabinet.Wallet));
+            Assert.That(_battle.Run.State.Coins, Is.SameAs(_cabinet.Wallet));
             var reels = _cabinet.GetComponentsInChildren<SlotReelView>();
             for (var i = 0; i < 60 && _battle.Field.Enemies.Count == 0; i++)
             {
                 yield return null;
             }
 
-            var coinsBefore = _battle.Wallet.Coins;
+            var coinsBefore = _cabinet.Wallet.Coins;
             yield return Tap(Key.Space);
             for (var i = 0; i < 180 && !reels[0].IsSpinning; i++)
             {
@@ -95,7 +95,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(reels[0].IsSpinning, Is.True, "Space でリールが回らない");
-            Assert.That(_battle.Wallet.Coins, Is.LessThan(coinsBefore), "ベットが共有の財布から引かれない");
+            Assert.That(_cabinet.Wallet.Coins, Is.LessThan(coinsBefore), "ベットがコインから引かれない");
 
             var enemy = _battle.Field.Enemies[0];
             var tick = _battle.Field.Tick;
@@ -126,8 +126,9 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             yield return null;
-            var coinsBefore = _battle.Wallet.Coins;
-            var droppedBefore = field.DroppedCoins;
+            var coinsBefore = _cabinet.Wallet.Coins;
+            var moneyBefore = _battle.Wallet.Coins;
+            var droppedBefore = (field.DroppedCoins, field.DroppedMoney);
             field.Advance(60 * 60);
             // 進行が次のステップでウェーブの終わりに気づくまで待つ（ステップが0のフレームもある）。
             for (var i = 0; i < 60 && _battle.Run.Phase == WavePhase.Fighting; i++)
@@ -135,9 +136,10 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                 yield return null;
             }
 
-            // W1 を終えるとライフボーナスも入る（T304）。
-            Assert.That(_battle.Wallet.Coins - coinsBefore,
-                Is.EqualTo(field.DroppedCoins - droppedBefore + _battle.Run.LastLifeBonus));
+            // コインは筐体のコインへ、所持金は召喚の財布へ（plan 16.2。ライフボーナスは廃止）。
+            Assert.That((_cabinet.Wallet.Coins - coinsBefore, _battle.Wallet.Coins - moneyBefore),
+                Is.EqualTo((field.DroppedCoins - droppedBefore.DroppedCoins,
+                    field.DroppedMoney - droppedBefore.DroppedMoney)));
             Assert.That(field.ArrivedCount, Is.LessThan(5), "1体も倒せていない");
         }
 

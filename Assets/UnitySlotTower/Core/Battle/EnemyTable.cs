@@ -7,7 +7,8 @@ namespace UnitySlotTower.Core.Battle
     public sealed class EnemyDefinition
     {
         internal EnemyDefinition(string id, int maxHp, int atk, int def, double attackInterval, double moveSpeed,
-            double range, bool isAir, int blockCost, int lifeDamage, double dropRate, int dropMin, int dropMax,
+            double range, bool isAir, int blockCost, int lifeDamage, double coinRate, int coinMin, int coinMax,
+            double moneyRate, int moneyMin, int moneyMax,
             int areaAtk, double areaRadius, double areaInterval)
         {
             Id = id;
@@ -20,9 +21,12 @@ namespace UnitySlotTower.Core.Battle
             IsAir = isAir;
             BlockCost = blockCost;
             LifeDamage = lifeDamage;
-            DropRate = dropRate;
-            DropMin = dropMin;
-            DropMax = dropMax;
+            CoinRate = coinRate;
+            CoinMin = coinMin;
+            CoinMax = coinMax;
+            MoneyRate = moneyRate;
+            MoneyMin = moneyMin;
+            MoneyMax = moneyMax;
             AreaAtk = areaAtk;
             AreaRadius = areaRadius;
             AreaInterval = areaInterval;
@@ -47,9 +51,15 @@ namespace UnitySlotTower.Core.Battle
 
         public int BlockCost { get; }
         public int LifeDamage { get; }
-        public double DropRate { get; }
-        public int DropMin { get; }
-        public int DropMax { get; }
+        /// <summary>撃破時にコインを落とす確率（plan 16.2）。</summary>
+        public double CoinRate { get; }
+        public int CoinMin { get; }
+        public int CoinMax { get; }
+
+        /// <summary>撃破時に所持金を落とす確率。コインと同じ1回の抽選で、コインに外れた分から当たる（和は1以下）。</summary>
+        public double MoneyRate { get; }
+        public int MoneyMin { get; }
+        public int MoneyMax { get; }
 
         /// <summary>範囲攻撃の攻撃力（最終ボス）。0 なら範囲攻撃をしない。</summary>
         public int AreaAtk { get; }
@@ -67,6 +77,9 @@ namespace UnitySlotTower.Core.Battle
     public sealed class EnemyTable
     {
         public const string FileName = "enemies.csv";
+
+        // 0.7 + 0.3 のような和を浮動小数の誤差でエラーにしないための許容幅。
+        private const double RateEpsilon = 1e-9;
 
         private readonly Dictionary<string, EnemyDefinition> _enemies = new Dictionary<string, EnemyDefinition>();
         private readonly string _fileName;
@@ -106,11 +119,19 @@ namespace UnitySlotTower.Core.Battle
                     throw row.Error("area_interval", $"範囲攻撃する敵 '{id}' の間隔が 0 以下");
                 }
 
+                var coinRate = row.GetProbability("coin_rate");
+                var moneyRate = row.GetProbability("money_rate");
+                if (coinRate + moneyRate > 1 + RateEpsilon)
+                {
+                    throw row.Error("money_rate", $"敵 '{id}' のコインと所持金のドロップ率の和が 1 を超える");
+                }
+
                 enemies._enemies.Add(id, new EnemyDefinition(id, row.GetInt("max_hp"), row.GetInt("atk"),
                     row.GetInt("def"), row.GetDouble("attack_interval"), row.GetDouble("move_speed"),
                     row.GetDouble("range"), row.GetBool("is_air"), row.GetInt("block_cost"), row.GetInt("life_damage"),
-                    row.GetProbability("drop_rate"), row.GetInt("drop_min"), row.GetInt("drop_max"), areaAtk,
-                    row.GetDouble("area_radius"), areaInterval));
+                    coinRate, row.GetInt("coin_min"), row.GetInt("coin_max"),
+                    moneyRate, row.GetInt("money_min"), row.GetInt("money_max"),
+                    areaAtk, row.GetDouble("area_radius"), areaInterval));
             }
 
             return enemies;

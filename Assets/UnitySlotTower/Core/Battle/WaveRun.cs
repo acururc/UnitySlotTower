@@ -1,6 +1,7 @@
 using System;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Economy;
+using UnitySlotTower.Core.Run;
 using UnitySlotTower.Core.Simulation;
 using UnitySlotTower.Core.Slot;
 
@@ -20,7 +21,7 @@ namespace UnitySlotTower.Core.Battle
     /// ステージとウェーブの進行（FR-010, FR-013〜016、plan 4章）。ステージごとに 準備 → 戦闘 を各ウェーブで繰り返し、
     /// 最後のウェーブを終えるとステージ終了（ライフボーナス・ストック化）→ 次のステージの準備 と進める。
     /// ステージ内のウェーブ切り替えでは、配置・HP・ライフ・召喚の状態をそのまま残す。
-    /// 財布・強化・ストック・スロットの効果はステージをまたいで同じものを使い、戦闘・召喚・配置操作はステージごとに作り直す（ライフも満タンに戻る）。
+    /// <see cref="RunState"/>（コイン・所持金・強化・ストック）とスロットの効果はステージをまたいで同じものを使い、戦闘・召喚・配置操作はステージごとに作り直す（ライフも満タンに戻る）。
     /// </summary>
     public sealed class WaveRun
     {
@@ -33,21 +34,23 @@ namespace UnitySlotTower.Core.Battle
         private readonly Func<int, int, BattleMap, WaveSchedule> _loadWave;
         private readonly IRandom _random;
 
-        private int _collectedDrops;
+        private int _collectedCoins;
+        private int _collectedMoney;
 
         /// <param name="stageCount">最後のステージの番号（1から）。</param>
         /// <param name="wavesPerStage">1ステージのウェーブ数。</param>
         /// <param name="loadMap">ステージ番号からそのステージのマップを返す。</param>
         /// <param name="loadWave">ステージ番号・ウェーブ番号・マップから、そのウェーブの出現内容を返す。</param>
-        public WaveRun(GameConfig config, UnitTable units, UnitRanges ranges, UnitUpgrades upgrades, CoinWallet wallet,
+        public WaveRun(GameConfig config, UnitTable units, UnitRanges ranges, RunState state,
             int stageCount, int wavesPerStage, Func<int, BattleMap> loadMap,
             Func<int, int, BattleMap, WaveSchedule> loadWave, IRandom random)
         {
             _config = config;
             _units = units;
             _ranges = ranges;
-            Upgrades = upgrades;
-            Wallet = wallet;
+            State = state;
+            Upgrades = state.Upgrades;
+            Wallet = state.Money;
             _stageCount = stageCount;
             _wavesPerStage = wavesPerStage;
             _loadMap = loadMap;
@@ -62,9 +65,14 @@ namespace UnitySlotTower.Core.Battle
         public int Wave { get; private set; }
 
         public WavePhase Phase { get; private set; }
+        /// <summary>ゲーム1回分の状態（plan 16.2）。コイン・所持金・強化・ストックはここにある。</summary>
+        public RunState State { get; }
+
+        /// <summary>召喚・強化・撤退の返還に使う所持金（<see cref="RunState.Money"/>）。</summary>
         public CoinWallet Wallet { get; }
+
         public UnitUpgrades Upgrades { get; }
-        public UnitStock Stock { get; } = new UnitStock();
+        public UnitStock Stock => State.Stock;
 
         /// <summary>スロットの効果（D-45）。各ステージの <see cref="Field"/> に同じものを渡す。</summary>
         public SlotEffects Effects { get; } = new SlotEffects();
@@ -88,9 +96,6 @@ namespace UnitySlotTower.Core.Battle
                     break;
             }
         }
-
-        /// <summary>最後に終えたステージのライフボーナス（まだなければ 0）。</summary>
-        public int LastLifeBonus { get; private set; }
 
         /// <summary>いまのステージのマップ。</summary>
         public BattleMap Map { get; private set; }
@@ -118,7 +123,7 @@ namespace UnitySlotTower.Core.Battle
         }
 
         /// <summary>
-        /// 戦闘中だけ時間を進める。撃破ドロップは落ちた時点で財布に入れる（FR-033）。ウェーブが終わったら残りのステップは捨てる
+        /// 戦闘中だけ時間を進める。撃破ドロップは落ちた時点でコイン／所持金に入れる（FR-033、plan 16.2）。ウェーブが終わったら残りのステップは捨てる
         /// （次のウェーブも準備から）。
         /// </summary>
         public void Advance(int steps)
@@ -142,11 +147,18 @@ namespace UnitySlotTower.Core.Battle
 
         private void CollectDrops()
         {
-            var dropped = Field.DroppedCoins;
-            if (dropped > _collectedDrops)
+            var coins = Field.DroppedCoins;
+            if (coins > _collectedCoins)
             {
-                Wallet.Add(dropped - _collectedDrops);
-                _collectedDrops = dropped;
+                State.Coins.Add(coins - _collectedCoins);
+                _collectedCoins = coins;
+            }
+
+            var money = Field.DroppedMoney;
+            if (money > _collectedMoney)
+            {
+                State.Money.Add(money - _collectedMoney);
+                _collectedMoney = money;
             }
         }
 
@@ -162,13 +174,11 @@ namespace UnitySlotTower.Core.Battle
         }
 
         /// <summary>
-        /// 残りライフ × 係数のコインを加え（FR-014）、配置中の味方を種類ごとに無料ストックへ足す（FR-015）。
+        /// 配置中の味方を種類ごとに無料ストックへ足す（FR-015。ライフボーナスは 2026-11-14 に廃止）。
         /// フィールドは次のステージで作り直すので、味方はそこで全員外れ（返還なし）、ライフは満タンに戻る（FR-013）。
         /// </summary>
         private void EndStage()
         {
-            LastLifeBonus = Field.Life * _config.LifeBonusPerLife;
-            Wallet.Add(LastLifeBonus);
             foreach (var unit in Field.Units)
             {
                 Stock.Add(unit.Definition.Id, 1);
@@ -192,7 +202,8 @@ namespace UnitySlotTower.Core.Battle
             Phase = WavePhase.Preparing;
             Map = map;
             Field = new Battlefield(schedule, _ranges, _config.Life, _random, Effects);
-            _collectedDrops = 0;
+            _collectedCoins = 0;
+            _collectedMoney = 0;
             Summoner = new UnitSummoner(_units, Wallet, _config.DeployLimit, _config.RetreatRefundRate, Stock)
             {
                 IgnoresCooldown = true,

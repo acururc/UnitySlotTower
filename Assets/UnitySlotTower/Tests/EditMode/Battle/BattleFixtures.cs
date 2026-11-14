@@ -20,19 +20,23 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
         // melee: 射程なし・1マス/秒、ranged: 射程1.5・0.5マス/秒、air: 空中・射程1・2マス/秒、heavy: 射程なし・1マス/秒・ブロック消費2、
         // brute: 射程なし・1マス/秒・HP100000・攻撃1000（味方を倒す役）、
-        // fodder: HP1・攻撃0・40%で1枚、rich: HP1・攻撃0・必ず2〜3枚（ドロップを見る役）、
+        // ドロップの列は コイン（率・最小・最大）→ 所持金（率・最小・最大）。
+        // fodder: HP1・攻撃0・コイン40%で1枚、rich: HP1・攻撃0・必ずコイン2〜3枚、
+        // purse: HP1・攻撃0・コイン25%で3枚／所持金40%で2、banker: HP1・攻撃0・必ず所持金2〜3（ドロップを見る役）、
         // quaker: 動かず・通常攻撃0・2秒ごとに半径1.5マスへ範囲攻撃500（範囲攻撃を見る役）
         public const string Enemies =
-            "id,max_hp,atk,def,attack_interval,move_speed,range,is_air,block_cost,life_damage,drop_rate,drop_min,drop_max," +
-            "area_atk,area_radius,area_interval\n" +
-            "melee,1000,200,50,1.5,1,0,0,1,1,0.4,1,1,0,0,0\n" +
-            "ranged,700,300,30,2,0.5,1.5,0,1,1,0.5,1,2,0,0,0\n" +
-            "air,600,150,20,1,2,1,1,1,1,0.5,1,2,0,0,0\n" +
-            "heavy,2000,300,50,2,1,0,0,2,2,0.5,1,2,0,0,0\n" +
-            "brute,100000,1000,0,1,1,0,0,1,1,0.5,1,2,0,0,0\n" +
-            "fodder,1,0,0,1,1,0,0,1,1,0.4,1,1,0,0,0\n" +
-            "rich,1,0,0,1,1,0,0,1,1,1,2,3,0,0,0\n" +
-            "quaker,100000,0,0,1,0,0,0,2,10,0,0,0,500,1.5,2\n";
+            "id,max_hp,atk,def,attack_interval,move_speed,range,is_air,block_cost,life_damage," +
+            "coin_rate,coin_min,coin_max,money_rate,money_min,money_max,area_atk,area_radius,area_interval\n" +
+            "melee,1000,200,50,1.5,1,0,0,1,1,0.4,1,1,0,0,0,0,0,0\n" +
+            "ranged,700,300,30,2,0.5,1.5,0,1,1,0.5,1,2,0,0,0,0,0,0\n" +
+            "air,600,150,20,1,2,1,1,1,1,0.5,1,2,0.3,4,5,0,0,0\n" +
+            "heavy,2000,300,50,2,1,0,0,2,2,0.5,1,2,0,0,0,0,0,0\n" +
+            "brute,100000,1000,0,1,1,0,0,1,1,0.5,1,2,0,0,0,0,0,0\n" +
+            "fodder,1,0,0,1,1,0,0,1,1,0.4,1,1,0,0,0,0,0,0\n" +
+            "rich,1,0,0,1,1,0,0,1,1,1,2,3,0,0,0,0,0,0\n" +
+            "purse,1,0,0,1,1,0,0,1,1,0.25,3,3,0.4,2,2,0,0,0\n" +
+            "banker,1,0,0,1,1,0,0,1,1,0,0,0,1,2,3,0,0,0\n" +
+            "quaker,100000,0,0,1,0,0,0,2,10,0,0,0,0,0,0,500,1.5,2\n";
 
         // tank: HP1800・防御300・ブロック3、sword: HP1200・防御50・ブロック1、archer: HP700・防御50
         public const string Units =

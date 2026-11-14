@@ -3,6 +3,7 @@ using UnityEngine;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Economy;
+using UnitySlotTower.Core.Run;
 using UnitySlotTower.Core.Simulation;
 using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Slot;
@@ -73,8 +74,10 @@ namespace UnitySlotTower.Battle
                 var upgradeTable = UnitUpgradeTable.Load(Parse(UnitUpgradeTable.FileName, unitUpgradesTable), Units);
                 var enemies = EnemyTable.Load(Parse(EnemyTable.FileName, enemiesTable));
                 var waves = Parse(WaveSchedule.FileName, wavesTable);
-                var wallet = slotCabinet.Wallet;
-                Run = new WaveRun(config, Units, Ranges, new UnitUpgrades(upgradeTable, wallet), wallet,
+                // コインは筐体と共有し、召喚・強化は所持金で払う（plan 16.2）。ルートと流れ（T350）までは戦闘ごとに作る。
+                var state = new RunState(config, upgradeTable, slotCabinet.Setting);
+                slotCabinet.UseWallet(state.Coins);
+                Run = new WaveRun(config, Units, Ranges, state,
                     WaveSchedule.StageCount, WaveSchedule.WavesPerStage,
                     stage => stage == 1 ? fieldView.Map : fieldView.LoadStageMap(stage),
                     (stage, wave, map) => WaveSchedule.Load(waves, stage, wave, map, enemies),

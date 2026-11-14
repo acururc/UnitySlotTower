@@ -22,12 +22,33 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        public void Reads_Drop_Columns()
+        public void Reads_Coin_Drop_Columns()
         {
             var air = BattleFixtures.LoadEnemies().Get("air");
 
-            Assert.That((air.IsAir, air.BlockCost, air.LifeDamage, air.DropRate, air.DropMin, air.DropMax),
+            Assert.That((air.IsAir, air.BlockCost, air.LifeDamage, air.CoinRate, air.CoinMin, air.CoinMax),
                 Is.EqualTo((true, 1, 1, 0.5, 1, 2)));
+        }
+
+        [Test]
+        [Description("plan 16.2: 所持金のドロップは別の列")]
+        public void Reads_Money_Drop_Columns()
+        {
+            var air = BattleFixtures.LoadEnemies().Get("air");
+
+            Assert.That((air.MoneyRate, air.MoneyMin, air.MoneyMax), Is.EqualTo((0.3, 4, 5)));
+        }
+
+        [Test]
+        [Description("plan 16.2: コインと所持金の率の和が 1 を超える行は読み込みエラー（その行を報告）")]
+        public void Drop_Rates_Summing_Over_One_Are_A_Load_Error()
+        {
+            // 4 行目の air（0.5 + 0.3）の所持金率を 0.6 にして和を 1.1 にする。
+            var text = BattleFixtures.Enemies.Replace("0.5,1,2,0.3,4,5", "0.5,1,2,0.6,4,5");
+
+            var ex = Assert.Throws<CsvFormatException>(() => EnemyTable.Load(CsvParser.Parse(EnemyTable.FileName, text)));
+
+            Assert.That(ex.Error.Line, Is.EqualTo(4));
         }
 
         [Test]
@@ -52,19 +73,20 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("plan 5章: ドロップは 近 40%で1 / 遠 50%で1〜2 / 空 50%で1〜2")]
+        [Description("plan 16.2: ドロップは 近 コイン20%で3／所持金40%で2、遠・空 コイン25%で3／所持金40%で2〜3")]
         public void Project_Grunt_Drops_Follow_Plan()
         {
             var enemies = Project();
             var drops = new[] { "melee", "ranged", "air" };
-            var actual = new (double, int, int)[drops.Length];
+            var actual = new (double, int, int, double, int, int)[drops.Length];
             for (var i = 0; i < drops.Length; i++)
             {
-                var enemy = enemies.Get(drops[i]);
-                actual[i] = (enemy.DropRate, enemy.DropMin, enemy.DropMax);
+                var e = enemies.Get(drops[i]);
+                actual[i] = (e.CoinRate, e.CoinMin, e.CoinMax, e.MoneyRate, e.MoneyMin, e.MoneyMax);
             }
 
-            Assert.That(actual, Is.EqualTo(new[] { (0.4, 1, 1), (0.5, 1, 2), (0.5, 1, 2) }));
+            Assert.That(actual,
+                Is.EqualTo(new[] { (0.2, 3, 3, 0.4, 2, 2), (0.25, 3, 3, 0.4, 2, 3), (0.25, 3, 3, 0.4, 2, 3) }));
         }
     }
 }

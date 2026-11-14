@@ -53,6 +53,7 @@ namespace UnitySlotTower.Slot
 
         private SlotMachine _machine;
         private CoinWallet _wallet;
+        private ReelLayout _initialLayout;
         private SlotWait _wait;
         private InputAction _lever;
         private readonly InputAction[] _stops = new InputAction[SlotMachine.ReelCount];
@@ -142,6 +143,18 @@ namespace UnitySlotTower.Slot
             _pendingLayout = null;
         }
 
+        /// <summary>
+        /// コインの財布を差し替えて抽選器を作り直す（T340: ゲーム1回分の <c>RunState.Coins</c> と共有するため。回す前に呼ぶ）。
+        /// 筐体の作り直し（T348）までのつなぎ。
+        /// </summary>
+        public void UseWallet(CoinWallet wallet)
+        {
+            _wallet = wallet;
+            _machine = new SlotMachine(_initialLayout, MissRate, _wallet, _bet, Rules,
+                RandomOverride ?? new SeededRandom((ulong)DateTime.UtcNow.Ticks));
+            _machine.Aligned += symbol => Aligned?.Invoke(symbol);
+        }
+
         private void Awake()
         {
             setting = GameSession.SelectedSetting ?? setting;
@@ -162,12 +175,10 @@ namespace UnitySlotTower.Slot
                 layout = Locks.Fill(SlotSymbol.Coin);
 
                 MissRate = settings.MissRate(setting);
-                _wallet = new CoinWallet(config.InitialCoins);
                 _bet = config.Bet;
                 _wait = new SlotWait(rules.WaitSeconds);
-                _machine = new SlotMachine(layout, MissRate, _wallet, config.Bet, rules,
-                    RandomOverride ?? new SeededRandom((ulong)DateTime.UtcNow.Ticks));
-                _machine.Aligned += symbol => Aligned?.Invoke(symbol);
+                _initialLayout = layout;
+                UseWallet(new CoinWallet(config.InitialCoins));
             }
             catch (Exception e)
             {
