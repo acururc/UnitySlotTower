@@ -13,10 +13,17 @@ namespace UnitySlotTower.Tests.PlayMode
     {
         /// <summary>
         /// ルート選び中なら、レバーを引き、回り出したら戦闘マスを優先して行き先のあるリールを止める（旧 T350a の自動進行と同じ選び方）。
+        /// ショップ・回復の画面（T350c）が開いていれば ◀ で閉じる。
         /// </summary>
         public static void Step()
         {
             var run = Object.FindAnyObjectByType<RunController>();
+            if (run != null && run.OpenScreen != null)
+            {
+                run.OpenScreen.BackButton.onClick.Invoke();
+                return;
+            }
+
             var cabinet = Object.FindAnyObjectByType<SlotCabinet>();
             if (run == null || cabinet == null || !run.IsChoosingRoute || !cabinet.IsChoosingRoute ||
                 cabinet.RoutePick.HasValue || cabinet.IsSpinning && !cabinet.IsRouteSpinning)

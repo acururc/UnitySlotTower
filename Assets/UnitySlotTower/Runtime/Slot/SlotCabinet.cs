@@ -83,6 +83,9 @@ namespace UnitySlotTower.Slot
         /// <summary>true のあいだはレバーを受け付けない（一時停止中: FR-012）。</summary>
         public bool InputLocked { get; set; }
 
+        /// <summary>true のあいだはレバーを受け付けない（ショップ・回復の画面が筐体を覆っている: T350c）。一時停止とは別に持つ。</summary>
+        public bool HeldByScreen { get; set; }
+
         /// <summary>このプレイの難易度（設定1〜6、FR-045）。</summary>
         public int Setting => setting;
 
@@ -332,7 +335,7 @@ namespace UnitySlotTower.Slot
         // 回転中のレバーは無視する（plan 16.3）。
         private void OnLever()
         {
-            if (InputLocked || IsSpinning)
+            if (InputLocked || HeldByScreen || IsSpinning)
             {
                 return;
             }

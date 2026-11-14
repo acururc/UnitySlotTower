@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnitySlotTower.Battle;
+using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Run;
 using UnitySlotTower.Core.Simulation;
@@ -14,19 +15,24 @@ namespace UnitySlotTower.Flow
     /// ゲーム1回分の進行（plan 16.8）。<see cref="RunState"/> を作ってルートを生成し、ルート → 各マス → ルート を回す。
     /// 戦闘マスは <see cref="BattleController.BeginNode"/> に渡す。リトライは Game の再読み込みで作り直す。
     /// 戦闘マスが終わるとルート画面を開き、筐体のルート選びのモードで止めたリールの方向のマスへ進む（D-75）。
-    /// 戦闘以外のマスの画面は T350c まで仮で、回復マスは入った時点で回復、ショップは何もせずにルート画面へ戻る。
+    /// 戦闘以外のマスはそのマスの処理（回復）を済ませてから、種類に合う画面（<see cref="NodeScreen"/>、Runtime の画面の登録表）を開き、
+    /// ◀ で閉じたらルート画面に戻る。画面のない種類はすぐルート画面に戻る。
     /// </summary>
     [DefaultExecutionOrder(-20)]
     public sealed class RunController : MonoBehaviour
     {
         [SerializeField] private TextAsset routeRulesTable;
+        [SerializeField] private TextAsset shopItemsTable;
         [SerializeField] private BattleController battle;
         [Tooltip("コインを RunState と共有し、ルート選びにも使うスロット筐体。")]
         [SerializeField] private SlotCabinet slotCabinet;
         [SerializeField] private RouteScreen routeScreen;
+        [Tooltip("戦闘以外のマスの画面（種類ごとに1つ）。")]
+        [SerializeField] private NodeScreen[] nodeScreens = Array.Empty<NodeScreen>();
 
         private readonly List<RouteNode> _visited = new List<RouteNode>();
         private readonly bool[] _directions = new bool[SlotMachine.ReelCount];
+        private readonly Dictionary<string, NodeScreen> _screens = new Dictionary<string, NodeScreen>();
         private IRandom _random;
         private bool _choosingRoute;
 
@@ -50,6 +56,23 @@ namespace UnitySlotTower.Flow
         /// <summary>ルート画面を開いた。</summary>
         public event Action RouteShown;
 
+        public ShopTable ShopTable { get; private set; }
+
+        /// <summary>スキルの表（ショップのゲージの品の色）。</summary>
+        public SkillTable Skills => battle.Skills;
+
+        /// <summary>直近の回復マスで実際に回復した量（最大ライフで止まった分は含まない）。</summary>
+        public int LastHealed { get; private set; }
+
+        /// <summary>開いている戦闘以外のマスの画面（なければ null）。</summary>
+        public NodeScreen OpenScreen { get; private set; }
+
+        /// <summary>このゲームのショップマス1回分を作る（並ぶ品はルートと同じ乱数で選ぶ）。</summary>
+        public Shop CreateShop() => new Shop(ShopTable, Rules.ShopSlots, State, battle.Skills, _random);
+
+        /// <summary>ショップの両替（掛け金単位、route_rules の exchange_money_per_coin）。</summary>
+        public Exchange CreateExchange() => new Exchange(State, slotCabinet.Bet, Rules.ExchangeMoneyPerCoin);
+
         private void Start()
         {
             if (battle == null || slotCabinet == null || slotCabinet.Wallet == null || routeScreen == null)
@@ -68,6 +91,13 @@ namespace UnitySlotTower.Flow
                 }
 
                 Rules = RouteRules.Load(CsvParser.Parse(RouteRules.FileName, routeRulesTable.text));
+                if (shopItemsTable == null)
+                {
+                    throw new InvalidOperationException($"{ShopTable.FileName} が設定されていない");
+                }
+
+                ShopTable = ShopTable.Load(CsvParser.Parse(ShopTable.FileName, shopItemsTable.text));
+                RegisterScreens();
                 _random = new SeededRandom(SeedOverride ?? (ulong)DateTime.UtcNow.Ticks);
                 // コインは筐体と共有し、召喚・強化は所持金で払う（plan 16.2）。
                 State = new RunState(battle.Config, battle.UpgradeTable, slotCabinet.Rules, slotCabinet.Setting);
@@ -102,6 +132,38 @@ namespace UnitySlotTower.Flow
             if (routeScreen != null)
             {
                 routeScreen.ArrowClicked -= OnArrowClicked;
+            }
+
+            foreach (var screen in _screens.Values)
+            {
+                if (screen != null)
+                {
+                    screen.Closed -= OnScreenClosed;
+                }
+            }
+        }
+
+        private void RegisterScreens()
+        {
+            foreach (var screen in nodeScreens)
+            {
+                if (screen == null)
+                {
+                    continue;
+                }
+
+                if (!RouteNodeKinds.Contains(screen.Kind))
+                {
+                    throw new InvalidOperationException($"画面 {screen.name} の種類 '{screen.Kind}' は登録表にない");
+                }
+
+                if (!_screens.TryAdd(screen.Kind, screen))
+                {
+                    throw new InvalidOperationException($"種類 '{screen.Kind}' の画面が2つある");
+                }
+
+                screen.HideImmediate();
+                screen.Closed += OnScreenClosed;
             }
         }
 
@@ -158,9 +220,35 @@ namespace UnitySlotTower.Flow
             routeScreen.Hide();
             if (!Enter(next))
             {
-                // 戦闘以外のマスの画面は T350c。今は済ませてすぐルート画面に戻る。
-                ShowRoute();
+                OpenNodeScreen(next);
             }
+        }
+
+        // 戦闘以外のマスの画面を開く。画面のない種類はすぐルート画面に戻る。
+        private void OpenNodeScreen(RouteNode node)
+        {
+            if (!_screens.TryGetValue(node.Kind, out var screen))
+            {
+                ShowRoute();
+                return;
+            }
+
+            OpenScreen = screen;
+            // 画面が筐体を覆うので、Space のレバーも止める。
+            slotCabinet.HeldByScreen = true;
+            screen.Open(this, node);
+        }
+
+        private void OnScreenClosed()
+        {
+            if (OpenScreen == null)
+            {
+                return;
+            }
+
+            OpenScreen = null;
+            slotCabinet.HeldByScreen = false;
+            ShowRoute();
         }
 
         /// <summary>マスに入る。戦闘マスなら戦闘を始めて true、それ以外はその場で済ませて false。</summary>
@@ -182,7 +270,7 @@ namespace UnitySlotTower.Flow
 
             if (kind.Id == RouteNodeKinds.Rest)
             {
-                State.Heal(Rules.RestHeal);
+                LastHealed = State.Heal(Rules.RestHeal);
             }
 
             return false;

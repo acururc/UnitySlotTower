@@ -141,8 +141,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
             else
             {
-                // 戦闘以外のマスの画面は T350c。今はすぐルート画面に戻る。
-                Assert.That((_screen.IsOpen, _run.IsChoosingRoute), Is.EqualTo((true, true)), "戦闘以外のマスの後にルート画面へ戻らない");
+                // 戦闘以外のマスはその画面を開く（T350c）。
+                Assert.That((_screen.IsOpen, _run.OpenScreen != null && _run.OpenScreen.Kind == target.Kind),
+                    Is.EqualTo((false, true)), "戦闘以外のマスでその画面が開かない");
             }
         }
 
