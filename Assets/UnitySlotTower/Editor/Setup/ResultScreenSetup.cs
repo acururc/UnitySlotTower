@@ -12,7 +12,8 @@ namespace UnitySlotTower.Editor.Setup
     /// <summary>
     /// Game シーンにリザルト（T402）を組む一回限りの手順。Portrait Root の最前面に重ね、BattleController に結ぶ。
     /// 既にあれば何もしない。以後の変更は Editor でシーンを直接編集する。
-    /// 上から: 結果のアイコン（クリア＝金の王冠、ゲームオーバー＝灰色に赤い×）、旗と到達 S-W、コインと所持数、▶（リトライ）と ◀（タイトル）。
+    /// 上から: 結果のアイコン（クリア＝金の王冠、ゲームオーバー＝灰色に赤い×）、旗と到達した階、所持金、コイン、▶（リトライ）と ◀（タイトル）。
+    /// 既存のシーンを T350d の版にするのは <c>Update Result Screen (T350d)</c>。
     /// </summary>
     internal static class ResultScreenSetup
     {
@@ -84,18 +85,18 @@ namespace UnitySlotTower.Editor.Setup
             cross.alignment = TextAlignmentOptions.Center;
             gameOver.gameObject.SetActive(false);
 
-            // 到達したステージ-ウェーブ: 旗（白い竿と赤い三角）と S-W。
-            var flag = CreateRect("Wave Icon", area, new Vector2(0.26f, 0.47f), new Vector2(0.36f, 0.55f));
+            // 到達した階: 旗（白い竿と赤い三角）と階の数。
+            var flag = CreateRect("Floor Icon", area, FloorRow.IconMin, FloorRow.IconMax);
             CreateImage("Pole", flag, new Vector2(0.2f, 0f), new Vector2(0.3f, 1f), Color.white, null);
             CreateRect("Flag", flag, new Vector2(0.3f, 0.5f), new Vector2(0.9f, 1f)).gameObject.AddComponent<TriangleGraphic>()
                 .color = new Color(0.9f, 0.25f, 0.3f);
-            var wave = CreateText("Wave", area, new Vector2(0.4f, 0.46f), new Vector2(0.74f, 0.56f), Color.white);
-            wave.text = "1-1";
+            var floor = CreateText("Floor", area, FloorRow.TextMin, FloorRow.TextMax, Color.white);
+            floor.text = "1";
 
-            // 所持コイン。
-            CreateImage("Coin Icon", area, new Vector2(0.26f, 0.35f), new Vector2(0.36f, 0.43f), GoldColor, _knob)
-                .preserveAspect = true;
-            var coins = CreateText("Coins", area, new Vector2(0.4f, 0.34f), new Vector2(0.74f, 0.44f), Color.white);
+            // 所持金（金の丸）とコイン（金の丸に暗い輪。ルート・ショップ画面と同じ仮の絵）。
+            CreateImage("Money Icon", area, MoneyRow.IconMin, MoneyRow.IconMax, GoldColor, _knob).preserveAspect = true;
+            var money = CreateText("Money", area, MoneyRow.TextMin, MoneyRow.TextMax, Color.white);
+            var coins = CreateCoinRow(area);
 
             // ▶ リトライ・◀ タイトル。キーボードで選んでいる方の下に黄色の線。
             var retry = CreateButton("Retry Button", area, new Vector2(0.14f, 0.14f), new Vector2(0.44f, 0.25f),
@@ -110,8 +111,9 @@ namespace UnitySlotTower.Editor.Setup
             serialized.FindProperty("panel").objectReferenceValue = panel.gameObject;
             serialized.FindProperty("clearIcon").objectReferenceValue = clear.gameObject;
             serialized.FindProperty("gameOverIcon").objectReferenceValue = gameOver.gameObject;
-            serialized.FindProperty("waveText").objectReferenceValue = wave;
-            serialized.FindProperty("coinsText").objectReferenceValue = coins;
+            serialized.FindProperty("floorText").objectReferenceValue = floor;
+            serialized.FindProperty("moneyText").objectReferenceValue = money;
+            serialized.FindProperty("slotCoinsText").objectReferenceValue = coins;
             serialized.FindProperty("retryButton").objectReferenceValue = retry;
             serialized.FindProperty("titleButton").objectReferenceValue = title;
             var frames = serialized.FindProperty("selectionFrames");
@@ -126,6 +128,98 @@ namespace UnitySlotTower.Editor.Setup
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             Debug.Log("[SlotTower Setup] リザルトを作成した。");
+        }
+
+        /// <summary>
+        /// T402 の版のリザルトを T350d の版にする: 旗と S-W を「到達した階」に、所持コインの行（中身は所持金）を所持金に改名し、
+        /// コインの行を足して3行に詰め直す。既にコインの行があれば何もしない。
+        /// </summary>
+        [MenuItem("Tools/UnitySlotTower/Setup/Update Result Screen (T350d)")]
+        private static void UpdateForRun()
+        {
+            var screen = Object.FindAnyObjectByType<ResultScreen>(FindObjectsInactive.Include);
+            if (screen == null)
+            {
+                Debug.LogError("[SlotTower Setup] リザルトがない。先に Build Result Screen (T402) を実行する。");
+                return;
+            }
+
+            var serialized = new SerializedObject(screen);
+            if (serialized.FindProperty("slotCoinsText").objectReferenceValue != null)
+            {
+                Debug.LogWarning("[SlotTower Setup] リザルトは既に T350d の版のため変更しない。");
+                return;
+            }
+
+            var floor = (TMP_Text)serialized.FindProperty("floorText").objectReferenceValue;
+            var money = (TMP_Text)serialized.FindProperty("moneyText").objectReferenceValue;
+            var area = ((GameObject)serialized.FindProperty("panel").objectReferenceValue)?.GetComponent<RectTransform>();
+            var flag = area != null ? area.Find("Wave Icon") as RectTransform : null;
+            var moneyIcon = area != null ? area.Find("Coin Icon") as RectTransform : null;
+            if (floor == null || money == null || flag == null || moneyIcon == null)
+            {
+                Debug.LogError("[SlotTower Setup] リザルトの部品（Wave Icon / Coin Icon / 文字の参照）が見つからない。");
+                return;
+            }
+
+            _knob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
+            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontPath);
+
+            flag.name = "Floor Icon";
+            Place(flag, FloorRow.IconMin, FloorRow.IconMax);
+            floor.name = "Floor";
+            floor.text = "1";
+            Place(floor.rectTransform, FloorRow.TextMin, FloorRow.TextMax);
+            moneyIcon.name = "Money Icon";
+            Place(moneyIcon, MoneyRow.IconMin, MoneyRow.IconMax);
+            money.name = "Money";
+            Place(money.rectTransform, MoneyRow.TextMin, MoneyRow.TextMax);
+            var coins = CreateCoinRow(area);
+
+            serialized.FindProperty("slotCoinsText").objectReferenceValue = coins;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            var scene = screen.gameObject.scene;
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log("[SlotTower Setup] リザルトを T350d の版にした。");
+        }
+
+        // 行の位置（パネル内の比率）。上から 到達階・所持金・コイン。
+        private readonly struct Row
+        {
+            public readonly Vector2 IconMin;
+            public readonly Vector2 IconMax;
+            public readonly Vector2 TextMin;
+            public readonly Vector2 TextMax;
+
+            public Row(float bottom)
+            {
+                IconMin = new Vector2(0.26f, bottom + 0.01f);
+                IconMax = new Vector2(0.36f, bottom + 0.08f);
+                TextMin = new Vector2(0.4f, bottom);
+                TextMax = new Vector2(0.74f, bottom + 0.09f);
+            }
+        }
+
+        private static readonly Row FloorRow = new Row(0.48f);
+        private static readonly Row MoneyRow = new Row(0.39f);
+        private static readonly Row CoinRow = new Row(0.30f);
+        private static readonly Color CoinInnerColor = new Color(0.7f, 0.5f, 0.05f);
+
+        private static TextMeshProUGUI CreateCoinRow(RectTransform area)
+        {
+            var icon = CreateImage("Coin Icon", area, CoinRow.IconMin, CoinRow.IconMax, GoldColor, _knob);
+            icon.preserveAspect = true;
+            CreateImage("Inner", icon.rectTransform, new Vector2(0.25f, 0.25f), new Vector2(0.75f, 0.75f), CoinInnerColor, _knob)
+                .preserveAspect = true;
+            return CreateText("Coins", area, CoinRow.TextMin, CoinRow.TextMax, Color.white);
+        }
+
+        private static void Place(RectTransform rect, Vector2 anchorMin, Vector2 anchorMax)
+        {
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
         }
 
         // 札のボタンに白い三角（angle: 0 で ▶、180 で ◀）と、選択中に点く下線。

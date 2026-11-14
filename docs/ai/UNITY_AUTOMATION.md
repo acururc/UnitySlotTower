@@ -59,6 +59,23 @@ Select the target instance before operating. Wrapper selects UnitySlotTower; dis
 ```
 Check `summary.total`, `passed`, `failed`. Zero tests verifies the execution path, not feature behavior.
 
+### このPCで分かっている注意点（2026-10〜11 の実績）
+- 手順は1本のスクリプトにまとめ、scratchpad に毎回作り直す（引数 `-Mode`）: refresh → 約25秒待つ → Console の `error CS` を確認（あれば止める。古いアセンブリのまま全件成功に見えるため）→ `tests --async` を1回だけ → 同じ job_id で `poll-test --failed-only` をループ。開始出力の job_id を取りこぼさない（二重送信の前例あり）。EditMode 全体は約75秒。
+- CLI はテスト失敗・poll 中・`editor refresh` 成功時でも exit 1 を返すことがある。`try {} catch {}` で包み、出力の最初の `{` から JSON として読む。見る所は `result.data.status`・`result.data.progress.failures_so_far`（失敗時 `result.data.result` は null）・成功時 `result.data.result.summary`。PowerShell で `Json (try {...})` は構文エラー、`$(try {...})` と書く。
+- `editor console` が0件しか返さないことがある。コンパイル確認は code execute で `EditorUtility.scriptCompilationFailed` と型の有無を見る。`--stacktrace` でもスタックが返らないことがある。
+- `code execute` は codedom（古い C#）: ローカル関数不可、`UnityEngine.Object` と書く、Runtime の型は名前で参照できないので `GetType().FullName` で探す（名前空間は `UnitySlotTower.Battle` 等、`.Runtime.` は付かない）。
+- Editor 非フォーカスだと Play のフレームが進まない。Play 中だけ code execute で `Application.runInBackground = true`。アクティブシーンが SampleScene のことがあるので操作前に確認。
+- camera screenshot は同名があると `-1` 付きで保存するので新しいファイル名を確かめる。半透明 UI は薄く写るので濃さは画像で判断しない。Edit 中の撮影には Screen Space Overlay の UI が写らない。画面は Play 中に code execute で開いて撮る（T350d）。
+- Editor メニューで `AddComponent<TextMeshProUGUI>` した直後に設定した自動サイズの範囲が TMP の既定（18〜72）に戻ることがある（T350d、原因未調査）。作った後に値を確かめる。
+- Editor を開いたままシーンファイルを外から書き換えると確認ダイアログやフリーズが起きうる（2026-10-30）。シーン変更は MCP で行う。2026-11-04 に d3d12 Device removed で落ちた（繰り返すならドライバー更新か `-force-d3d11`）。
+- Bash の `python` は Windows ストアの代用品で動かない。
+
+### PlayMode テストの書き方
+- 実機デバイス（DualShock4 を含むゲームパッド、マウス・キーボード）は SetUp で無効化し TearDown で戻す。仮想デバイスは `InputSystem.AddDevice`、`editorInputBehaviorInPlayMode`・`backgroundBehavior` を一時的に変えて非フォーカスでも入力を通す。
+- シーンは `LoadSceneAsync` の完了を待ってから探す。待つのは実時間（フレーム数で待たない。リールの自動停止は約1.8秒）。
+- 結果を固定するならシーン読み込み前に `SlotCabinet.RandomOverride`（TearDown で null）。説明を出すなら `GuideOverlay.DisabledForTests = false`（TearDown で true）。最初の戦闘は回数固定なのでコインの減りを見るなら先に `SetFixedSpins(0)`。
+- 戦闘を早送りしてマスをまたぐときは毎フレーム `RouteTestUtil.Step()`（ルート画面・開いた画面も閉じる）。一部のテストは `wavesTable` に短い表を差し込むので waves.csv の列を変えたらそれらも直す。
+
 ## Player build / images
 Stop Play and confirm reconnection first.
 

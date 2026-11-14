@@ -2,6 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
@@ -10,7 +11,7 @@ namespace UnitySlotTower.Flow
 {
     /// <summary>
     /// Game シーンのリザルト（T402、FR-005、plan 4章）。最終ウェーブを終える（クリア）かライフが0になる（ゲームオーバー）と開き、
-    /// 結果のアイコン、到達したステージ-ウェーブ、所持コインを出す。▶ でリトライ（同じ設定で Game を読み込み直して初期化: AC-004）、
+    /// 結果のアイコン、到達した階、所持金、コインを出す。▶ でリトライ（同じ設定で Game を読み込み直し、ルートも作り直す: AC-004）、
     /// ◀ でタイトルへ戻る。マウスはクリック、キーボードは左右で選んで Enter。
     /// </summary>
     public sealed class ResultScreen : MonoBehaviour
@@ -23,8 +24,14 @@ namespace UnitySlotTower.Flow
         [SerializeField] private GameObject panel;
         [SerializeField] private GameObject clearIcon;
         [SerializeField] private GameObject gameOverIcon;
-        [SerializeField] private TMP_Text waveText;
-        [SerializeField] private TMP_Text coinsText;
+        [Tooltip("到達した階（旗の横）。")]
+        [FormerlySerializedAs("waveText")]
+        [SerializeField] private TMP_Text floorText;
+        [Tooltip("所持金（T402 の版では所持コインの欄だった。中身は当時から所持金の財布）。")]
+        [FormerlySerializedAs("coinsText")]
+        [SerializeField] private TMP_Text moneyText;
+        [Tooltip("筐体のコイン。")]
+        [SerializeField] private TMP_Text slotCoinsText;
         [SerializeField] private Button retryButton;
         [SerializeField] private Button titleButton;
         [Tooltip("キーボードで選んでいるボタンの枠（retry, title の順）。")]
@@ -89,9 +96,11 @@ namespace UnitySlotTower.Flow
             IsClear = run.IsRunCleared;
             clearIcon.SetActive(IsClear);
             gameOverIcon.SetActive(!IsClear);
-            // 到達した階とウェーブ（到達階の表示への作り直しは T350）。
-            waveText.SetText("{0}-{1}", (float)battle.Floor, run.Wave);
-            coinsText.SetText("{0}", (float)run.Wallet.Coins);
+            // 到達した階・所持金・コイン（T350d、plan 16章）。
+            var state = run.State;
+            floorText.SetText("{0}", (float)state.Floor);
+            moneyText.SetText("{0}", (float)state.Money.Coins);
+            slotCoinsText.SetText("{0}", (float)state.Coins.Coins);
             _openedFrame = Time.frameCount;
             Select(0);
             panel.SetActive(true);
