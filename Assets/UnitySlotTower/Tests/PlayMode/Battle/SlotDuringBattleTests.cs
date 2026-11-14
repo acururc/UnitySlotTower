@@ -78,7 +78,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        public IEnumerator Enemies_Keep_Moving_While_The_Reels_Spin_And_The_Bet_Comes_From_The_Shared_Wallet()
+        [Description("AC-011: 最初の戦闘は回数固定（D-68）。Space で回り、コインは減らず残り回数が減る。回転中も敵が進む")]
+        public IEnumerator Enemies_Keep_Moving_While_The_Reels_Spin_And_The_First_Battle_Uses_Fixed_Spins()
         {
             Assert.That(_battle.Run.State.Coins, Is.SameAs(_cabinet.Wallet));
             var reels = _cabinet.GetComponentsInChildren<SlotReelView>();
@@ -87,6 +88,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                 yield return null;
             }
 
+            var spinsBefore = _cabinet.FixedSpinsLeft;
+            Assert.That(spinsBefore, Is.EqualTo(_battle.Run.Encounter.FixedSpins).And.GreaterThan(0), "最初の戦闘が回数固定でない");
             var coinsBefore = _cabinet.Wallet.Coins;
             yield return Tap(Key.Space);
             for (var i = 0; i < 180 && !reels[0].IsSpinning; i++)
@@ -95,7 +98,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(reels[0].IsSpinning, Is.True, "Space でリールが回らない");
-            Assert.That(_cabinet.Wallet.Coins, Is.LessThan(coinsBefore), "ベットがコインから引かれない");
+            Assert.That((_cabinet.Wallet.Coins, _cabinet.FixedSpinsLeft), Is.EqualTo((coinsBefore, spinsBefore - 1)),
+                "回数固定なのにコインが減るか、残り回数が減らない");
 
             var enemy = _battle.Field.Enemies[0];
             var tick = _battle.Field.Tick;
@@ -141,6 +145,83 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                 Is.EqualTo((field.DroppedCoins - droppedBefore.DroppedCoins,
                     field.DroppedMoney - droppedBefore.DroppedMoney)));
             Assert.That(field.ArrivedCount, Is.LessThan(5), "1体も倒せていない");
+        }
+
+        [UnityTest]
+        [Description("AC-041: コインで回すと賭け枚数だけ減り、止まった中段は出目どおり（揃いは3本とも同じ図柄、ハズレはどの段も揃わない）")]
+        public IEnumerator Coin_Spins_Take_The_Bet_And_The_Reels_Stop_On_The_Outcome()
+        {
+            _cabinet.SetFixedSpins(0);
+            var reels = _cabinet.GetComponentsInChildren<SlotReelView>();
+            for (var row = -1; row <= 1; row++)
+            {
+                var a = reels[0].ShownChild(row);
+                Assert.That(a == reels[1].ShownChild(row) && a == reels[2].ShownChild(row), Is.False,
+                    $"回す前の表示で {row} 段が揃って当たりに見える");
+            }
+
+            for (var spin = 0; spin < 3; spin++)
+            {
+                var coinsBefore = _cabinet.Wallet.Coins;
+                yield return Tap(Key.Space);
+                Assert.That((_cabinet.IsSpinning, coinsBefore - _cabinet.Wallet.Coins), Is.EqualTo((true, _cabinet.Bet)),
+                    $"{spin + 1}回目: 回らないか、賭け枚数だけ減らない");
+                yield return WaitForReelsToStop();
+
+                if (_cabinet.Outcome is Core.Slot.SlotSymbol aligned)
+                {
+                    Assert.That(new[] { reels[0].ShownChild(0), reels[1].ShownChild(0), reels[2].ShownChild(0) },
+                        Is.All.EqualTo((int)aligned), $"{spin + 1}回目: 中段が出目 {aligned} に揃っていない");
+                }
+                else
+                {
+                    for (var row = -1; row <= 1; row++)
+                    {
+                        var a = reels[0].ShownChild(row);
+                        Assert.That(a == reels[1].ShownChild(row) && a == reels[2].ShownChild(row), Is.False,
+                            $"{spin + 1}回目: ハズレなのに {row} 段が揃っている");
+                    }
+                }
+            }
+        }
+
+        [UnityTest]
+        [Description("plan 16.8: 回数固定のあいだはコインの代わりに残り回数を出し、0 になったらレバーを受け付けない")]
+        public IEnumerator Fixed_Spins_Replace_The_Coin_Count_And_Stop_At_Zero()
+        {
+            var credit = _cabinet.transform.Find("Credit").GetComponent<TMPro.TMP_Text>();
+            var coinIcon = _cabinet.transform.Find("Coin Icon").GetComponent<UnityEngine.UI.Graphic>();
+            var fixedIcon = _cabinet.transform.Find("Fixed Spins Icon").gameObject;
+
+            _cabinet.SetFixedSpins(1);
+            yield return null;
+            Assert.That((credit.text, coinIcon.enabled, fixedIcon.activeSelf), Is.EqualTo(("1", false, true)),
+                "回数固定の残り回数と印が出ない");
+
+            var coins = _cabinet.Wallet.Coins;
+            yield return Tap(Key.Space);
+            yield return WaitForReelsToStop();
+            yield return Tap(Key.Space);
+            Assert.That((_cabinet.IsSpinning, _cabinet.FixedSpinsLeft, _cabinet.Wallet.Coins), Is.EqualTo((false, (int?)0, coins)),
+                "残り0でも回る");
+
+            // 回せなかったときの点滅（1秒）が終わってから見る。
+            _cabinet.SetFixedSpins(0);
+            yield return new WaitForSeconds(1.1f);
+            Assert.That((credit.text, coinIcon.enabled, fixedIcon.activeSelf), Is.EqualTo((coins.ToString(), true, false)),
+                "コインで回す状態に戻ってもコインの数が出ない");
+        }
+
+        private IEnumerator WaitForReelsToStop()
+        {
+            // 自動停止は実時間（1.0 + 0.4×2 秒）で止まるので、フレーム数ではなく実時間で待つ。
+            var until = Time.realtimeSinceStartup + 5f;
+            while (_cabinet.IsSpinning && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That(_cabinet.IsSpinning, Is.False, "リールが止まらない");
         }
 
         private IEnumerator Tap(Key key)

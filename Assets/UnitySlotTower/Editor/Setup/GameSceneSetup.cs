@@ -121,15 +121,10 @@ namespace UnitySlotTower.Editor.Setup
             var placed = new (string Name, Vector2 Min, Vector2 Max)[]
             {
                 ("Reel Window", windowMin, windowMax),
-                ("Stop Button 1", new Vector2(0.255f, 0.08f), new Vector2(0.371f, 0.25f)),
-                ("Stop Button 2", new Vector2(0.442f, 0.08f), new Vector2(0.558f, 0.25f)),
-                ("Stop Button 3", new Vector2(0.629f, 0.08f), new Vector2(0.745f, 0.25f)),
-                ("Bonus Lamp", new Vector2(0.028f, 0.847f), new Vector2(0.181f, 0.966f)),
-                ("Bonus Games", new Vector2(0.014f, 0.69f), new Vector2(0.175f, 0.825f)),
                 ("Lever Button", new Vector2(0.03f, 0.065f), new Vector2(0.18f, 0.267f)),
                 ("Coin Icon", new Vector2(0.76f, 0.261f), new Vector2(0.819f, 0.362f)),
+                ("Fixed Spins Icon", new Vector2(0.76f, 0.261f), new Vector2(0.819f, 0.362f)),
                 ("Credit", new Vector2(0.823f, 0.252f), new Vector2(0.986f, 0.371f)),
-                ("Payout", new Vector2(0.823f, 0.098f), new Vector2(0.986f, 0.217f)),
             };
             foreach (var (name, min, max) in placed)
             {

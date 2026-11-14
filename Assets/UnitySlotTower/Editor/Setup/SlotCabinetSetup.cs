@@ -11,8 +11,8 @@ using UnitySlotTower.Slot;
 namespace UnitySlotTower.Editor.Setup
 {
     /// <summary>
-    /// Game シーンの「Slot Area」に仮のスロット筐体（T110、T315 で作り直し）を組む一回限りの手順。既に筐体があれば何もしない。
-    /// T110 の筐体があるシーンは「Update Slot Cabinet (T315)」で新しい図柄・ボーナス表示・有効ラインの印に置き換える。
+    /// Game シーンの「Slot Area」にスロット筐体を組む一回限りの手順。既に筐体があれば何もしない。
+    /// 旧筐体があるシーンは「Rebuild Slot Cabinet (T348)」でレバーだけの筐体（plan 16.8）に作り直す。
     /// 以後の変更は Editor でシーンを直接編集する。
     /// </summary>
     internal static class SlotCabinetSetup
@@ -22,13 +22,16 @@ namespace UnitySlotTower.Editor.Setup
         private const string InputActionsPath = "Assets/InputSystem_Actions.inputactions";
         private const int CellCount = 5;
         private const string PaylineName = "Payline Mark";
-        private const string BonusGamesName = "Bonus Games";
+        private const string FixedSpinsName = "Fixed Spins Icon";
+        private const string ReelCustomName = "Reel Custom";
 
-        // ボーナスのランプと残りゲーム数はリール窓の上に並べる（T315）。
-        private static readonly Vector2 BonusLampMin = new Vector2(0.36f, 0.91f);
-        private static readonly Vector2 BonusLampMax = new Vector2(0.48f, 0.98f);
-        private static readonly Vector2 BonusGamesMin = new Vector2(0.5f, 0.905f);
-        private static readonly Vector2 BonusGamesMax = new Vector2(0.66f, 0.985f);
+        // T348 で消す旧筐体の部品（ストップボタン・ボーナス・払い出し）。
+        private static readonly string[] RemovedParts =
+            { "Stop Button 1", "Stop Button 2", "Stop Button 3", "Bonus Lamp", "Bonus Games", "Payout" };
+
+        // 回数固定の印はコインのアイコンと同じ場所に重ねる（どちらか一方だけ出る）。
+        private static readonly Vector2 CoinIconMin = new Vector2(0.76f, 0.261f);
+        private static readonly Vector2 CoinIconMax = new Vector2(0.819f, 0.362f);
 
         private static Sprite _knob;
         private static Sprite _box;
@@ -55,30 +58,19 @@ namespace UnitySlotTower.Editor.Setup
             var cabinet = slotArea.gameObject.AddComponent<SlotCabinet>();
 
             var reels = new SlotReelView[SlotMachine.ReelCount];
-            var stops = new Button[SlotMachine.ReelCount];
             for (var i = 0; i < reels.Length; i++)
             {
                 var left = 0.03f + i * 0.32f;
                 reels[i] = CreateReel(window, i, new Vector2(left, 0.02f), new Vector2(left + 0.3f, 0.98f));
-
-                // ストップボタンは各リールの真下に置く。
-                var center = Mathf.Lerp(window.anchorMin.x, window.anchorMax.x, left + 0.15f);
-                stops[i] = CreateButton($"Stop Button {i + 1}", slotArea, new Vector2(center - 0.07f, 0.2f),
-                    new Vector2(center + 0.07f, 0.3f), new Color(0.85f, 0.15f, 0.15f));
             }
 
-            var lever = CreateButton("Lever Button", slotArea, new Vector2(0.04f, 0.04f), new Vector2(0.2f, 0.16f),
+            var lever = CreateButton("Lever Button", slotArea, new Vector2(0.03f, 0.065f), new Vector2(0.18f, 0.267f),
                 new Color(0.85f, 0.85f, 0.88f));
-
-            var bonus = CreateImage("Bonus Lamp", slotArea, BonusLampMin, BonusLampMax, new Color(1f, 0.2f, 0.2f), _knob, true);
             CreatePaylineMarks(slotArea, window);
 
-            var coin = CreateImage("Coin Icon", slotArea, new Vector2(0.1f, 0.365f), new Vector2(0.17f, 0.425f),
-                new Color(1f, 0.82f, 0.2f), _knob, true);
-            var credit = CreateNumber("Credit", slotArea, new Vector2(0.18f, 0.36f), new Vector2(0.42f, 0.43f), Color.white);
-            var payout = CreateNumber("Payout", slotArea, new Vector2(0.45f, 0.36f), new Vector2(0.65f, 0.43f),
-                new Color(1f, 0.82f, 0.2f));
-            var counter = CreateNumber(BonusGamesName, slotArea, BonusGamesMin, BonusGamesMax, new Color(1f, 0.2f, 0.2f));
+            var coin = CreateImage("Coin Icon", slotArea, CoinIconMin, CoinIconMax, new Color(1f, 0.82f, 0.2f), _knob, true);
+            var credit = CreateNumber("Credit", slotArea, new Vector2(0.823f, 0.252f), new Vector2(0.986f, 0.371f), Color.white);
+            var fixedSpins = CreateFixedSpinsIcon(slotArea);
 
             var serialized = new SerializedObject(cabinet);
             SetTable(serialized, "gameConfigTable", "game_config.csv");
@@ -88,13 +80,11 @@ namespace UnitySlotTower.Editor.Setup
             serialized.FindProperty("inputActions").objectReferenceValue =
                 AssetDatabase.LoadAssetAtPath<InputActionAsset>(InputActionsPath);
             serialized.FindProperty("leverButton").objectReferenceValue = lever;
-            SetArray(serialized.FindProperty("stopButtons"), stops);
             SetArray(serialized.FindProperty("reels"), reels);
-            serialized.FindProperty("bonusLamp").objectReferenceValue = bonus;
+            serialized.FindProperty("reelWindow").objectReferenceValue = window;
             serialized.FindProperty("coinIcon").objectReferenceValue = coin;
+            serialized.FindProperty("fixedSpinsIcon").objectReferenceValue = fixedSpins;
             serialized.FindProperty("creditText").objectReferenceValue = credit;
-            serialized.FindProperty("payoutText").objectReferenceValue = payout;
-            serialized.FindProperty("bonusGamesText").objectReferenceValue = counter;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             var scene = slotArea.gameObject.scene;
@@ -104,11 +94,11 @@ namespace UnitySlotTower.Editor.Setup
         }
 
         /// <summary>
-        /// T110 の筐体を T315 の表示に置き換える: 先バレ・確変・リプレイのランプと音源を消し、コマの図柄を6図柄に作り直し、
-        /// ボーナスのランプと残りゲーム数をリール窓の上に並べ、中段（有効ライン）の左右に印を置く。済んでいれば何もしない。
+        /// 旧筐体を T348 の筐体に作り直す: ストップボタン・ボーナスのランプと残りゲーム数・払い出し・カスタム画面の残骸を消し、
+        /// コマの図柄を新しい6図柄の順に作り直し、回数固定の印を足して参照をつなぎ直す。何度実行しても同じ結果になる。
         /// </summary>
-        [MenuItem("Tools/UnitySlotTower/Setup/Update Slot Cabinet (T315)")]
-        private static void UpdateCabinet()
+        [MenuItem("Tools/UnitySlotTower/Setup/Rebuild Slot Cabinet (T348)")]
+        private static void Rebuild()
         {
             var cabinet = Object.FindAnyObjectByType<SlotCabinet>(FindObjectsInactive.Include);
             var slotArea = cabinet != null ? (RectTransform)cabinet.transform : null;
@@ -119,26 +109,26 @@ namespace UnitySlotTower.Editor.Setup
                 return;
             }
 
-            if (slotArea.Find(PaylineName + " Left") != null)
-            {
-                Debug.LogWarning("[SlotTower Setup] スロット筐体は T315 の表示になっているため何もしない。");
-                return;
-            }
-
             LoadAssets();
-            foreach (var name in new[] { "Premonition Lamp", "Kakuhen Lamp", "Replay Lamp" })
+            var scene = slotArea.gameObject.scene;
+            var removed = 0;
+            foreach (var name in RemovedParts)
             {
-                var lamp = slotArea.Find(name);
-                if (lamp != null)
+                var part = slotArea.Find(name);
+                if (part != null)
                 {
-                    Object.DestroyImmediate(lamp.gameObject);
+                    Object.DestroyImmediate(part.gameObject);
+                    removed++;
                 }
             }
 
-            var audio = slotArea.GetComponent<AudioSource>();
-            if (audio != null)
+            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
-                Object.DestroyImmediate(audio);
+                if (t != null && t.name == ReelCustomName && t.gameObject.scene == scene)
+                {
+                    Object.DestroyImmediate(t.gameObject);
+                    removed++;
+                }
             }
 
             foreach (var reel in window.GetComponentsInChildren<SlotReelView>(true))
@@ -156,18 +146,30 @@ namespace UnitySlotTower.Editor.Setup
                 }
             }
 
-            var serialized = new SerializedObject(cabinet);
-            var bonusLamp = (Graphic)serialized.FindProperty("bonusLamp").objectReferenceValue;
-            SetAnchors(bonusLamp.rectTransform, BonusLampMin, BonusLampMax);
-            var counter = (TMP_Text)serialized.FindProperty("bonusGamesText").objectReferenceValue;
-            counter.name = BonusGamesName;
-            SetAnchors(counter.rectTransform, BonusGamesMin, BonusGamesMax);
-            CreatePaylineMarks(slotArea, window);
+            var fixedSpins = slotArea.Find(FixedSpinsName)?.gameObject;
+            if (fixedSpins == null)
+            {
+                fixedSpins = CreateFixedSpinsIcon(slotArea);
+            }
 
-            var scene = slotArea.gameObject.scene;
+            var serialized = new SerializedObject(cabinet);
+            serialized.FindProperty("reelWindow").objectReferenceValue = window;
+            serialized.FindProperty("fixedSpinsIcon").objectReferenceValue = fixedSpins;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            var missing = 0;
+            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (t.gameObject.scene == scene && GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(t.gameObject) > 0)
+                {
+                    Debug.LogWarning($"[SlotTower Setup] スクリプトが欠けたオブジェクトが残っている: {t.name}", t);
+                    missing++;
+                }
+            }
+
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
-            Debug.Log("[SlotTower Setup] スロット筐体を T315 の表示に更新した。");
+            Debug.Log($"[SlotTower Setup] スロット筐体を T348 の形に作り直した（消した部品 {removed}、欠けたスクリプト {missing}）。");
         }
 
         private static void LoadAssets()
@@ -175,6 +177,21 @@ namespace UnitySlotTower.Editor.Setup
             _knob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
             _box = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
             _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontPath);
+        }
+
+        // 回数固定の印: 赤い枠に白いリール3本（小さなスロット窓）。文字を使わない（FR-003）。最初は隠しておく。
+        private static GameObject CreateFixedSpinsIcon(RectTransform slotArea)
+        {
+            var frame = CreateImage(FixedSpinsName, slotArea, CoinIconMin, CoinIconMax, new Color(0.85f, 0.2f, 0.2f), _box, false);
+            for (var i = 0; i < SlotMachine.ReelCount; i++)
+            {
+                var left = 0.14f + i * 0.255f;
+                CreateImage($"Reel {i + 1}", frame.rectTransform, new Vector2(left, 0.2f), new Vector2(left + 0.21f, 0.8f),
+                    Color.white, null, false);
+            }
+
+            frame.gameObject.SetActive(false);
+            return frame.gameObject;
         }
 
         // 中段（有効ライン）の高さで、リール窓の左右から内向きの三角を出す。

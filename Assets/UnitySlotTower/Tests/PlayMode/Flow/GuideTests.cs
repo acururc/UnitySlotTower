@@ -122,11 +122,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
             var cabinet = Object.FindAnyObjectByType<SlotCabinet>();
             yield return Click(cabinet.LeverRect);
-            Assert.That(_guide.Current, Is.EqualTo(GuideHint.Stop), "レバーを引くと止める説明");
-            for (var reel = 0; reel < 3; reel++)
-            {
-                yield return Click(cabinet.StopRect(reel));
-            }
+            Assert.That(_guide.Current, Is.EqualTo(GuideHint.Stop), "レバーを引くとリールが止まるまでの説明");
 
             // 自動停止は実時間（1.0 + 0.4×2 秒）で止まるので、フレーム数ではなく実時間で待つ。
             var until = Time.realtimeSinceStartup + 5f;

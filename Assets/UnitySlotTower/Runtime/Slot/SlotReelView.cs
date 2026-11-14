@@ -31,6 +31,23 @@ namespace UnitySlotTower.Slot
         /// <summary>今ストップを押したときの押し位置（中段へ下りてくる途中の図柄）。</summary>
         public int PressPosition => _layout.Wrap((int)System.Math.Floor(_position));
 
+        /// <summary>
+        /// row 段（上段 -1・中段 0・下段 1）のマスで表示している図柄の子の番号（<c>SlotSymbol</c> の順）。表示がなければ -1。
+        /// </summary>
+        public int ShownChild(int row)
+        {
+            var cell = cells[cells.Length / 2 + row];
+            for (var s = 0; s < cell.childCount; s++)
+            {
+                if (cell.GetChild(s).gameObject.activeSelf)
+                {
+                    return s;
+                }
+            }
+
+            return -1;
+        }
+
         public void Initialize(ReelLayout layout, int stop)
         {
             _layout = layout;

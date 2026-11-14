@@ -1122,45 +1122,9 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "StopLeft",
-                    "type": "Button",
-                    "id": "064f7fb8-2945-40cc-b974-dcf13a4b9b89",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "StopCenter",
-                    "type": "Button",
-                    "id": "e4e9e9d0-3c3d-42f8-bad2-4afcddda7282",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "StopRight",
-                    "type": "Button",
-                    "id": "69cd8a66-a461-476c-b361-ad82c4e4e66c",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
                     "name": "Pause",
                     "type": "Button",
                     "id": "7e08a693-e664-4d82-8414-c3ab7de49bb7",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "ClearCell",
-                    "type": "Button",
-                    "id": "8a2c5e71-93d4-4f0b-b6e2-1d7f4a9c0b35",
                     "expectedControlType": "Button",
                     "processors": "",
                     "interactions": "",
@@ -1494,39 +1458,6 @@
                 },
                 {
                     "name": "",
-                    "id": "b5ddbd38-4b37-4533-a4a2-5d7eaf7bd512",
-                    "path": "<Keyboard>/j",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "StopLeft",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "32ec2082-7131-4521-b34b-092dd1628e48",
-                    "path": "<Keyboard>/k",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "StopCenter",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "a6008bd0-c277-4331-952f-2f9995d2403f",
-                    "path": "<Keyboard>/l",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "StopRight",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
                     "id": "08b7586e-96f4-44d9-b853-1e815584688e",
                     "path": "<Keyboard>/p",
                     "interactions": "",
@@ -1555,28 +1486,6 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "Help",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "d4f1a8b2-6c3e-4a95-8b07-2e9c5f1d7a63",
-                    "path": "<Keyboard>/backspace",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "ClearCell",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "e83b7c19-4d2a-4f6e-9a50-7c1b3d8e2f94",
-                    "path": "<Keyboard>/delete",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "ClearCell",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

@@ -200,20 +200,13 @@ namespace UnitySlotTower.Flow
                     TapTarget(UiRect(slotCabinet.LeverRect), t, dimmed);
                     break;
                 case GuideHint.Stop:
-                {
-                    var reel = (int)Mathf.Repeat(t / TapSeconds, 3f);
-                    var all = Union(UiRect(slotCabinet.StopRect(0)), UiRect(slotCabinet.StopRect(2)));
-                    ShowTarget(all, dimmed);
-                    Tap(UiRect(slotCabinet.StopRect(reel)).center, Mathf.Repeat(t, TapSeconds));
+                    // リールは自動で止まる（plan 16.3）。止まるまでリール窓を見せるだけ（題目の作り直しは T351）。
+                    ShowTarget(UiRect(slotCabinet.ReelWindowRect), dimmed);
                     break;
-                }
                 case GuideHint.Bonus:
-                {
-                    var lever = UiRect(slotCabinet.LeverRect);
-                    ShowTarget(Union(UiRect(slotCabinet.BonusLampRect), lever), dimmed);
-                    Tap(lever.center, Mathf.Repeat(t, TapSeconds));
+                    // ボーナスは廃止（2026-11-14）。この題目は出ない（T351 で題目から消す）。
+                    TapTarget(UiRect(slotCabinet.LeverRect), t, dimmed);
                     break;
-                }
                 case GuideHint.Upgrade:
                     TapTarget(UiRect(upgradeIcons[Mathf.Clamp(_sequence.TargetSlot, 0, upgradeIcons.Length - 1)]), t, dimmed);
                     break;
@@ -312,10 +305,6 @@ namespace UnitySlotTower.Flow
             rect.anchoredPosition = local.position;
             rect.sizeDelta = local.size;
         }
-
-        private static Rect Union(Rect a, Rect b) =>
-            Rect.MinMaxRect(Mathf.Min(a.xMin, b.xMin), Mathf.Min(a.yMin, b.yMin), Mathf.Max(a.xMax, b.xMax),
-                Mathf.Max(a.yMax, b.yMax));
 
         // UI 部品の矩形を root のローカル座標（中心が原点）にする。
         private Rect UiRect(Transform target)

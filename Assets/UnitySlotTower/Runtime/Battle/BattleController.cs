@@ -182,11 +182,12 @@ namespace UnitySlotTower.Battle
 
         /// <summary>
         /// floor 階の戦闘マスを出現表から選んで準備に入り、フィールドの表示をそのマップに差し替える。
-        /// 回数固定（<see cref="Encounter.FixedSpins"/>）を筐体へ渡すのは筐体の作り直し（T348）で行う。
+        /// 回数固定（<see cref="Encounter.FixedSpins"/>）を筐体へ渡す（0 ならコインで回す）。
         /// </summary>
         private void BeginNode(int floor)
         {
             var encounter = _encounters.Pick(Sequence[floor - 1], floor, _random);
+            slotCabinet.SetFixedSpins(encounter.FixedSpins);
             var map = fieldView.LoadMap(encounter.MapId);
             Floor = floor;
             Run = new BattleNodeRun(_config, Units, Ranges, _state, encounter, map,

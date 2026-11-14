@@ -27,12 +27,8 @@ namespace UnitySlotTower.Tests.EditMode.Input
         [TestCase("CycleUnit", "<Keyboard>/tab")]
         [TestCase("Retreat", "<Keyboard>/x")]
         [TestCase("Lever", "<Keyboard>/space")]
-        [TestCase("StopLeft", "<Keyboard>/j")]
-        [TestCase("StopCenter", "<Keyboard>/k")]
-        [TestCase("StopRight", "<Keyboard>/l")]
         [TestCase("Pause", "<Keyboard>/p", "<Keyboard>/escape")]
         [TestCase("Help", "<Keyboard>/slash")]
-        [TestCase("ClearCell", "<Keyboard>/backspace", "<Keyboard>/delete")]
         [TestCase("Point", "<Mouse>/position")]
         [TestCase("Press", "<Mouse>/leftButton")]
         public void Action_Has_Planned_Bindings(string action, params string[] paths)
@@ -54,6 +50,17 @@ namespace UnitySlotTower.Tests.EditMode.Input
             Assert.That((map.FindAction("SelectUnit5"), map.FindAction("Upgrade5"),
                     map.bindings.Count(b => b.path == "<Keyboard>/5")),
                 Is.EqualTo(((InputAction)null, (InputAction)null, 0)));
+        }
+
+        [Test]
+        [Description("plan 16.3: リールは自動で止まり、カスタムは廃止したので、ストップとマスを空ける操作はない（T348）")]
+        public void Stop_And_Clear_Cell_Actions_Are_Removed()
+        {
+            var map = Map();
+            var removed = new[] { "StopLeft", "StopCenter", "StopRight", "ClearCell" }
+                .Where(name => map.FindAction(name) != null);
+
+            Assert.That(removed, Is.Empty);
         }
 
         [Test]

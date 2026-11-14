@@ -15,9 +15,9 @@ using UnitySlotTower.Flow;
 namespace UnitySlotTower.Slot
 {
     /// <summary>
-    /// 下部のスロット筐体（plan 16.3）。レバー（クリックか Space）で回し、3本は左から自動で止まる。止まり終えたら
-    /// <see cref="SlotMachine.Settle"/> で揃った図柄を通知する。T341 のつなぎ: ストップボタン・ボーナスランプ・払い出しの表示は
-    /// シーンに残っているが使わない（筐体の作り直し T348 で消す）。
+    /// 下部のスロット筐体（plan 16.3・16.8）。レバー（クリックか Space）で回し、3本は左から自動で止まる。止まり終えたら
+    /// <see cref="SlotMachine.Settle"/> で揃った図柄を通知する。コインの数、回数固定の戦闘ではその代わりに残り回数を出し、
+    /// 回せないときはそのアイコンを点滅させる。
     /// </summary>
     public sealed class SlotCabinet : MonoBehaviour
     {
@@ -38,16 +38,15 @@ namespace UnitySlotTower.Slot
         [Header("Input")]
         [SerializeField] private InputActionAsset inputActions;
         [SerializeField] private Button leverButton;
-        [SerializeField] private Button[] stopButtons = new Button[SlotMachine.ReelCount];
 
         [Header("View")]
         [SerializeField] private SlotReelView[] reels = new SlotReelView[SlotMachine.ReelCount];
-        [SerializeField] private Graphic bonusLamp;
+        [SerializeField] private RectTransform reelWindow;
         [SerializeField] private Graphic coinIcon;
+        [Tooltip("回数固定の戦闘でコインのアイコンの代わりに出す印（plan 16.8）。")]
+        [SerializeField] private GameObject fixedSpinsIcon;
+        [Tooltip("コインの数。回数固定の戦闘では残り回数を出す。")]
         [SerializeField] private TMP_Text creditText;
-        [SerializeField] private TMP_Text payoutText;
-        [FormerlySerializedAs("counterText")]
-        [SerializeField] private TMP_Text bonusGamesText;
 
         private const double CoinBlinkSeconds = 1.0;
 
@@ -95,13 +94,20 @@ namespace UnitySlotTower.Slot
         public bool CanLever => _machine != null &&
             (_machine.FixedSpinsLeft.HasValue ? _machine.FixedSpinsLeft.Value > 0 : _wallet.Coins >= _bet);
 
+        /// <summary>回数固定の戦闘の残り回数。コインで回しているときは null（D-68）。</summary>
+        public int? FixedSpinsLeft => _machine?.FixedSpinsLeft;
+
+        /// <summary>1回に賭けるコインの枚数（game_config の bet）。</summary>
+        public int Bet => _bet;
+
+        /// <summary>直近のレバーで決まった出目。揃う図柄、ハズレなら null。</summary>
+        public SlotSymbol? Outcome => _machine?.Outcome;
+
         public RectTransform LeverRect => (RectTransform)leverButton.transform;
-        public RectTransform BonusLampRect => bonusLamp.rectTransform;
-        public RectTransform StopRect(int reel) => (RectTransform)stopButtons[reel].transform;
+        public RectTransform ReelWindowRect => reelWindow != null ? reelWindow : (RectTransform)reels[0].transform.parent;
 
         /// <summary>
-        /// コインの財布を差し替えて抽選器を作り直す（T340: ゲーム1回分の <c>RunState.Coins</c> と共有するため。回す前に呼ぶ）。
-        /// 筐体の作り直し（T348）までのつなぎ。
+        /// コインの財布を差し替えて抽選器を作り直す（ゲーム1回分の <c>RunState.Coins</c> と共有するため。回す前に呼ぶ）。
         /// </summary>
         public void UseWallet(CoinWallet wallet)
         {
@@ -109,6 +115,22 @@ namespace UnitySlotTower.Slot
             _machine = new SlotMachine(_reels, Patterns, _wallet, _bet,
                 RandomOverride ?? new SeededRandom((ulong)DateTime.UtcNow.Ticks));
             _machine.Aligned += symbol => Aligned?.Invoke(symbol);
+        }
+
+        /// <summary>
+        /// 戦闘マスの回数固定を設定する（<c>Encounter.FixedSpins</c>）。1以上ならその回数だけコインを使わずに回せ、
+        /// 0 ならコインで回す状態に戻す。
+        /// </summary>
+        public void SetFixedSpins(int count)
+        {
+            if (count > 0)
+            {
+                _machine.StartFixedSpins(count);
+            }
+            else
+            {
+                _machine.EndFixedSpins();
+            }
         }
 
         private void Awake()
@@ -136,20 +158,11 @@ namespace UnitySlotTower.Slot
                 return;
             }
 
+            // 最初の表示は当たりに見えないよう、どの段も揃わない位置から始める。
+            var start = InitialStops(_reels);
             for (var i = 0; i < reels.Length; i++)
             {
-                reels[i].Initialize(_reels[i], 0);
-            }
-
-            // 旧ボーナスの残りゲーム数と払い出しの表示は使わない（T348 でシーンから消す）。
-            if (bonusGamesText != null)
-            {
-                bonusGamesText.enabled = false;
-            }
-
-            if (payoutText != null)
-            {
-                payoutText.enabled = false;
+                reels[i].Initialize(_reels[i], start[i]);
             }
 
             var map = inputActions.FindActionMap(ActionMap, true);
@@ -242,14 +255,53 @@ namespace UnitySlotTower.Slot
                 }
             }
 
+            // 回数固定ならコインの代わりに残り回数を出す。回せなかったときは出ている方のアイコンを点滅させる。
+            var fixedSpins = _machine.FixedSpinsLeft;
             var blink = now < _coinBlinkUntil && (int)(now * 10) % 2 == 0;
-            coinIcon.enabled = !blink;
-
-            if (_wallet.Coins != _shownCredit)
+            coinIcon.enabled = !fixedSpins.HasValue && !blink;
+            if (fixedSpinsIcon != null)
             {
-                _shownCredit = _wallet.Coins;
+                var show = fixedSpins.HasValue && !blink;
+                if (fixedSpinsIcon.activeSelf != show)
+                {
+                    fixedSpinsIcon.SetActive(show);
+                }
+            }
+
+            var credit = fixedSpins ?? _wallet.Coins;
+            if (credit != _shownCredit)
+            {
+                _shownCredit = credit;
                 creditText.SetText("{0}", _shownCredit);
             }
+        }
+
+        // 3本の停止位置のうち、上段・中段・下段のどれも揃わない最初の組み合わせ（Awake で1回だけ）。
+        private static int[] InitialStops(SlotReels slotReels)
+        {
+            var count = slotReels[0].Length;
+            for (var a = 0; a < count; a++)
+            {
+                for (var b = 0; b < count; b++)
+                {
+                    for (var c = 0; c < count; c++)
+                    {
+                        var aligned = false;
+                        for (var row = -1; row <= 1 && !aligned; row++)
+                        {
+                            var s = slotReels[0].At(a + row);
+                            aligned = s == slotReels[1].At(b + row) && s == slotReels[2].At(c + row);
+                        }
+
+                        if (!aligned)
+                        {
+                            return new[] { a, b, c };
+                        }
+                    }
+                }
+            }
+
+            return new int[SlotMachine.ReelCount];
         }
 
         private bool AnyReelSpinning()

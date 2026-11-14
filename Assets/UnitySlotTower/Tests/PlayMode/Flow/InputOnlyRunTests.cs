@@ -10,7 +10,6 @@ using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
-using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Flow;
 using UnitySlotTower.Slot;
 using UnitySlotTower.Tests.PlayMode.Battle;
@@ -138,15 +137,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return Tap(Key.Enter);
             Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.Fighting), "Enter で戦闘が始まらない");
 
-            // スロット: Space でベット＋レバー、J/K/L で止める。
-            var coins = _cabinet.Wallet.Coins;
+            // スロット: Space でレバー。最初の戦闘は回数固定なので残り回数が減る。リールは自動で止まる。
+            var spins = _cabinet.FixedSpinsLeft;
             yield return Tap(Key.Space);
-            Assert.That((_cabinet.IsSpinning, _cabinet.Wallet.Coins < coins), Is.EqualTo((true, true)), "Space でレバーを引けない");
-            foreach (var key in new[] { Key.J, Key.K, Key.L })
-            {
-                yield return Tap(key);
-            }
-
+            Assert.That((_cabinet.IsSpinning, _cabinet.FixedSpinsLeft), Is.EqualTo((true, spins - 1)), "Space でレバーを引けない");
             yield return WaitForReelsToStop();
 
             // 一時停止（P）と早見表（/）。再開（P）で早見表も閉じる。
@@ -200,15 +194,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return Click(bar.Find("Start Button"));
             Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.Fighting), "▶ で戦闘が始まらない");
 
-            // スロット: レバーと3つのストップボタン。
-            var coins = _cabinet.Wallet.Coins;
+            // スロット: レバーのクリック。最初の戦闘は回数固定なので残り回数が減る。リールは自動で止まる。
+            var spins = _cabinet.FixedSpinsLeft;
             yield return Click(_cabinet.LeverRect);
-            Assert.That((_cabinet.IsSpinning, _cabinet.Wallet.Coins < coins), Is.EqualTo((true, true)), "レバーのクリックで回らない");
-            for (var reel = 0; reel < SlotMachine.ReelCount; reel++)
-            {
-                yield return Click(_cabinet.StopRect(reel));
-            }
-
+            Assert.That((_cabinet.IsSpinning, _cabinet.FixedSpinsLeft), Is.EqualTo((true, spins - 1)), "レバーのクリックで回らない");
             yield return WaitForReelsToStop();
 
             // 一時停止ボタン → 「?」で早見表 → ◀ で閉じる → 一時停止ボタンで再開。
