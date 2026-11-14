@@ -20,7 +20,8 @@ namespace UnitySlotTower.Editor.Setup
         public static readonly Color HealColor = new Color(0.25f, 0.75f, 0.3f);
         public static readonly Color CoinColor = new Color(1f, 0.8f, 0.15f);
 
-        private static readonly Color[] SevenColors =
+        /// <summary>色7の色（<see cref="SlotSymbol"/> の赤・青・緑・黄の順）。操作バーのスキルゲージにも使う（T349）。</summary>
+        public static readonly Color[] SevenColors =
         {
             new Color(0.9f, 0.05f, 0.1f),
             new Color(0.15f, 0.35f, 0.95f),

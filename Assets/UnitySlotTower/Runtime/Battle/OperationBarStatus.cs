@@ -1,41 +1,44 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 using UnitySlotTower.Core.Battle;
 
 namespace UnitySlotTower.Battle
 {
     /// <summary>
-    /// 操作バーの状態表示とボタン（T308、plan 2章）: ライフ・所持コイン・ステージ-ウェーブ番号（例 2-1、T312）、
+    /// 操作バーの状態表示とボタン（T308・T349、plan 16.8）: ライフ・所持金・ウェーブ n/2、
     /// ▶（準備中だけ出す）・撤退（味方を選んでいるときだけ出す）・一時停止（一時停止中は色を変える）、
-    /// 攻撃力アップ・攻撃速度アップの残り秒数（切り上げ。効果がないときは薄く 0、T315）。
+    /// この戦闘のバーの攻撃力倍率とコインの所持金倍率（×1.2 など。倍率なしのときは薄く ×1.0）。
     /// </summary>
     public sealed class OperationBarStatus : MonoBehaviour
     {
         [SerializeField] private BattleController battle;
         [SerializeField] private UnitPlacementInput placementInput;
         [SerializeField] private TMP_Text lifeText;
-        [SerializeField] private TMP_Text coinText;
+        [FormerlySerializedAs("coinText")]
+        [SerializeField] private TMP_Text moneyText;
         [SerializeField] private TMP_Text waveText;
         [SerializeField] private Button startButton;
         [SerializeField] private Button retreatButton;
         [SerializeField] private Button pauseButton;
         [SerializeField] private Image pauseBackground;
         [SerializeField] private Color pausedColor = new Color(0.95f, 0.75f, 0.2f);
-        [SerializeField] private CanvasGroup attackEffect;
-        [SerializeField] private TMP_Text attackSecondsText;
-        [SerializeField] private CanvasGroup speedEffect;
-        [SerializeField] private TMP_Text speedSecondsText;
-        [SerializeField, Range(0f, 1f)] private float inactiveEffectAlpha = 0.3f;
+        [Tooltip("バーの攻撃力倍率（攻撃力の印の横）。")]
+        [SerializeField] private CanvasGroup attackRateGroup;
+        [SerializeField] private TMP_Text attackRateText;
+        [Tooltip("コインの所持金倍率（所持金の印の横）。")]
+        [SerializeField] private CanvasGroup moneyRateGroup;
+        [SerializeField] private TMP_Text moneyRateText;
+        [SerializeField, Range(0f, 1f)] private float inactiveRateAlpha = 0.3f;
 
         private Color _pauseNormalColor;
         private int _shownLife = -1;
-        private int _shownCoins = -1;
-        private int _shownStage = -1;
+        private int _shownMoney = -1;
         private int _shownWave = -1;
         private bool _shownPaused;
-        private int _shownAttackSeconds = -1;
-        private int _shownSpeedSeconds = -1;
+        private int _shownAttackRate = -1;
+        private int _shownMoneyRate = -1;
 
         private void Awake()
         {
@@ -65,19 +68,16 @@ namespace UnitySlotTower.Battle
             }
 
             SetNumber(lifeText, run.Field.Life, ref _shownLife);
-            SetNumber(coinText, run.Wallet.Coins, ref _shownCoins);
-            if (battle.Floor != _shownStage || run.Wave != _shownWave)
+            SetNumber(moneyText, run.Wallet.Coins, ref _shownMoney);
+            if (run.Wave != _shownWave)
             {
-                _shownStage = battle.Floor;
                 _shownWave = run.Wave;
-                waveText.SetText("{0}-{1}", (float)battle.Floor, run.Wave);
+                waveText.SetText("{0}/{1}", (float)run.Wave, WaveSchedule.WavesPerEncounter);
             }
 
-            // 操作バーの作り直し（T349）までのつなぎ: 攻撃力の欄にバーの上がり幅（%）を出す。攻撃速度アップはなくなったので常に 0。
             var boosts = run.Field.Boosts;
-            var attackPercent = boosts == null ? 0 : (int)System.Math.Round((boosts.AttackRate - 1) * 100);
-            SetEffect(attackEffect, attackSecondsText, attackPercent, ref _shownAttackSeconds);
-            SetEffect(speedEffect, speedSecondsText, 0, ref _shownSpeedSeconds);
+            SetRate(attackRateGroup, attackRateText, boosts?.AttackRate ?? 1d, ref _shownAttackRate);
+            SetRate(moneyRateGroup, moneyRateText, boosts?.MoneyRate ?? 1d, ref _shownMoneyRate);
 
             SetActive(startButton, run.Phase == WavePhase.Preparing);
             SetActive(retreatButton, placementInput.SelectedUnit != null);
@@ -88,14 +88,18 @@ namespace UnitySlotTower.Battle
             }
         }
 
-        private void SetEffect(CanvasGroup group, TMP_Text text, int value, ref int shown)
+        // 倍率を小数1桁で出す（×1.2）。表示が変わるときだけ書き換える。
+        private void SetRate(CanvasGroup group, TMP_Text text, double rate, ref int shownTenths)
         {
-            if (value != shown)
+            var tenths = (int)System.Math.Round(rate * 10, System.MidpointRounding.AwayFromZero);
+            if (tenths == shownTenths)
             {
-                group.alpha = value > 0 ? 1f : inactiveEffectAlpha;
+                return;
             }
 
-            SetNumber(text, value, ref shown);
+            shownTenths = tenths;
+            group.alpha = tenths > 10 ? 1f : inactiveRateAlpha;
+            text.SetText("×{0:1}", tenths / 10f);
         }
 
         private static void SetActive(Button button, bool active)

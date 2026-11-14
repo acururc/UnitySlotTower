@@ -70,15 +70,15 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        // 操作バーの作り直し（T349）までは、旧「攻撃力アップ」の表示にバーの上がり幅（%）を出す。
+        // 操作バーの攻撃力の印の横にバーの倍率を出す（T349、plan 16.8）。
         public IEnumerator Aligning_Bar_Raises_The_Attack_Rate_Of_The_Battle_And_Shows_It()
         {
             yield return LoadGame();
             var status = Object.FindAnyObjectByType<OperationBarStatus>();
-            var attack = status.transform.parent.Find("Slot Effects/Attack Effect");
-            var percent = attack.Find("Seconds").GetComponent<TMP_Text>();
-            Assert.That((percent.text, attack.GetComponent<CanvasGroup>().alpha < 1f), Is.EqualTo(("0", true)),
-                "効果がないときは薄く 0");
+            var attack = status.transform.parent.Find("Rates/Attack Rate");
+            var rate = attack.Find("Value").GetComponent<TMP_Text>();
+            Assert.That((rate.text, attack.GetComponent<CanvasGroup>().alpha < 1f), Is.EqualTo(("×1.0", true)),
+                "倍率がないときは薄く ×1.0");
 
             yield return SpinAndStopAll();
 
@@ -87,7 +87,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return null;
             yield return null;
 
-            Assert.That(percent.text, Is.EqualTo(((int)System.Math.Round(_cabinet.Rules.BarStep * 100)).ToString()));
+            Assert.That(rate.text, Is.EqualTo("×" + (1 + _cabinet.Rules.BarStep).ToString("0.0",
+                System.Globalization.CultureInfo.InvariantCulture)));
             Assert.That(attack.GetComponent<CanvasGroup>().alpha, Is.EqualTo(1f));
 
             // 戦闘は実時間の 1/60 秒ごとに進むため、フレームが速いと2フレームでは tick が増えない。実時間で待つ。

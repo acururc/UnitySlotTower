@@ -67,7 +67,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         public IEnumerator Clearing_Stage_1_Shows_Stage_2_Map_And_Label()
         {
             yield return null;
-            Assert.That((_fieldView.Map.Id, _waveText.text, TileRoots()), Is.EqualTo(("first", "1-1", 1)));
+            Assert.That((_fieldView.Map.Id, _waveText.text, TileRoots()), Is.EqualTo(("first", "1/2", 1)));
 
             // 敵が歩き切るまで速める（1体あたり実時間で約1秒）。
             Time.timeScale = 20f;
@@ -89,7 +89,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             var tiles = _fieldView.transform.Find("Tiles");
             // 通常の戦闘マスは battle_a〜c からランダムに選ばれる（plan 16.6）。
             Assert.That((map.Id.StartsWith("battle_"), map == _battle.Run.Map, _waveText.text, TileRoots(), tiles.childCount),
-                Is.EqualTo((true, true, "2-1", 1, map.Width * map.Height)), map.Id);
+                Is.EqualTo((true, true, "1/2", 1, map.Width * map.Height)), map.Id);
 
             // ステージの間で止まらず、すぐ S2 の戦闘を始められる（カスタムは 2026-11-14 に廃止）。
             _battle.StartWave();

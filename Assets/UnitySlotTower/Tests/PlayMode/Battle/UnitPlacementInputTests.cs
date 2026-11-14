@@ -256,8 +256,74 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That(
                 (Text(icon, "Cost"), Text(status, "Life"), Text(status, "Coins"), Text(status, "Wave"), Text(upgrade, "Cost")),
                 Is.EqualTo((_battle.Units.Get("archer").Cost.ToString(), _battle.Field.Life.ToString(),
-                    _battle.Wallet.Coins.ToString(), "1-1",
+                    _battle.Wallet.Coins.ToString(), "1/2",
                     _battle.Upgrades.NextCost("archer").ToString())));
+        }
+
+        [UnityTest]
+        [Description("AC-023: ゲージが満タンのときゲージをクリックすると、配置中のその職にスキルが付き、ゲージが0になる")]
+        public IEnumerator Clicking_A_Full_Skill_Gauge_Activates_The_Skill_And_Empties_It()
+        {
+            var tank = default(BattleUnit);
+            yield return PlaceTank(placed => tank = placed);
+            var color = FillGaugeOf("tank");
+
+            yield return Click(GameObject.Find("Skill Gauge 1").transform);
+
+            Assert.That((_battle.Run.State.Gauges.Level(color), tank.SkillStepsLeft > 0), Is.EqualTo((0, true)));
+        }
+
+        [UnityTest]
+        [Description("AC-023: その職が配置0人なら、満タンのゲージをクリックしても発動せずゲージは減らない")]
+        public IEnumerator Clicking_A_Full_Skill_Gauge_Without_Units_Does_Nothing()
+        {
+            var color = FillGaugeOf("tank");
+
+            yield return Click(GameObject.Find("Skill Gauge 1").transform);
+
+            Assert.That(_battle.Run.State.Gauges.IsFull(color), Is.True);
+        }
+
+        [UnityTest]
+        [Description("AC-011: 一時停止中は満タンのゲージをクリックしても発動しない")]
+        public IEnumerator Clicking_A_Full_Skill_Gauge_While_Paused_Does_Nothing()
+        {
+            var tank = default(BattleUnit);
+            yield return PlaceTank(placed => tank = placed);
+            var color = FillGaugeOf("tank");
+            _battle.SetPaused(true);
+            try
+            {
+                yield return Click(GameObject.Find("Skill Gauge 1").transform);
+            }
+            finally
+            {
+                _battle.SetPaused(false);
+            }
+
+            Assert.That((_battle.Run.State.Gauges.IsFull(color), tank.SkillStepsLeft), Is.EqualTo((true, 0)));
+        }
+
+        private IEnumerator PlaceTank(System.Action<BattleUnit> placed)
+        {
+            yield return Tap(Key.Digit1);
+            yield return MoveCursorTo(FirstPlaceableCell());
+            yield return Tap(Key.Enter);
+            yield return Tap(Key.Enter);
+            Assert.That(_battle.Field.Units.Count, Is.EqualTo(1), "タンクを置けない");
+            placed(_battle.Field.Units[0]);
+        }
+
+        private Core.Slot.SlotSymbol FillGaugeOf(string unitId)
+        {
+            Assert.That(_battle.Skills.TryGetColor(unitId, out var color), Is.True, unitId);
+            var gauges = _battle.Run.State.Gauges;
+            for (var i = 0; i < gauges.Max; i++)
+            {
+                gauges.Add(color);
+            }
+
+            return color;
         }
 
         private static string Text(Transform parent, string child) =>

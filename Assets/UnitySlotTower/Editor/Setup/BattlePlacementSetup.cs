@@ -91,7 +91,7 @@ namespace UnitySlotTower.Editor.Setup
             Debug.Log("[SlotTower Setup] 配置操作と操作バーの仮アイコンを作成した。");
         }
 
-        /// <summary>既にある戦闘の進行に、後から足した表（encounters.csv: T345）を設定してシーンを保存する。</summary>
+        /// <summary>既にある戦闘の進行に、後から足した表（encounters.csv: T345、skills.csv: T349）を設定してシーンを保存する。</summary>
         [MenuItem("Tools/UnitySlotTower/Setup/Assign Battle Tables")]
         private static void AssignBattleTables()
         {
@@ -103,9 +103,10 @@ namespace UnitySlotTower.Editor.Setup
             }
 
             Assign(battle, "encountersTable", Table(EncounterTable.FileName));
+            Assign(battle, "skillsTable", Table(SkillTable.FileName));
             EditorSceneManager.MarkSceneDirty(battle.gameObject.scene);
             EditorSceneManager.SaveScene(battle.gameObject.scene);
-            Debug.Log("[SlotTower Setup] 戦闘の進行に出現表を設定した。");
+            Debug.Log("[SlotTower Setup] 戦闘の進行に出現表とスキル表を設定した。");
         }
 
         private static TextAsset Table(string fileName) => AssetDatabase.LoadAssetAtPath<TextAsset>(TableFolder + fileName);

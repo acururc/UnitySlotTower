@@ -27,6 +27,7 @@ namespace UnitySlotTower.Battle
         [SerializeField] private TextAsset enemiesTable;
         [SerializeField] private TextAsset wavesTable;
         [SerializeField] private TextAsset encountersTable;
+        [SerializeField] private TextAsset skillsTable;
 
         [SerializeField] private BattleFieldView fieldView;
         [Tooltip("所持コインを共有するスロット筐体。")]
@@ -49,6 +50,9 @@ namespace UnitySlotTower.Battle
 
         /// <summary>味方の攻撃範囲（一時停止中の説明の範囲図にも使う: T404）。</summary>
         public UnitRanges Ranges { get; private set; }
+
+        /// <summary>色7とスキルの対応（skills.csv: T349）。操作バーのゲージが職から色を引く。</summary>
+        public SkillTable Skills { get; private set; }
 
         /// <summary>いまの戦闘マス。戦闘マスが変わると別のものになる。</summary>
         public BattleNodeRun Run { get; private set; }
@@ -90,6 +94,7 @@ namespace UnitySlotTower.Battle
                 _enemies = EnemyTable.Load(Parse(EnemyTable.FileName, enemiesTable));
                 _waves = Parse(WaveSchedule.FileName, wavesTable);
                 _encounters = EncounterTable.Load(Parse(EncounterTable.FileName, encountersTable));
+                Skills = SkillTable.Load(Parse(SkillTable.FileName, skillsTable));
                 _random = new SeededRandom((ulong)DateTime.UtcNow.Ticks);
                 // コインは筐体と共有し、召喚・強化は所持金で払う（plan 16.2）。RunState はルートと流れ（T350）で RunController に移す。
                 _state = new RunState(_config, upgradeTable, slotCabinet.Rules, slotCabinet.Setting);
@@ -156,6 +161,20 @@ namespace UnitySlotTower.Battle
             {
                 Run?.Start();
             }
+        }
+
+        /// <summary>
+        /// その色のスキルを発動する（操作バーのゲージのクリック、FR-029）。一時停止中・ゲーム終了後は受け付けない（AC-011）。
+        /// ほかの条件（満タン・配置1体以上・準備中か戦闘中）は <see cref="BattleNodeRun.TryActivateSkill"/>。発動したら true。
+        /// </summary>
+        public bool TryActivateSkill(SlotSymbol color)
+        {
+            if (IsInputBlocked || Run == null || Skills == null)
+            {
+                return false;
+            }
+
+            return Run.TryActivateSkill(Skills.For(color)) == SkillResult.Activated;
         }
 
         private void UpdateSlotLock()

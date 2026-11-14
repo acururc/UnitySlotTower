@@ -3,12 +3,13 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnitySlotTower.Core.Battle;
+using UnitySlotTower.Core.Slot;
 
 namespace UnitySlotTower.Battle
 {
     /// <summary>
     /// 操作バーの味方アイコン（T308）。押すとその味方を選び、そのままフィールドへドラッグして離すとマスが決まる。
-    /// コスト（ストックがあれば ×個数）、待ち時間ゲージ、召喚できないときの暗転、選択中の枠を表示する。
+    /// コスト（ストックがあれば ×個数）、待ち時間ゲージ、召喚できないときの暗転、選択中の枠、その職の色のスキルゲージ（T349）を表示する。
     /// </summary>
     public sealed class UnitBarIcon : MonoBehaviour, IPointerDownHandler
     {
@@ -27,14 +28,67 @@ namespace UnitySlotTower.Battle
         [Tooltip("召喚できないときに本体の色にかける。")]
         [SerializeField] private Color unavailableTint = new Color(0.45f, 0.45f, 0.45f);
 
+        [Header("Skill gauge (T349)")]
+        [Tooltip("この職の色のスキルゲージ。アイコン本体とは別のボタンで、満タンで光り、押すと発動する。")]
+        [SerializeField] private Button skillButton;
+        [SerializeField] private Image skillBackground;
+        [Tooltip("下から順に1段ずつ点ける。")]
+        [SerializeField] private Image[] gaugeDots;
+        [Tooltip("色7の順（赤・青・緑・黄）の、点いた点の色。")]
+        [SerializeField] private Color[] gaugeColors =
+        {
+            new Color(0.9f, 0.05f, 0.1f),
+            new Color(0.15f, 0.35f, 0.95f),
+            new Color(0.1f, 0.65f, 0.2f),
+            new Color(0.95f, 0.75f, 0.05f),
+        };
+        [SerializeField] private Color emptyDotColor = new Color(1f, 1f, 1f, 0.15f);
+        [Tooltip("満タンのとき背景をこの色との間で点滅させる。")]
+        [SerializeField] private Color fullGlowColor = new Color(1f, 0.95f, 0.55f);
+        [SerializeField] private float glowSpeed = 6f;
+
         private Color _bodyColor;
+        private Color _skillBackgroundColor;
         private int _shownCost = -1;
         private int _shownStock = -1;
         private bool _shownAvailable = true;
+        private int _shownLevel = -1;
+        private bool _shownFull;
+        private bool _hasSkill;
+        private SlotSymbol _skillColor;
 
         private void Awake()
         {
             _bodyColor = body.color;
+            if (skillBackground != null)
+            {
+                _skillBackgroundColor = skillBackground.color;
+            }
+        }
+
+        private void OnEnable()
+        {
+            if (skillButton != null)
+            {
+                skillButton.onClick.AddListener(ActivateSkill);
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (skillButton != null)
+            {
+                skillButton.onClick.RemoveListener(ActivateSkill);
+            }
+        }
+
+        // 拒否（満タンでない・配置0人・一時停止中）なら何も起きない（AC-023・AC-011）。
+        private void ActivateSkill()
+        {
+            if (_hasSkill)
+            {
+                battle.TryActivateSkill(_skillColor);
+            }
         }
 
         public void OnPointerDown(PointerEventData eventData)
@@ -80,6 +134,51 @@ namespace UnitySlotTower.Battle
 
             var selected = battle.Deployment.Selected;
             selectedFrame.enabled = selected != null && selected.Id == unit.Id;
+            UpdateSkillGauge(unit.Id);
+        }
+
+        private void UpdateSkillGauge(string unitId)
+        {
+            if (skillButton == null || battle.Skills == null)
+            {
+                return;
+            }
+
+            if (!_hasSkill)
+            {
+                _hasSkill = battle.Skills.TryGetColor(unitId, out _skillColor);
+                if (!_hasSkill)
+                {
+                    skillButton.gameObject.SetActive(false);
+                    return;
+                }
+            }
+
+            var gauges = battle.Run.State.Gauges;
+            var level = gauges.Level(_skillColor);
+            if (level != _shownLevel)
+            {
+                _shownLevel = level;
+                var on = gaugeColors[(int)_skillColor];
+                for (var i = 0; i < gaugeDots.Length; i++)
+                {
+                    gaugeDots[i].color = i < level ? on : emptyDotColor;
+                }
+            }
+
+            var full = gauges.IsFull(_skillColor);
+            if (full)
+            {
+                // 一時停止中も点滅は続ける（押しても発動しないが、満タンであることは見せる）。
+                var t = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * glowSpeed);
+                skillBackground.color = Color.Lerp(_skillBackgroundColor, fullGlowColor, t);
+            }
+            else if (_shownFull)
+            {
+                skillBackground.color = _skillBackgroundColor;
+            }
+
+            _shownFull = full;
         }
     }
 }
