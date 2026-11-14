@@ -32,10 +32,9 @@ namespace UnitySlotTower.Editor.Setup
             var battle = Object.FindAnyObjectByType<BattleController>(FindObjectsInactive.Include);
             var input = Object.FindAnyObjectByType<UnitPlacementInput>(FindObjectsInactive.Include);
             var cabinet = Object.FindAnyObjectByType<SlotCabinet>(FindObjectsInactive.Include);
-            var custom = Object.FindAnyObjectByType<ReelCustomScreen>(FindObjectsInactive.Include);
             var field = Object.FindAnyObjectByType<BattleFieldView>(FindObjectsInactive.Include);
             var status = Object.FindAnyObjectByType<OperationBarStatus>(FindObjectsInactive.Include);
-            if (portrait == null || battle == null || input == null || cabinet == null || custom == null || field == null
+            if (portrait == null || battle == null || input == null || cabinet == null || field == null
                 || status == null)
             {
                 Debug.LogError("[SlotTower Setup] Game シーンの Portrait Root・戦闘・操作バー・筐体・カスタム画面のどれかが見つからない。");
@@ -112,7 +111,6 @@ namespace UnitySlotTower.Editor.Setup
             serialized.FindProperty("battle").objectReferenceValue = battle;
             serialized.FindProperty("placementInput").objectReferenceValue = input;
             serialized.FindProperty("slotCabinet").objectReferenceValue = cabinet;
-            serialized.FindProperty("reelCustomScreen").objectReferenceValue = custom;
             serialized.FindProperty("fieldView").objectReferenceValue = field;
             serialized.FindProperty("battleCamera").objectReferenceValue =
                 new SerializedObject(input).FindProperty("battleCamera").objectReferenceValue;

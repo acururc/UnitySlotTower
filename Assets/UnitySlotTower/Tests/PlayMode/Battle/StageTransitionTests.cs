@@ -90,9 +90,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That((map.Id, map == _battle.Run.Map, _waveText.text, TileRoots(), tiles.childCount),
                 Is.EqualTo(("s2", true, "2-1", 1, map.Width * map.Height)));
 
-            // FR-047, D-48: ステージの間ではカスタム画面を開かず、すぐ S2 の戦闘を始められる。
-            var screen = Object.FindAnyObjectByType<UnitySlotTower.Slot.ReelCustomScreen>();
-            Assert.That((_battle.IsCustomizing, screen.IsOpen), Is.EqualTo((false, false)), "ステージの間でカスタム画面が開いた");
+            // ステージの間で止まらず、すぐ S2 の戦闘を始められる（カスタムは 2026-11-14 に廃止）。
             _battle.StartWave();
             Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.Fighting), "S2 の戦闘を始められない");
         }

@@ -4,7 +4,7 @@ using UnitySlotTower.Core.Slot;
 namespace UnitySlotTower.Slot
 {
     /// <summary>
-    /// 1本のリールの仮表示（plan 5章）。3本とも同じ配列。停止位置 s で上段 s-1・中段 s・下段 s+1 を表示し、
+    /// 1本のリールの仮表示（plan 16.3）。リールごとに並びが違う。停止位置 s で上段 s-1・中段 s・下段 s+1 を表示し、
     /// 下向きに回る（中段の位置が減っていく）。押した位置は中段より1つ上から下りてくる図柄の位置とする。
     /// </summary>
     public sealed class SlotReelView : MonoBehaviour

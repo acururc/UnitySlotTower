@@ -8,8 +8,8 @@ using UnitySlotTower.Core.Slot;
 namespace UnitySlotTower.Editor.Setup
 {
     /// <summary>
-    /// スロットの6図柄の仮の絵（T315。M5 で素材に差し替える）。リールのコマと操作バーの効果アイコンで同じ絵を使う。
-    /// 7＝赤い数字、BAR＝黒い帯、攻撃力アップ＝赤丸に上矢印、攻撃速度アップ＝水色丸に早送り、全体HP回復＝緑丸に十字、コイン＝金色の二重丸。
+    /// スロットの6図柄の仮の絵（plan 16.3。M5 で素材に差し替える）。色7＝その色の数字、BAR＝黒い帯、コイン＝金色の二重丸。
+    /// 旧効果のアイコン（攻撃力・攻撃速度アップ、回復）は操作バーと早見表の作り直し（T349・T351）まで <see cref="Attack"/> などで残す。
     /// </summary>
     internal static class SlotSymbolArt
     {
@@ -20,6 +20,14 @@ namespace UnitySlotTower.Editor.Setup
         public static readonly Color HealColor = new Color(0.25f, 0.75f, 0.3f);
         public static readonly Color CoinColor = new Color(1f, 0.8f, 0.15f);
 
+        private static readonly Color[] SevenColors =
+        {
+            new Color(0.9f, 0.05f, 0.1f),
+            new Color(0.15f, 0.35f, 0.95f),
+            new Color(0.1f, 0.65f, 0.2f),
+            new Color(0.95f, 0.75f, 0.05f),
+        };
+
         private static Sprite Knob => AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
         private static Sprite Box => AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
 
@@ -28,7 +36,7 @@ namespace UnitySlotTower.Editor.Setup
         /// </summary>
         public static void CreateAllSymbols(RectTransform cell)
         {
-            for (var s = SlotSymbol.Seven; s <= SlotSymbol.Coin; s++)
+            for (var s = SlotSymbol.Red7; s <= SlotSymbol.Coin; s++)
             {
                 Create(s, cell).gameObject.SetActive(false);
             }
@@ -39,12 +47,23 @@ namespace UnitySlotTower.Editor.Setup
         {
             switch (symbol)
             {
-                case SlotSymbol.Seven:
+                case SlotSymbol.Bar:
+                    return CreateImage("Bar", parent, new Vector2(0.12f, 0.32f), new Vector2(0.88f, 0.68f),
+                        new Color(0.1f, 0.1f, 0.12f), Box, false).rectTransform;
+                case SlotSymbol.Coin:
                 {
-                    var text = CreateRect("Seven", parent, Vector2.zero, Vector2.one).gameObject.AddComponent<TextMeshProUGUI>();
+                    var root = Circle("Coin", parent, CoinColor);
+                    CreateImage("Inner", root, new Vector2(0.25f, 0.25f), new Vector2(0.75f, 0.75f),
+                        new Color(0.85f, 0.6f, 0.05f), Knob, true);
+                    return root;
+                }
+                default:
+                {
+                    var text = CreateRect(SlotSymbols.Ids[(int)symbol], parent, Vector2.zero, Vector2.one).gameObject
+                        .AddComponent<TextMeshProUGUI>();
                     text.font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontPath);
                     text.text = "7";
-                    text.color = new Color(0.9f, 0.05f, 0.1f);
+                    text.color = SevenColors[(int)symbol];
                     text.fontStyle = FontStyles.Bold;
                     text.enableAutoSizing = true;
                     text.fontSizeMin = 10f;
@@ -53,38 +72,34 @@ namespace UnitySlotTower.Editor.Setup
                     text.raycastTarget = false;
                     return text.rectTransform;
                 }
-                case SlotSymbol.Bar:
-                    return CreateImage("Bar", parent, new Vector2(0.12f, 0.32f), new Vector2(0.88f, 0.68f),
-                        new Color(0.1f, 0.1f, 0.12f), Box, false).rectTransform;
-                case SlotSymbol.Atk:
-                {
-                    var root = Circle("Attack", parent, AttackColor);
-                    Triangle("Head", root, new Vector2(0.28f, 0.45f), new Vector2(0.72f, 0.82f), 90f);
-                    CreateImage("Stem", root, new Vector2(0.42f, 0.2f), new Vector2(0.58f, 0.5f), Color.white, null, false);
-                    return root;
-                }
-                case SlotSymbol.Speed:
-                {
-                    var root = Circle("Speed", parent, SpeedColor);
-                    Triangle("Front", root, new Vector2(0.48f, 0.28f), new Vector2(0.78f, 0.72f), 0f);
-                    Triangle("Back", root, new Vector2(0.22f, 0.28f), new Vector2(0.52f, 0.72f), 0f);
-                    return root;
-                }
-                case SlotSymbol.Heal:
-                {
-                    var root = Circle("Heal", parent, HealColor);
-                    CreateImage("Vertical", root, new Vector2(0.42f, 0.2f), new Vector2(0.58f, 0.8f), Color.white, null, false);
-                    CreateImage("Horizontal", root, new Vector2(0.2f, 0.42f), new Vector2(0.8f, 0.58f), Color.white, null, false);
-                    return root;
-                }
-                default:
-                {
-                    var root = Circle("Coin", parent, CoinColor);
-                    CreateImage("Inner", root, new Vector2(0.25f, 0.25f), new Vector2(0.75f, 0.75f),
-                        new Color(0.85f, 0.6f, 0.05f), Knob, true);
-                    return root;
-                }
             }
+        }
+
+        /// <summary>旧効果: 攻撃力アップ（赤丸に上矢印）。</summary>
+        public static RectTransform Attack(RectTransform parent)
+        {
+            var root = Circle("Attack", parent, AttackColor);
+            Triangle("Head", root, new Vector2(0.28f, 0.45f), new Vector2(0.72f, 0.82f), 90f);
+            CreateImage("Stem", root, new Vector2(0.42f, 0.2f), new Vector2(0.58f, 0.5f), Color.white, null, false);
+            return root;
+        }
+
+        /// <summary>旧効果: 攻撃速度アップ（水色丸に早送り）。</summary>
+        public static RectTransform Speed(RectTransform parent)
+        {
+            var root = Circle("Speed", parent, SpeedColor);
+            Triangle("Front", root, new Vector2(0.48f, 0.28f), new Vector2(0.78f, 0.72f), 0f);
+            Triangle("Back", root, new Vector2(0.22f, 0.28f), new Vector2(0.52f, 0.72f), 0f);
+            return root;
+        }
+
+        /// <summary>回復（緑丸に十字）。ヒーラーのアイコン（バッファーへの置き換え T343 まで）。</summary>
+        public static RectTransform Heal(RectTransform parent)
+        {
+            var root = Circle("Heal", parent, HealColor);
+            CreateImage("Vertical", root, new Vector2(0.42f, 0.2f), new Vector2(0.58f, 0.8f), Color.white, null, false);
+            CreateImage("Horizontal", root, new Vector2(0.2f, 0.42f), new Vector2(0.8f, 0.58f), Color.white, null, false);
+            return root;
         }
 
         // 正方形の丸。中の絵はこの丸に対するアンカーで置く。

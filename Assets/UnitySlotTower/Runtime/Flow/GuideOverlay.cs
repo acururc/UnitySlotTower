@@ -22,7 +22,6 @@ namespace UnitySlotTower.Flow
         [SerializeField] private BattleController battle;
         [SerializeField] private UnitPlacementInput placementInput;
         [SerializeField] private SlotCabinet slotCabinet;
-        [SerializeField] private ReelCustomScreen reelCustomScreen;
         [SerializeField] private BattleFieldView fieldView;
         [SerializeField] private Camera battleCamera;
 
@@ -150,7 +149,7 @@ namespace UnitySlotTower.Flow
                 SlotSpinning = slotCabinet.IsSpinning,
                 SpinCount = slotCabinet.SpinCount,
                 CanLever = slotCabinet.CanLever,
-                BonusActive = slotCabinet.Bonus != Core.Slot.SlotBonus.None,
+                BonusActive = false, // ボーナスは廃止（2026-11-14）。題目の整理は T351。
                 UpgradeSlot = upgradeSlot,
                 UpgradeLevels = levels,
             };
@@ -176,22 +175,8 @@ namespace UnitySlotTower.Flow
             switch (hint)
             {
                 case GuideHint.ReelCustom:
-                {
-                    // 空きがあれば下の図柄から空きマスへドラッグ、すべて埋まったら ✔ を押す（D-46）。
-                    var empty = reelCustomScreen.FirstEmptyCell;
-                    if (empty >= 0 && reelCustomScreen.PaletteItems.Count > 0)
-                    {
-                        var cell = UiRect(reelCustomScreen.Cells[empty]);
-                        ShowTarget(cell, false);
-                        Drag(UiRect(reelCustomScreen.PaletteItems[0]).center, cell.center, t);
-                    }
-                    else
-                    {
-                        TapTarget(UiRect(reelCustomScreen.ConfirmButton.transform), t, false);
-                    }
-
+                    // カスタムは廃止（2026-11-14）。この題目は出ない（T351 で題目から消す）。
                     break;
-                }
                 case GuideHint.Summon:
                     TapTarget(UiRect(unitIcons[0]), t, dimmed);
                     break;

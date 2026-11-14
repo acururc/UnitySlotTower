@@ -82,9 +82,9 @@ namespace UnitySlotTower.Editor.Setup
 
             var serialized = new SerializedObject(cabinet);
             SetTable(serialized, "gameConfigTable", "game_config.csv");
-            SetTable(serialized, "settingsTable", SlotSettings.FileName);
+            SetTable(serialized, "patternsTable", SlotPatterns.FileName);
             SetTable(serialized, "rulesTable", SlotRules.FileName);
-            SetTable(serialized, "lockedReelTable", ReelLocks.FileName);
+            SetTable(serialized, "reelsTable", SlotReels.FileName);
             serialized.FindProperty("inputActions").objectReferenceValue =
                 AssetDatabase.LoadAssetAtPath<InputActionAsset>(InputActionsPath);
             serialized.FindProperty("leverButton").objectReferenceValue = lever;

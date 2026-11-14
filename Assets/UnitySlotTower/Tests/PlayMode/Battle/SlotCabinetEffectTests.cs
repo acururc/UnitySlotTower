@@ -14,13 +14,9 @@ using UnitySlotTower.Slot;
 
 namespace UnitySlotTower.Tests.PlayMode.Battle
 {
-    [Description("AC-011 の一部・T315: キーでスロットを回して揃えた効果が戦闘に届き、操作バーと筐体の表示に出る（FR-042, FR-043）")]
+    [Description("AC-011 の一部: キーでスロットを回して揃えた効果が戦闘に届き、操作バーに出る（FR-042。T342 までのつなぎでバー＝旧の攻撃力アップ）")]
     public sealed class SlotCabinetEffectTests
     {
-        // slot_locked_reel.csv のロックのコマ番号（0: atk、5: seven）。
-        private const int SevenIndex = 5;
-        private const int AttackIndex = 0;
-
         private Keyboard _keyboard;
         private readonly List<InputDevice> _disabled = new List<InputDevice>();
         private bool _runInBackground;
@@ -76,7 +72,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         [UnityTest]
         public IEnumerator Aligning_Attack_Grants_The_Effect_To_The_Battle_And_Shows_Its_Seconds()
         {
-            yield return LoadGame(AttackIndex);
+            yield return LoadGame();
             var status = Object.FindAnyObjectByType<OperationBarStatus>();
             var attack = status.transform.parent.Find("Slot Effects/Attack Effect");
             var seconds = attack.Find("Seconds").GetComponent<TMP_Text>();
@@ -100,25 +96,10 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That(_battle.Field.Tick, Is.GreaterThan(tick), "スロットのあとも戦闘が進む");
         }
 
-        [UnityTest]
-        public IEnumerator Aligning_Seven_Lights_The_Bonus_Lamp_With_The_Games_Left()
+        private IEnumerator LoadGame()
         {
-            yield return LoadGame(SevenIndex);
-            var games = _cabinet.transform.Find("Bonus Games").GetComponent<TMP_Text>();
-            var lamp = _cabinet.transform.Find("Bonus Lamp").GetComponent<Graphic>();
-            var offColor = lamp.color;
-            Assert.That(games.enabled, Is.False, "通常時は残りゲーム数を出さない");
-
-            yield return SpinAndStopAll();
-            yield return null;
-
-            Assert.That((games.enabled, games.text), Is.EqualTo((true, _cabinet.Rules.BigGames.ToString())));
-            Assert.That(lamp.color, Is.Not.EqualTo(offColor));
-        }
-
-        private IEnumerator LoadGame(int index)
-        {
-            SlotCabinet.RandomOverride = new FixedRandom(index);
+            var random = new FixedRandom();
+            SlotCabinet.RandomOverride = random;
             yield return SceneManager.LoadSceneAsync("Game");
             _battle = Object.FindAnyObjectByType<BattleController>();
             _cabinet = Object.FindAnyObjectByType<SlotCabinet>();
@@ -128,12 +109,23 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(_battle?.Field, Is.Not.Null, "Game シーンの戦闘が始まらない");
-            yield return ReelCustomTestUtil.CloseWithDefault(_battle);
+            // この難易度の20パターンからバーの番号を選ぶ。
+            random.Index = -1;
+            for (var i = 0; i < _cabinet.Patterns.Count && random.Index < 0; i++)
+            {
+                if (_cabinet.Patterns[i] == Core.Slot.SlotSymbol.Bar)
+                {
+                    random.Index = i;
+                }
+            }
+
+            Assert.That(random.Index, Is.GreaterThanOrEqualTo(0), "抽選表にバーがない");
+            yield return null;
             _reels = _cabinet.GetComponentsInChildren<SlotReelView>();
             _battle.StartWave();
         }
 
-        // Space で回し、J/K/L で止めて、リールが見た目の上でも止まるまで待つ。
+        // Space で回し、リールが自動で止まるまで実時間で待つ。
         private IEnumerator SpinAndStopAll()
         {
             yield return Tap(Key.Space);
@@ -143,17 +135,13 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(_reels[0].IsSpinning, Is.True, "Space でリールが回らない");
-            foreach (var key in new[] { Key.J, Key.K, Key.L })
-            {
-                yield return Tap(key);
-            }
-
-            for (var i = 0; i < 300 && System.Array.Exists(_reels, reel => reel.IsSpinning); i++)
+            var until = Time.realtimeSinceStartup + 5f;
+            while (_cabinet.IsSpinning && Time.realtimeSinceStartup < until)
             {
                 yield return null;
             }
 
-            Assert.That(System.Array.Exists(_reels, reel => reel.IsSpinning), Is.False, "リールが止まらない");
+            Assert.That(_cabinet.IsSpinning, Is.False, "リールが止まらない");
         }
 
         private IEnumerator Tap(Key key)
@@ -164,14 +152,12 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return null;
         }
 
-        // ハズレ抽選は必ず当たり、揃う図柄は決めたコマにする。
+        // 20パターンの Index 番目を選ぶ。
         private sealed class FixedRandom : IRandom
         {
-            private readonly int _index;
+            public int Index;
 
-            public FixedRandom(int index) => _index = index;
-
-            public int NextInt(int minInclusive, int maxExclusive) => _index;
+            public int NextInt(int minInclusive, int maxExclusive) => Index;
 
             public double NextDouble() => 0.999;
         }

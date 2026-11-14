@@ -94,17 +94,11 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         [UnityTest]
         public IEnumerator Mouse_Follows_The_Guide_From_Reel_Custom_To_The_First_Spin()
         {
+            // カスタムは 2026-11-14 に廃止（T341 で画面を削除）。説明の題目の書き直しは T351。
             var overlay = _guide.transform.Find("Overlay");
             var dim = overlay.Find("Dim Top").gameObject;
-            Assert.That((_guide.Current, overlay.gameObject.activeSelf, dim.activeSelf),
-                Is.EqualTo((GuideHint.ReelCustom, true, false)), "開始時はカスタムの説明（カスタム画面が暗くするので暗幕なし）");
-
-            // 空きがあるうちは手が下の図柄から最初の空きマスへ動く。埋めたら ✔ を指す。
-            var reelCustom = Object.FindAnyObjectByType<ReelCustomScreen>();
-            Assert.That(reelCustom.FirstEmptyCell, Is.GreaterThanOrEqualTo(0));
-            Tests.PlayMode.Battle.ReelCustomTestUtil.FillEmpty(reelCustom.Customizer, SlotSymbol.Coin);
-            yield return Click(reelCustom.ConfirmButton.transform);
-            Assert.That((_guide.Current, dim.activeSelf), Is.EqualTo((GuideHint.Summon, true)), "次は召喚");
+            yield return null;
+            Assert.That((_guide.Current, dim.activeSelf), Is.EqualTo((GuideHint.Summon, true)), "開始時は召喚");
 
             var bar = Object.FindAnyObjectByType<OperationBarStatus>();
             yield return Click(bar.transform.Find("Start Button"));

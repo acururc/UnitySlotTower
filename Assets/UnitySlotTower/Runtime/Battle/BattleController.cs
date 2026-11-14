@@ -29,13 +29,10 @@ namespace UnitySlotTower.Battle
         [SerializeField] private BattleFieldView fieldView;
         [Tooltip("所持コインを共有するスロット筐体。")]
         [SerializeField] private SlotCabinet slotCabinet;
-        [Tooltip("ゲーム開始前とステージの間に開くリールのカスタム画面（T316）。なければ開かない。")]
-        [SerializeField] private ReelCustomScreen reelCustomScreen;
         [Tooltip("準備に入ったらすぐ戦闘を始める（確認用。通常は ▶ で始める）。")]
         [SerializeField] private bool autoStart;
 
         private SimulationClock _clock;
-        private int _customizeClosedFrame = -1;
 
         public UnitTable Units { get; private set; }
 
@@ -93,30 +90,26 @@ namespace UnitySlotTower.Battle
             }
 
             _clock = new SimulationClock();
-            OpenReelCustom();
         }
 
         /// <summary>一時停止中か（FR-012）。時間が止まり、配置・撤退・強化・スロットの操作を受け付けない。</summary>
         public bool IsPaused { get; private set; }
 
-        /// <summary>
-        /// リールのカスタム画面を開いているか（FR-047、plan 4章）。そのあいだ戦闘は始まらず、配置・スロット・一時停止の操作を受け付けない。
-        /// </summary>
-        public bool IsCustomizing { get; private set; }
+        /// <summary>リールのカスタム画面を開いているか。カスタムは廃止（2026-11-14）で常に false。参照の掃除は T354。</summary>
+        public bool IsCustomizing => false;
 
         /// <summary>クリア（最終ウェーブを終えた）かゲームオーバーで、ゲームが終わったか（リザルトを出す: T402）。</summary>
         public bool IsFinished => Run != null && (Run.Phase == WavePhase.Completed || Run.Phase == WavePhase.GameOver);
 
         /// <summary>
-        /// 戦闘側の操作（配置・撤退・強化・▶）を受け付けないか。一時停止中・カスタム中・ゲーム終了後と、カスタムを確定したフレーム
-        /// （確定の Enter で ▶ まで押されないように）。
+        /// 戦闘側の操作（配置・撤退・強化・▶）を受け付けないか。一時停止中・ゲーム終了後。
         /// </summary>
-        public bool IsInputBlocked => IsPaused || IsCustomizing || IsFinished || Time.frameCount == _customizeClosedFrame;
+        public bool IsInputBlocked => IsPaused || IsFinished;
 
         /// <summary>一時停止を切り替える。スロットのリールやウェイトも止めるため Time.timeScale を 0 にする。カスタム中・ゲーム終了後は何もしない。</summary>
         public void SetPaused(bool paused)
         {
-            if (IsCustomizing || IsFinished)
+            if (IsFinished)
             {
                 return;
             }
@@ -150,32 +143,11 @@ namespace UnitySlotTower.Battle
             }
         }
 
-        // ゲーム開始時だけ開く（FR-047、D-48）。ロック以外を空きにして編集を始める。
-        private void OpenReelCustom()
-        {
-            if (reelCustomScreen == null)
-            {
-                return;
-            }
-
-            IsCustomizing = true;
-            UpdateSlotLock();
-            reelCustomScreen.Open(slotCabinet.Locks, slotCabinet.MissRate, OnReelCustomConfirmed);
-        }
-
-        private void OnReelCustomConfirmed(ReelLayout layout)
-        {
-            slotCabinet.ApplyLayout(layout);
-            IsCustomizing = false;
-            _customizeClosedFrame = Time.frameCount;
-            UpdateSlotLock();
-        }
-
         private void UpdateSlotLock()
         {
             if (slotCabinet != null)
             {
-                slotCabinet.InputLocked = IsPaused || IsCustomizing || IsFinished;
+                slotCabinet.InputLocked = IsPaused || IsFinished;
             }
         }
 
@@ -204,12 +176,12 @@ namespace UnitySlotTower.Battle
             fieldView.Show(Run.Map);
         }
 
-        // 揃った図柄の効果（攻撃力アップ・攻撃速度アップ・全体HP回復）を戦闘へ渡す（FR-042、T314）。
+        // 揃った図柄の効果を戦闘へ渡す（FR-042。T342 までのつなぎはバーの攻撃力アップだけ）。
         private void OnSlotAligned(SlotSymbol symbol) => Run.ApplySlot(symbol, slotCabinet.Rules);
 
         private void Update()
         {
-            if (autoStart && !IsCustomizing)
+            if (autoStart)
             {
                 Run.Start();
             }

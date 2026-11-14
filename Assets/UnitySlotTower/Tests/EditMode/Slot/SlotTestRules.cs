@@ -1,27 +1,49 @@
 using System.Globalization;
+using System.IO;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Slot;
+using UnitySlotTower.Tests.EditMode.Data;
 
 namespace UnitySlotTower.Tests.EditMode.Slot
 {
-    /// <summary>テスト用の slot_rules。既定値は plan 6章の初期値（コイン15枚、BIG 12G×10枚、REG 6G×8枚、効果 1.5倍・20秒、回復50%）。</summary>
+    /// <summary>テスト用の slot_rules・リール・抽選表。</summary>
     internal static class SlotTestRules
     {
-        public static SlotRules Create(int coinPayout = 15, int bigGames = 12, int bigPayout = 10, int regGames = 6,
-            int regPayout = 8, double atkRate = 1.5, double atkSeconds = 20, double speedRate = 1.5,
-            double speedSeconds = 20, double healRate = 0.5, int earlyGames = 0, double earlyMissReduction = 0) =>
+        /// <summary>plan 16.3 の仮の並び（左・中・右）。</summary>
+        public const string PlanLeft = "red7 blue7 green7 yellow7 bar coin";
+        public const string PlanCenter = "red7 green7 bar blue7 coin yellow7";
+        public const string PlanRight = "red7 bar yellow7 green7 blue7 coin";
+
+        public static SlotRules Create(double atkRate = 1.5, double atkSeconds = 20, double speedRate = 1.5,
+            double speedSeconds = 20, double healRate = 0.5) =>
             SlotRules.Load(CsvParser.Parse(SlotRules.FileName,
-                "key,value\nreel_length,12\nwait_seconds,2\n" +
-                $"coin_payout,{coinPayout}\nbig_games,{bigGames}\nbig_payout,{bigPayout}\n" +
-                $"reg_games,{regGames}\nreg_payout,{regPayout}\n" +
+                "key,value\nfirst_stop_seconds,1\nstop_interval_seconds,0.4\n" +
                 $"atk_rate,{N(atkRate)}\natk_seconds,{N(atkSeconds)}\n" +
                 $"speed_rate,{N(speedRate)}\nspeed_seconds,{N(speedSeconds)}\n" +
-                $"early_games,{earlyGames}\nearly_miss_reduction,{N(earlyMissReduction)}\n" +
                 $"heal_rate,{N(healRate)}\n"));
 
-        private static string N(double value) => value.ToString(CultureInfo.InvariantCulture);
+        /// <summary>3本の並び（図柄 ID を空白区切り）から slot_reels を作る。</summary>
+        public static SlotReels Reels(string left = PlanLeft, string center = PlanCenter, string right = PlanRight) =>
+            SlotReels.Load(CsvParser.Parse(SlotReels.FileName, ReelsCsv(left, center, right)));
 
-        /// <summary>ボーナスが0ゲームで終わるルール。抽選と出目だけを見るテスト用（7・BAR を揃えても次のゲームは通常どおり抽選する）。</summary>
-        public static SlotRules NoBonus() => Create(bigGames: 0, regGames: 0);
+        public static string ReelsCsv(params string[] reels)
+        {
+            var csv = "reel,index,symbol\n";
+            for (var reel = 0; reel < reels.Length; reel++)
+            {
+                var ids = reels[reel].Split(' ');
+                for (var i = 0; i < ids.Length; i++)
+                {
+                    csv += $"{reel},{i},{ids[i]}\n";
+                }
+            }
+
+            return csv;
+        }
+
+        public static CsvTable ProjectTable(string fileName) =>
+            CsvParser.Parse(fileName, File.ReadAllText(Path.Combine(TablePaths.Root, fileName)));
+
+        private static string N(double value) => value.ToString(CultureInfo.InvariantCulture);
     }
 }

@@ -464,37 +464,18 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             Assert.That((run.Field.Enemies.Count, run.Phase), Is.EqualTo((0, WavePhase.Fighting)));
         }
 
-        [TestCase(SlotSymbol.Atk, 1.5, 1.0)]
-        [TestCase(SlotSymbol.Speed, 1.0, 1.5)]
-        [TestCase(SlotSymbol.Coin, 1.0, 1.0)]
-        [TestCase(SlotSymbol.Seven, 1.0, 1.0)]
-        [TestCase(SlotSymbol.Bar, 1.0, 1.0)]
-        [TestCase(SlotSymbol.Heal, 1.0, 1.0)]
-        [Description("FR-042: 攻撃力アップ・攻撃速度アップの図柄だけが戦闘の倍率を上げる")]
-        public void Slot_Symbol_Grants_Its_Effect(SlotSymbol symbol, double attackRate, double speedRate)
+        // T342（出目の効果）までのつなぎ: バーだけが旧効果の攻撃力アップを足す。
+        [TestCase(SlotSymbol.Bar, 1.5)]
+        [TestCase(SlotSymbol.Coin, 1.0)]
+        [TestCase(SlotSymbol.Red7, 1.0)]
+        [Description("FR-042（つなぎ）: バーの図柄だけが戦闘の攻撃力の倍率を上げる")]
+        public void Slot_Symbol_Grants_Its_Effect(SlotSymbol symbol, double attackRate)
         {
             var run = Create();
 
-            run.ApplySlot(symbol, SlotTestRules.Create(atkRate: 1.5, speedRate: 1.5));
+            run.ApplySlot(symbol, SlotTestRules.Create(atkRate: 1.5));
 
-            Assert.That((run.Field.Effects.AttackRate, run.Field.Effects.SpeedRate), Is.EqualTo((attackRate, speedRate)));
-        }
-
-        [Test]
-        [Description("AC-042: 全体HP回復の図柄で、配置中の味方を最大HP×割合だけ回復する（剣士 1200×0.1=120）")]
-        public void Heal_Symbol_Heals_Deployed_Units()
-        {
-            // melee（攻撃200）が剣士（防御50）を 150 ずつ削る。
-            var run = Create(waveRows: "1,1,0,melee,S1,g,0\n");
-            Place(run, "sword", 1, 0);
-            run.Start();
-            run.Advance(120);
-            var sword = run.Field.Units[0];
-            var before = sword.Hp;
-
-            run.ApplySlot(SlotSymbol.Heal, SlotTestRules.Create(healRate: 0.1));
-
-            Assert.That((before < 1200 - 120, sword.Hp - before), Is.EqualTo((true, 120)));
+            Assert.That((run.Field.Effects.AttackRate, run.Field.Effects.SpeedRate), Is.EqualTo((attackRate, 1.0)));
         }
 
         [Test]
@@ -502,7 +483,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         public void Effects_Do_Not_Wear_Off_While_Preparing()
         {
             var run = Create();
-            run.ApplySlot(SlotSymbol.Atk, SlotTestRules.Create(atkSeconds: 20));
+            run.ApplySlot(SlotSymbol.Bar, SlotTestRules.Create(atkSeconds: 20));
 
             run.Advance(600);
 
@@ -515,7 +496,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             var run = Create();
             Place(run, "sword", 1, 0);
-            run.ApplySlot(SlotSymbol.Atk, SlotTestRules.Create(atkRate: 1.5, atkSeconds: 100));
+            run.ApplySlot(SlotSymbol.Bar, SlotTestRules.Create(atkRate: 1.5, atkSeconds: 100));
 
             PlayStage(run);
 

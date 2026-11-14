@@ -142,8 +142,8 @@ namespace UnitySlotTower.Editor.Setup
                 var arrow = CreateRect("Arrow", row, new Vector2(0.42f, 0.3f), new Vector2(0.45f, 0.7f));
                 arrow.gameObject.AddComponent<TriangleGraphic>().color = DimColor;
 
-                // 払い出しのある図柄はコインのアイコンを前に置く。攻撃力・攻撃速度アップは倍率の後ろに時計と秒数。
-                var paysCoins = symbol == SlotSymbol.Seven || symbol == SlotSymbol.Bar || symbol == SlotSymbol.Coin;
+                // T341 のつなぎ: コインの図柄はコインのアイコンを前に置き、バー（旧の攻撃力アップ）は時計と秒数の欄を持つ。作り直しは T351。
+                var paysCoins = symbol == SlotSymbol.Coin;
                 var valueMin = 0.48f;
                 if (paysCoins)
                 {
@@ -154,7 +154,7 @@ namespace UnitySlotTower.Editor.Setup
 
                 var value = CreateText("Effect", row, new Vector2(valueMin, 0.05f), new Vector2(0.78f, 0.95f), Color.white);
                 effects.GetArrayElementAtIndex(s).objectReferenceValue = value;
-                if (symbol == SlotSymbol.Atk || symbol == SlotSymbol.Speed)
+                if (symbol == SlotSymbol.Bar)
                 {
                     Clock(row, new Vector2(0.8f, 0.18f), new Vector2(0.8f + 0.64f * height * Square, 0.82f));
                     seconds.GetArrayElementAtIndex(s).objectReferenceValue =
@@ -198,7 +198,7 @@ namespace UnitySlotTower.Editor.Setup
                 Stat(row, element, "hpText", 0.5f, 3, line, HpIcon);
                 var atk = Stat(row, element, "atkText", 0.5f, 2, line, AttackIcon);
                 var heal = CreateRect("Heal Icon", atk.parent as RectTransform, Vector2.zero, Vector2.one);
-                SlotSymbolArt.Create(SlotSymbol.Heal, heal);
+                SlotSymbolArt.Heal(heal);
                 element.FindPropertyRelative("attackIcon").objectReferenceValue = atk.gameObject;
                 element.FindPropertyRelative("healIcon").objectReferenceValue = heal.gameObject;
                 heal.gameObject.SetActive(false);

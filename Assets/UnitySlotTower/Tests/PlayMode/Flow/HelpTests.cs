@@ -97,11 +97,11 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(help.OpenButton.gameObject.activeInHierarchy, Is.True, "一時停止中に「?」が出ない");
             help.OpenButton.onClick.Invoke();
             Assert.That(help.IsOpen, Is.True, "「?」で開かない");
-            Assert.That(Text(help, "missText"), Is.EqualTo("79.0%"), "設定3のハズレ率");
+            // T341 のつなぎの表示（20パターン中の割合）。上半分の作り直しは T351。
+            Assert.That(Text(help, "missText"), Is.EqualTo("30.0%"), "設定3のハズレ（6/20）");
             var chances = (TMP_Text[])Field(help, "chanceTexts");
-            Assert.That(chances[(int)SlotSymbol.Seven].text, Is.EqualTo("2.3%"), "空きをコインで埋めた配列の 7（21% × 2/18）");
-            Assert.That(chances[(int)SlotSymbol.Coin].text, Is.EqualTo("9.3%"), "空きをコインで埋めた配列のコイン（21% × 8/18）");
-            Assert.That(((TMP_Text[])Field(help, "effectTexts"))[(int)SlotSymbol.Seven].text, Is.EqualTo("+10×12"));
+            Assert.That(chances[(int)SlotSymbol.Red7].text, Is.EqualTo("15.0%"), "設定3の赤7（3/20）");
+            Assert.That(chances[(int)SlotSymbol.Coin].text, Is.EqualTo("5.0%"), "設定3のコイン（1/20）");
             foreach (var text in help.GetComponentsInChildren<TMP_Text>(true))
             {
                 Assert.That(NumericText.FindInvalid(text.text), Is.EqualTo(-1), $"{text.name} に許可されない文字: {text.text}");

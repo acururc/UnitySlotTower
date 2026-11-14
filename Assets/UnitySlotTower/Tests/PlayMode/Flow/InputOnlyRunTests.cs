@@ -122,16 +122,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return WaitForGame();
             Assert.That(_cabinet.Setting, Is.EqualTo(2), "キーボードで設定2を選べない");
 
-            // リールのカスタム: Space で入れ、右で次の空きへ、Enter で確定。
-            var reelCustom = Object.FindAnyObjectByType<ReelCustomScreen>();
-            var customizer = reelCustom.Customizer;
-            for (var i = 0; i < 40 && customizer.EmptyCount > 0; i++)
-            {
-                yield return Tap(customizer.At(customizer.Selected) == null ? Key.Space : Key.RightArrow);
-            }
-
-            yield return Tap(Key.Enter);
-            Assert.That((reelCustom.IsOpen, _battle.IsCustomizing), Is.EqualTo((false, false)), "キーボードでカスタムを確定できない");
+            // リールのカスタムは 2026-11-14 に廃止（T341 で画面を削除）。
 
             // 召喚・配置・向き（1 → 矢印 → Enter → ↑ → Enter）、強化（Shift + 1）、▶（Enter）。
             var target = FirstPlaceableCell();
@@ -187,16 +178,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return WaitForGame();
             Assert.That(_cabinet.Setting, Is.EqualTo(2), "マウスで設定2を選べない");
 
-            // リールのカスタム: 下の図柄から空きマスへドラッグし、✔ で確定。
-            var reelCustom = Object.FindAnyObjectByType<ReelCustomScreen>();
-            var coin = System.Array.IndexOf(ReelLocks.Fillable, SlotSymbol.Coin);
-            for (var i = 0; i < 20 && reelCustom.FirstEmptyCell >= 0; i++)
-            {
-                yield return Drag(reelCustom.PaletteItems[coin], reelCustom.Cells[reelCustom.FirstEmptyCell]);
-            }
-
-            yield return Click(reelCustom.ConfirmButton.transform);
-            Assert.That((reelCustom.IsOpen, _battle.IsCustomizing), Is.EqualTo((false, false)), "マウスでカスタムを確定できない");
+            // リールのカスタムは 2026-11-14 に廃止（T341 で画面を削除）。
 
             // 召喚・配置（アイコンからマスへドラッグ）・向き（左をクリック）、強化アイコン、▶。
             var bar = Object.FindAnyObjectByType<OperationBarStatus>().transform;
@@ -272,8 +254,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
 
             yield return WaitForGame();
-            Assert.That((_battle != before, _battle.Run.Stage, _battle.Run.Wave, _battle.IsCustomizing),
-                Is.EqualTo((true, 1, 1, true)), "↻ のクリックでリトライしない");
+            Assert.That((_battle != before, _battle.Run.Stage, _battle.Run.Wave),
+                Is.EqualTo((true, 1, 1)), "↻ のクリックでリトライしない");
 
             yield return LoseTheGame();
             result = Object.FindAnyObjectByType<ResultScreen>();

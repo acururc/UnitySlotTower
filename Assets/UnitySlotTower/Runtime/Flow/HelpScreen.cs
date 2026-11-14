@@ -147,23 +147,28 @@ namespace UnitySlotTower.Flow
         // 開くたびに今の値で書き直す（難易度・リール配列・強化段階は一時停止の前に変わっている）。
         private void Refresh()
         {
-            var missRate = slotCabinet.MissRate;
-            var layout = slotCabinet.Layout;
-            missText.SetText("{0:1}%", SlotOdds.MissTenths(missRate) / 10f);
-            for (var s = 0; s < SlotSymbols.Count; s++)
+            // T341 のつなぎ: 20パターンの中の割合だけを出す。効果の欄と上半分の作り直しは T351。
+            var patterns = slotCabinet.Patterns;
+            var counts = new int[SlotSymbols.Count + 1];
+            foreach (var outcome in patterns)
             {
-                chanceTexts[s].SetText("{0:1}%", SlotOdds.ChanceTenths(layout, missRate, (SlotSymbol)s) / 10f);
+                counts[outcome.HasValue ? (int)outcome.Value : SlotSymbols.Count]++;
             }
 
-            var rules = slotCabinet.Rules;
-            effectTexts[(int)SlotSymbol.Seven].SetText("+{0}×{1}", (float)rules.BigPayout, rules.BigGames);
-            effectTexts[(int)SlotSymbol.Bar].SetText("+{0}×{1}", (float)rules.RegPayout, rules.RegGames);
-            effectTexts[(int)SlotSymbol.Atk].SetText("×{0:1}", (float)rules.AtkRate);
-            secondsTexts[(int)SlotSymbol.Atk].SetText("{0}", (float)Math.Ceiling(rules.AtkSeconds));
-            effectTexts[(int)SlotSymbol.Speed].SetText("×{0:1}", (float)rules.SpeedRate);
-            secondsTexts[(int)SlotSymbol.Speed].SetText("{0}", (float)Math.Ceiling(rules.SpeedSeconds));
-            effectTexts[(int)SlotSymbol.Heal].SetText("+{0}%", (float)Math.Round(rules.HealRate * 100.0));
-            effectTexts[(int)SlotSymbol.Coin].SetText("+{0}", rules.CoinPayout);
+            missText.SetText("{0:1}%", counts[SlotSymbols.Count] * 100f / patterns.Count);
+            for (var s = 0; s < SlotSymbols.Count; s++)
+            {
+                chanceTexts[s].SetText("{0:1}%", counts[s] * 100f / patterns.Count);
+                if (effectTexts[s] != null)
+                {
+                    effectTexts[s].SetText(string.Empty);
+                }
+
+                if (secondsTexts[s] != null)
+                {
+                    secondsTexts[s].SetText(string.Empty);
+                }
+            }
 
             var units = battle.Units.All;
             for (var i = 0; i < unitRows.Length && i < units.Count; i++)

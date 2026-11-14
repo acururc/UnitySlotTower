@@ -101,20 +101,20 @@ namespace UnitySlotTower.Editor.Setup
         private static void BuildEffects(RectTransform bar, OperationBarStatus status)
         {
             var effects = CreateRect("Slot Effects", bar, new Vector2(0.505f, 0.04f), new Vector2(0.615f, 0.96f));
-            BuildEffect(effects, "Attack Effect", SlotSymbol.Atk, new Vector2(0f, 0.52f), Vector2.one, status,
+            BuildEffect(effects, "Attack Effect", SlotSymbolArt.Attack, new Vector2(0f, 0.52f), Vector2.one, status,
                 "attackEffect", "attackSecondsText");
-            BuildEffect(effects, "Speed Effect", SlotSymbol.Speed, Vector2.zero, new Vector2(1f, 0.48f), status,
+            BuildEffect(effects, "Speed Effect", SlotSymbolArt.Speed, Vector2.zero, new Vector2(1f, 0.48f), status,
                 "speedEffect", "speedSecondsText");
         }
 
-        private static void BuildEffect(RectTransform parent, string name, SlotSymbol symbol, Vector2 anchorMin,
+        private static void BuildEffect(RectTransform parent, string name, System.Func<RectTransform, RectTransform> art, Vector2 anchorMin,
             Vector2 anchorMax, OperationBarStatus status, string groupProperty, string textProperty)
         {
             var row = CreateRect(name, parent, anchorMin, anchorMax);
             var group = row.gameObject.AddComponent<CanvasGroup>();
             group.blocksRaycasts = false;
             var icon = CreateRect("Icon", row, Vector2.zero, new Vector2(0.42f, 1f));
-            SlotSymbolArt.Create(symbol, icon);
+            art(icon);
             var seconds = CreateNumber("Seconds", row, new Vector2(0.44f, 0f), Vector2.one, Color.white);
             seconds.alignment = TextAlignmentOptions.Left;
             Assign(status, groupProperty, group);

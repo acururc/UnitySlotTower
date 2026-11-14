@@ -22,25 +22,18 @@ namespace UnitySlotTower.Core.Data
 
         private static readonly ColumnRule[] SlotRuleKeys =
         {
-            ColumnRule.Int("reel_length", 6, 99),
-            ColumnRule.Float("wait_seconds", 0, 60),
-            ColumnRule.Int("coin_payout", 0, 10000),
-            ColumnRule.Int("big_games", 1, 1000),
-            ColumnRule.Int("big_payout", 0, 10000),
-            ColumnRule.Int("reg_games", 1, 1000),
-            ColumnRule.Int("reg_payout", 0, 10000),
+            ColumnRule.Float("first_stop_seconds", 0, 60),
+            ColumnRule.Float("stop_interval_seconds", 0, 60),
             ColumnRule.Float("atk_rate", 1, 100),
             ColumnRule.Float("atk_seconds", 0, 3600),
             ColumnRule.Float("speed_rate", 1, 100),
             ColumnRule.Float("speed_seconds", 0, 3600),
             ColumnRule.Float("heal_rate", 0, 1),
-            ColumnRule.Int("early_games", 0, 1000),
-            ColumnRule.Float("early_miss_reduction", 0, 1),
         };
 
         // Schemas より前に置く（静的フィールドは書いた順に初期化される）。
-        private static readonly string[] LockedReelIds =
-            { "seven", "bar", "atk", "speed", "heal", "coin", ReelLocks.EmptyId };
+        private static readonly string[] OutcomeIds =
+            { "red7", "blue7", "green7", "yellow7", "bar", "coin", SlotSymbols.MissId };
 
         private static readonly TableSchema[] Schemas =
         {
@@ -101,12 +94,14 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Id("spawn"),
                 ColumnRule.Id("path_id"),
                 ColumnRule.Bool("is_boss")),
-            new TableSchema("slot_settings.csv", new[] { "setting" },
-                ColumnRule.Int("setting", 1, 6),
-                ColumnRule.Probability("miss_rate")),
-            new TableSchema(ReelLocks.FileName, new[] { "index" },
-                ColumnRule.Int("index", 0, 98),
-                ColumnRule.Enum("symbol", LockedReelIds)),
+            new TableSchema(SlotPatterns.FileName, new[] { "setting", "outcome" },
+                ColumnRule.Int("setting", 1, SlotPatterns.SettingCount),
+                ColumnRule.Enum("outcome", OutcomeIds),
+                ColumnRule.Int("count", 0, SlotPatterns.PatternCount)),
+            new TableSchema(SlotReels.FileName, new[] { "reel", "index" },
+                ColumnRule.Int("reel", 0, SlotReels.ReelCount - 1),
+                ColumnRule.Int("index", 0, SlotReels.ReelLength - 1),
+                ColumnRule.Enum("symbol", SlotSymbols.Ids)),
         };
 
         private static readonly HashSet<string> MapTiles = new HashSet<string>
@@ -118,7 +113,7 @@ namespace UnitySlotTower.Core.Data
             var tables = new Dictionary<string, CsvTable>();
 
             ValidateKeyValueFile(files, GameConfig.FileName, GameConfigKeys, report);
-            var slotRules = ValidateKeyValueFile(files, "slot_rules.csv", SlotRuleKeys, report);
+            ValidateKeyValueFile(files, SlotRules.FileName, SlotRuleKeys, report);
 
             foreach (var schema in Schemas)
             {
@@ -154,8 +149,8 @@ namespace UnitySlotTower.Core.Data
             TableValidator.ValidatePathContinuity(tables["map_paths.csv"], report);
             var battleMaps = ValidateMapPaths(files, tables["map_paths.csv"], maps, report);
             ValidateWaves(tables["waves.csv"], tables["enemies.csv"], battleMaps, report);
-            ValidateSlotSettings(tables[SlotSettings.FileName], report);
-            ValidateLockedReel(tables[ReelLocks.FileName], slotRules, report);
+            ValidateSlotPatterns(tables[SlotPatterns.FileName], report);
+            ValidateSlotReels(tables[SlotReels.FileName], report);
             return report;
         }
 
@@ -174,12 +169,12 @@ namespace UnitySlotTower.Core.Data
             return report.Errors.Count == before ? table : null;
         }
 
-        /// <summary>設定1〜6がすべてそろっていることを <see cref="SlotSettings"/> で確かめる。</summary>
-        private static void ValidateSlotSettings(CsvTable table, ValidationReport report)
+        /// <summary>設定1〜6がそろい、各設定の合計が20であることを <see cref="SlotPatterns"/> で確かめる（D-60）。</summary>
+        private static void ValidateSlotPatterns(CsvTable table, ValidationReport report)
         {
             try
             {
-                SlotSettings.Load(table);
+                SlotPatterns.Load(table);
             }
             catch (CsvFormatException ex)
             {
@@ -187,16 +182,13 @@ namespace UnitySlotTower.Core.Data
             }
         }
 
-        /// <summary>
-        /// ロック配置が 0 からの連番で、マス数が slot_rules の reel_length と一致し、6図柄がちょうど2つずつロックされていることを確かめる（D-46）。
-        /// slot_rules にエラーがあるとき（rules が null）はマス数と図柄数を確かめない。
-        /// </summary>
-        private static void ValidateLockedReel(CsvTable table, CsvTable rules, ValidationReport report)
+        /// <summary>3本×6マスがそろい、並びの決まり（<see cref="SlotReels.Problems"/>）を満たすことを確かめる（D-62）。</summary>
+        private static void ValidateSlotReels(CsvTable table, ValidationReport report)
         {
-            ReelLocks locks;
+            SlotReels reels;
             try
             {
-                locks = ReelLocks.Load(table);
+                reels = SlotReels.Load(table);
             }
             catch (CsvFormatException ex)
             {
@@ -204,12 +196,7 @@ namespace UnitySlotTower.Core.Data
                 return;
             }
 
-            if (rules == null)
-            {
-                return;
-            }
-
-            foreach (var problem in locks.Problems(SlotRules.Load(rules).ReelLength))
+            foreach (var problem in reels.Problems())
             {
                 report.Add(new CsvError(table.FileName, 0, 0, problem));
             }

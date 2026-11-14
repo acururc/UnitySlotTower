@@ -2,6 +2,7 @@ using System.Linq;
 using NUnit.Framework;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Slot;
+using UnitySlotTower.Tests.EditMode.Slot;
 
 namespace UnitySlotTower.Tests.EditMode.Data
 {
@@ -196,25 +197,38 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
+        [Description("D-63: 設定が欠けた抽選表はエラー")]
         public void Missing_Slot_Setting_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["slot_settings.csv"] = WithoutLinesStartingWith(files["slot_settings.csv"], "4,");
+            files[SlotPatterns.FileName] = WithoutLinesStartingWith(files[SlotPatterns.FileName], "4,");
 
             var report = GameDataValidator.ValidateAll(files);
 
-            Assert.That(report.Errors.Select(e => e.File), Does.Contain("slot_settings.csv"));
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain(SlotPatterns.FileName));
         }
 
         [Test]
-        public void Miss_Rate_Above_One_Is_An_Error()
+        [Description("D-60: 合計が20でない設定はエラー（設定1のハズレ 4 → 5 で21）")]
+        public void Slot_Setting_Not_Totalling_20_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["slot_settings.csv"] = "setting,miss_rate\n1,1.2\n2,0.8\n3,0.8\n4,0.8\n5,0.8\n6,0.8\n";
+            files[SlotPatterns.FileName] = files[SlotPatterns.FileName].Replace("1,miss,4", "1,miss,5");
 
             var report = GameDataValidator.ValidateAll(files);
 
-            Assert.That(report.Errors.Select(e => (e.File, e.Line)), Does.Contain(("slot_settings.csv", 2)));
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain(SlotPatterns.FileName));
+        }
+
+        [Test]
+        public void Unknown_Slot_Outcome_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files[SlotPatterns.FileName] = files[SlotPatterns.FileName].Replace("1,bar,2", "1,seven,2");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain(SlotPatterns.FileName));
         }
 
         [Test]
@@ -229,36 +243,27 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        public void Locked_Reel_Length_Not_Matching_Reel_Length_Is_An_Error()
+        [Description("D-62: 3本を同じ並びにすると、中段に揃えたとき上段か下段も揃うのでエラー")]
+        public void Reels_Whose_Rows_Align_Are_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["slot_rules.csv"] = files["slot_rules.csv"].Replace("reel_length,18", "reel_length,19");
+            files[SlotReels.FileName] = SlotTestRules.ReelsCsv(SlotTestRules.PlanLeft, SlotTestRules.PlanLeft,
+                SlotTestRules.PlanLeft);
 
             var report = GameDataValidator.ValidateAll(files);
 
-            Assert.That(report.Errors.Select(e => e.File), Does.Contain(ReelLocks.FileName));
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain(SlotReels.FileName));
         }
 
         [Test]
-        public void Locked_Reel_With_Three_Sevens_Is_An_Error()
+        public void Reel_With_A_Missing_Cell_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files[ReelLocks.FileName] = files[ReelLocks.FileName].Replace("6,empty", "6,seven");
+            files[SlotReels.FileName] = WithoutLinesStartingWith(files[SlotReels.FileName], "2,5,");
 
             var report = GameDataValidator.ValidateAll(files);
 
-            Assert.That(report.Errors.Select(e => e.File), Does.Contain(ReelLocks.FileName));
-        }
-
-        [Test]
-        public void Locked_Reel_With_An_Index_Gap_Is_An_Error()
-        {
-            var files = TablePaths.ReadAll();
-            files[ReelLocks.FileName] = files[ReelLocks.FileName].Replace("17,empty", "18,empty");
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            Assert.That(report.Errors.Select(e => e.File), Does.Contain(ReelLocks.FileName));
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain(SlotReels.FileName));
         }
 
         [Test]

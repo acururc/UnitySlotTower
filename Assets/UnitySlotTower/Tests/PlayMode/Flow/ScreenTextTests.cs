@@ -21,8 +21,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
     public sealed class ScreenTextTests
     {
         private const string NumericFontName = "NumericOnly SDF";
-        private const int AttackIndex = 0;
-        private const int SevenIndex = 5;
 
         // ゲームオーバー用: S1-W1 に近接の敵 12 体（ライフ 10 より多い）。
         private const string LosingWaves =
@@ -78,21 +76,27 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             _waves = LosingWaves;
             var battle = default(BattleController);
             yield return LoadGame(b => battle = b);
-            AssertNoLetters("リールのカスタム");
+            AssertNoLetters("開始時");
 
             yield return ReelCustomTestUtil.CloseWithDefault(battle);
             AssertNoLetters("準備");
 
-            // 攻撃力を揃えて効果の秒数を出し、7 を揃えてボーナスの残りゲーム数を出す。
+            // バーを揃えて効果の秒数を出す（T342 までのつなぎで、バーは旧の攻撃力アップ）。
             battle.StartWave();
             var cabinet = Object.FindAnyObjectByType<SlotCabinet>();
-            _random.Index = AttackIndex;
-            yield return SpinAndStopAll(cabinet);
-            _random.Index = SevenIndex;
+            _random.Index = -1;
+            for (var i = 0; i < cabinet.Patterns.Count && _random.Index < 0; i++)
+            {
+                if (cabinet.Patterns[i] == Core.Slot.SlotSymbol.Bar)
+                {
+                    _random.Index = i;
+                }
+            }
+
+            Assert.That(_random.Index, Is.GreaterThanOrEqualTo(0), "抽選表にバーがない");
             yield return SpinAndStopAll(cabinet);
             yield return null;
-            Assert.That(cabinet.Bonus, Is.Not.EqualTo(Core.Slot.SlotBonus.None), "ボーナスに入らない");
-            AssertNoLetters("戦闘（効果とボーナス中）");
+            AssertNoLetters("戦闘（効果中）");
 
             battle.SetPaused(true);
             var help = Object.FindAnyObjectByType<HelpScreen>();
@@ -172,11 +176,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             found(battle);
         }
 
-        // レバーと3つのストップボタンを押し、リールが止まるまで待つ。ウェイト中はレバーが効かないので回るまで押し直す。
+        // レバーを押し、リールが自動で止まるまで待つ。
         private static IEnumerator SpinAndStopAll(SlotCabinet cabinet)
         {
             var lever = cabinet.LeverRect.GetComponent<Button>();
-            // ウェイトは実時間（2秒）なので、フレームが速くても足りるよう時間で待つ。
             var until = Time.realtimeSinceStartup + 5f;
             while (!cabinet.IsSpinning && Time.realtimeSinceStartup < until)
             {
@@ -185,13 +188,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
 
             Assert.That(cabinet.IsSpinning, Is.True, "レバーで回らない");
-            for (var reel = 0; reel < 3; reel++)
-            {
-                cabinet.StopRect(reel).GetComponent<Button>().onClick.Invoke();
-                yield return null;
-            }
-
-            for (var i = 0; i < 300 && cabinet.IsSpinning; i++)
+            // 自動停止は実時間（約2秒）なので、フレームが速くても足りるよう時間で待つ。
+            until = Time.realtimeSinceStartup + 5f;
+            while (cabinet.IsSpinning && Time.realtimeSinceStartup < until)
             {
                 yield return null;
             }
@@ -227,7 +226,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 .SetValue(battle, new TextAsset(_waves));
         }
 
-        // ハズレ抽選は必ず当たり、揃う図柄は Index のコマにする。
+        // 20パターンの Index 番目を選ぶ（ハズレのときの止まり方は Index 番目の組み合わせ）。
         private sealed class HitRandom : IRandom
         {
             public int Index;

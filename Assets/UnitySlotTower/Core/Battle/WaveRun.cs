@@ -78,22 +78,14 @@ namespace UnitySlotTower.Core.Battle
         public SlotEffects Effects { get; } = new SlotEffects();
 
         /// <summary>
-        /// 揃った図柄の効果を戦闘に渡す（FR-042）。攻撃力アップ・攻撃速度アップは <see cref="Effects"/> に倍率と時間を足し、
-        /// 全体HP回復は配置中の味方を回復する。コイン・7・BAR は筐体側で払い出すので何もしない。
+        /// 揃った図柄の効果を戦闘に渡す（FR-042）。T342（出目の効果）までのつなぎで、バーだけが旧効果の攻撃力アップを
+        /// <see cref="Effects"/> に足す。色7・コインは何もしない。
         /// </summary>
         public void ApplySlot(SlotSymbol symbol, SlotRules rules)
         {
-            switch (symbol)
+            if (symbol == SlotSymbol.Bar)
             {
-                case SlotSymbol.Atk:
-                    Effects.GrantAttack(rules.AtkRate, rules.AtkSeconds);
-                    break;
-                case SlotSymbol.Speed:
-                    Effects.GrantSpeed(rules.SpeedRate, rules.SpeedSeconds);
-                    break;
-                case SlotSymbol.Heal:
-                    Field.HealAll(rules.HealRate);
-                    break;
+                Effects.GrantAttack(rules.AtkRate, rules.AtkSeconds);
             }
         }
 

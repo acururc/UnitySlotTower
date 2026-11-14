@@ -2,60 +2,36 @@ using UnitySlotTower.Core.Data;
 
 namespace UnitySlotTower.Core.Slot
 {
-    /// <summary>slot_rules.csv の値（plan 5章 スロット・6章）。掛け金は game_config.csv の <c>bet</c>。</summary>
+    /// <summary>slot_rules.csv の値（plan 16.3）。掛け金は game_config.csv の <c>bet</c>。</summary>
     public sealed class SlotRules
     {
         public const string FileName = "slot_rules.csv";
 
-        /// <summary>リール1本のマス数（D-46）。</summary>
-        public int ReelLength { get; private set; }
+        /// <summary>レバーから左リールが止まるまでの秒数（自動停止）。</summary>
+        public double FirstStopSeconds { get; private set; }
 
-        public double WaitSeconds { get; private set; }
+        /// <summary>リールが1本止まってから次が止まるまでの秒数。</summary>
+        public double StopIntervalSeconds { get; private set; }
 
-        /// <summary>コイン揃いの払い出し枚数。</summary>
-        public int CoinPayout { get; private set; }
-
-        public int BigGames { get; private set; }
-        public int BigPayout { get; private set; }
-        public int RegGames { get; private set; }
-        public int RegPayout { get; private set; }
-
-        /// <summary>攻撃力アップの倍率と秒数。</summary>
+        // 以下は旧効果（攻撃力・攻撃速度アップ、全体HP回復）の値。出目の効果（T342）とバッファー（T343）で置き換える。
         public double AtkRate { get; private set; }
         public double AtkSeconds { get; private set; }
-
-        /// <summary>攻撃速度アップの倍率（攻撃間隔をこれで割る）と秒数。</summary>
         public double SpeedRate { get; private set; }
         public double SpeedSeconds { get; private set; }
-
-        /// <summary>全体HP回復で足す最大HPの割合。</summary>
         public double HealRate { get; private set; }
-
-        /// <summary>序盤の救済（D-57）: ハズレ率を下げる通常ゲームの回数。</summary>
-        public int EarlyGames { get; private set; }
-
-        /// <summary>序盤の救済（D-57）: 設定のハズレ率から引く幅。</summary>
-        public double EarlyMissReduction { get; private set; }
 
         public static SlotRules Load(CsvTable table)
         {
             var values = new KeyValueTable(table);
             return new SlotRules
             {
-                ReelLength = values.GetInt("reel_length"),
-                WaitSeconds = values.GetDouble("wait_seconds"),
-                CoinPayout = values.GetInt("coin_payout"),
-                BigGames = values.GetInt("big_games"),
-                BigPayout = values.GetInt("big_payout"),
-                RegGames = values.GetInt("reg_games"),
-                RegPayout = values.GetInt("reg_payout"),
+                FirstStopSeconds = values.GetDouble("first_stop_seconds"),
+                StopIntervalSeconds = values.GetDouble("stop_interval_seconds"),
                 AtkRate = values.GetDouble("atk_rate"),
                 AtkSeconds = values.GetDouble("atk_seconds"),
                 SpeedRate = values.GetDouble("speed_rate"),
                 SpeedSeconds = values.GetDouble("speed_seconds"),
                 HealRate = values.GetDouble("heal_rate"),
-                EarlyGames = values.GetInt("early_games"),
-                EarlyMissReduction = values.GetDouble("early_miss_reduction"),
             };
         }
     }

@@ -100,14 +100,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var cabinet = Object.FindAnyObjectByType<SlotCabinet>();
             var startCoins = battle.Wallet.Coins;
             var startLife = battle.Field.Life;
-            var defaultLayout = Describe(cabinet.Layout);
-
-            // 空きを回復で埋めて始め、リトライで空きからやり直しになることを確かめる（plan 4章）。
-            var reelCustom = Object.FindAnyObjectByType<ReelCustomScreen>();
-            ReelCustomTestUtil.FillEmpty(reelCustom.Customizer, SlotSymbol.Heal);
-            Assert.That(reelCustom.Confirm(), Is.True, "空きを埋めて確定できない");
             yield return null;
-            Assert.That(Describe(cabinet.Layout), Is.Not.EqualTo(defaultLayout), "配列が変わっていない");
 
             var result = Object.FindAnyObjectByType<ResultScreen>();
             yield return PlayUntilFinished(battle);
@@ -119,7 +112,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             battle.SetPaused(true);
             Assert.That(battle.IsPaused, Is.False, "リザルト中に一時停止できてしまう");
 
-            // AC-004: Enter（初期選択の ▶）でリトライ。同じ設定で、進行・ライフ・コイン・リール配列が初期状態に戻る。
+            // AC-004: Enter（初期選択の ▶）でリトライ。同じ設定で、進行・ライフ・コインが初期状態に戻る。
             yield return Press(Key.Enter, () => SceneManager.GetActiveScene().name == GameSession.GameScene &&
                                                 Object.FindAnyObjectByType<BattleController>() != battle);
             yield return WaitForGame();
@@ -130,10 +123,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That((GameSession.SelectedSetting, cabinet.Setting), Is.EqualTo(((int?)4, 4)), "リトライで設定が変わった");
             Assert.That((battle.Run.Stage, battle.Run.Wave, battle.Run.Phase, battle.Field.Life, battle.Wallet.Coins),
                 Is.EqualTo((1, 1, WavePhase.Preparing, startLife, startCoins)), "リトライで進行が初期化されない");
-            Assert.That(Describe(cabinet.Layout), Is.EqualTo(defaultLayout), "リトライでリール配列が既定に戻らない");
-            Assert.That((battle.IsCustomizing, result.IsOpen), Is.EqualTo((true, false)), "リトライ後の開始画面がおかしい");
-            var customizer = Object.FindAnyObjectByType<ReelCustomScreen>().Customizer;
-            Assert.That(customizer.EmptyCount, Is.EqualTo(cabinet.Locks.EmptyCount), "リトライでカスタムが空きからやり直しにならない");
+            Assert.That(result.IsOpen, Is.False, "リトライ後にリザルトが開いている");
         }
 
         [UnityTest]
@@ -158,18 +148,13 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(GameSession.TitleScene), "タイトルへ戻らない");
         }
 
-        // ▶ を押し続け、ステージの間のカスタム画面は既定のまま閉じて、ゲームが終わるまで速めて進める。
+        // ▶ を押し続け、ゲームが終わるまで速めて進める。
         private static IEnumerator PlayUntilFinished(BattleController battle)
         {
             Time.timeScale = 20f;
             var limit = Time.realtimeSinceStartup + 60f;
             while (!battle.IsFinished && Time.realtimeSinceStartup < limit)
             {
-                if (battle.IsCustomizing)
-                {
-                    Object.FindAnyObjectByType<ReelCustomScreen>().Confirm();
-                }
-
                 battle.StartWave();
                 yield return null;
             }
@@ -219,17 +204,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         private static string Text(ResultScreen result, string field) =>
             ((TMP_Text)typeof(ResultScreen).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(result))
             .text;
-
-        private static string Describe(ReelLayout layout)
-        {
-            var builder = new StringBuilder();
-            for (var i = 0; i < layout.Length; i++)
-            {
-                builder.Append((int)layout.At(i));
-            }
-
-            return builder.ToString();
-        }
 
         // sceneLoaded は Awake の後・Start の前に呼ばれるので、BattleController が表を読む前に差し替えられる。リトライ後は本来の表。
         private static void ReplaceWaves(Scene scene, LoadSceneMode mode)
