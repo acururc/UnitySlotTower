@@ -14,6 +14,7 @@ namespace UnitySlotTower.Flow
     /// ショップマスの画面（plan 16.2・16.7、FR-017、AC-013）。入ったときに並んだ品（<see cref="Shop"/>）を札にして並べ、
     /// 下に両替（<see cref="Exchange"/>、所持金→コイン・コイン→所持金）を置く。買えない品・足りない両替は暗くして押せない。
     /// 文字は使わず、品は職の色の台と白い印（ストック＝＋、ゲージ＝点、強化＝▲）で見分ける。絵は仮（M5 で素材に差し替える）。
+    /// 使い方は画面の絵で伝える（plan 16.10）: 押せる札には値段から品へ向かう上向きの矢印、押せる両替には払う側から受け取る側への矢印を動かす。
     /// </summary>
     public sealed class ShopScreen : NodeScreen
     {
@@ -52,13 +53,15 @@ namespace UnitySlotTower.Flow
         [SerializeField] private Color moneyColor = new Color(0.98f, 0.8f, 0.2f);
         [SerializeField, Range(0f, 1f)] private float disabledAlpha = 0.3f;
 
-        private readonly List<(Button Button, CanvasGroup Group, TMP_Text Price)> _cards =
-            new List<(Button, CanvasGroup, TMP_Text)>();
+        private readonly List<(Button Button, CanvasGroup Group, TMP_Text Price, NudgeArrow Arrow)> _cards =
+            new List<(Button, CanvasGroup, TMP_Text, NudgeArrow)>();
 
         private RunState _state;
         private SkillTable _skills;
         private CanvasGroup _buyGroup;
         private CanvasGroup _sellGroup;
+        private NudgeArrow _buyArrow;
+        private NudgeArrow _sellArrow;
         private int _shownMoney;
         private int _shownCoins;
 
@@ -86,6 +89,27 @@ namespace UnitySlotTower.Flow
 
         public Button SellCoinsButton => sellCoinsButton;
 
+        /// <summary>品の札の矢印（<see cref="Shop.Offers"/> の順、押せる札だけ動く）。</summary>
+        public IReadOnlyList<NudgeArrow> OfferArrows
+        {
+            get
+            {
+                var arrows = new NudgeArrow[_cards.Count];
+                for (var i = 0; i < arrows.Length; i++)
+                {
+                    arrows[i] = _cards[i].Arrow;
+                }
+
+                return arrows;
+            }
+        }
+
+        /// <summary>「所持金→コイン」の矢印（押せるときだけ動く）。</summary>
+        public NudgeArrow BuyCoinsArrow => _buyArrow;
+
+        /// <summary>「コイン→所持金」の矢印（押せるときだけ動く）。</summary>
+        public NudgeArrow SellCoinsArrow => _sellArrow;
+
         public override string Kind => RouteNodeKinds.Shop;
 
         protected override void Awake()
@@ -93,6 +117,8 @@ namespace UnitySlotTower.Flow
             base.Awake();
             _buyGroup = GroupOf(buyCoinsButton);
             _sellGroup = GroupOf(sellCoinsButton);
+            _buyArrow = ArrowOf(buyCoinsButton);
+            _sellArrow = ArrowOf(sellCoinsButton);
             buyCoinsButton.onClick.AddListener(() => Trade(true));
             sellCoinsButton.onClick.AddListener(() => Trade(false));
         }
@@ -142,15 +168,25 @@ namespace UnitySlotTower.Flow
                 var index = i;
                 button.onClick.AddListener(() => Buy(index));
 
-                var icon = RouteNodeIcons.CreateRect("Icon", card.rectTransform, new Vector2(0.12f, 0.3f), new Vector2(0.88f, 0.92f));
+                var icon = RouteNodeIcons.CreateRect("Icon", card.rectTransform, new Vector2(0.12f, 0.38f), new Vector2(0.88f, 0.94f));
                 BuildIcon(icon, item);
+
+                // 値段（下）→ 品（上）: お金を払うと品が手に入る、を上向きの矢印で示す。
+                var arrowRect = RouteNodeIcons.CreateRect("Buy Arrow", card.rectTransform, new Vector2(0.43f, 0.27f),
+                    new Vector2(0.57f, 0.36f));
+                arrowRect.localEulerAngles = new Vector3(0f, 0f, 90f);
+                var arrowGraphic = arrowRect.gameObject.AddComponent<TriangleGraphic>();
+                arrowGraphic.color = moneyColor;
+                arrowGraphic.raycastTarget = false;
+                var arrow = arrowRect.gameObject.AddComponent<NudgeArrow>();
+                arrow.Configure(0.4f, 1.2f);
 
                 var priceIcon = RouteNodeIcons.CreateImage("Money Icon", card.rectTransform, new Vector2(0.1f, 0.06f),
                     new Vector2(0.34f, 0.24f), moneyColor, knobSprite);
                 priceIcon.preserveAspect = true;
                 var price = CreateNumber("Price", card.rectTransform, new Vector2(0.36f, 0.04f), new Vector2(0.92f, 0.26f));
                 AddOfferLabel(card.rectTransform, item);
-                _cards.Add((button, group, price));
+                _cards.Add((button, group, price, arrow));
             }
         }
 
@@ -248,23 +284,41 @@ namespace UnitySlotTower.Flow
             coinsText.SetText("{0}", _shownCoins);
             for (var i = 0; i < _cards.Count; i++)
             {
-                var (button, group, price) = _cards[i];
+                var (button, group, price, arrow) = _cards[i];
                 var result = Shop.Check(i);
                 button.interactable = result == ShopResult.Bought;
+                arrow.Playing = result == ShopResult.Bought;
+                arrow.gameObject.SetActive(!Shop.IsSold(i) && result != ShopResult.Unavailable);
                 group.alpha = result == ShopResult.Bought ? 1f : disabledAlpha;
                 var shown = Shop.IsSold(i) || result == ShopResult.Unavailable;
                 price.gameObject.SetActive(!shown);
                 price.SetText("{0}", Shop.PriceOf(i));
             }
 
-            SetEnabled(buyCoinsButton, _buyGroup, Exchange.CanBuyCoins);
-            SetEnabled(sellCoinsButton, _sellGroup, Exchange.CanSellCoins);
+            SetEnabled(buyCoinsButton, _buyGroup, _buyArrow, Exchange.CanBuyCoins);
+            SetEnabled(sellCoinsButton, _sellGroup, _sellArrow, Exchange.CanSellCoins);
         }
 
-        private void SetEnabled(Button button, CanvasGroup group, bool enabled)
+        private void SetEnabled(Button button, CanvasGroup group, NudgeArrow arrow, bool enabled)
         {
             button.interactable = enabled;
             group.alpha = enabled ? 1f : disabledAlpha;
+            if (arrow != null)
+            {
+                arrow.Playing = enabled;
+            }
+        }
+
+        // 両替のボタンの中の矢印（Setup が "Arrow" の名前で置く）に動きを付ける。見つからなければ動かさないだけ。
+        private static NudgeArrow ArrowOf(Button button)
+        {
+            var arrow = button.transform.Find("Arrow");
+            if (arrow == null)
+            {
+                return null;
+            }
+
+            return arrow.TryGetComponent<NudgeArrow>(out var nudge) ? nudge : arrow.gameObject.AddComponent<NudgeArrow>();
         }
 
         private TextMeshProUGUI CreateNumber(string name, RectTransform parent, Vector2 anchorMin, Vector2 anchorMax)

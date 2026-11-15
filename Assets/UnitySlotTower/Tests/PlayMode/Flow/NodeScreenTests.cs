@@ -76,6 +76,32 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
 
             Assert.That((shop.BuyCoinsButton.interactable, shop.SellCoinsButton.interactable), Is.EqualTo((false, true)));
+
+            // 絵による説明（plan 16.10）: 押せるものの矢印だけが動き、押せないものの矢印は元の位置で止まる。
+            Assert.That((shop.BuyCoinsArrow != null, shop.SellCoinsArrow != null), Is.EqualTo((true, true)), "両替の矢印がない");
+            Assert.That((shop.BuyCoinsArrow.Playing, shop.SellCoinsArrow.Playing), Is.EqualTo((false, true)),
+                "両替の矢印の動きが押せるかどうかと合わない");
+            for (var i = 0; i < shop.OfferArrows.Count; i++)
+            {
+                Assert.That(shop.OfferArrows[i].Playing, Is.False, $"所持金0で品 {i} の矢印が動く");
+            }
+
+            var sellMax = Vector2.zero;
+            var buyMax = Vector2.zero;
+            yield return WatchArrows(0.6f, () =>
+            {
+                if (shop.SellCoinsArrow.Offset.magnitude > sellMax.magnitude)
+                {
+                    sellMax = shop.SellCoinsArrow.Offset;
+                }
+
+                if (shop.BuyCoinsArrow.Offset.magnitude > buyMax.magnitude)
+                {
+                    buyMax = shop.BuyCoinsArrow.Offset;
+                }
+            });
+            Assert.That(sellMax.x, Is.GreaterThan(0.5f), "押せる両替の矢印が矢印の向き（右）へ動かない");
+            Assert.That(buyMax, Is.EqualTo(Vector2.zero), "押せない両替の矢印が動いた");
             shop.BuyCoinsButton.onClick.Invoke();
             Assert.That((state.Money.Coins, state.Coins.Coins), Is.EqualTo((0, coins)), "足りないのに品か両替で何かが変わった");
             for (var i = 0; i < shop.OfferButtons.Count; i++)
@@ -111,12 +137,17 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
 
             Assert.That(bought, Is.GreaterThanOrEqualTo(0), "所持金 1000 で買える品がない");
+            Assert.That(shop.OfferArrows[bought].Playing, Is.True, "買える品の矢印が動かない");
+            var offerMaxY = 0f;
+            yield return WatchArrows(0.6f, () => offerMaxY = Mathf.Max(offerMaxY, shop.OfferArrows[bought].Offset.y));
+            Assert.That(offerMaxY, Is.GreaterThan(0.5f), "買える品の矢印が上（品の方）へ動かない");
             var price = shop.Shop.PriceOf(bought);
             shop.OfferButtons[bought].onClick.Invoke();
             Assert.That((state.Money.Coins, shop.Shop.IsSold(bought), shop.OfferButtons[bought].interactable),
                 Is.EqualTo((1000 - price, true, false)), "品を買えないか、買った品がまだ押せる");
             shop.OfferButtons[bought].onClick.Invoke();
             Assert.That(state.Money.Coins, Is.EqualTo(1000 - price), "同じ品を2回買えた");
+            Assert.That(shop.OfferArrows[bought].gameObject.activeSelf, Is.False, "売り切れの品に矢印が残る");
 
             yield return GoBack(shop);
         }
@@ -135,6 +166,17 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         // ◀ でルート画面に戻り、次のマスを選べる。
+        // 実時間で seconds 秒、毎フレーム sample を呼ぶ（矢印の動きは実時間で進む）。
+        private static IEnumerator WatchArrows(float seconds, System.Action sample)
+        {
+            var end = Time.realtimeSinceStartup + seconds;
+            while (Time.realtimeSinceStartup < end)
+            {
+                yield return null;
+                sample();
+            }
+        }
+
         private IEnumerator GoBack(NodeScreen screen)
         {
             var current = _run.State.Current;
