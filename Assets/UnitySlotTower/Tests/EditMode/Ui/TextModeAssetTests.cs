@@ -23,7 +23,11 @@ namespace UnitySlotTower.Tests.EditMode.Ui
         private static readonly string[] Scenes = { "Assets/UnitySlotTower/Scenes/Title.unity", "Assets/UnitySlotTower/Scenes/Game.unity" };
 
         // 文言を実行中に入れるラベル（id が空でよい）。
-        private static readonly string[] DynamicLabels = { "Text Label direction", "Text Label description", "Text Label Caption", "Text Label Offer Template" };
+        private static readonly string[] DynamicLabels =
+        {
+            "Text Label direction", "Text Label description", "Text Label Caption", "Text Label Offer Template", "Text Label healed",
+            "Text Label rate",
+        };
 
         [Test]
         public void Font_Has_Every_Letter_Of_The_Table_In_One_Saved_Static_Atlas()

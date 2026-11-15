@@ -38,6 +38,9 @@ namespace UnitySlotTower.Flow
         [SerializeField] private Button sellCoinsButton;
         [SerializeField] private TMP_Text sellCoinsCoinsText;
         [SerializeField] private TMP_Text sellCoinsMoneyText;
+        [Tooltip("文字あり版で両替を文（「所持金 6 → コイン 3」）で出すラベル（FR-006、なくてもよい）。")]
+        [SerializeField] private TextModeLabel buyCoinsRateLabel;
+        [SerializeField] private TextModeLabel sellCoinsRateLabel;
 
         [Header("Look")]
         [Tooltip("色7の色（赤・青・緑・黄）。職の色はその職のスキルの色。")]
@@ -110,6 +113,11 @@ namespace UnitySlotTower.Flow
         /// <summary>「コイン→所持金」の矢印（押せるときだけ動く）。</summary>
         public NudgeArrow SellCoinsArrow => _sellArrow;
 
+        /// <summary>文字あり版の両替の文（テスト用）。</summary>
+        public TextModeLabel BuyCoinsRateLabel => buyCoinsRateLabel;
+
+        public TextModeLabel SellCoinsRateLabel => sellCoinsRateLabel;
+
         public override string Kind => RouteNodeKinds.Shop;
 
         protected override void Awake()
@@ -133,6 +141,16 @@ namespace UnitySlotTower.Flow
             buyCoinsCoinsText.SetText("{0}", Exchange.CoinsPerTrade);
             sellCoinsCoinsText.SetText("{0}", Exchange.CoinsPerTrade);
             sellCoinsMoneyText.SetText("{0}", Exchange.MoneyPerTrade);
+            if (buyCoinsRateLabel != null)
+            {
+                buyCoinsRateLabel.SetFormat("shop_buy_rate", Exchange.MoneyPerTrade, Exchange.CoinsPerTrade);
+            }
+
+            if (sellCoinsRateLabel != null)
+            {
+                sellCoinsRateLabel.SetFormat("shop_sell_rate", Exchange.CoinsPerTrade, Exchange.MoneyPerTrade);
+            }
+
             BuildCards();
             Refresh();
         }
@@ -168,13 +186,16 @@ namespace UnitySlotTower.Flow
                 var index = i;
                 button.onClick.AddListener(() => Buy(index));
 
+                // 文字あり版では札の上に名前と説明の3行（AddOfferLabel）が入るので、品の絵と矢印を下げる（plan 16.13）。
                 var icon = RouteNodeIcons.CreateRect("Icon", card.rectTransform, new Vector2(0.12f, 0.38f), new Vector2(0.88f, 0.94f));
+                TextModeRect(icon, new Vector2(0.12f, 0.43f), new Vector2(0.88f, 0.71f));
                 BuildIcon(icon, item);
 
                 // 値段（下）→ 品（上）: お金を払うと品が手に入る、を上向きの矢印で示す。
                 var arrowRect = RouteNodeIcons.CreateRect("Buy Arrow", card.rectTransform, new Vector2(0.43f, 0.27f),
                     new Vector2(0.57f, 0.36f));
                 arrowRect.localEulerAngles = new Vector3(0f, 0f, 90f);
+                TextModeRect(arrowRect, new Vector2(0.43f, 0.31f), new Vector2(0.57f, 0.40f));
                 var arrowGraphic = arrowRect.gameObject.AddComponent<TriangleGraphic>();
                 arrowGraphic.color = moneyColor;
                 arrowGraphic.raycastTarget = false;
@@ -199,8 +220,23 @@ namespace UnitySlotTower.Flow
 
             var label = Instantiate(offerLabelTemplate, card, false);
             label.name = "Text Label";
-            label.SetIds("unit_" + item.UnitId, OfferTextId(item.Kind));
+            var kind = OfferTextId(item.Kind);
+            label.SetIds("unit_" + item.UnitId, kind, kind + "_desc");
             label.gameObject.SetActive(true);
+        }
+
+        // 実行中に作る部品に文字あり版の位置を付ける（シーンの部品は Setup が付ける。NudgeArrow の基準の位置は 0 のままなので両立する）。
+        private static void TextModeRect(RectTransform rect, Vector2 anchorMin, Vector2 anchorMax)
+        {
+            var noText = TextModeLayout.Read(rect.gameObject);
+            var text = noText;
+            text.anchorMin = anchorMin;
+            text.anchorMax = anchorMax;
+            text.offsetMin = Vector2.zero;
+            text.offsetMax = Vector2.zero;
+            var layout = rect.gameObject.AddComponent<TextModeLayout>();
+            layout.Configure(TextModeLayout.Parts.Rect, noText, text);
+            layout.Apply(GameSession.TextMode);
         }
 
         private static string OfferTextId(ShopItemKind kind)

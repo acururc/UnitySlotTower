@@ -148,9 +148,17 @@ namespace UnitySlotTower.Editor.Setup
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             Label(logo, "title_text_mode", new Vector2(1f, 0f), new Vector2(1f, 0.28f), new Vector2(4f, 0f), new Vector2(84f, 0f), 56f);
-            Below(start, "title_start", 30f);
-            Label(difficulty, "title_difficulty", new Vector2(0.2f, 0.8f), new Vector2(0.8f, 0.85f), Vector2.zero, Vector2.zero, 44f);
-            Below(back, "title_back", 24f);
+            // T359e: 字は 36 以上。難易度選択の見出しは札の上（札は TextModeLayoutSetup.BuildTitle が下げる）、もどるは ◀ の右。
+            Below(start, "title_start", 60f, 40f);
+            Label(difficulty, "title_difficulty", new Vector2(0.1f, 0.76f), new Vector2(0.9f, 0.82f), Vector2.zero, Vector2.zero, 56f);
+            RightOf(back, "title_back");
+            var settings = serialized.FindProperty("settingButtons");
+            for (var i = 0; i < settings.arraySize; i++)
+            {
+                // 札の下に設定の名前（「やさしい」など）。
+                var plate = (RectTransform)((Button)settings.GetArrayElementAtIndex(i).objectReferenceValue).transform;
+                Below(plate, $"setting_{i + 1}", 66f, 40f);
+            }
         }
 
         private static void AddGameLabels(SlotCabinet cabinet)
@@ -283,45 +291,62 @@ namespace UnitySlotTower.Editor.Setup
         private static void AddNodeLabels(RectTransform root)
         {
             var rest = root.GetComponentInChildren<RestScreen>(true);
+            // T359e: 位置は文字あり版のもの（部品の文字あり版の位置は TextModeLayoutSetup.BuildNodeScreens）。字は 36 以上。
             var restPanel = PanelOf(rest);
-            Label(restPanel, "rest_title", new Vector2(0.25f, 0.82f), new Vector2(0.75f, 0.88f), Vector2.zero, Vector2.zero, 52f);
-            Label(restPanel, "rest_healed", new Vector2(0.25f, 0.5f), new Vector2(0.75f, 0.535f), Vector2.zero, Vector2.zero, 30f);
-            IconTag(Child(restPanel, "Life Icon"), "life", 22f);
-            Above(Child(restPanel, "Back"), "back", 36f, 26f);
+            Label(restPanel, "rest_title", new Vector2(0.25f, 0.82f), new Vector2(0.75f, 0.88f), Vector2.zero, Vector2.zero, 56f);
+            DestroyChild(restPanel, LabelPrefix + "rest_healed");
+            // 回復量の文は RestScreen が開くたびに入れる（「ライフが 2 回復した」）。
+            var healed = Label(restPanel, string.Empty, new Vector2(0.05f, 0.45f), new Vector2(0.95f, 0.51f), Vector2.zero, Vector2.zero,
+                48f, LabelPrefix + "healed");
+            LeftOf(Child(restPanel, "Life Icon"), "life");
+            RightOf(Child(restPanel, "Back"), "back");
+            var restSerialized = new SerializedObject(rest);
+            restSerialized.FindProperty("healedLabel").objectReferenceValue = healed;
+            restSerialized.ApplyModifiedPropertiesWithoutUndo();
 
             var shop = root.GetComponentInChildren<ShopScreen>(true);
             var shopPanel = PanelOf(shop);
             var status = Child(shopPanel, "Status");
+            // 名前の位置と大きさは TextModeLayoutSetup（ルートの帯と同じ置き方）。
             IconTag(Child(status, "Money Icon"), "money", 18f);
             IconTag(Child(status, "Coin Icon"), "coins", 18f);
-            Label(shopPanel, "shop_title", new Vector2(0.3f, 0.795f), new Vector2(0.7f, 0.82f), Vector2.zero, Vector2.zero, 34f);
+            Label(shopPanel, "shop_title", new Vector2(0.4f, 0.835f), new Vector2(0.7f, 0.895f), Vector2.zero, Vector2.zero, 56f);
             var exchange = Child(shopPanel, "Exchange");
-            Label(Child(exchange, "Buy Coins"), "shop_buy_coins", new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -40f), Vector2.zero, 24f);
-            Label(Child(exchange, "Sell Coins"), "shop_sell_coins", new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -40f), Vector2.zero, 24f);
-            Above(Child(shopPanel, "Back"), "back", 36f, 26f);
-
-            // 品の札は開くたびに作られるので、ひな形を非表示で置き、ShopScreen が札ごとに複製する（札の上の帯）。
-            DestroyChild(shopPanel, OfferTemplateName);
-            var template = Label(shopPanel, string.Empty, new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -58f), Vector2.zero,
-                20f, OfferTemplateName);
-            template.gameObject.SetActive(false);
             var serialized = new SerializedObject(shop);
+            TradeLabels(Child(exchange, "Buy Coins"), "shop_buy_coins", serialized.FindProperty("buyCoinsRateLabel"));
+            TradeLabels(Child(exchange, "Sell Coins"), "shop_sell_coins", serialized.FindProperty("sellCoinsRateLabel"));
+            RightOf(Child(shopPanel, "Back"), "back");
+
+            // 品の札は開くたびに作られるので、ひな形を非表示で置き、ShopScreen が札ごとに複製する（札の上に 職名・品の名前・短い説明 の3行）。
+            DestroyChild(shopPanel, OfferTemplateName);
+            var template = Label(shopPanel, string.Empty, new Vector2(0f, 0.725f), new Vector2(1f, 0.995f), Vector2.zero, Vector2.zero,
+                40f, OfferTemplateName);
+            template.gameObject.SetActive(false);
             serialized.FindProperty("offerLabelTemplate").objectReferenceValue = template;
             serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // 両替のボタン: 上に名前、下に数字の入った文（ShopScreen が入れる）。真ん中の絵と数字は TextModeLayoutSetup が寄せる。
+        private static void TradeLabels(RectTransform button, string id, SerializedProperty rateLabel)
+        {
+            Label(button, id, new Vector2(0f, 0.8f), new Vector2(1f, 0.98f), Vector2.zero, Vector2.zero, 40f);
+            rateLabel.objectReferenceValue = Label(button, string.Empty, new Vector2(0f, 0.05f), new Vector2(1f, 0.32f), Vector2.zero,
+                Vector2.zero, 40f, LabelPrefix + "rate");
         }
 
         private static void AddResultLabels(RectTransform root)
         {
             var result = root.GetComponentInChildren<ResultScreen>(true);
             var panel = PanelOf(result);
-            Label(Child(panel, "Clear Icon"), "result_clear", Vector2.zero, new Vector2(1f, 0.26f), Vector2.zero, Vector2.zero, 48f);
+            // T359e: 見出し 56、行の名前は絵の左に 48、ボタンの名前は中の下に 40（絵と三角の文字あり版の位置は TextModeLayoutSetup）。
+            Label(Child(panel, "Clear Icon"), "result_clear", Vector2.zero, new Vector2(1f, 0.26f), Vector2.zero, Vector2.zero, 56f);
             Label(Child(panel, "Game Over Icon"), "result_game_over", Vector2.zero, new Vector2(1f, 0.2f), new Vector2(-60f, -40f),
-                new Vector2(60f, 0f), 48f);
-            IconTag(Child(panel, "Floor Icon"), "result_floor", 24f);
-            IconTag(Child(panel, "Money Icon"), "money", 24f);
-            IconTag(Child(panel, "Coin Icon"), "coins", 24f);
-            InsideBottom(Child(panel, "Retry Button"), "result_retry", 44f, 30f);
-            InsideBottom(Child(panel, "Title Button"), "result_title", 44f, 30f);
+                new Vector2(60f, 0f), 56f);
+            LeftOf(Child(panel, "Floor Icon"), "result_floor", 48f);
+            LeftOf(Child(panel, "Money Icon"), "money", 48f);
+            LeftOf(Child(panel, "Coin Icon"), "coins", 48f);
+            InsideBottom(Child(panel, "Retry Button"), "result_retry", 64f, 40f);
+            InsideBottom(Child(panel, "Title Button"), "result_title", 64f, 40f);
         }
 
         private static void AddHelpLabels(RectTransform root, CsvTable units)
@@ -393,6 +418,14 @@ namespace UnitySlotTower.Editor.Setup
         private static TextModeLabel Below(RectTransform target, string id, float height, float fontSize = 0f) =>
             Label(target, id, Vector2.zero, new Vector2(1f, 0f), new Vector2(-20f, -2f - height), new Vector2(20f, -2f),
                 fontSize > 0f ? fontSize : height * 0.7f);
+
+        // 部品の右に横並び（◀ の「もどる」など）。
+        private static TextModeLabel RightOf(RectTransform target, string id, float fontSize = 40f) =>
+            Label(target, id, new Vector2(1f, 0f), Vector2.one, new Vector2(12f, 0f), new Vector2(260f, 0f), fontSize);
+
+        // 部品の左に横並び（数字の行の名前）。
+        private static TextModeLabel LeftOf(RectTransform target, string id, float fontSize = 48f) =>
+            Label(target, id, Vector2.zero, new Vector2(0f, 1f), new Vector2(-440f, 0f), new Vector2(-16f, 0f), fontSize);
 
         private static TextModeLabel InsideBottom(RectTransform target, string id, float height, float fontSize) =>
             Label(target, id, Vector2.zero, new Vector2(1f, 0f), Vector2.zero, new Vector2(0f, height), fontSize);

@@ -100,6 +100,23 @@ namespace UnitySlotTower.Ui
             Apply(GameSession.TextMode);
         }
 
+        /// <summary>
+        /// 数字の入る文言（<c>{0}</c>・<c>{1}</c> を含む）に値を入れて出す。画面を開いたときに使う（毎フレームは呼ばない）。
+        /// </summary>
+        public void SetFormat(string textId, int value0, int value1 = 0)
+        {
+            if (!TryResolve(table, textId, out var format))
+            {
+                Debug.LogWarning($"[TextModeLabel] {name}: ui_texts.csv に id '{textId}' がない", this);
+                SetIds();
+                return;
+            }
+
+            id = textId;
+            SetResolved(string.Format(format, value0, value1));
+            Apply(GameSession.TextMode);
+        }
+
         private void Resolve()
         {
             if (string.IsNullOrEmpty(id))

@@ -191,14 +191,21 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             foreach (var button in shop.OfferButtons)
             {
                 var label = button.GetComponentInChildren<TextModeLabel>();
-                if (label != null && label.IsShown && label.Text.text.Length > 0)
+                // T359e: 職名・品の名前・短い説明の3行。
+                if (label != null && label.IsShown && label.Text.text.Split('\n').Length == 3)
                 {
                     offerLabels++;
                 }
             }
 
-            Assert.That(offerLabels, Is.EqualTo(shop.OfferButtons.Count), "品の札に名前が出ない");
+            Assert.That(offerLabels, Is.EqualTo(shop.OfferButtons.Count), "品の札に名前と説明が出ない");
             Assert.That(ShownIds(), Does.Contain("shop_title").And.Contain("shop_buy_coins").And.Contain("back"));
+
+            // T359e: 両替は数字の入った文（値は Exchange のもの）。
+            var exchange = shop.Exchange;
+            Assert.That((shop.BuyCoinsRateLabel.IsShown, shop.BuyCoinsRateLabel.Text.text, shop.SellCoinsRateLabel.Text.text),
+                Is.EqualTo((true, $"所持金 {exchange.MoneyPerTrade} → コイン {exchange.CoinsPerTrade}",
+                    $"コイン {exchange.CoinsPerTrade} → 所持金 {exchange.MoneyPerTrade}")), "両替の文が出ない");
         }
 
         [UnityTest]

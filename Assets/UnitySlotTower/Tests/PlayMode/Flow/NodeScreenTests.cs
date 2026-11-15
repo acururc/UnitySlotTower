@@ -47,6 +47,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             RunController.SeedOverride = null;
             Time.timeScale = 1f;
             Application.runInBackground = _runInBackground;
+            GameSession.SetTextMode(false);
         }
 
         [UnityTest]
@@ -153,8 +154,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         [UnityTest]
-        public IEnumerator Rest_Heals_On_Entry_Up_To_Max_And_Back_Returns_To_Route()
+        public IEnumerator Rest_Heals_On_Entry_Up_To_Max_And_Back_Returns_To_Route([Values(false, true)] bool textMode)
         {
+            GameSession.SetTextMode(textMode);
             yield return EnterSecondFloor(RouteNodeKinds.Rest, lifeLost: 1);
             var state = _run.State;
             var rest = _run.OpenScreen as RestScreen;
@@ -162,6 +164,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 Is.EqualTo((true, true, false, true)), "回復マスで回復の画面が開かない");
             // 減らしたのは1だけなので、回復量（rest_heal）より少なく最大ライフで止まる（AC-012）。
             Assert.That((state.Life, _run.LastHealed), Is.EqualTo((state.MaxLife, 1)), "回復が最大ライフで止まらない");
+            // 文字あり版（T359e）では回復量を文で出す。文字なし版では描かない。
+            Assert.That((rest.HealedLabel.IsShown, rest.HealedLabel.Text.text), Is.EqualTo((textMode, "ライフが 1 回復した")),
+                "回復量の文が出ない");
             yield return GoBack(rest);
         }
 

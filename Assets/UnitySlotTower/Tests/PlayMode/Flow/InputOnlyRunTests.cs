@@ -226,8 +226,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         [UnityTest]
-        public IEnumerator Mouse_Clicks_Retry_And_Title_On_The_Result()
+        public IEnumerator Mouse_Clicks_Retry_And_Title_On_The_Result([Values(false, true)] bool textMode)
         {
+            // 文字あり版（T359e）では三角が上に寄り下に名前が入るが、同じクリックで同じことが起こる（AC-005）。
+            GameSession.SetTextMode(textMode);
             _waves = LosingWaves;
             // 前のテストの Game シーンを拾わないよう、タイトルから始める。
             yield return SceneManager.LoadSceneAsync(GameSession.TitleScene);

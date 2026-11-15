@@ -40,9 +40,25 @@ namespace UnitySlotTower.Editor.Setup
             }
         }
 
+        // 文字あり版の難易度選択の札の下端（Title の割合。上の段・下の段）。札の下に名前（TextModeSetup）が入るように段の間を広げる。
+        private static readonly float[] PlateRowBottoms = { 0.5f, 0.2f };
+
+        /// <summary>難易度選択: 札を下げて段の間を広げ、札の下に設定の名前、上に大きな見出しを入れる（plan 16.13）。タイトルは今のまま。</summary>
         private static void BuildTitle(TitleScreen title)
         {
-            // T359e: 難易度選択の札。
+            var settings = new SerializedObject(title).FindProperty("settingButtons");
+            for (var i = 0; i < settings.arraySize; i++)
+            {
+                var plate = ((Component)settings.GetArrayElementAtIndex(i).objectReferenceValue).gameObject;
+                var bottom = PlateRowBottoms[i / 3];
+                Set(plate, TextModeLayout.Parts.Rect, s =>
+                {
+                    var height = s.anchorMax.y - s.anchorMin.y;
+                    s.anchorMin.y = bottom;
+                    s.anchorMax.y = bottom + height;
+                    return s;
+                });
+            }
         }
 
         private static void BuildGame(SlotCabinet cabinet)
@@ -51,8 +67,80 @@ namespace UnitySlotTower.Editor.Setup
             BuildBattleHud(root);
             BuildCabinetLabels((RectTransform)cabinet.transform);
             BuildRoute(root);
-            // T359e: ショップ・回復・リザルト、T359f: 早見表。
+            BuildShop(root);
+            BuildRest(root);
+            BuildResult(root);
+            // T359f: 早見表。
         }
+
+        // --- T359e ショップ・回復・リザルト ---
+        // 3つとも Portrait Root いっぱい（1440×1920 px）。値はその割合。ラベルは TextModeSetup が文字あり版の位置で作る。
+
+        /// <summary>
+        /// ショップ: 上の帯を「名前＋絵と数字」の2段に（ルートと同じ）、見出しはアイコンの右に 56、品の札を広げて上に3行の名前と説明
+        /// （札の中の絵は ShopScreen が下げる）、両替のボタンは上に名前・真ん中に絵と数字・下に文（plan 16.13）。
+        /// </summary>
+        private static void BuildShop(RectTransform root)
+        {
+            var panel = PanelOf(root.GetComponentInChildren<ShopScreen>(true));
+            var status = Child(panel, "Status");
+            SetRect(status, new Vector2(0f, 0.9f), Vector2.one);
+            var stripHeight = 0.1f * 1920f;
+            RouteItem(Child(status, "Money Icon"), Child(status, "Money"), "money", 0.01f, 0.2f, stripHeight);
+            RouteItem(Child(status, "Coin Icon"), Child(status, "Coins"), "coins", 0.21f, 0.4f, stripHeight);
+
+            SetRect(Child(panel, "Header"), new Vector2(0.3f, 0.835f), new Vector2(0.4f, 0.895f));
+            SetRect(Child(panel, "Offers"), new Vector2(0.04f, 0.45f), new Vector2(0.96f, 0.82f));
+            var exchange = Child(panel, "Exchange");
+            SetRect(exchange, new Vector2(0.03f, 0.15f), new Vector2(0.97f, 0.43f));
+            TradeButton(Child(exchange, "Buy Coins"), "Money Icon", "Coin Icon");
+            TradeButton(Child(exchange, "Sell Coins"), "Coin Icon", "Money Icon");
+        }
+
+        // 両替のボタンの真ん中の段（上の名前 0.8〜、下の文 〜0.32 の間）: 払う側の絵と数字 → 受け取る側の絵と数字。横の位置は変えない。
+        private static void TradeButton(RectTransform button, string fromIcon, string toIcon)
+        {
+            SetRect(Child(button, fromIcon), new Vector2(0.04f, 0.42f), new Vector2(0.18f, 0.7f));
+            SetRect(Child(button, "From"), new Vector2(0.19f, 0.36f), new Vector2(0.4f, 0.78f));
+            SetRect(Child(button, "Arrow"), new Vector2(0.43f, 0.47f), new Vector2(0.55f, 0.67f));
+            SetRect(Child(button, toIcon), new Vector2(0.58f, 0.42f), new Vector2(0.72f, 0.7f));
+            SetRect(Child(button, "To"), new Vector2(0.73f, 0.36f), new Vector2(0.96f, 0.78f));
+        }
+
+        /// <summary>回復: アイコンの下に回復量の文（TextModeSetup）、その下に「+2」、さらに下に名前付きのライフ（名前は絵の左）。</summary>
+        private static void BuildRest(RectTransform root)
+        {
+            var panel = PanelOf(root.GetComponentInChildren<RestScreen>(true));
+            SetRect(Child(panel, "Healed"), new Vector2(0.3f, 0.36f), new Vector2(0.7f, 0.44f));
+            SetRect(Child(panel, "Life Icon"), new Vector2(0.44f, 0.26f), new Vector2(0.52f, 0.33f));
+            SetRect(Child(panel, "Life"), new Vector2(0.54f, 0.25f), new Vector2(0.74f, 0.34f));
+        }
+
+        /// <summary>リザルト: 数字の行を右に寄せて左に名前（48）を入れる。ボタンの三角は上に寄せて下に名前（40）。</summary>
+        private static void BuildResult(RectTransform root)
+        {
+            var panel = PanelOf(root.GetComponentInChildren<ResultScreen>(true));
+            foreach (var (icon, value) in new[] { ("Floor Icon", "Floor"), ("Money Icon", "Money"), ("Coin Icon", "Coins") })
+            {
+                SetX(Child(panel, icon), 0.42f, 0.52f);
+                SetX(Child(panel, value), 0.55f, 0.88f);
+            }
+
+            SetRect(Child(Child(panel, "Retry Button"), "Arrow"), new Vector2(0.4f, 0.36f), new Vector2(0.6f, 0.92f));
+            SetRect(Child(Child(panel, "Title Button"), "Arrow"), new Vector2(0.4f, 0.36f), new Vector2(0.6f, 0.92f));
+        }
+
+        // 横の位置だけ変える（縦はシーンの値のまま）。
+        private static void SetX(RectTransform target, float left, float right) =>
+            Set(target.gameObject, TextModeLayout.Parts.Rect, s =>
+            {
+                s.anchorMin.x = left;
+                s.anchorMax.x = right;
+                return s;
+            });
+
+        private static RectTransform PanelOf(Component screen) =>
+            ((GameObject)new SerializedObject(screen).FindProperty("panel").objectReferenceValue).GetComponent<RectTransform>();
 
         // --- T359d ルート ---
 
