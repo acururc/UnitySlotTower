@@ -21,6 +21,12 @@ namespace UnitySlotTower.Core.Run
         /// <summary>0 から。</summary>
         public int Column { get; }
 
+        /// <summary>T358: ルート画面での表示位置のずれ（列の幅を1とする横方向。マスの区画の中に収まる）。1階とボスは0。</summary>
+        public double DisplayOffsetX { get; internal set; }
+
+        /// <summary>T358: ルート画面での表示位置のずれ（階の高さを1とする縦方向、上が正）。1階とボスは0。</summary>
+        public double DisplayOffsetY { get; internal set; }
+
         /// <summary><see cref="RouteNodeKinds"/> の id。</summary>
         public string Kind { get; internal set; }
 
@@ -159,6 +165,7 @@ namespace UnitySlotTower.Core.Run
     /// 間の階は道を1階から列を ±1 ずつ動かしながら上へ引き（交差しない）、通ったマスの種類を重みで選ぶ。
     /// 同じ乱数の列で同じルートになる（AC-010）。
     /// ショップ・回復（戦闘でないマス）はつながった2マスで続かない（回復の階の直前の階は戦闘だけ）。
+    /// 間の階のマスには表示位置のずれ（区画の中）を付ける（T358）。
     /// </summary>
     public static class RouteGenerator
     {
@@ -231,15 +238,34 @@ namespace UnitySlotTower.Core.Run
                 rest.Kind = RouteNodeKinds.Rest;
             }
 
+            // T358: 格子に並んで一直線に見えないよう、間の階のマスの表示位置をずらす（構造を決めた後に引くので道は変わらない）。
+            for (var floor = 2; floor < floors; floor++)
+            {
+                foreach (var node in map.NodesOn(floor))
+                {
+                    node.DisplayOffsetX = (random.NextDouble() * 2 - 1) * MaxDisplayOffsetX;
+                    node.DisplayOffsetY = (random.NextDouble() * 2 - 1) * MaxDisplayOffsetY;
+                }
+            }
+
             map.Seal();
             return map;
         }
 
-        /// <summary>道の次の列。左・まっすぐ・右から、範囲内で既存の斜めのつながりと交差しないものを一様に選ぶ。</summary>
+        /// <summary>表示のずれの最大（横は列の幅、縦は階の高さに対する割合。T358）。横は隣どうしの差が半列未満になる大きさにして、まっすぐと斜めを見分けられるようにする。</summary>
+        public const double MaxDisplayOffsetX = 0.2;
+        public const double MaxDisplayOffsetY = 0.2;
+
+        /// <summary>
+        /// 道の次の列。左・まっすぐ・右から、範囲内で既存の斜めのつながりと交差しないものを選ぶ。
+        /// T358: 横に広がるよう、斜めは重み2・まっすぐは重み1。
+        /// </summary>
         private static int NextColumn(RouteMap map, int floor, int column, int columns, IRandom random)
         {
             var candidates = new int[3];
+            var weights = new int[3];
             var count = 0;
+            var total = 0;
             for (var delta = -1; delta <= 1; delta++)
             {
                 var target = column + delta;
@@ -256,10 +282,22 @@ namespace UnitySlotTower.Core.Run
                     continue;
                 }
 
+                weights[count] = delta == 0 ? 1 : 2;
+                total += weights[count];
                 candidates[count++] = target;
             }
 
-            return candidates[random.NextInt(0, count)];
+            var roll = random.NextInt(0, total);
+            for (var i = 0; i < count - 1; i++)
+            {
+                roll -= weights[i];
+                if (roll < 0)
+                {
+                    return candidates[i];
+                }
+            }
+
+            return candidates[count - 1];
         }
 
         private static bool HasNonBattleParent(RouteMap map, RouteNode node)

@@ -42,7 +42,9 @@ namespace UnitySlotTower.Tests.EditMode.Run
             var text = new StringBuilder();
             foreach (var node in map.All)
             {
-                text.Append(node.Floor).Append(':').Append(node.Column).Append(':').Append(node.Kind).Append('>')
+                text.Append(node.Floor).Append(':').Append(node.Column).Append(':').Append(node.Kind).Append(':')
+                    .Append(node.DisplayOffsetX.ToString("R")).Append('/')
+                    .Append(node.DisplayOffsetY.ToString("R")).Append('>')
                     .Append(string.Join(",", node.Next.Select(n => n.Column))).Append(' ');
             }
 
@@ -279,7 +281,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
         [Description("D-75: ボスは1つだけなので、回復の階のどの列からも列の向きのリールに載る（4列: 0列→右、2列→中、3列→左）")]
         public void Boss_Is_On_The_Reel_Toward_Its_Column()
         {
-            var map = Generate(7);
+            var map = Generate(7, ("columns", "4"));
             var reels = map.NodesOn(map.Floors - 1).ToDictionary(n => n.Column, n => n.ReelOf(map.Boss));
 
             foreach (var (column, reel) in reels)
@@ -302,6 +304,102 @@ namespace UnitySlotTower.Tests.EditMode.Run
             for (ulong seed = 1; seed <= SeedCount; seed++)
             {
                 Assert.That(Generate(seed).NodesOn(2).Count, Is.GreaterThanOrEqualTo(2));
+            }
+        }
+
+        [Test]
+        [Description("T358: 既定の形では道が横に広がる（1階とボスを除く使う列の数が、平均5以上・どのシードも4以上）")]
+        public void Paths_Spread_Sideways()
+        {
+            var rules = RunFixtures.LoadRules();
+            var total = 0;
+            var min = int.MaxValue;
+            for (ulong seed = 1; seed <= SeedCount; seed++)
+            {
+                var used = Generate(seed).All.Where(n => n.Floor > 1 && n.Floor < rules.Floors)
+                    .Select(n => n.Column).Distinct().Count();
+                total += used;
+                min = Math.Min(min, used);
+            }
+
+            var average = total / (double)SeedCount;
+            Assert.That(average >= 5 && min >= 4, Is.True, $"平均 {average:F2}、最小 {min}");
+        }
+
+        [Test]
+        [Description("T358: 間の階の道は斜めに進みやすい（ボスへ以外の2階より上のつながりで、まっすぐは3割未満）")]
+        public void Middle_Links_Are_Mostly_Diagonal()
+        {
+            var straight = 0;
+            var links = 0;
+            for (ulong seed = 1; seed <= SeedCount; seed++)
+            {
+                var map = Generate(seed);
+                foreach (var node in map.All.Where(n => n.Floor >= 2))
+                {
+                    foreach (var next in node.Next.Where(n => n.Floor < map.Floors))
+                    {
+                        links++;
+                        straight += next.Column == node.Column ? 1 : 0;
+                    }
+                }
+            }
+
+            var ratio = straight / (double)links;
+            Assert.That(ratio, Is.LessThan(0.3), $"まっすぐ {straight}/{links}");
+        }
+
+        [Test]
+        [Description("T358: 表示のずれはマスの区画の中（縦横とも半マス未満）")]
+        public void Display_Offsets_Stay_Inside_The_Cell()
+        {
+            foreach (var (_, map) in Routes())
+            {
+                foreach (var node in map.All)
+                {
+                    Assert.That((Math.Abs(node.DisplayOffsetX) < 0.5, Math.Abs(node.DisplayOffsetY) < 0.5),
+                        Is.EqualTo((true, true)), $"{node.Floor}-{node.Column}");
+                }
+            }
+        }
+
+        [Test]
+        [Description("T358: 1階とボスは区画の中心、間の階のマスは格子からずれる（横に0.1マス以上ずれるマスが3割以上）")]
+        public void Middle_Nodes_Are_Offset_From_The_Grid()
+        {
+            var shifted = 0;
+            var middle = 0;
+            for (ulong seed = 1; seed <= SeedCount; seed++)
+            {
+                var map = Generate(seed);
+                Assert.That((map.Start.DisplayOffsetX, map.Start.DisplayOffsetY, map.Boss.DisplayOffsetX,
+                    map.Boss.DisplayOffsetY), Is.EqualTo((0.0, 0.0, 0.0, 0.0)));
+                foreach (var node in map.All.Where(n => n.Floor > 1 && n.Floor < map.Floors))
+                {
+                    middle++;
+                    shifted += Math.Abs(node.DisplayOffsetX) >= 0.1 ? 1 : 0;
+                }
+            }
+
+            Assert.That(shifted / (double)middle, Is.GreaterThanOrEqualTo(0.3), $"{shifted}/{middle}");
+        }
+
+        [Test]
+        [Description("T358, D-75: ずらしても向きが見分けられる（ボスへ以外のつながりの表示上の横の差は、まっすぐなら半列未満、斜めなら半列より大きい）")]
+        public void Displayed_Direction_Matches_The_Reel()
+        {
+            foreach (var (_, map) in Routes())
+            {
+                foreach (var node in map.All)
+                {
+                    foreach (var next in node.Next.Where(n => n.Floor < map.Floors))
+                    {
+                        var dx = next.Column + next.DisplayOffsetX - (node.Column + node.DisplayOffsetX);
+                        var ok = next.Column == node.Column ? Math.Abs(dx) < 0.5
+                            : Math.Abs(dx) > 0.5 && Math.Sign(dx) == Math.Sign(next.Column - node.Column);
+                        Assert.That(ok, Is.True, $"{node.Floor}-{node.Column} → {next.Column}: {dx:F2}");
+                    }
+                }
             }
         }
 

@@ -15,7 +15,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
             Assert.That(
                 (rules.Floors, rules.Columns, rules.Paths, rules.EliteMinFloor, rules.RestHeal, rules.ShopSlots,
                     rules.ExchangeMoneyPerCoin),
-                Is.EqualTo((8, 4, 4, 3, 3, 3, 2)));
+                Is.EqualTo((8, 7, 4, 3, 3, 3, 2)));
         }
 
         [Test]

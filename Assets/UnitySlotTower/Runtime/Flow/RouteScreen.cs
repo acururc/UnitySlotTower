@@ -189,9 +189,10 @@ namespace UnitySlotTower.Flow
             }
         }
 
-        // 階は下から上、列は左から右。マスはその区画の中心。
+        // 階は下から上、列は左から右。マスはその区画の中心から表示のずれ（T358）だけ動かした位置。
         private static Vector2 Normalized(RouteMap route, RouteNode node) =>
-            new Vector2((node.Column + 0.5f) / route.Columns, (node.Floor - 0.5f) / route.Floors);
+            new Vector2((node.Column + 0.5f + (float)node.DisplayOffsetX) / route.Columns,
+                (node.Floor - 0.5f + (float)node.DisplayOffsetY) / route.Floors);
 
         private void Refresh(IReadOnlyList<RouteNode> visited)
         {
