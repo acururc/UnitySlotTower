@@ -22,6 +22,8 @@ namespace UnitySlotTower.Battle
         [Header("View")]
         [Tooltip("マップ全体が収まるよう、マップを表示するたびに置き直すカメラ（D-71）。未設定なら動かさない。")]
         [SerializeField] private Camera battleCamera;
+        [Tooltip("マスや道の箱に使う URP のマテリアル（Greybox.mat）。URP の既定マテリアルは Editor 専用で、未設定だとプレイヤーでマゼンタになる。")]
+        [SerializeField] private Material primitiveMaterial;
         [SerializeField] private float groundHeight = 0.1f;
         [SerializeField] private float highGroundHeight = 0.5f;
         [SerializeField] private float airPathHeight = 1.2f;
@@ -208,8 +210,14 @@ namespace UnitySlotTower.Battle
             }
 
             cube.transform.SetParent(parent, false);
+            var cubeRenderer = cube.GetComponent<Renderer>();
+            if (primitiveMaterial != null)
+            {
+                cubeRenderer.sharedMaterial = primitiveMaterial;
+            }
+
             _block.SetColor(BaseColor, color);
-            cube.GetComponent<Renderer>().SetPropertyBlock(_block);
+            cubeRenderer.SetPropertyBlock(_block);
             return cube.transform;
         }
     }

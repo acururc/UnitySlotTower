@@ -15,6 +15,8 @@ namespace UnitySlotTower.Battle
         [SerializeField] private BattleController battle;
         [SerializeField] private BattleFieldView fieldView;
         [SerializeField] private UnitPlacementInput placementInput;
+        [Tooltip("目印の箱に使う URP のマテリアル（Greybox.mat）。URP の既定マテリアルは Editor 専用で、未設定だとプレイヤーでマゼンタになる。")]
+        [SerializeField] private Material primitiveMaterial;
         [SerializeField] private Color placeableColor = new Color(0.3f, 0.95f, 0.4f);
         [SerializeField] private Color blockedColor = new Color(0.95f, 0.25f, 0.2f);
         [SerializeField] private Color rangeColor = new Color(1f, 0.6f, 0.15f);
@@ -132,7 +134,13 @@ namespace UnitySlotTower.Battle
             // 配置のレイキャストがマスの箱だけに当たるよう、目印には当たり判定を持たせない。
             Destroy(cube.GetComponent<Collider>());
             cube.transform.SetParent(parent, false);
-            SetColor(cube.GetComponent<Renderer>(), color);
+            var cubeRenderer = cube.GetComponent<Renderer>();
+            if (primitiveMaterial != null)
+            {
+                cubeRenderer.sharedMaterial = primitiveMaterial;
+            }
+
+            SetColor(cubeRenderer, color);
             return cube.transform;
         }
 

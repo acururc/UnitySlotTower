@@ -85,6 +85,7 @@ Stop Play and confirm reconnection first.
 ```
 
 - Builds enabled scenes into Windows 64-bit Development `Builds/Windows/UnitySlotTower.exe`, not a distribution-platform decision. Uses MCP `manage_build`; inspect jobs after timeout, never force-close Editor.
+- `-Scene <build scene name>` starts the player from that scene (development-only `-automationScene`), e.g. `-Scene Game` captures the battle field instead of the title.
 - Player starts at 1280×720, captures after about 3s, then exits. ShowWindow displays the player during capture (approved during initial verification); hidden capture failed on this PC. Capture requires Development Build and `-automationScreenshot`; normal/release launches are unaffected.
 - Each run uses a new output folder; never reuse old images as evidence. Wrapper checks exit code/PNG header and writes `result.json`. Runtime errors/exceptions fail verification.
 - Open the PNG and compare expected appearance. This is startup verification, not gameplay/input correctness; add appropriate scenarios/tests for those. Never use a `-nographics` player for image verification.

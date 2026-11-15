@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.IO;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace UnitySlotTower.Automation
 {
@@ -31,6 +32,16 @@ namespace UnitySlotTower.Automation
             DontDestroyOnLoad(owner);
             var capture = owner.AddComponent<PlayerScreenshot>();
             capture.outputPath = arguments[index + 1];
+
+            // Optional: start from another build scene so screens past the title can be captured.
+            int sceneIndex = Array.IndexOf(arguments, "-automationScene");
+            if (sceneIndex >= 0 && sceneIndex + 1 < arguments.Length)
+            {
+                if (Application.CanStreamedLevelBeLoaded(arguments[sceneIndex + 1]))
+                    SceneManager.LoadScene(arguments[sceneIndex + 1]);
+                else
+                    Debug.LogError("-automationScene is not a build scene: " + arguments[sceneIndex + 1]);
+            }
         }
 
         private void OnEnable() => Application.logMessageReceived += OnLog;

@@ -7375,6 +7375,7 @@ MonoBehaviour:
   battle: {fileID: 1813959776}
   fieldView: {fileID: 1813959773}
   placementInput: {fileID: 1813959775}
+  primitiveMaterial: {fileID: 2100000, guid: 5bd546d4aa0fa5f458d1a56393e60739, type: 2}
   placeableColor: {r: 0.3, g: 0.95, b: 0.4, a: 1}
   blockedColor: {r: 0.95, g: 0.25, b: 0.2, a: 1}
   rangeColor: {r: 1, g: 0.6, b: 0.15, a: 1}
@@ -11280,6 +11281,7 @@ MonoBehaviour:
   battle: {fileID: 1813959776}
   fieldView: {fileID: 1813959773}
   battleCamera: {fileID: 163673590}
+  primitiveMaterial: {fileID: 2100000, guid: 5bd546d4aa0fa5f458d1a56393e60739, type: 2}
   unitLooks:
   - id: tank
     shape: 3
@@ -65396,6 +65398,7 @@ MonoBehaviour:
   - {fileID: 4900000, guid: 275be3b68aff56249903dbf84fd9b901, type: 3}
   pathsTable: {fileID: 4900000, guid: 90f28fb97f36826468ce4a184e7822fa, type: 3}
   battleCamera: {fileID: 163673590}
+  primitiveMaterial: {fileID: 2100000, guid: 5bd546d4aa0fa5f458d1a56393e60739, type: 2}
   groundHeight: 0.1
   highGroundHeight: 0.5
   airPathHeight: 1.2

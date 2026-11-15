@@ -27,6 +27,8 @@ namespace UnitySlotTower.Battle
         [SerializeField] private BattleFieldView fieldView;
         [Tooltip("HP ゲージを向けるカメラ。")]
         [SerializeField] private Camera battleCamera;
+        [Tooltip("味方・敵・ゲージの形に使う URP のマテリアル（Greybox.mat）。URP の既定マテリアルは Editor 専用で、未設定だとプレイヤーでマゼンタになる。")]
+        [SerializeField] private Material primitiveMaterial;
 
         [Header("Units")]
         [Tooltip("units.csv の id ごとの形・大きさ・色（操作バーのアイコンと同じ色）。")]
@@ -371,7 +373,13 @@ namespace UnitySlotTower.Battle
             // 配置のレイキャストがマスの箱だけに当たるよう、当たり判定を持たせない。
             Destroy(primitive.GetComponent<Collider>());
             primitive.transform.SetParent(parent, false);
-            SetColor(primitive.GetComponent<Renderer>(), color);
+            var primitiveRenderer = primitive.GetComponent<Renderer>();
+            if (primitiveMaterial != null)
+            {
+                primitiveRenderer.sharedMaterial = primitiveMaterial;
+            }
+
+            SetColor(primitiveRenderer, color);
             return primitive.transform;
         }
 

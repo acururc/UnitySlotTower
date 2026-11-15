@@ -335,7 +335,7 @@ Assets/UnitySlotTower/
 | ルートの生成で行き止まりやボスに着けないマスができる | 生成後に全マスからボスへ行けることを検証し、多数シードの EditMode テストで確かめる（AC-010） |
 | 色の偏りで「詰む」 | spec の柱どおり許容する。ショップの両替とゲージ品で救える量を T355 で調整する |
 | 日本語フォントのサイズと文字チェックの抜け | 文言の字だけの静的フォントでアトラスを小さく保つ（T352）。文字なしでラベルが非表示なことを PlayMode で毎回確かめる |
-| プレイヤービルドで戦闘マスがマゼンタ（既知、未調査） | 新しいマップ素材の差し替え（T502）の前に T505 で原因を調べる |
+| 実行時に作る形（`CreatePrimitive`）がプレイヤーでマゼンタになる（URP の既定マテリアルは Editor 専用） | 2026-11-15 解決: 戦闘の表示3つ（`BattleFieldView`・`BattleActorsView`・`UnitPlacementView`）の `primitiveMaterial` に `Art/Materials/Greybox.mat`（URP Lit）を割り当てる。新しく形を作る表示も同じ欄を持たせる。割り当て漏れは `PrimitiveMaterialTests` で検出 |
 
 ## ユーザー確認事項の回答（2026-10-26）
 
