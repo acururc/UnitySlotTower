@@ -9,7 +9,9 @@
     "Unity.RenderPipelines.Universal.Runtime",
     "Unity.TextMeshPro",
     "Unity.TextMeshPro.Editor",
-    "UnityEngine.UI"
+    "UnityEngine.UI",
+    "UnityEditor.TestRunner",
+    "UnityEngine.TestRunner"
   ],
   "includePlatforms": [
     "Editor"

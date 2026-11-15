@@ -197,6 +197,56 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(ShownIds(), Does.Contain("shop_title").And.Contain("shop_buy_coins").And.Contain("back"));
         }
 
+        [UnityTest]
+        [Description("T359 (plan 16.13): 文字あり版にして戻すと、全部品の配置・字の大きさ・色・表示が元と同じ（文字なし版の見た目が変わらない）")]
+        public IEnumerator Switching_Back_Restores_Every_Part_Of_The_No_Text_Screen()
+        {
+            var battle = default(BattleController);
+            yield return LoadGame(b => battle = b);
+            battle.SetPaused(true);
+            var help = Object.FindAnyObjectByType<HelpScreen>();
+            help.Open();
+            yield return null;
+
+            // アニメの影響を受けないように同じフレームで切り替えて戻す。
+            var before = Layout();
+            var looks = Looks();
+            GameSession.SetTextMode(true);
+            GameSession.SetTextMode(false);
+            AssertSameLayout(before, Layout());
+            var changed = new List<string>();
+            foreach (var pair in Looks())
+            {
+                if (!looks.TryGetValue(pair.Key, out var look) || look != pair.Value)
+                {
+                    changed.Add(pair.Key.name);
+                }
+            }
+
+            Assert.That(changed, Is.Empty, "戻しても見た目が元に戻らない: " + string.Join(", ", changed));
+            help.Close();
+            battle.SetPaused(false);
+        }
+
+        // ラベル以外の文字の大きさ・絵の色・CanvasGroup の濃さ（部品のパスごと）。
+        private static Dictionary<Graphic, string> Looks()
+        {
+            var looks = new Dictionary<Graphic, string>();
+            foreach (var graphic in Object.FindObjectsByType<Graphic>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            {
+                if (graphic.GetComponentInParent<TextModeLabel>(true) != null)
+                {
+                    continue;
+                }
+
+                var size = graphic is TMPro.TMP_Text text ? $"{text.fontSize}/{text.enableAutoSizing}/{text.fontSizeMin}/{text.fontSizeMax}" : "";
+                var group = graphic.GetComponent<CanvasGroup>();
+                looks[graphic] = $"{graphic.color}|{size}|{(group != null ? group.alpha : 1f)}";
+            }
+
+            return looks;
+        }
+
         // いま描かれているラベルの id（文言を実行中に入れたものは最初の id）。
         private static List<string> ShownIds()
         {

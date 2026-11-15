@@ -82,6 +82,77 @@ namespace UnitySlotTower.Tests.EditMode.Ui
                 $"ラベルが足りない（Setup/Add Text Mode Labels (T352) を各シーンで実行する）: {string.Join(", ", counts)}");
         }
 
+        [Test]
+        [Description("T359 (plan 16.13): 文字あり版の配置の部品は、文字なし版の値としてシーンの値そのものを持つ（文字なし版の見た目が変わらない）")]
+        public void Layouts_In_Scenes_Keep_The_Scene_Values_As_The_No_Text_State()
+        {
+            var problems = new List<string>();
+            foreach (var path in Scenes)
+            {
+                var scene = SceneManager.GetSceneByPath(path);
+                var wasLoaded = scene.isLoaded;
+                if (!wasLoaded)
+                {
+                    scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Additive);
+                }
+
+                try
+                {
+                    foreach (var root in scene.GetRootGameObjects())
+                    {
+                        foreach (var layout in root.GetComponentsInChildren<TextModeLayout>(true))
+                        {
+                            CheckLayout(layout, problems);
+                        }
+                    }
+                }
+                finally
+                {
+                    if (!wasLoaded)
+                    {
+                        EditorSceneManager.CloseScene(scene, true);
+                    }
+                }
+            }
+
+            Assert.That(problems, Is.Empty, string.Join("\n", problems));
+        }
+
+        private static void CheckLayout(TextModeLayout layout, List<string> problems)
+        {
+            var name = layout.name;
+            var scene = TextModeLayout.Read(layout.gameObject);
+            var saved = layout.NoText;
+            var parts = layout.Affected;
+            if (parts == TextModeLayout.Parts.None)
+            {
+                problems.Add($"{name}: 差し替える部分がない");
+            }
+
+            if ((parts & TextModeLayout.Parts.Rect) != 0 && (scene.anchorMin != saved.anchorMin || scene.anchorMax != saved.anchorMax
+                    || scene.offsetMin != saved.offsetMin || scene.offsetMax != saved.offsetMax || scene.pivot != saved.pivot))
+            {
+                problems.Add($"{name}: 配置がシーンの値と違う");
+            }
+
+            if ((parts & TextModeLayout.Parts.Font) != 0 && (layout.GetComponent<TMP_Text>() == null || !Mathf.Approximately(scene.fontSize, saved.fontSize)
+                    || scene.autoSize != saved.autoSize || !Mathf.Approximately(scene.fontSizeMin, saved.fontSizeMin)
+                    || !Mathf.Approximately(scene.fontSizeMax, saved.fontSizeMax)))
+            {
+                problems.Add($"{name}: 字の大きさがシーンの値と違うか、文字がない");
+            }
+
+            if ((parts & TextModeLayout.Parts.Color) != 0 && (layout.GetComponent<Graphic>() == null || scene.color != saved.color))
+            {
+                problems.Add($"{name}: 色がシーンの値と違うか、絵がない");
+            }
+
+            if ((parts & TextModeLayout.Parts.Visibility) != 0 && (layout.GetComponent<CanvasGroup>() == null || scene.hidden != saved.hidden))
+            {
+                problems.Add($"{name}: 表示の有無がシーンの値と違うか、CanvasGroup がない");
+            }
+        }
+
         private static void Check(TextModeLabel label, UiTexts texts, TMP_FontAsset font, List<string> problems)
         {
             var name = label.name;
