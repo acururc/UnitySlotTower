@@ -83,6 +83,19 @@ namespace UnitySlotTower.Tests.EditMode.Ui
         }
 
         [Test]
+        public void Text_Mode_Labels_Are_Not_Audited()
+        {
+            // 文字あり版のラベル（TextModeLabel の子）は文字なし版では描かれないので対象外（T352、plan 16.9）。
+            var root = CreateText("ライフ");
+            var text = root.GetComponentInChildren<TMP_Text>();
+            var inside = TextAudit.FindViolations(root, "test").Count;
+            root.AddComponent<UnitySlotTower.Ui.TextModeLabel>();
+            var exempt = TextAudit.FindViolations(root, "test").Count;
+
+            Assert.That((inside, exempt, TextAudit.IsTextModeLabel(text.transform)), Is.EqualTo((1, 0, true)));
+        }
+
+        [Test]
         public void Scenes_And_Prefabs_Use_No_Letters()
         {
             var violations = TextAudit.AuditProject();

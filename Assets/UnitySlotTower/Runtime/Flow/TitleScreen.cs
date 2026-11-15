@@ -7,7 +7,7 @@ namespace UnitySlotTower.Flow
 {
     /// <summary>
     /// Title シーン（T401、plan 4章）。ロゴと ▶ の画面から、設定1〜6の筐体プレートを選ぶ画面に進み、選んだ設定で Game を始める。
-    /// マウスはクリック、キーボードは矢印で選んで Enter（UI のナビゲーション）、Esc で難易度選択からタイトルへ戻る。
+    /// ロゴ右下の透明なボタンで文字あり版に切り替える（FR-006）。マウスはクリック、キーボードは矢印で選んで Enter（UI のナビゲーション）、Esc で難易度選択からタイトルへ戻る。
     /// </summary>
     public sealed class TitleScreen : MonoBehaviour
     {
@@ -16,6 +16,8 @@ namespace UnitySlotTower.Flow
         [SerializeField] private GameObject difficultyPanel;
         [SerializeField] private Button startButton;
         [SerializeField] private Button backButton;
+        [Tooltip("ロゴ右下の透明なボタン。押すと文字あり／なしを切り替える（FR-006）。")]
+        [SerializeField] private Button textModeButton;
         [Tooltip("設定1〜6の順。")]
         [SerializeField] private Button[] settingButtons = new Button[GameSession.MaxSetting];
 
@@ -24,11 +26,19 @@ namespace UnitySlotTower.Flow
         /// <summary>難易度選択の画面を表示中か。</summary>
         public bool IsChoosingDifficulty => difficultyPanel.activeSelf;
 
+        /// <summary>文字あり／なしを切り替える隠しボタン。</summary>
+        public Button TextModeButton => textModeButton;
+
         private void Awake()
         {
             _cancel = inputActions.FindActionMap("SlotTower", true).FindAction("Cancel", true);
             startButton.onClick.AddListener(ShowDifficulty);
             backButton.onClick.AddListener(ShowTitle);
+            if (textModeButton != null)
+            {
+                textModeButton.onClick.AddListener(ToggleTextMode);
+            }
+
             for (var i = 0; i < settingButtons.Length; i++)
             {
                 var setting = GameSession.MinSetting + i;
@@ -67,6 +77,16 @@ namespace UnitySlotTower.Flow
             if (selected == null || !selected.activeInHierarchy)
             {
                 eventSystem.SetSelectedGameObject(DefaultButton().gameObject);
+            }
+        }
+
+        // 隠しボタンは選択の対象にしない（キーボードの Enter は ▶ のまま）。
+        private void ToggleTextMode()
+        {
+            GameSession.SetTextMode(!GameSession.TextMode);
+            if (EventSystem.current != null)
+            {
+                EventSystem.current.SetSelectedGameObject(DefaultButton().gameObject);
             }
         }
 

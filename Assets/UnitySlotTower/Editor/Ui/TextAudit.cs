@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnitySlotTower.Core.Ui;
+using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Editor.Ui
 {
@@ -25,7 +26,7 @@ namespace UnitySlotTower.Editor.Ui
 
         /// <summary>
         /// root 以下の文字部品を走査する。requiredFont を渡すと、TextMeshPro がそのフォント以外を使っていても違反にする
-        /// （数字専用フォントなら文字は描けない、plan 8章）。exemptName と同じ名前の部品は飛ばす。
+        /// （数字専用フォントなら文字は描けない、plan 8章）。exemptName と同じ名前の部品と、文字あり版のラベルは飛ばす。
         /// </summary>
         public static List<string> FindViolations(GameObject root, string context, TMP_FontAsset requiredFont = null,
             string exemptName = null)
@@ -33,7 +34,7 @@ namespace UnitySlotTower.Editor.Ui
             var violations = new List<string>();
             foreach (var text in root.GetComponentsInChildren<TMP_Text>(true))
             {
-                if (exemptName != null && text.name == exemptName)
+                if ((exemptName != null && text.name == exemptName) || IsTextModeLabel(text.transform))
                 {
                     continue;
                 }
@@ -47,7 +48,7 @@ namespace UnitySlotTower.Editor.Ui
 
             foreach (var text in root.GetComponentsInChildren<Text>(true))
             {
-                if (exemptName != null && text.name == exemptName)
+                if ((exemptName != null && text.name == exemptName) || IsTextModeLabel(text.transform))
                 {
                     continue;
                 }
@@ -112,6 +113,9 @@ namespace UnitySlotTower.Editor.Ui
 
             return violations;
         }
+
+        /// <summary>文字あり版のラベル（<see cref="TextModeLabel"/> とその子）か。文字なし版では描かれないので走査しない（plan 16.9）。</summary>
+        public static bool IsTextModeLabel(Transform transform) => transform.GetComponentInParent<TextModeLabel>(true) != null;
 
         private static void Check(string text, Transform transform, string context, List<string> violations)
         {

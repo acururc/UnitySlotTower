@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Run;
 using UnitySlotTower.Core.Slot;
+using UnitySlotTower.Core.Ui;
 
 namespace UnitySlotTower.Core.Data
 {
@@ -128,6 +129,9 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Id("unit_id"),
                 ColumnRule.Int("price", 0, 100000),
                 ColumnRule.Int("weight", 0, 10000)),
+            new TableSchema(UiTexts.FileName, new[] { "id" },
+                ColumnRule.Id("id"),
+                ColumnRule.Text("ja")),
         };
 
         /// <summary>マップの大きさの範囲（D-71、plan 16.6）。</summary>
@@ -195,6 +199,7 @@ namespace UnitySlotTower.Core.Data
             ValidateSkills(tables[SkillTable.FileName], report);
             TableValidator.ValidateReference(tables[ShopTable.FileName], "unit_id", tables["units.csv"], "id", report);
             ValidateShopGauges(tables[ShopTable.FileName], tables[SkillTable.FileName], report);
+            ValidateUiTexts(tables[UiTexts.FileName], report);
             return report;
         }
 
@@ -223,6 +228,19 @@ namespace UnitySlotTower.Core.Data
             }
 
             return keys;
+        }
+
+        /// <summary>文字あり版の文言が空でないことを確かめる（plan 16.9）。</summary>
+        private static void ValidateUiTexts(CsvTable table, ValidationReport report)
+        {
+            try
+            {
+                UiTexts.Load(table);
+            }
+            catch (CsvFormatException ex)
+            {
+                report.Add(ex.Error);
+            }
         }
 
         /// <summary>ゲージの品の職にスキル（skills.csv の unit_id）があることを確かめる（plan 16.2）。</summary>

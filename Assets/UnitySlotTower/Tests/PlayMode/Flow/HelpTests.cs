@@ -123,6 +123,13 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
             foreach (var text in help.GetComponentsInChildren<TMP_Text>(true))
             {
+                // 文字あり版のラベル（T352）は対象外。文字なし版では描かれないことだけ確かめる。
+                if (text.GetComponentInParent<UnitySlotTower.Ui.TextModeLabel>(true) != null)
+                {
+                    Assert.That(text.isActiveAndEnabled, Is.False, $"{text.name}: 文字なし版でラベルが出ている");
+                    continue;
+                }
+
                 Assert.That(NumericText.FindInvalid(text.text), Is.EqualTo(-1), $"{text.name} に許可されない文字: {text.text}");
             }
 

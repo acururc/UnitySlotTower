@@ -1,0 +1,407 @@
+using System.IO;
+using TMPro;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.TextCore.LowLevel;
+using UnityEngine.UI;
+using UnitySlotTower.Core.Data;
+using UnitySlotTower.Core.Ui;
+using UnitySlotTower.Editor.Ui;
+using UnitySlotTower.Flow;
+using UnitySlotTower.Slot;
+using UnitySlotTower.Ui;
+
+namespace UnitySlotTower.Editor.Setup
+{
+    /// <summary>
+    /// 文字あり版（T352、FR-006、plan 16.9）の日本語フォントとラベル。どちらも再実行すると作り直す（同じ結果）。
+    /// フォントは ui_texts.csv に出てくる字だけを持つ静的アセット（Play 中にアセットが書き換わらない）。文言を足したら作り直す。
+    /// ラベルは既存の部品の子に足すだけで、部品の配置は変えない。
+    /// </summary>
+    internal static class TextModeSetup
+    {
+        public const string FontAssetPath = "Assets/UnitySlotTower/Art/Fonts/TextMode SDF.asset";
+        public const string SourceFontPath = "Assets/UnitySlotTower/Art/Fonts/NotoSansJP-Regular.otf";
+        public const string TablePath = "Assets/UnitySlotTower/Data/Tables/" + UiTexts.FileName;
+        private const string UnitsPath = "Assets/UnitySlotTower/Data/Tables/units.csv";
+        private const string LabelPrefix = "Text Label ";
+        private const string CaptionName = "Text Label Caption";
+        private const string OfferTemplateName = "Text Label Offer Template";
+        private const string TextModeButtonName = "Text Mode Button";
+
+        private static readonly Color BackgroundColor = new Color(0.05f, 0.06f, 0.1f, 0.72f);
+
+        private static TMP_FontAsset _font;
+        private static TextAsset _table;
+        private static UiTexts _texts;
+
+        [MenuItem("Tools/UnitySlotTower/Setup/Create Text Mode Font (T352)")]
+        private static void CreateFont()
+        {
+            var source = AssetDatabase.LoadAssetAtPath<Font>(SourceFontPath);
+            var table = AssetDatabase.LoadAssetAtPath<TextAsset>(TablePath);
+            if (source == null || table == null)
+            {
+                Debug.LogError($"[SlotTower Setup] {SourceFontPath} か {TablePath} がない。");
+                return;
+            }
+
+            var characters = UiTexts.Parse(table.text).Characters() + "0123456789";
+            var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+            var created = font == null;
+            if (created)
+            {
+                // 全字が1枚に入る大きさにする（2枚目以降のアトラスは保存されない、T308）。
+                font = TMP_FontAsset.CreateFontAsset(source, 44, 6, GlyphRenderMode.SDFAA, 1024, 1024,
+                    AtlasPopulationMode.Dynamic, false);
+                font.name = Path.GetFileNameWithoutExtension(FontAssetPath);
+            }
+            else
+            {
+                font.atlasPopulationMode = AtlasPopulationMode.Dynamic;
+                font.ClearFontAssetData(true);
+            }
+
+            var added = font.TryAddCharacters(characters, out var missing);
+            font.atlasPopulationMode = AtlasPopulationMode.Static;
+            if (created)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(FontAssetPath));
+                AssetDatabase.CreateAsset(font, FontAssetPath);
+                font.atlasTexture.name = font.name + " Atlas";
+                font.material.name = font.name + " Material";
+                AssetDatabase.AddObjectToAsset(font.atlasTexture, font);
+                AssetDatabase.AddObjectToAsset(font.material, font);
+            }
+
+            EditorUtility.SetDirty(font);
+            AssetDatabase.SaveAssets();
+            if (!added)
+            {
+                Debug.LogError($"[SlotTower Setup] 字形を足せなかった文字: {missing}");
+                return;
+            }
+
+            Debug.Log($"[SlotTower Setup] {FontAssetPath} に {characters.Length} 字を入れた。");
+        }
+
+        /// <summary>開いている Title か Game シーンにラベルを足して保存する。</summary>
+        [MenuItem("Tools/UnitySlotTower/Setup/Add Text Mode Labels (T352)")]
+        private static void AddLabels()
+        {
+            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+            _table = AssetDatabase.LoadAssetAtPath<TextAsset>(TablePath);
+            if (_font == null || _table == null)
+            {
+                Debug.LogError($"[SlotTower Setup] {FontAssetPath} か {TablePath} がない。先に Create Text Mode Font を実行する。");
+                return;
+            }
+
+            _texts = UiTexts.Parse(_table.text);
+            var title = Object.FindAnyObjectByType<TitleScreen>(FindObjectsInactive.Include);
+            var cabinet = Object.FindAnyObjectByType<SlotCabinet>(FindObjectsInactive.Include);
+            if (title != null)
+            {
+                AddTitleLabels(title);
+                Save(title.gameObject);
+            }
+            else if (cabinet != null)
+            {
+                AddGameLabels(cabinet);
+                Save(cabinet.gameObject);
+            }
+            else
+            {
+                Debug.LogError("[SlotTower Setup] Title か Game シーンを開いてから実行する。");
+            }
+        }
+
+        private static void Save(GameObject inScene)
+        {
+            var scene = inScene.scene;
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log($"[SlotTower Setup] {scene.name} に文字あり版のラベルを足した。");
+        }
+
+        private static void AddTitleLabels(TitleScreen title)
+        {
+            var serialized = new SerializedObject(title);
+            var titlePanel = ((GameObject)serialized.FindProperty("titlePanel").objectReferenceValue).GetComponent<RectTransform>();
+            var difficulty = ((GameObject)serialized.FindProperty("difficultyPanel").objectReferenceValue).GetComponent<RectTransform>();
+            var logo = (RectTransform)titlePanel.Find(TextAudit.TitleLogoName);
+            var start = (RectTransform)((Button)serialized.FindProperty("startButton").objectReferenceValue).transform;
+            var back = (RectTransform)((Button)serialized.FindProperty("backButton").objectReferenceValue).transform;
+
+            // ロゴ右下の透明なボタン（キーボードの選択の対象にしない）と、その横の「あ」の印。
+            DestroyChild(logo, TextModeButtonName);
+            var buttonRect = Rect(TextModeButtonName, logo, new Vector2(0.86f, 0f), new Vector2(1f, 0.28f));
+            var image = buttonRect.gameObject.AddComponent<Image>();
+            image.color = new Color(1f, 1f, 1f, 0f);
+            var button = buttonRect.gameObject.AddComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            serialized.FindProperty("textModeButton").objectReferenceValue = button;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            Label(logo, "title_text_mode", new Vector2(1f, 0f), new Vector2(1f, 0.28f), new Vector2(4f, 0f), new Vector2(84f, 0f), 56f);
+            Below(start, "title_start", 30f);
+            Label(difficulty, "title_difficulty", new Vector2(0.2f, 0.8f), new Vector2(0.8f, 0.85f), Vector2.zero, Vector2.zero, 44f);
+            Below(back, "title_back", 24f);
+        }
+
+        private static void AddGameLabels(SlotCabinet cabinet)
+        {
+            var root = (RectTransform)cabinet.transform.parent;
+            var units = CsvParser.Parse("units.csv", AssetDatabase.LoadAssetAtPath<TextAsset>(UnitsPath).text);
+
+            // 操作バー
+            var bar = (RectTransform)root.Find("Operation Bar");
+            for (var i = 0; i < 4 && i < units.Rows.Count; i++)
+            {
+                var unitId = units.Rows[i].Get("id");
+                Label(Child(bar, $"Unit Icon {i + 1}"), "unit_" + unitId, new Vector2(0f, 1f), Vector2.one,
+                    new Vector2(0f, -28f), Vector2.zero, 20f);
+                Label(Child(bar, $"Upgrade Icon {i + 1}"), "bar_upgrade", Vector2.zero, new Vector2(0.3f, 1f), Vector2.zero,
+                    Vector2.zero, 16f);
+            }
+
+            var status = Child(bar, "Status");
+            IconTag(Child(status, "Life Icon"), "life", 16f);
+            IconTag(Child(status, "Coin Icon"), "coins", 16f);
+            Label(Child(status, "Wave"), "bar_wave", new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -20f), Vector2.zero, 16f);
+            InsideBottom(Child(status, "Start Button"), "bar_start", 22f, 16f);
+            InsideBottom(Child(status, "Retreat Button"), "bar_retreat", 22f, 16f);
+            InsideBottom(Child(status, "Pause Button"), "bar_pause", 22f, 16f);
+            var rates = Child(bar, "Rates");
+            Label(Child(rates, "Attack Rate"), "bar_attack_rate", new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -20f), Vector2.zero, 15f);
+            Label(Child(rates, "Money Rate"), "bar_money_rate", new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -20f), Vector2.zero, 15f);
+
+            // 筐体
+            var slot = (RectTransform)cabinet.transform;
+            Above(Child(slot, "Lever Button"), "cabinet_lever", 36f, 24f);
+            Label(Child(slot, "Credit"), "cabinet_credit", new Vector2(-0.4f, 1f), Vector2.one, new Vector2(0f, 2f),
+                new Vector2(0f, 34f), 20f);
+            Below(Child(slot, "Fixed Spins Icon"), "cabinet_fixed", 26f, 18f);
+
+            AddRouteLabels(root);
+            AddNodeLabels(root);
+            AddResultLabels(root);
+            AddHelpLabels(root, units);
+            AddGuideCaption(root);
+        }
+
+        private static void AddRouteLabels(RectTransform root)
+        {
+            var screen = root.GetComponentInChildren<RouteScreen>(true);
+            var serialized = new SerializedObject(screen);
+            var panel = ((GameObject)serialized.FindProperty("panel").objectReferenceValue).GetComponent<RectTransform>();
+            var status = Child(panel, "Status");
+            IconTag(Child(status, "Life Icon"), "life", 18f);
+            IconTag(Child(status, "Money Icon"), "money", 18f);
+            IconTag(Child(status, "Coin Icon"), "coins", 18f);
+            Label(panel, "route_title", new Vector2(0.3f, 0.87f), new Vector2(0.7f, 0.915f), Vector2.zero, Vector2.zero, 32f);
+
+            var labels = serialized.FindProperty("directionLabels");
+            labels.arraySize = 3;
+            for (var i = 0; i < 3; i++)
+            {
+                // 文言は行き先に合わせて RouteScreen が入れる。
+                var label = Above(Child(panel, $"Direction {i + 1}"), string.Empty, 36f, 24f, "direction");
+                labels.GetArrayElementAtIndex(i).objectReferenceValue = label;
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void AddNodeLabels(RectTransform root)
+        {
+            var rest = root.GetComponentInChildren<RestScreen>(true);
+            var restPanel = PanelOf(rest);
+            Label(restPanel, "rest_title", new Vector2(0.25f, 0.82f), new Vector2(0.75f, 0.88f), Vector2.zero, Vector2.zero, 52f);
+            Label(restPanel, "rest_healed", new Vector2(0.25f, 0.5f), new Vector2(0.75f, 0.535f), Vector2.zero, Vector2.zero, 30f);
+            IconTag(Child(restPanel, "Life Icon"), "life", 22f);
+            Above(Child(restPanel, "Back"), "back", 36f, 26f);
+
+            var shop = root.GetComponentInChildren<ShopScreen>(true);
+            var shopPanel = PanelOf(shop);
+            var status = Child(shopPanel, "Status");
+            IconTag(Child(status, "Money Icon"), "money", 18f);
+            IconTag(Child(status, "Coin Icon"), "coins", 18f);
+            Label(shopPanel, "shop_title", new Vector2(0.3f, 0.795f), new Vector2(0.7f, 0.82f), Vector2.zero, Vector2.zero, 34f);
+            var exchange = Child(shopPanel, "Exchange");
+            Label(Child(exchange, "Buy Coins"), "shop_buy_coins", new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -40f), Vector2.zero, 24f);
+            Label(Child(exchange, "Sell Coins"), "shop_sell_coins", new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -40f), Vector2.zero, 24f);
+            Above(Child(shopPanel, "Back"), "back", 36f, 26f);
+
+            // 品の札は開くたびに作られるので、ひな形を非表示で置き、ShopScreen が札ごとに複製する（札の上の帯）。
+            DestroyChild(shopPanel, OfferTemplateName);
+            var template = Label(shopPanel, string.Empty, new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -58f), Vector2.zero,
+                20f, OfferTemplateName);
+            template.gameObject.SetActive(false);
+            var serialized = new SerializedObject(shop);
+            serialized.FindProperty("offerLabelTemplate").objectReferenceValue = template;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void AddResultLabels(RectTransform root)
+        {
+            var result = root.GetComponentInChildren<ResultScreen>(true);
+            var panel = PanelOf(result);
+            Label(Child(panel, "Clear Icon"), "result_clear", Vector2.zero, new Vector2(1f, 0.26f), Vector2.zero, Vector2.zero, 48f);
+            Label(Child(panel, "Game Over Icon"), "result_game_over", Vector2.zero, new Vector2(1f, 0.2f), new Vector2(-60f, -40f),
+                new Vector2(60f, 0f), 48f);
+            IconTag(Child(panel, "Floor Icon"), "result_floor", 24f);
+            IconTag(Child(panel, "Money Icon"), "money", 24f);
+            IconTag(Child(panel, "Coin Icon"), "coins", 24f);
+            InsideBottom(Child(panel, "Retry Button"), "result_retry", 44f, 30f);
+            InsideBottom(Child(panel, "Title Button"), "result_title", 44f, 30f);
+        }
+
+        private static void AddHelpLabels(RectTransform root, CsvTable units)
+        {
+            var help = root.GetComponentInChildren<HelpScreen>(true);
+            var helpRect = (RectTransform)help.transform;
+            Below(Child(helpRect, "Open Button"), "help_open", 30f, 22f);
+            var panel = PanelOf(help);
+            Label(Child(panel, "Mark"), "help_title", new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(8f, 0f), new Vector2(200f, 0f), 34f);
+            InsideBottom(Child(panel, "Close Button"), "help_close", 26f, 18f);
+
+            string[] stats = { "hp", "atk", "def", "interval", "block", "cost", "cooldown" };
+            for (var i = 0; i < 4 && i < units.Rows.Count; i++)
+            {
+                var row = Child(panel, $"Unit {i + 1}");
+                var unitId = units.Rows[i].Get("id");
+                Below(Child(row, "Body"), "unit_" + unitId, 30f, 22f);
+                foreach (var stat in stats)
+                {
+                    Label(Child(row, stat), "stat_" + stat, new Vector2(0.5f, 0f), Vector2.one, Vector2.zero, Vector2.zero, 18f)
+                        .Text.alignment = TextAlignmentOptions.Right;
+                }
+
+                Label(row, "skill_" + unitId, new Vector2(0.165f, 0.04f), new Vector2(0.49f, 0.3f), Vector2.zero, Vector2.zero, 18f)
+                    .Text.alignment = TextAlignmentOptions.Left;
+            }
+
+            var slotRows = Child(panel, HelpScreenSetup.SlotRowsName);
+            for (var i = 0; i < slotRows.childCount; i++)
+            {
+                var row = (RectTransform)slotRows.GetChild(i);
+                var id = "slot_" + row.name.ToLowerInvariant();
+                if (_texts.TryGet(id, out _))
+                {
+                    Label(row, id, new Vector2(0.36f, 0f), new Vector2(0.98f, 0.3f), Vector2.zero, Vector2.zero, 20f)
+                        .Text.alignment = TextAlignmentOptions.Left;
+                }
+            }
+        }
+
+        private static void AddGuideCaption(RectTransform root)
+        {
+            var guide = root.GetComponentInChildren<GuideOverlay>(true);
+            var serialized = new SerializedObject(guide);
+            var overlay = (RectTransform)serialized.FindProperty("root").objectReferenceValue;
+            DestroyChild(overlay, CaptionName);
+            // GuideOverlay が毎フレーム位置と幅を決める（中心が原点・左下が基準、Place と同じ）。
+            var caption = Label(overlay, string.Empty, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero,
+                34f, CaptionName);
+            var rect = (RectTransform)caption.transform;
+            rect.pivot = Vector2.zero;
+            rect.sizeDelta = new Vector2(1200f, 96f);
+            rect.SetAsLastSibling();
+            serialized.FindProperty("caption").objectReferenceValue = caption;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // --- 置き方 ---
+
+        // アイコンの下端にまたがる小さな札。
+        private static TextModeLabel IconTag(RectTransform icon, string id, float fontSize) =>
+            Label(icon, id, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-fontSize * 3f, -fontSize * 0.75f),
+                new Vector2(fontSize * 3f, fontSize * 0.75f), fontSize);
+
+        private static TextModeLabel Above(RectTransform target, string id, float height, float fontSize = 0f, string suffix = null) =>
+            Label(target, id, new Vector2(0f, 1f), Vector2.one, new Vector2(-20f, 2f), new Vector2(20f, 2f + height),
+                fontSize > 0f ? fontSize : height * 0.7f, suffix != null ? LabelPrefix + suffix : null);
+
+        private static TextModeLabel Below(RectTransform target, string id, float height, float fontSize = 0f) =>
+            Label(target, id, Vector2.zero, new Vector2(1f, 0f), new Vector2(-20f, -2f - height), new Vector2(20f, -2f),
+                fontSize > 0f ? fontSize : height * 0.7f);
+
+        private static TextModeLabel InsideBottom(RectTransform target, string id, float height, float fontSize) =>
+            Label(target, id, Vector2.zero, new Vector2(1f, 0f), Vector2.zero, new Vector2(0f, height), fontSize);
+
+        /// <summary>
+        /// parent の子にラベルを作る（同じ名前の既存のラベルは作り直す）。文字と下地は非表示で保存し、TextModeLabel が出し入れする。
+        /// </summary>
+        private static TextModeLabel Label(RectTransform parent, string id, Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin,
+            Vector2 offsetMax, float fontSize, string name = null)
+        {
+            name ??= LabelPrefix + id;
+            DestroyChild(parent, name);
+            var rect = Rect(name, parent, anchorMin, anchorMax);
+            rect.offsetMin = offsetMin;
+            rect.offsetMax = offsetMax;
+
+            var background = rect.gameObject.AddComponent<Image>();
+            background.color = BackgroundColor;
+            background.raycastTarget = false;
+            background.enabled = false;
+
+            var text = Rect("Text", rect, Vector2.zero, Vector2.one).gameObject.AddComponent<TextMeshProUGUI>();
+            text.rectTransform.offsetMin = new Vector2(4f, 0f);
+            text.rectTransform.offsetMax = new Vector2(-4f, 0f);
+            text.font = _font;
+            text.enableAutoSizing = false;
+            text.fontSize = fontSize;
+            text.color = Color.white;
+            text.alignment = TextAlignmentOptions.Center;
+            text.raycastTarget = false;
+            text.text = string.IsNullOrEmpty(id) ? string.Empty : _texts.Get(id);
+            text.enabled = false;
+
+            var label = rect.gameObject.AddComponent<TextModeLabel>();
+            var serialized = new SerializedObject(label);
+            serialized.FindProperty("table").objectReferenceValue = _table;
+            serialized.FindProperty("id").stringValue = id;
+            serialized.FindProperty("text").objectReferenceValue = text;
+            serialized.FindProperty("background").objectReferenceValue = background;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            return label;
+        }
+
+        private static RectTransform Rect(string name, RectTransform parent, Vector2 anchorMin, Vector2 anchorMax)
+        {
+            var rect = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
+            rect.gameObject.layer = parent.gameObject.layer;
+            rect.SetParent(parent, false);
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            return rect;
+        }
+
+        private static RectTransform PanelOf(Component screen) =>
+            ((GameObject)new SerializedObject(screen).FindProperty("panel").objectReferenceValue).GetComponent<RectTransform>();
+
+        private static RectTransform Child(RectTransform parent, string name)
+        {
+            var child = parent.Find(name) as RectTransform;
+            if (child == null)
+            {
+                throw new System.InvalidOperationException($"{parent.name} に {name} がない");
+            }
+
+            return child;
+        }
+
+        private static void DestroyChild(Transform parent, string name)
+        {
+            for (var child = parent.Find(name); child != null; child = parent.Find(name))
+            {
+                Object.DestroyImmediate(child.gameObject);
+            }
+        }
+    }
+}

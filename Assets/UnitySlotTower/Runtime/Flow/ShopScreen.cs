@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Run;
+using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Flow
 {
@@ -26,6 +27,8 @@ namespace UnitySlotTower.Flow
         [SerializeField] private TMP_FontAsset numberFont;
         [SerializeField] private Sprite knobSprite;
         [SerializeField] private Sprite boxSprite;
+        [Tooltip("文字あり版で品の名前を出すラベルのひな形（非表示で置き、札ごとに複製する、FR-006）。")]
+        [SerializeField] private TextModeLabel offerLabelTemplate;
 
         [Header("Exchange")]
         [SerializeField] private Button buyCoinsButton;
@@ -146,7 +149,34 @@ namespace UnitySlotTower.Flow
                     new Vector2(0.34f, 0.24f), moneyColor, knobSprite);
                 priceIcon.preserveAspect = true;
                 var price = CreateNumber("Price", card.rectTransform, new Vector2(0.36f, 0.04f), new Vector2(0.92f, 0.26f));
+                AddOfferLabel(card.rectTransform, item);
                 _cards.Add((button, group, price));
+            }
+        }
+
+        private void AddOfferLabel(RectTransform card, ShopItem item)
+        {
+            if (offerLabelTemplate == null)
+            {
+                return;
+            }
+
+            var label = Instantiate(offerLabelTemplate, card, false);
+            label.name = "Text Label";
+            label.SetIds("unit_" + item.UnitId, OfferTextId(item.Kind));
+            label.gameObject.SetActive(true);
+        }
+
+        private static string OfferTextId(ShopItemKind kind)
+        {
+            switch (kind)
+            {
+                case ShopItemKind.Stock:
+                    return "shop_stock";
+                case ShopItemKind.Gauge:
+                    return "shop_gauge";
+                default:
+                    return "shop_upgrade";
             }
         }
 

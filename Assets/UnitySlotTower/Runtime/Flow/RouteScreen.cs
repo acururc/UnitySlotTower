@@ -6,6 +6,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnitySlotTower.Core.Run;
 using UnitySlotTower.Core.Slot;
+using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Flow
 {
@@ -36,6 +37,8 @@ namespace UnitySlotTower.Flow
         [SerializeField] private CanvasGroup[] arrowGroups = new CanvasGroup[3];
         [Tooltip("行き先のアイコンを入れる枠。")]
         [SerializeField] private RectTransform[] arrowTargets = new RectTransform[3];
+        [Tooltip("文字あり版で行き先の種類を出すラベル（左・中・右、FR-006）。")]
+        [SerializeField] private TextModeLabel[] directionLabels = new TextModeLabel[3];
 
         [Header("Look")]
         [SerializeField] private Color ringColor = new Color(1f, 0.85f, 0.2f);
@@ -232,6 +235,18 @@ namespace UnitySlotTower.Flow
                 if (arrowGroups[reel] != null)
                 {
                     arrowGroups[reel].alpha = target != null ? 1f : 0.25f;
+                }
+
+                if (reel < directionLabels.Length && directionLabels[reel] != null)
+                {
+                    if (target != null)
+                    {
+                        directionLabels[reel].SetIds("node_" + target.Kind);
+                    }
+                    else
+                    {
+                        directionLabels[reel].SetIds();
+                    }
                 }
 
                 var frame = arrowTargets[reel];

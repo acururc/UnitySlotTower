@@ -14,6 +14,7 @@ using UnitySlotTower.Core.Ui;
 using UnitySlotTower.Flow;
 using UnitySlotTower.Slot;
 using UnitySlotTower.Tests.PlayMode.Battle;
+using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Tests.PlayMode.Flow
 {
@@ -139,6 +140,17 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             {
                 if (onTitle && text.name == "Logo")
                 {
+                    continue;
+                }
+
+                // 文字あり版のラベルは対象外。代わりに文字なし版では描かれないことを確かめる（T352、plan 16.9）。
+                if (text.GetComponentInParent<TextModeLabel>(true) != null)
+                {
+                    if (text.isActiveAndEnabled)
+                    {
+                        violations.Add($"{PathOf(text.transform)}: 文字なし版で文字あり版のラベルが出ている");
+                    }
+
                     continue;
                 }
 

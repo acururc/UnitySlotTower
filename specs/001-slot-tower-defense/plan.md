@@ -317,7 +317,7 @@ Assets/UnitySlotTower/
 - `GameSession.TextMode`（static、`RuntimeInitializeOnLoadMethod` で起動ごとに false）。タイトル画面のロゴ右下に透明のボタンを置き、クリックで切り替える（切り替わったことはロゴの横の小さな「あ」の印で示す。タイトルは文字可）。
 - `TextModeLabel`（Runtime/Ui）: 日本語フォントの TMP を持ち、`TextMode` のときだけ表示。文言は `ui_texts.csv`（`id, ja`）。既存の部品の配置は変えず、ラベルを足すだけ（文字なし版の見た目は変わらない）。
 - 文字チェック（`TextAudit`・`ScreenTextTests`）: `TextModeLabel` の子は対象外にし、代わりに「文字なしでは `TextModeLabel` がすべて非表示」を確かめる。文字ありの画面は別の PlayMode テストで「主な画面にラベルが出る」を確かめる（AC-005）。
-- フォント: 商用利用できる日本語フォント（候補 Noto Sans JP、SIL OFL）を TMP の動的フォントアセットにする。ライセンスは T501 の一覧に記録。
+- フォント: Noto Sans JP（SIL OFL）。TMP は `ui_texts.csv` の字だけを持つ静的フォントアセット（T352 で動的から変更: Play 中にアセットが書き換わらないため。文言を足したら作り直す）。ライセンスは `docs/ASSET_LICENSES.md`（T501 の一覧）に記録。
 
 ### 16.10 説明と早見表（FR-004, FR-012）
 - 題目: 召喚・配置・向き（最初の戦闘）→ スロット（レバーを指す。リールが止まるまで）→ スキル（初めてゲージが満タンになったとき。光るゲージを指す）→ 強化 → 撤退（全額返還は従来どおり）→ ルート（初めてルート画面に戻ったとき。行き先のあるリールを指す）。ショップ（両替を含む）は画面自体の絵で伝える（矢印のアニメ）。`ReelCustom`・`Bonus` は消す。

@@ -140,6 +140,21 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
+        public void Ui_Texts_With_A_Duplicate_Id_Or_Empty_Text_Fail()
+        {
+            // 文字あり版の文言（T352）。
+            var files = TablePaths.ReadAll();
+            files["ui_texts.csv"] += "life,命\n";
+            var duplicate = GameDataValidator.ValidateAll(files);
+            files = TablePaths.ReadAll();
+            files["ui_texts.csv"] += "extra_text, \n";
+            var empty = GameDataValidator.ValidateAll(files);
+
+            Assert.That((duplicate.Errors.Any(e => e.File == "ui_texts.csv"), empty.Errors.Any(e => e.File == "ui_texts.csv")),
+                Is.EqualTo((true, true)), duplicate + "\n" + empty);
+        }
+
+        [Test]
         public void Missing_Project_Table_Is_An_Error()
         {
             var files = TablePaths.ReadAll();

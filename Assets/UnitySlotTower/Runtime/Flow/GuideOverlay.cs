@@ -4,6 +4,7 @@ using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Guide;
 using UnitySlotTower.Slot;
+using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Flow
 {
@@ -52,12 +53,18 @@ namespace UnitySlotTower.Flow
         [SerializeField] private float framePadding = 12f;
         [SerializeField] private float rippleSize = 120f;
 
+        [Header("Text mode (FR-006)")]
+        [Tooltip("文字あり版だけに出る説明文。穴の上か下の空いている側に置く。")]
+        [SerializeField] private TextModeLabel caption;
+        [SerializeField] private float captionGap = 28f;
+
         private readonly GuideSequence _sequence = new GuideSequence();
         private readonly Vector3[] _corners = new Vector3[4];
         private readonly RectTransform[] _skillButtons = new RectTransform[4];
         private Canvas _canvas;
         private GuideHint _shownHint = (GuideHint)(-1);
         private float _hintStarted;
+        private Rect _hole;
 
         /// <summary>テスト用: true のあいだに読み込まれた Game シーンでは説明を出さない（既存の操作テストを妨げないため）。</summary>
         public static bool DisabledForTests { get; set; }
@@ -110,6 +117,10 @@ namespace UnitySlotTower.Flow
                 _shownHint = hint;
                 _hintStarted = Time.unscaledTime;
                 root.gameObject.SetActive(hint != GuideHint.None);
+                if (caption != null && hint != GuideHint.None)
+                {
+                    caption.SetIds(CaptionId(hint));
+                }
             }
 
             if (hint != GuideHint.None)
@@ -250,6 +261,8 @@ namespace UnitySlotTower.Flow
                     TapTarget(UiRect(retreatButton), t, dimmed);
                     break;
             }
+
+            PlaceCaption();
         }
 
         private void TapTarget(Rect target, float t, bool dimmed)
@@ -263,6 +276,7 @@ namespace UnitySlotTower.Flow
         {
             var area = root.rect;
             hole = new Rect(hole.position - Vector2.one * framePadding, hole.size + Vector2.one * framePadding * 2f);
+            _hole = hole;
             for (var i = 0; i < dims.Length; i++)
             {
                 dims[i].gameObject.SetActive(dimmed);
@@ -278,6 +292,27 @@ namespace UnitySlotTower.Flow
 
             Place(frame, hole);
             frameGroup.alpha = 0.55f + 0.45f * Mathf.Sin(Time.unscaledTime * 6f);
+        }
+
+        /// <summary>説明の id（ui_texts.csv の guide_〜）。切り替わったときだけ呼ぶ。</summary>
+        public static string CaptionId(GuideHint hint) => "guide_" + hint.ToString().ToLowerInvariant();
+
+        // 説明文を穴の上下の広い側に、画面の横幅いっぱい（左右に余白）で置く。
+        private void PlaceCaption()
+        {
+            if (caption == null)
+            {
+                return;
+            }
+
+            var area = root.rect;
+            var rect = (RectTransform)caption.transform;
+            var height = rect.sizeDelta.y;
+            var width = area.width - captionGap * 2f;
+            var above = area.yMax - _hole.yMax >= _hole.yMin - area.yMin;
+            var y = above ? _hole.yMax + captionGap : _hole.yMin - captionGap - height;
+            y = Mathf.Clamp(y, area.yMin + captionGap, area.yMax - captionGap - height);
+            Place(rect, new Rect(area.xMin + captionGap, y, width, height));
         }
 
         // 手を少し離れた所から近づけて押し、輪を広げる（phase は 0〜TapSeconds）。
