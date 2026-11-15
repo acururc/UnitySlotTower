@@ -8,7 +8,7 @@ namespace UnitySlotTower.Core.Battle
     /// </summary>
     public static class BattleCameraFit
     {
-        public const double DefaultPitchDegrees = 65;
+        public const double DefaultPitchDegrees = 55;
         public const double DefaultVerticalFovDegrees = 45;
 
         /// <summary>戦闘領域の縦横比（1440:1152）。</summary>

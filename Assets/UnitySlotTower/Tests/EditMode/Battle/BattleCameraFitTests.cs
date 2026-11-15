@@ -56,13 +56,13 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("plan 16.6: 俯角 65° で、カメラはマップの手前（-z）上方にあり注視点を向く")]
+        [Description("plan 16.6・T357: 俯角 55° で、カメラはマップの手前（-z）上方にあり注視点を向く")]
         public void Camera_Looks_Down_From_The_Near_Side()
         {
             var pose = BattleCameraFit.Fit(10, 5);
 
             Assert.That((pose.PitchDegrees, pose.PositionY > 0, pose.PositionZ < pose.TargetZ),
-                Is.EqualTo((65.0, true, true)));
+                Is.EqualTo((55.0, true, true)));
         }
 
         [Test]

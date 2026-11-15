@@ -111,9 +111,9 @@ namespace UnitySlotTower.Editor.Setup
             SetAnchors(slot, Vector2.zero, new Vector2(1f, SlotAreaTop));
 
             // 戦闘の領域が 1440×1152 px（5:4）になり横の画角が狭まるため、9 列が左右に収まるよう引いて俯角を深くする。
-            // 注視点はマップの中心（原点）のまま。
+            // 注視点はマップの中心（原点）のまま。俯角は T357 で 55°。実行時は BattleFieldView が BattleCameraFit で置き直す。
             camera.fieldOfView = 45f;
-            camera.transform.SetPositionAndRotation(new Vector3(0f, 10.6f, -4.94f), Quaternion.Euler(65f, 0f, 0f));
+            camera.transform.SetPositionAndRotation(new Vector3(0f, 10.5f, -7.36f), Quaternion.Euler(55f, 0f, 0f));
 
             // 筐体の中は 1440×614 px。リール窓は T315 と同じ縦横比（約 2.03:1）で 842×414 px。
             var windowMin = new Vector2(0.208f, 0.293f);
