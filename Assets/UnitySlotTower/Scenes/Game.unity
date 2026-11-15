@@ -17258,6 +17258,7 @@ GameObject:
   - component: {fileID: 432613210}
   - component: {fileID: 432613209}
   - component: {fileID: 432613208}
+  - component: {fileID: 432613211}
   m_Layer: 5
   m_Name: Text Label cabinet_fixed
   m_TagString: Untagged
@@ -17339,6 +17340,43 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 432613206}
   m_CullTransparentMesh: 1
+--- !u!114 &432613211
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 432613206}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8db26c0c7278fd4408d102330a36b21f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnitySlotTower.Runtime::UnitySlotTower.Ui.TextModeLayout
+  parts: 1
+  noText:
+    anchorMin: {x: 0, y: 0}
+    anchorMax: {x: 1, y: 0}
+    offsetMin: {x: -20, y: -28}
+    offsetMax: {x: 20, y: -2}
+    pivot: {x: 0.5, y: 0.5}
+    fontSize: 0
+    autoSize: 0
+    fontSizeMin: 0
+    fontSizeMax: 0
+    color: {r: 0.05, g: 0.06, b: 0.1, a: 0.72}
+    hidden: 0
+  text:
+    anchorMin: {x: 0, y: 0}
+    anchorMax: {x: 1, y: 0}
+    offsetMin: {x: -58, y: -56}
+    offsetMax: {x: 57, y: -4}
+    pivot: {x: 0.5, y: 0.5}
+    fontSize: 0
+    autoSize: 0
+    fontSizeMin: 0
+    fontSizeMax: 0
+    color: {r: 0.05, g: 0.06, b: 0.1, a: 0.72}
+    hidden: 0
 --- !u!1 &437935458
 GameObject:
   m_ObjectHideFlags: 0
@@ -26547,6 +26585,7 @@ GameObject:
   - component: {fileID: 705560726}
   - component: {fileID: 705560728}
   - component: {fileID: 705560727}
+  - component: {fileID: 705560729}
   m_Layer: 5
   m_Name: Text
   m_TagString: Untagged
@@ -26673,6 +26712,43 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 705560725}
   m_CullTransparentMesh: 1
+--- !u!114 &705560729
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 705560725}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8db26c0c7278fd4408d102330a36b21f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnitySlotTower.Runtime::UnitySlotTower.Ui.TextModeLayout
+  parts: 2
+  noText:
+    anchorMin: {x: 0, y: 0}
+    anchorMax: {x: 1, y: 1}
+    offsetMin: {x: 4, y: 0}
+    offsetMax: {x: -4, y: 0}
+    pivot: {x: 0.5, y: 0.5}
+    fontSize: 24
+    autoSize: 0
+    fontSizeMin: 18
+    fontSizeMax: 72
+    color: {r: 1, g: 1, b: 1, a: 1}
+    hidden: 0
+  text:
+    anchorMin: {x: 0, y: 0}
+    anchorMax: {x: 1, y: 1}
+    offsetMin: {x: 4, y: 0}
+    offsetMax: {x: -4, y: 0}
+    pivot: {x: 0.5, y: 0.5}
+    fontSize: 40
+    autoSize: 0
+    fontSizeMin: 18
+    fontSizeMax: 72
+    color: {r: 1, g: 1, b: 1, a: 1}
+    hidden: 0
 --- !u!1 &705884096
 GameObject:
   m_ObjectHideFlags: 0
@@ -32126,6 +32202,7 @@ GameObject:
   - component: {fileID: 858364479}
   - component: {fileID: 858364478}
   - component: {fileID: 858364477}
+  - component: {fileID: 858364480}
   m_Layer: 5
   m_Name: Text Label cabinet_credit
   m_TagString: Untagged
@@ -32207,6 +32284,43 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 858364475}
   m_CullTransparentMesh: 1
+--- !u!114 &858364480
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 858364475}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8db26c0c7278fd4408d102330a36b21f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnitySlotTower.Runtime::UnitySlotTower.Ui.TextModeLayout
+  parts: 1
+  noText:
+    anchorMin: {x: -0.4, y: 1}
+    anchorMax: {x: 1, y: 1}
+    offsetMin: {x: 0, y: 2}
+    offsetMax: {x: 0, y: 34}
+    pivot: {x: 0.5, y: 0.5}
+    fontSize: 0
+    autoSize: 0
+    fontSizeMin: 0
+    fontSizeMax: 0
+    color: {r: 0.05, g: 0.06, b: 0.1, a: 0.72}
+    hidden: 0
+  text:
+    anchorMin: {x: 0, y: 1}
+    anchorMax: {x: 1, y: 1}
+    offsetMin: {x: -37, y: 8}
+    offsetMax: {x: 12, y: 108}
+    pivot: {x: 0.5, y: 0.5}
+    fontSize: 0
+    autoSize: 0
+    fontSizeMin: 0
+    fontSizeMax: 0
+    color: {r: 0.05, g: 0.06, b: 0.1, a: 0.72}
+    hidden: 0
 --- !u!1 &864812063
 GameObject:
   m_ObjectHideFlags: 0
@@ -71876,6 +71990,7 @@ GameObject:
   - component: {fileID: 1928166010}
   - component: {fileID: 1928166012}
   - component: {fileID: 1928166011}
+  - component: {fileID: 1928166013}
   m_Layer: 5
   m_Name: Text
   m_TagString: Untagged
@@ -72002,6 +72117,43 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1928166009}
   m_CullTransparentMesh: 1
+--- !u!114 &1928166013
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1928166009}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8db26c0c7278fd4408d102330a36b21f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnitySlotTower.Runtime::UnitySlotTower.Ui.TextModeLayout
+  parts: 2
+  noText:
+    anchorMin: {x: 0, y: 0}
+    anchorMax: {x: 1, y: 1}
+    offsetMin: {x: 4, y: 0}
+    offsetMax: {x: -4, y: 0}
+    pivot: {x: 0.5, y: 0.5}
+    fontSize: 18
+    autoSize: 0
+    fontSizeMin: 0
+    fontSizeMax: 0
+    color: {r: 1, g: 1, b: 1, a: 1}
+    hidden: 0
+  text:
+    anchorMin: {x: 0, y: 0}
+    anchorMax: {x: 1, y: 1}
+    offsetMin: {x: 4, y: 0}
+    offsetMax: {x: -4, y: 0}
+    pivot: {x: 0.5, y: 0.5}
+    fontSize: 40
+    autoSize: 0
+    fontSizeMin: 0
+    fontSizeMax: 0
+    color: {r: 1, g: 1, b: 1, a: 1}
+    hidden: 0
 --- !u!1 &1929326799
 GameObject:
   m_ObjectHideFlags: 0
@@ -76494,6 +76646,7 @@ GameObject:
   - component: {fileID: 2058187033}
   - component: {fileID: 2058187032}
   - component: {fileID: 2058187031}
+  - component: {fileID: 2058187034}
   m_Layer: 5
   m_Name: Text Label cabinet_lever
   m_TagString: Untagged
@@ -76575,6 +76728,43 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2058187029}
   m_CullTransparentMesh: 1
+--- !u!114 &2058187034
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2058187029}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8db26c0c7278fd4408d102330a36b21f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnitySlotTower.Runtime::UnitySlotTower.Ui.TextModeLayout
+  parts: 1
+  noText:
+    anchorMin: {x: 0, y: 1}
+    anchorMax: {x: 1, y: 1}
+    offsetMin: {x: -20, y: 2}
+    offsetMax: {x: 20, y: 38}
+    pivot: {x: 0.5, y: 0.5}
+    fontSize: 0
+    autoSize: 0
+    fontSizeMin: 0
+    fontSizeMax: 0
+    color: {r: 0.05, g: 0.06, b: 0.1, a: 0.72}
+    hidden: 0
+  text:
+    anchorMin: {x: 0, y: 1}
+    anchorMax: {x: 1, y: 1}
+    offsetMin: {x: -35, y: 8}
+    offsetMax: {x: 33, y: 108}
+    pivot: {x: 0.5, y: 0.5}
+    fontSize: 0
+    autoSize: 0
+    fontSizeMin: 0
+    fontSizeMax: 0
+    color: {r: 0.05, g: 0.06, b: 0.1, a: 0.72}
+    hidden: 0
 --- !u!1 &2065070608
 GameObject:
   m_ObjectHideFlags: 0
@@ -78866,6 +79056,7 @@ GameObject:
   - component: {fileID: 2118119912}
   - component: {fileID: 2118119914}
   - component: {fileID: 2118119913}
+  - component: {fileID: 2118119915}
   m_Layer: 5
   m_Name: Text
   m_TagString: Untagged
@@ -78992,6 +79183,43 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2118119911}
   m_CullTransparentMesh: 1
+--- !u!114 &2118119915
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2118119911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8db26c0c7278fd4408d102330a36b21f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnitySlotTower.Runtime::UnitySlotTower.Ui.TextModeLayout
+  parts: 2
+  noText:
+    anchorMin: {x: 0, y: 0}
+    anchorMax: {x: 1, y: 1}
+    offsetMin: {x: 4, y: 0}
+    offsetMax: {x: -4, y: 0}
+    pivot: {x: 0.5, y: 0.5}
+    fontSize: 20
+    autoSize: 0
+    fontSizeMin: 18
+    fontSizeMax: 72
+    color: {r: 1, g: 1, b: 1, a: 1}
+    hidden: 0
+  text:
+    anchorMin: {x: 0, y: 0}
+    anchorMax: {x: 1, y: 1}
+    offsetMin: {x: 4, y: 0}
+    offsetMax: {x: -4, y: 0}
+    pivot: {x: 0.5, y: 0.5}
+    fontSize: 40
+    autoSize: 0
+    fontSizeMin: 18
+    fontSizeMax: 72
+    color: {r: 1, g: 1, b: 1, a: 1}
+    hidden: 0
 --- !u!1 &2121647435
 GameObject:
   m_ObjectHideFlags: 0

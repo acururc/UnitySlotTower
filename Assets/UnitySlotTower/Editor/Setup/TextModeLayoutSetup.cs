@@ -49,7 +49,34 @@ namespace UnitySlotTower.Editor.Setup
         {
             var root = (RectTransform)cabinet.transform.parent;
             BuildBattleHud(root);
-            // T359c: 筐体の外の名前、T359d: ルート、T359e: ショップ・回復・リザルト、T359f: 早見表。
+            BuildCabinetLabels((RectTransform)cabinet.transform);
+            // T359d: ルート、T359e: ショップ・回復・リザルト、T359f: 早見表。
+        }
+
+        // --- T359c 筐体の外の名前 ---
+
+        private const float CabinetFont = 40f;
+
+        /// <summary>
+        /// レバー・コイン・回数固定の名前を、リール窓の外の余白に大きく出す。筐体の部品の配置と見た目は変えない（ラベルだけ動かす）。
+        /// 筐体の中は 1440×614 px、リール窓は x 300〜1140・y 180〜594（GameSceneSetup）。左右の余白は幅 約 300 px。
+        /// </summary>
+        private static void BuildCabinetLabels(RectTransform cabinet)
+        {
+            // レバー（x 43〜259・y 40〜164）: 左の余白、レバーの上に2行（x 8〜292・y 172〜272）。
+            var lever = Child(cabinet, "Lever Button");
+            SetLabel(Child(lever, "Text Label cabinet_lever"), new Vector2(0f, 1f), Vector2.one,
+                new Vector2(-35f, 8f), new Vector2(33f, 108f), CabinetFont);
+
+            // コイン（x 1185〜1420・y 155〜228）: 右の余白、数字の上に2行（x 1148〜1432・y 236〜336）。右の矢印（y 360 付近から上）には掛けない。
+            var credit = Child(cabinet, "Credit");
+            SetLabel(Child(credit, "Text Label cabinet_credit"), new Vector2(0f, 1f), Vector2.one,
+                new Vector2(-37f, 8f), new Vector2(12f, 108f), CabinetFont);
+
+            // 回数固定（アイコン x 1094〜1179・y 160〜222）: アイコンの下、リール窓の下の空き（x 1036〜1236・y 104〜156）。
+            var fixedSpins = Child(cabinet, "Fixed Spins Icon");
+            SetLabel(Child(fixedSpins, "Text Label cabinet_fixed"), Vector2.zero, new Vector2(1f, 0f),
+                new Vector2(-58f, -56f), new Vector2(57f, -4f), CabinetFont);
         }
 
         // --- T359b 戦闘の HUD ---
