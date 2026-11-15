@@ -9,14 +9,14 @@ namespace UnitySlotTower.Editor.Setup
 {
     /// <summary>
     /// スロットの6図柄の仮の絵（plan 16.3。M5 で素材に差し替える）。色7＝その色の数字、BAR＝黒い帯、コイン＝金色の二重丸。
-    /// 旧効果のアイコン（攻撃力・攻撃速度アップ、回復）は操作バーと早見表の作り直し（T349・T351）まで <see cref="Attack"/> などで残す。
+    /// 攻撃の印（<see cref="Attack"/>）は操作バーのバーの倍率と早見表に使う。
     /// </summary>
     internal static class SlotSymbolArt
     {
         private const string FontPath = "Assets/UnitySlotTower/Art/Fonts/NumericOnly SDF.asset";
 
         public static readonly Color AttackColor = new Color(0.9f, 0.25f, 0.2f);
-        public static readonly Color SpeedColor = new Color(0.2f, 0.75f, 0.95f);
+        /// <summary>バッファーの印（早見表の緑の▲）の色。</summary>
         public static readonly Color HealColor = new Color(0.25f, 0.75f, 0.3f);
         public static readonly Color CoinColor = new Color(1f, 0.8f, 0.15f);
 
@@ -76,30 +76,12 @@ namespace UnitySlotTower.Editor.Setup
             }
         }
 
-        /// <summary>旧効果: 攻撃力アップ（赤丸に上矢印）。</summary>
+        /// <summary>攻撃の印（赤丸に上矢印）。</summary>
         public static RectTransform Attack(RectTransform parent)
         {
             var root = Circle("Attack", parent, AttackColor);
             Triangle("Head", root, new Vector2(0.28f, 0.45f), new Vector2(0.72f, 0.82f), 90f);
             CreateImage("Stem", root, new Vector2(0.42f, 0.2f), new Vector2(0.58f, 0.5f), Color.white, null, false);
-            return root;
-        }
-
-        /// <summary>旧効果: 攻撃速度アップ（水色丸に早送り）。</summary>
-        public static RectTransform Speed(RectTransform parent)
-        {
-            var root = Circle("Speed", parent, SpeedColor);
-            Triangle("Front", root, new Vector2(0.48f, 0.28f), new Vector2(0.78f, 0.72f), 0f);
-            Triangle("Back", root, new Vector2(0.22f, 0.28f), new Vector2(0.52f, 0.72f), 0f);
-            return root;
-        }
-
-        /// <summary>回復（緑丸に十字）。ヒーラーのアイコン（バッファーへの置き換え T343 まで）。</summary>
-        public static RectTransform Heal(RectTransform parent)
-        {
-            var root = Circle("Heal", parent, HealColor);
-            CreateImage("Vertical", root, new Vector2(0.42f, 0.2f), new Vector2(0.58f, 0.8f), Color.white, null, false);
-            CreateImage("Horizontal", root, new Vector2(0.2f, 0.42f), new Vector2(0.8f, 0.58f), Color.white, null, false);
             return root;
         }
 

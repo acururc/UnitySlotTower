@@ -6,11 +6,11 @@ Unity project at repository root (created 2026-10-26). This is an index of confi
 | --- | --- |
 | Name | UnitySlotTower (folder, productName in `ProjectSettings/ProjectSettings.asset`); official title unconfirmed |
 | Repository | https://github.com/acururc/UnitySlotTower.git (`main`) |
-| Gameplay / targets | Portrait PC slot × tower-defense game (battle top 60%, slot cabinet bottom 40%; 3 stages × 5 waves, difficulty = slot setting 1–6). Requirements: `specs/001-slot-tower-defense/spec.md` (approved 2026-11-01), design `plan.md`, progress `tasks.md`; current state in `HANDOFF.md` |
+| Gameplay / targets | Portrait PC slot × tower-defense game (battle top 60%, slot cabinet bottom 40%; Slay the Spire-style route of 8 floors with 2-wave battle nodes, shop and rest; coins for the slot and money for units; difficulty = slot setting 1–6; mouse only, text-free UI with a hidden Japanese text mode). Requirements: `specs/001-slot-tower-defense/spec.md` (approved 2026-11-15), design `plan.md`, progress `tasks.md`; current state in `HANDOFF.md` |
 | Unity | 6000.6.7f1 — `ProjectSettings/ProjectVersion.txt`; created from the bundled `com.unity.template.urp-blank-17.2.6` template |
 | Rendering | URP 17.6.0 (3D) — package files; `Assets/Settings/PC_RPAsset.asset` / `Mobile_RPAsset.asset` |
 | Input | Input System 1.20.1, `activeInputHandler: 1` (new only); `Assets/InputSystem_Actions.inputactions` |
-| UI | uGUI 2.6.0 (game UI); UI Toolkit module installed |
+| UI | uGUI 2.6.0 (game UI); UI Toolkit module installed. Fonts: numeric-only TMP asset; Noto Sans JP (SIL OFL) static TMP asset for text mode, licenses in `docs/ASSET_LICENSES.md` |
 | Scene | Build Settings: `Assets/UnitySlotTower/Scenes/Title.unity`, `Game.unity` enabled; template `Assets/Scenes/SampleScene.unity` listed but disabled |
 | Tests | Unity Test Framework 1.8.0 (builtin); EditMode and PlayMode suites under `Assets/UnitySlotTower/Tests/` (latest counts in `tasks.md`) |
 | Code | `Assets/UnitySlotTower/`: `Core` (game logic), `Runtime`, `Editor` (scene setup menus), `Tests/EditMode`, `Tests/PlayMode` asmdefs; `Automation/` helpers (Editor connection, dev-player screenshot) |

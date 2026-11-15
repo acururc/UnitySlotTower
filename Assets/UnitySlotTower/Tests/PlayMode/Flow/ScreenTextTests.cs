@@ -82,7 +82,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return LoadGame(b => battle = b);
             AssertNoLetters("開始時（準備）");
 
-            // バーを揃えて効果の秒数を出す（T342 までのつなぎで、バーは旧の攻撃力アップ）。
+            // バーを揃えて操作バーに攻撃力の倍率を出す。
             battle.StartWave();
             var cabinet = Object.FindAnyObjectByType<SlotCabinet>();
             _random.Index = -1;

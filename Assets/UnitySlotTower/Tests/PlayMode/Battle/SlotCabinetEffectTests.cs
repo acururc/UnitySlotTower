@@ -14,7 +14,7 @@ using UnitySlotTower.Slot;
 
 namespace UnitySlotTower.Tests.PlayMode.Battle
 {
-    [Description("AC-011 の一部: キーでスロットを回して揃えた効果が戦闘に届き、操作バーに出る（FR-042。T342 までのつなぎでバー＝旧の攻撃力アップ）")]
+    [Description("AC-011 の一部: キーでスロットを回して揃えた効果が戦闘に届き、操作バーに出る（FR-042: バーで攻撃力の倍率が上がる）")]
     public sealed class SlotCabinetEffectTests
     {
         private Keyboard _keyboard;
