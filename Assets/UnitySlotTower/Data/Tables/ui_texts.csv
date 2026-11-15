@@ -87,6 +87,14 @@ slot_green7,緑7：バッファーのスキルゲージ+1
 slot_yellow7,黄7：タンクのスキルゲージ+1
 slot_bar,バー：この戦闘の攻撃力アップ
 slot_coin,コイン：この戦闘の獲得金アップ
+help_slot_heading,スロットの図柄
+help_units_heading,味方
+help_col_symbol,図柄
+help_col_chance,確率
+help_col_effect,効果
+help_col_job,職業
+help_col_range,攻撃の範囲
+help_col_stats,能力
 guide_summon,職のアイコンを押して召喚する
 guide_place,置きたいマスへドラッグして配置する
 guide_facing,ドラッグして向きを決める

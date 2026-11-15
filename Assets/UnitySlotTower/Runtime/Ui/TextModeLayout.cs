@@ -49,6 +49,8 @@ namespace UnitySlotTower.Ui
         private TMP_Text _label;
         private Graphic _graphic;
         private CanvasGroup _group;
+        private Vector2 _noTextPosition;
+        private Vector2 _noTextSize;
 
         public Parts Affected => parts;
 
@@ -118,8 +120,17 @@ namespace UnitySlotTower.Ui
                 _rect.anchorMin = state.anchorMin;
                 _rect.anchorMax = state.anchorMax;
                 _rect.pivot = state.pivot;
-                _rect.offsetMin = state.offsetMin;
-                _rect.offsetMax = state.offsetMax;
+                if (textMode)
+                {
+                    _rect.offsetMin = state.offsetMin;
+                    _rect.offsetMax = state.offsetMax;
+                }
+                else
+                {
+                    // 文字なし版はシーンの値そのものに戻す（offset の setter を通すと、シーンの offset の端数で 1e-5 程度ずれる）。
+                    _rect.anchoredPosition = _noTextPosition;
+                    _rect.sizeDelta = _noTextSize;
+                }
             }
 
             if ((parts & Parts.Font) != 0 && _label != null)
@@ -152,6 +163,13 @@ namespace UnitySlotTower.Ui
             }
 
             _rect = GetComponent<RectTransform>();
+            // 最初に使うときの部品はシーンの値（文字なし版）のまま。
+            if (_rect != null)
+            {
+                _noTextPosition = _rect.anchoredPosition;
+                _noTextSize = _rect.sizeDelta;
+            }
+
             _label = GetComponent<TMP_Text>();
             _graphic = GetComponent<Graphic>();
             _group = GetComponent<CanvasGroup>();

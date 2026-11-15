@@ -117,6 +117,16 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(help.IsOpen, Is.True);
             Assert.That(ShownIds(), Does.Contain("help_title").And.Contain("stat_hp").And.Contain("skill_sword").And.Contain("slot_red7"),
                 "早見表にラベルが出ない");
+            // T359f: 表の見出しと列の名前、閉じるの名前。文字あり版でもボタンで閉じて開き直せる。
+            Assert.That(ShownIds(), Does.Contain("help_slot_heading").And.Contain("help_units_heading").And.Contain("help_col_chance")
+                .And.Contain("help_col_range").And.Contain("help_close"), "早見表に見出しか列の名前が出ない");
+            help.CloseButton.onClick.Invoke();
+            yield return null;
+            Assert.That((help.IsOpen, help.OpenButton.gameObject.activeInHierarchy, ShownIds().Contains("help_open")),
+                Is.EqualTo((false, true, true)), "文字あり版で閉じられないか、「?」に名前が出ない");
+            help.OpenButton.onClick.Invoke();
+            yield return null;
+            Assert.That(help.IsOpen, Is.True, "文字あり版で開き直せない");
 
             GameSession.SetTextMode(false);
             yield return null;

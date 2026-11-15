@@ -353,27 +353,47 @@ namespace UnitySlotTower.Editor.Setup
         {
             var help = root.GetComponentInChildren<HelpScreen>(true);
             var helpRect = (RectTransform)help.transform;
-            Below(Child(helpRect, "Open Button"), "help_open", 30f, 22f);
+            // T359f: 位置は文字あり版のもの（部品の文字あり版の位置は TextModeLayoutSetup.BuildHelp）。字は 36 以上。
+            // 「?」の名前はボタンの上（下だと操作バーの札4の職名に掛かる）。
+            Above(Child(helpRect, "Open Button"), "help_open", 52f, 36f);
             var panel = PanelOf(help);
-            Label(Child(panel, "Mark"), "help_title", new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(8f, 0f), new Vector2(200f, 0f), 34f);
-            InsideBottom(Child(panel, "Close Button"), "help_close", 26f, 18f);
+            Label(Child(panel, "Mark"), "help_title", new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(8f, 0f), new Vector2(220f, 0f), 56f)
+                .Text.alignment = TextAlignmentOptions.Left;
+            RightOf(Child(panel, "Close Button"), "help_close");
+
+            // 表の見出し（48）と列の名前（36）。
+            HelpLine(panel, "help_slot_heading", 0.02f, 0.6f, TextModeLayoutSetup.HelpSlotHeadingY, 48f);
+            HelpLine(panel, "help_col_symbol", 0.005f, 0.09f, TextModeLayoutSetup.HelpSlotColumnsY, 36f, TextAlignmentOptions.Center);
+            HelpLine(panel, "help_col_chance", 0.09f, 0.18f, TextModeLayoutSetup.HelpSlotColumnsY, 36f, TextAlignmentOptions.Right);
+            HelpLine(panel, "help_col_effect", 0.215f, 0.99f, TextModeLayoutSetup.HelpSlotColumnsY, 36f);
+            HelpLine(panel, "help_units_heading", 0.02f, 0.6f, TextModeLayoutSetup.HelpUnitHeadingY, 48f);
+            HelpLine(panel, "help_col_job", 0.005f, TextModeLayoutSetup.HelpRangeLeft - 0.01f, TextModeLayoutSetup.HelpUnitColumnsY, 36f,
+                TextAlignmentOptions.Center);
+            HelpLine(panel, "help_col_range", TextModeLayoutSetup.HelpRangeLeft, TextModeLayoutSetup.HelpRangeRight,
+                TextModeLayoutSetup.HelpUnitColumnsY, 36f, TextAlignmentOptions.Center);
+            HelpLine(panel, "help_col_stats", TextModeLayoutSetup.HelpStatColumns[0], 0.99f, TextModeLayoutSetup.HelpUnitColumnsY, 36f);
 
             string[] stats = { "hp", "atk", "def", "interval", "block", "cost", "cooldown" };
             for (var i = 0; i < 4 && i < units.Rows.Count; i++)
             {
                 var row = Child(panel, $"Unit {i + 1}");
                 var unitId = units.Rows[i].Get("id");
-                Below(Child(row, "Body"), "unit_" + unitId, 30f, 22f);
-                foreach (var stat in stats)
+                // 職名は本体の札の下（札の左右に 43 px はみ出す。札の大きさは TextModeLayoutSetup）。
+                Label(Child(row, "Body"), "unit_" + unitId, Vector2.zero, new Vector2(1f, 0f), new Vector2(-43f, -56f), new Vector2(43f, -4f), 40f);
+                for (var s = 0; s < stats.Length; s++)
                 {
-                    Label(Child(row, stat), "stat_" + stat, new Vector2(0.5f, 0f), Vector2.one, Vector2.zero, Vector2.zero, 18f)
-                        .Text.alignment = TextAlignmentOptions.Right;
+                    // 数値の名前は数字の左（数字の子なので左端を基準に置く。間の幅は列ごと）。
+                    var nameWidth = TextModeLayoutSetup.HelpStatNameWidth(s < 4 ? 0 : 1);
+                    Label(Child(row, stats[s]), "stat_" + stats[s], Vector2.zero, new Vector2(0f, 1f), new Vector2(-nameWidth - 6f, 0f),
+                        new Vector2(-6f, 0f), 36f).Text.alignment = TextAlignmentOptions.Left;
                 }
 
-                Label(row, "skill_" + unitId, new Vector2(0.165f, 0.04f), new Vector2(0.49f, 0.3f), Vector2.zero, Vector2.zero, 18f)
-                    .Text.alignment = TextAlignmentOptions.Left;
+                // スキルの説明は行の下の段（範囲図の左端から右端まで1行）。
+                Label(row, "skill_" + unitId, new Vector2(TextModeLayoutSetup.HelpRangeLeft, 0f),
+                    new Vector2(0.99f, TextModeLayoutSetup.HelpSkillLineTop), Vector2.zero, Vector2.zero, 36f).Text.alignment = TextAlignmentOptions.Left;
             }
 
+            // 図柄の行の説明は効果の右（1行）。
             var slotRows = Child(panel, HelpScreenSetup.SlotRowsName);
             for (var i = 0; i < slotRows.childCount; i++)
             {
@@ -381,11 +401,17 @@ namespace UnitySlotTower.Editor.Setup
                 var id = "slot_" + row.name.ToLowerInvariant();
                 if (_texts.TryGet(id, out _))
                 {
-                    Label(row, id, new Vector2(0.36f, 0f), new Vector2(0.98f, 0.3f), Vector2.zero, Vector2.zero, 20f)
+                    Label(row, id, new Vector2(TextModeLayoutSetup.HelpDescriptionLeft, 0f), new Vector2(0.99f, 1f), Vector2.zero, Vector2.zero, 36f)
                         .Text.alignment = TextAlignmentOptions.Left;
                 }
             }
         }
+
+        // 早見表の1行のラベル（panel の割合。y は (下端, 上端) の px）。
+        private static void HelpLine(RectTransform panel, string id, float left, float right, Vector2 y, float fontSize,
+            TextAlignmentOptions alignment = TextAlignmentOptions.Left) =>
+            Label(panel, id, new Vector2(left, y.x / 1920f), new Vector2(right, y.y / 1920f), Vector2.zero, Vector2.zero, fontSize)
+                .Text.alignment = alignment;
 
         private static void AddGuideCaption(RectTransform root)
         {

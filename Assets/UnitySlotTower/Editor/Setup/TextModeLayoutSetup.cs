@@ -70,7 +70,127 @@ namespace UnitySlotTower.Editor.Setup
             BuildShop(root);
             BuildRest(root);
             BuildResult(root);
-            // T359f: 早見表。
+            BuildHelp(root);
+        }
+
+        // --- T359f 早見表 ---
+        // 画面いっぱい（1440×1920 px）。上から 閉じる・題（1795〜1891）、スロットの見出し・列の名前・7行（70 px）、区切り、
+        // 味方の見出し・列の名前・4行（255 px）。y は px（下端, 上端）。ラベルは TextModeSetup がこの値で作る。
+
+        internal static readonly Vector2 HelpSlotHeadingY = new Vector2(1716f, 1786f);
+        internal static readonly Vector2 HelpSlotColumnsY = new Vector2(1666f, 1716f);
+        private const float HelpSlotRowHeight = 70f;
+        private static readonly Vector2 HelpDividerY = new Vector2(1160f, 1166f);
+        internal static readonly Vector2 HelpUnitHeadingY = new Vector2(1080f, 1150f);
+        internal static readonly Vector2 HelpUnitColumnsY = new Vector2(1030f, 1080f);
+        private const float HelpUnitRowHeight = 255f;
+
+        // 図柄の行（行の割合）: 図柄・確率・▶・効果（〜0.48）・説明（0.49〜）。
+        internal const float HelpDescriptionLeft = 0.49f;
+
+        // 味方の行（行の割合）: 左に本体の札と職名とスキルの印、範囲図、数値2列（各4段 50 px）、下の段にスキルの説明。
+        internal const float HelpRangeLeft = 0.165f;
+        internal const float HelpRangeRight = 0.335f;
+        internal const float HelpSkillLineTop = 52f / HelpUnitRowHeight;
+        // 数値の列の左端（アイコン）と数字の左端。名前はその間。
+        internal static readonly float[] HelpStatColumns = { 0.35f, 0.66f };
+        private static readonly float[] HelpStatValueLefts = { 0.505f, 0.86f };
+        private const float HelpStatIcon = 36f;
+
+        /// <summary>数値の名前の幅（px）。アイコンの右から数字の左まで。</summary>
+        internal static float HelpStatNameWidth(int column) =>
+            (HelpStatValueLefts[column] - HelpStatColumns[column]) * 1440f - HelpStatIcon - 12f;
+
+        /// <summary>
+        /// 早見表: 表に見出しと列の名前を入れ、図柄の行は1行にして説明を右に、味方の行は数値に名前を付けて下にスキルの説明を入れる（plan 16.13）。
+        /// </summary>
+        private static void BuildHelp(RectTransform root)
+        {
+            var panel = PanelOf(root.GetComponentInChildren<HelpScreen>(true));
+            SetRect(Child(panel, "Divider"), new Vector2(0.04f, HelpDividerY.x / 1920f), new Vector2(0.96f, HelpDividerY.y / 1920f));
+
+            var slotRows = Child(panel, HelpScreenSetup.SlotRowsName);
+            for (var i = 0; i < slotRows.childCount; i++)
+            {
+                var top = HelpSlotColumnsY.x - i * HelpSlotRowHeight;
+                var row = (RectTransform)slotRows.GetChild(i);
+                SetRect(row, new Vector2(0f, (top - HelpSlotRowHeight) / 1920f), new Vector2(1f, top / 1920f));
+                HelpSlotRow(row);
+            }
+
+            for (var i = 0; i < 4; i++)
+            {
+                var top = HelpUnitColumnsY.x - i * HelpUnitRowHeight;
+                var row = Child(panel, $"Unit {i + 1}");
+                SetRect(row, new Vector2(0f, (top - HelpUnitRowHeight) / 1920f), new Vector2(1f, top / 1920f));
+                HelpUnitRow(row);
+            }
+        }
+
+        // 図柄の行（70 px）の部品。名前は HelpScreenSetup.BuildSlot のもの。ない部品（ハズレの行など）は飛ばす。
+        private static void HelpSlotRow(RectTransform row)
+        {
+            const float px = 1f / 1440f;
+            var icon = row.Find("Icon") as RectTransform;
+            if (icon != null)
+            {
+                // 札は行の高さの正方形（ハズレは少し小さい）。縦の割合はシーンの値のまま。
+                var size = (icon.anchorMax.y - icon.anchorMin.y) * HelpSlotRowHeight * px;
+                Set(icon.gameObject, TextModeLayout.Parts.Rect, s =>
+                {
+                    s.anchorMin.x = 0.047f - size / 2f;
+                    s.anchorMax.x = 0.047f + size / 2f;
+                    return s;
+                });
+            }
+
+            SetXIfAny(row, "Chance", 0.08f, 0.175f);
+            SetXIfAny(row, "Arrow", 0.185f, 0.2f);
+            var effectIcon = 50f * px;
+            foreach (var name in new[] { "Job Card", "Attack Icon", "Coin Icon" })
+            {
+                SetXIfAny(row, name, 0.215f, 0.215f + effectIcon);
+            }
+
+            SetXIfAny(row, "Gauge", 0.255f, 0.365f);
+            var isSeven = row.Find("Gauge") != null;
+            SetXIfAny(row, "Effect", isSeven ? 0.37f : 0.255f, isSeven ? 0.45f : 0.36f);
+            SetXIfAny(row, "Cap Icon", 0.365f, 0.365f + effectIcon);
+            SetXIfAny(row, "Cap", 0.405f, HelpDescriptionLeft - 0.005f);
+        }
+
+        // 味方の行（255 px）の部品。名前は HelpScreenSetup.BuildUnits のもの。
+        private static void HelpUnitRow(RectTransform row)
+        {
+            const float h = HelpUnitRowHeight;
+            // 本体の札 130 px の正方形（上）、その下に職名（TextModeSetup）、いちばん下にスキルの印。
+            SetRect(Child(row, "Body"), new Vector2(0.035f, 120f / h), new Vector2(0.035f + 130f / 1440f, 250f / h));
+            SetRect(Child(row, "Skill Mark"), new Vector2(0.02f, 8f / h), new Vector2(0.14f, 48f / h));
+            SetRect(Child(row, "Range"), new Vector2(HelpRangeLeft, 58f / h), new Vector2(HelpRangeRight, 250f / h));
+
+            // 左の列は上から HP・攻撃・防御・攻撃間隔、右の列は ブロック・コスト・待ち時間（シーンと同じ並び）。段は下の 55 px より上に 50 px ずつ。
+            string[][] columns = { new[] { "hp", "atk", "def", "interval" }, new[] { "block", "cost", "cooldown" } };
+            for (var c = 0; c < columns.Length; c++)
+            {
+                for (var line = 0; line < columns[c].Length; line++)
+                {
+                    var stat = columns[c][line];
+                    var bottom = 55f + (3 - line) * 50f;
+                    var middle = bottom + 25f;
+                    SetRect(Child(row, stat + " Icon"), new Vector2(HelpStatColumns[c], (middle - HelpStatIcon / 2f) / h),
+                        new Vector2(HelpStatColumns[c] + HelpStatIcon / 1440f, (middle + HelpStatIcon / 2f) / h));
+                    SetRect(Child(row, stat), new Vector2(HelpStatValueLefts[c], bottom / h),
+                        new Vector2(HelpStatValueLefts[c] + 0.135f, (bottom + 50f) / h));
+                }
+            }
+        }
+
+        private static void SetXIfAny(RectTransform row, string name, float left, float right)
+        {
+            if (row.Find(name) is RectTransform target)
+            {
+                SetX(target, left, right);
+            }
         }
 
         // --- T359e ショップ・回復・リザルト ---
