@@ -87,6 +87,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         {
             SceneManager.sceneLoaded -= ReplaceWaves;
             _waves = null;
+            GameSession.SetTextMode(false);
             RunController.SeedOverride = null;
             SlotCabinet.RandomOverride = null;
             Time.timeScale = 1f;
@@ -104,8 +105,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         [UnityTest]
-        public IEnumerator Mouse_Alone_Goes_From_Title_Through_A_Battle_The_Route_And_The_Shop()
+        public IEnumerator Mouse_Alone_Goes_From_Title_Through_A_Battle_The_Route_And_The_Shop([Values(false, true)] bool textMode)
         {
+            // 文字あり版（T359、D-76）でも部品の配置が変わるだけで、同じ操作で同じことが起こる（AC-005）。
+            GameSession.SetTextMode(textMode);
             _waves = ShortWaves;
             // 2階にショップがあるルートにする（行き先のリールでショップを選ぶため）。
             RunController.SeedOverride = RouteTestUtil.SeedWithSecondFloor(RouteNodeKinds.Shop);
@@ -169,8 +172,11 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return MouseAt(cell, false);
             yield return MouseAt(cell, true);
             yield return MouseAt(cell, false);
+            Assert.That(Object.FindAnyObjectByType<UnitPlacementInput>().SelectedUnit, Is.Not.Null,
+                "味方をクリックで選べない（当たった UI: " + HitsAt(cell) + "）");
             yield return Click(bar.Find("Retreat Button"));
-            Assert.That(_battle.Field.Units.Count, Is.EqualTo(0), "クリックと撤退アイコンで撤退できない");
+            Assert.That(_battle.Field.Units.Count, Is.EqualTo(0),
+                "撤退アイコンで撤退できない（当たった UI: " + HitsAt(ScreenOf(bar.Find("Retreat Button"))) + "）");
 
             yield return WaitForWave1ToEnd();
 
@@ -403,6 +409,20 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         private Vector2 CellScreen(GridPoint cell) => _camera.WorldToScreenPoint(_fieldView.CellTopToWorld(cell));
 
         private static Vector2 ScreenOf(Transform target) => RectTransformUtility.WorldToScreenPoint(null, target.position);
+
+        // 失敗したときの手がかり: その点で UI の当たりに掛かる部品の名前（上から順）。
+        private static string HitsAt(Vector2 screen)
+        {
+            var hits = new List<RaycastResult>();
+            EventSystem.current.RaycastAll(new PointerEventData(EventSystem.current) { position = screen }, hits);
+            var names = new List<string>();
+            foreach (var hit in hits)
+            {
+                names.Add(hit.gameObject.name);
+            }
+
+            return names.Count > 0 ? string.Join(", ", names) : "なし";
+        }
 
         // 画面遷移のキーは、効果が出るまで押し続けて離す（TitleFlowTests と同じ）。
         private IEnumerator Press(Key key, System.Func<bool> done)

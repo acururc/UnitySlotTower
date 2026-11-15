@@ -94,11 +94,15 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
             Assert.That(ShownIds(), Is.Empty, "文字なし版でラベルが出ている");
 
-            // 同じフレームで切り替え、ラベル以外の部品が動かないことを確かめる（アニメの影響を受けないように）。
-            var before = Layout();
+            // 同じフレームで切り替え、守る枠（戦闘カメラの Viewport と筐体）が動かないことを確かめる（AC-005、plan 16.13）。
+            // ほかの部品は文字あり版で配置を差し替える（D-76）。
+            var cabinet = Object.FindAnyObjectByType<SlotCabinet>().transform;
+            var camera = GameObject.Find("Battle Camera").GetComponent<Camera>();
+            var before = Layout(cabinet);
+            var viewport = camera.rect;
             GameSession.SetTextMode(true);
-            var after = Layout();
-            AssertSameLayout(before, after);
+            AssertSameLayout(before, Layout(cabinet));
+            Assert.That(camera.rect, Is.EqualTo(viewport), "文字あり版で戦闘カメラの Viewport が変わった");
             yield return null;
 
             var shown = ShownIds();
@@ -262,15 +266,15 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             return ids;
         }
 
-        // ラベル以外の全 UI 部品の画面上の矩形。
-        private static Dictionary<RectTransform, Rect> Layout()
+        // ラベル以外の全 UI 部品の画面上の矩形（within を渡せばその子孫だけ）。
+        private static Dictionary<RectTransform, Rect> Layout(Transform within = null)
         {
             Canvas.ForceUpdateCanvases();
             var corners = new Vector3[4];
             var layout = new Dictionary<RectTransform, Rect>();
             foreach (var rect in Object.FindObjectsByType<RectTransform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
             {
-                if (rect.GetComponentInParent<TextModeLabel>(true) != null)
+                if (rect.GetComponentInParent<TextModeLabel>(true) != null || (within != null && !rect.IsChildOf(within)))
                 {
                     continue;
                 }

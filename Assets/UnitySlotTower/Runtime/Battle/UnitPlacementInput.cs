@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
 using UnityEngine.Serialization;
@@ -40,6 +42,8 @@ namespace UnitySlotTower.Battle
         private InputAction _pause;
         private Vector2 _lastCursorValue;
         private Vector2 _lastPointer;
+        private readonly List<RaycastResult> _uiHits = new List<RaycastResult>();
+        private PointerEventData _uiPointer;
         private bool _ignoreRelease;
 
         private void Awake()
@@ -300,7 +304,7 @@ namespace UnitySlotTower.Battle
 
             // 配置操作中でないときにフィールドをクリックしたら、そのマスの味方を選ぶ（居なければ選びをやめる）。
             if (_press.WasPressedThisFrame() && deployment.Phase == DeployPhase.Idle
-                && battleCamera.pixelRect.Contains(pointer))
+                && IsFieldPress(pointer))
             {
                 SelectedUnit = TryGetCell(pointer, out var clickedCell) ? UnitAt(clickedCell) : null;
             }
@@ -318,7 +322,7 @@ namespace UnitySlotTower.Battle
             // 向き選びでフィールドをクリックしたら、向きを決めて置く。マスの中心付近ならマス選びに戻る。
             // 操作バーなどフィールドの外のクリックは扱わない（ほかの味方の選び直しに使う）。
             if (_press.WasPressedThisFrame() && deployment.Phase == DeployPhase.ChoosingFacing
-                && battleCamera.pixelRect.Contains(pointer))
+                && IsFieldPress(pointer))
             {
                 _ignoreRelease = true;
                 if (TryGetFacing(pointer, out var clicked))
@@ -361,6 +365,30 @@ namespace UnitySlotTower.Battle
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// 戦闘フィールドの上のクリックか。いちばん上の UI の当たりがボタンならボタンの操作として扱う
+        /// （文字あり版では状態の帯のボタンが戦闘フィールドに重なる、plan 16.13）。押した瞬間だけ呼ぶ。
+        /// </summary>
+        private bool IsFieldPress(Vector2 pointer)
+        {
+            if (!battleCamera.pixelRect.Contains(pointer))
+            {
+                return false;
+            }
+
+            var events = EventSystem.current;
+            if (events == null)
+            {
+                return true;
+            }
+
+            _uiPointer ??= new PointerEventData(events);
+            _uiPointer.position = pointer;
+            _uiHits.Clear();
+            events.RaycastAll(_uiPointer, _uiHits);
+            return _uiHits.Count == 0 || _uiHits[0].gameObject.GetComponentInParent<UnityEngine.UI.Selectable>() == null;
         }
 
         private bool TryGetCell(Vector2 screen, out GridPoint cell)
