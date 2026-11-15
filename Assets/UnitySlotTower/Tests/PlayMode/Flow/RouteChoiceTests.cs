@@ -2,6 +2,7 @@ using System.Collections;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
@@ -10,6 +11,7 @@ using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Run;
 using UnitySlotTower.Flow;
 using UnitySlotTower.Slot;
+using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Tests.PlayMode.Flow
 {
@@ -66,6 +68,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         public void TearDown()
         {
             RunController.SeedOverride = null;
+            GameSession.SetTextMode(false);
             Time.timeScale = 1f;
             Application.runInBackground = _runInBackground;
         }
@@ -148,6 +151,69 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         [UnityTest]
+        [Description("T359d (FR-006, D-76): 文字あり版のルート画面。開いたまま切り替えるとマップが新しい枠で作り直され、行き先の札に方向・名前・説明、凡例が出て、札のクリックで進める")]
+        public IEnumerator Text_Mode_Route_Shows_Cards_And_Legend_And_A_Card_Click_Enters_The_Node()
+        {
+            yield return FinishBattle();
+            var state = _run.State;
+            var current = state.Current;
+            var map = (RectTransform)typeof(RouteScreen).GetField("mapArea", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(_screen);
+            var noTextSize = map.rect.size;
+
+            GameSession.SetTextMode(true);
+            // 作り直しは次の Update、古いマスと線の破棄はそのフレームの終わり。
+            yield return null;
+            yield return null;
+            Assert.That(map.rect.size, Is.Not.EqualTo(noTextSize), "文字あり版でマップの枠が変わらない");
+            // 今のマスから行き先への線の長さが、作り直した後のマスの間の距離と合う。
+            var next = current.Next[0];
+            var from = map.Find($"Nodes/Node {current.Floor}-{current.Column} {current.Kind}");
+            var to = map.Find($"Nodes/Node {next.Floor}-{next.Column} {next.Kind}");
+            var line = (RectTransform)map.Find($"Lines/Line {current.Floor}-{current.Column} {next.Floor}-{next.Column}");
+            Assert.That((from != null, to != null, line != null), Is.EqualTo((true, true, true)), "マップのマスか線がない");
+            Assert.That(line.sizeDelta.x, Is.EqualTo(Vector2.Distance(from.localPosition, to.localPosition)).Within(1f),
+                "切り替えた後の線が作り直したマスにつながらない");
+
+            var legend = _screen.transform.Find("Panel/Text Mode Legend");
+            Assert.That(legend != null && legend.GetComponent<CanvasGroup>().alpha > 0.99f, Is.True, "文字あり版で凡例が出ない");
+
+            var names = (TextModeLabel[])Private("directionLabels");
+            var descriptions = (TextModeLabel[])Private("directionDescriptions");
+            for (var reel = 0; reel < 3; reel++)
+            {
+                var target = current.NextOnReel(reel);
+                Assert.That((names[reel].IsShown, descriptions[reel].IsShown), Is.EqualTo((target != null, target != null)),
+                    $"リール {reel} の札の名前・説明の表示が行き先と合わない");
+                if (target != null)
+                {
+                    TextModeLabel.TryResolve(TableOf(names[reel]), "node_" + target.Kind + "_desc", out var expected);
+                    Assert.That(descriptions[reel].Text.text, Is.EqualTo(expected), $"リール {reel} の札の説明が行き先と合わない");
+                }
+            }
+
+            // 札の真ん中のクリックが札に当たる（凡例や他の部品に隠れない）。
+            var reelToPick = RouteTestUtil.PreferredReel(current);
+            var card = _screen.ArrowButtons[reelToPick].transform;
+            var hits = new System.Collections.Generic.List<RaycastResult>();
+            EventSystem.current.RaycastAll(new PointerEventData(EventSystem.current)
+                { position = RectTransformUtility.WorldToScreenPoint(null, card.position) }, hits);
+            Assert.That(hits.Count > 0 && hits[0].gameObject.transform.IsChildOf(card), Is.True,
+                "文字あり版の札の真ん中のクリックが札に当たらない（いちばん上: " + (hits.Count > 0 ? hits[0].gameObject.name : "なし") + "）");
+
+            var chosen = current.NextOnReel(reelToPick);
+            _cabinet.LeverRect.GetComponent<Button>().onClick.Invoke();
+            _screen.ArrowButtons[reelToPick].onClick.Invoke();
+            var limit = Time.realtimeSinceStartup + 5f;
+            while (state.Current != chosen && Time.realtimeSinceStartup < limit)
+            {
+                yield return null;
+            }
+
+            Assert.That(state.Current, Is.EqualTo(chosen), "文字あり版で札のクリックの方向のマスに進まない");
+        }
+
+        [UnityTest]
         public IEnumerator Reel_Without_A_Destination_Does_Not_Stop()
         {
             // 筐体のモードだけを確かめる（RunController は自分が始めたルート選びにしか反応しない）。
@@ -205,6 +271,12 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(_run.IsChoosingRoute, Is.True, "最初の戦闘マスを終えてもルート選びにならない");
             yield return null;
         }
+
+        private object Private(string name) =>
+            typeof(RouteScreen).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(_screen);
+
+        private static TextAsset TableOf(TextModeLabel label) =>
+            (TextAsset)typeof(TextModeLabel).GetField("table", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(label);
 
         private Button PickButton(int reel) => ((Button[])Field("routeReelButtons"))[reel];
 

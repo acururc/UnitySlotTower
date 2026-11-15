@@ -30,6 +30,17 @@ node_elite,強敵
 node_shop,ショップ
 node_rest,休憩所
 node_boss,ボス
+node_first_desc,一本道の戦闘
+node_battle_desc,敵と2ウェーブ
+node_elite_desc,中ボスで高報酬
+node_shop_desc,品を買う・両替
+node_rest_desc,ライフを回復
+node_boss_desc,倒せばクリア
+route_dir_left,左上へ
+route_dir_center,真上へ
+route_dir_right,右上へ
+route_legend,マスの種類
+route_gauge,スキルゲージ
 rest_title,休憩所
 rest_healed,ライフが回復した
 shop_title,ショップ

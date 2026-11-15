@@ -45,7 +45,7 @@ namespace UnitySlotTower.Editor.Automation
             {
                 if (result.TestStatus == TestStatus.Failed)
                 {
-                    Debug.LogError($"[ScreenCapture] {result.FullName}: {result.Message}");
+                    Debug.LogError($"[ScreenCapture] {result.FullName}: {result.Message}\n{result.StackTrace}");
                 }
             }
         }

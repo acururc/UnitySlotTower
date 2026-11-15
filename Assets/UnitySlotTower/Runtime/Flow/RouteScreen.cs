@@ -39,6 +39,8 @@ namespace UnitySlotTower.Flow
         [SerializeField] private RectTransform[] arrowTargets = new RectTransform[3];
         [Tooltip("文字あり版で行き先の種類を出すラベル（左・中・右、FR-006）。")]
         [SerializeField] private TextModeLabel[] directionLabels = new TextModeLabel[3];
+        [Tooltip("文字あり版で行き先の短い説明を出すラベル（左・中・右、T359d）。")]
+        [SerializeField] private TextModeLabel[] directionDescriptions = new TextModeLabel[3];
 
         [Header("Look")]
         [SerializeField] private Color ringColor = new Color(1f, 0.85f, 0.2f);
@@ -61,6 +63,8 @@ namespace UnitySlotTower.Flow
         private readonly List<RectTransform> _pulsing = new List<RectTransform>();
         private readonly int[] _shownGauges = new int[ColorCount];
         private RouteMap _builtFor;
+        private Vector2 _builtSize;
+        private IReadOnlyList<RouteNode> _visited;
         private RunState _state;
         private int _shownLife = -1;
         private int _shownMoney = -1;
@@ -104,11 +108,13 @@ namespace UnitySlotTower.Flow
         {
             _state = state ?? throw new ArgumentNullException(nameof(state));
             panel.SetActive(true);
-            if (_builtFor != state.Route)
+            // マップの枠の大きさは文字あり版で変わる（T359d）。線とマスの大きさは作った時の大きさで決まるので作り直す。
+            if (_builtFor != state.Route || mapArea.rect.size != _builtSize)
             {
                 Build(state.Route);
             }
 
+            _visited = visited;
             Refresh(visited);
             RefreshStatus(true);
         }
@@ -117,6 +123,7 @@ namespace UnitySlotTower.Flow
         {
             panel.SetActive(false);
             _pulsing.Clear();
+            _visited = null;
         }
 
         /// <summary>そのマスが行き先として光っているか（テスト用）。</summary>
@@ -127,6 +134,13 @@ namespace UnitySlotTower.Flow
             if (!IsOpen || _state == null)
             {
                 return;
+            }
+
+            // 開いたまま文字あり／なしが切り替わった。
+            if (mapArea.rect.size != _builtSize)
+            {
+                Build(_state.Route);
+                Refresh(_visited);
             }
 
             // 一時停止中（timeScale 0）でも光らせる。
@@ -151,6 +165,7 @@ namespace UnitySlotTower.Flow
             _builtFor = route;
 
             var size = mapArea.rect.size;
+            _builtSize = size;
             var cell = Mathf.Min(size.x / route.Columns, size.y / route.Floors) * nodeFill;
             var lines = RouteNodeIcons.CreateRect("Lines", mapArea, Vector2.zero, Vector2.one);
             var nodes = RouteNodeIcons.CreateRect("Nodes", mapArea, Vector2.zero, Vector2.one);
@@ -238,17 +253,8 @@ namespace UnitySlotTower.Flow
                     arrowGroups[reel].alpha = target != null ? 1f : 0.25f;
                 }
 
-                if (reel < directionLabels.Length && directionLabels[reel] != null)
-                {
-                    if (target != null)
-                    {
-                        directionLabels[reel].SetIds("node_" + target.Kind);
-                    }
-                    else
-                    {
-                        directionLabels[reel].SetIds();
-                    }
-                }
+                SetLabel(directionLabels, reel, target != null ? "node_" + target.Kind : null);
+                SetLabel(directionDescriptions, reel, target != null ? "node_" + target.Kind + "_desc" : null);
 
                 var frame = arrowTargets[reel];
                 if (frame == null)
@@ -311,6 +317,24 @@ namespace UnitySlotTower.Flow
                     color.a = k < level ? 1f : emptyDotAlpha;
                     dot.color = color;
                 }
+            }
+        }
+
+        // id が null なら文言なし（文字あり版でも出さない）。
+        private static void SetLabel(TextModeLabel[] labels, int index, string id)
+        {
+            if (labels == null || index >= labels.Length || labels[index] == null)
+            {
+                return;
+            }
+
+            if (id != null)
+            {
+                labels[index].SetIds(id);
+            }
+            else
+            {
+                labels[index].SetIds();
             }
         }
 
