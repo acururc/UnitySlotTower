@@ -6,7 +6,7 @@
 
 - 対象: [`spec.md`](../../specs/001-slot-tower-defense/spec.md)（D-76・FR-006・AC-005）、[`plan.md`](../../specs/001-slot-tower-defense/plan.md) 16.13（方式・文字の最小 36・画面ごとの方針）、[`tasks.md`](../../specs/001-slot-tower-defense/tasks.md) の T359a〜T359g（T359a の結果欄に作った物の詳細）。
 - 承認: 2026-11-15 ユーザーが spec 全体（D-01〜D-76、D-76 の「Claude 提案」を含む）を明示承認（sha256 2b639e0feca9）。plan 16.13 の画面ごとの方針は Claude の仮置き（T355 でユーザーに見てもらう）。
-- 未回答: T357 の戦闘カメラの角度（仮に 55°、比較画像 `Artifacts/Automation/Editor/t357-pitch{65,55,50,45}.png`）をユーザーに聞いたが、回答は D-76 の承認だけだった。55° のまま進め、次の報告でもう一度聞く。
+- T357: 戦闘カメラの角度 55° を 2026-11-15 ユーザーが確定（「角度いいよ」）。
 - ブランチ: `feature/001-t402-result`（main に直接コミットしない）。直下の未追跡ファイル（`change.txt`・デザイナー制作依頼書 pptx・メモ txt）と `ProjectSettings/URPProjectSettings.asset` の1行（Unity が自動で追加）はコミットしない。
 - T359a の要点: `Runtime/Ui/TextModeLayout`（部品に付け、文字なし版と文字あり版の値を両方シリアライズ、Rect・Font・Color・Visibility の旗。隠すのは CanvasGroup。実行中にコードが位置や色を変える部品には付けない）。値は `Editor/Setup/TextModeLayoutSetup`（メニュー `Setup/Build Text Mode Layout (T359)`、`Set(target, parts, edit)` は再実行で同じ結果。`BuildGame`/`BuildTitle` はまだ空）。撮影はメニュー `Tools/UnitySlotTower/Automation/Capture Screens (T359)`（Explicit の `ScreenCaptureTests` を実行し、`Artifacts/Automation/Editor/t359/<日時>/{notext|text}-<画面>.png` を16枚。待つ目安は約1分）。作り直し前は `t359/before/`。
 - 次の一手（T359b）: Game シーンの操作バー・HUD の部品名を確かめ（`Editor/Setup/OperationBarSetup.cs`・`TextModeSetup.cs` の AddGameLabels）、`BuildGame` に文字あり版の配置を書く → Game シーンを開いてメニューを実行 → 撮影 → `TextModeTests.Game_Bar_Cabinet_Guide_And_Help_...` の「切り替えで部品が動かない」確認を新しい方式に直す（文字なし版を変えないことは `Switching_Back_...` と EditMode の `Layouts_In_Scenes_...` が守る）。T359b〜f では文言を足したら先に `Setup/Create Text Mode Font (T352)`。
