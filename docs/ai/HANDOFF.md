@@ -2,18 +2,18 @@
 
 ## 現在の作業
 
-更新: 2026-11-15 Asia/Tokyo / 状態: T354（掃除と文書）を完了・コミット。次は T357（戦闘カメラの角度）。
+更新: 2026-11-15 Asia/Tokyo / 状態: T357・T358 を完了・コミット。T359 は spec の下書き（D-76）まで済み、**ユーザーの再承認待ち**。
 
-- 対象: [`spec.md`](../../specs/001-slot-tower-defense/spec.md)（D-59〜D-75 と【2026-11-14/15 変更/廃止】の項目）、[`plan.md`](../../specs/001-slot-tower-defense/plan.md)（2〜8章・10章は T354 で現行仕様に書き直し済み、16章は移行の記録と詳細）、[`tasks.md`](../../specs/001-slot-tower-defense/tasks.md) の M3U。T340〜T354 の実装の要点は tasks.md の各結果欄にある（必要なタスクの行だけ読む）。
-- 承認: 2026-11-15 ユーザーが D-75 を含む spec 全体を明示承認（sha256 fca9a9faaa1d、「Claude 提案」部分を含む）。spec を変えたら再承認。T352 で変えたのは plan 16.9 のフォントの1行（動的→静的）だけで spec は未変更。
+- 対象: [`spec.md`](../../specs/001-slot-tower-defense/spec.md)（D-59〜D-76）、[`plan.md`](../../specs/001-slot-tower-defense/plan.md)（2〜8章・10章が現行、16章は詳細）、[`tasks.md`](../../specs/001-slot-tower-defense/tasks.md) の M3U。各タスクの要点は tasks.md の結果欄（必要な行だけ読む）。
+- 承認: 前回 2026-11-15 に spec 全体を明示承認（sha256 fca9a9faaa1d）。その後 D-76（文字あり版の作り直し）を追加し D-74・FR-006・AC-005 を書き換えたので**現在は未承認**（状態・承認行も「承認待ち／未承認」に変更済み、下書き後の sha256 先頭 2b639e0feca9 は状態行の修正前の値なので承認時に取り直す）。「Claude 提案」部分（文字なし版は変えない・数字に名前・アイコンに名前と短い説明・文字の最小サイズは plan で決める）の確認を含めて、ユーザーに D-76・FR-006・AC-005 を見せて承認を得る。承認前に T359 を実装しない。
 - ブランチ: `feature/001-t402-result`（main に直接コミットしない）。直下の未追跡ファイル（`change.txt`・デザイナー制作依頼書 pptx・メモ txt）はユーザーのもの。触らない。
-- 次の一手: T357（tasks.md の T357 の行）: 戦闘カメラを正面のまま X を下げる。カメラは `Core/Battle/BattleCameraFit`（俯角65°）が戦闘マスごとに置くので、`GameSceneSetup` の Euler だけでなく Fit の俯角を変える。数パターンの画像をユーザーに見せて値を決める。
-- 残りのタスク（2026-11-15 ユーザー要望、未着手）: T357 → T358（ルートが一直線に見える）→ T359（文字あり版の作り直し、spec 変更・再承認が必要）→ T355（通しの手動プレイ）。
-- 文字あり版（T352）: 文言は `Data/Tables/ui_texts.csv`、ラベルは `Setup/Add Text Mode Labels (T352)`（開いている Title／Game シーンに作り直す）、文言の字を足したら先に `Setup/Create Text Mode Font (T352)`（`TextMode SDF.asset` は csv の字だけの静的アセット）。ライセンスは [`docs/ASSET_LICENSES.md`](../ASSET_LICENSES.md)。
-- 未確認・未対応: plan 16章の仮値（抽選表・リールの並び・両替レート・回数固定 first=6・ドロップ量・バー/コインの刻み・バッファー倍率・スキルの値・報酬・ルートの重みと大きさ・ショップの値段・T347 のマップと出現）と T352 の文言（職名・スキルの説明など）は Claude の仮置きでユーザー未確認。plan 16.10 の「ショップは画面自体の絵（矢印のアニメ）」は未作成。説明の新しい題目（スキル・ルート）の文字なし版の Editor 画像は未撮影。
-- 検証（T354 後）: EditMode 539/539、PlayMode 54/54、Editor 画像は T352 のもの `Artifacts/Automation/Editor/t352-*.png`（両方の版。T353・T354 は見た目を変えていない）、ハーネス 7/8（失敗はユーザーの未追跡 `change.txt` の行末空白だけ。触らない）。テスト手順・code execute の制約・撮影の注意・PlayMode テストの書き方は [`UNITY_AUTOMATION.md`](UNITY_AUTOMATION.md) の Tests 節（PowerShell の変数は大文字小文字を区別しないので `$s` と `$S` を併用しない）。
-- Unity 接続: 停止済み（8080 閉を確認、T354 後）。Editor は開いたまま（シーンは未変更）。テストの前に `EditorApplication.isPlaying` を確かめる（Play 中だと「tests did not start within timeout」になる）。
-- 既知の問題: プレイヤービルドで戦闘マスがマゼンタ（シェーダー欠落、未調査）。Shift+数字は SelectUnit と Upgrade の両方に反応しうるので Shift 中は SelectUnit を無視、Esc は配置操作中かで Cancel/Pause を振り分け（plan 3章）。
+- 今回の結果: T357 = 戦闘カメラの俯角 65→55°（`BattleCameraFit.DefaultPitchDegrees`）。比較画像 `Artifacts/Automation/Editor/t357-pitch{65,55,50,45}.png` から、ユーザー離席中に Claude が仮に 55° を選んだ（変えるなら定数とテスト1行）。T358 = `route_rules.csv` の columns 4→7、次の列は斜め2:まっすぐ1、`RouteNode.DisplayOffsetX/Y`（±0.2）で `RouteScreen` のマスをずらす。画像 `t358-route-3/4.png`。
+- 次の一手: ① ユーザーに T357 の角度（55° でよいか）と D-76 の承認を確認 → ② 承認後 T359 の plan（文字あり版の画面構成・切り替え方式・文字の最小サイズ）とタスク分け → 実装 → ③ T355（ユーザーの通しプレイ）。
+- 文字あり版（T352 の現状）: 文言は `Data/Tables/ui_texts.csv`、ラベルは `Setup/Add Text Mode Labels (T352)`、字を足したら先に `Setup/Create Text Mode Font (T352)`（静的 `TextMode SDF.asset`）。ライセンスは [`docs/ASSET_LICENSES.md`](../ASSET_LICENSES.md)。
+- 未確認・未対応: plan 16章の仮値と T352 の文言は Claude の仮置きでユーザー未確認（columns 7 も仮値）。plan 16.10 のショップの絵（矢印のアニメ）は未作成。説明の新しい題目（スキル・ルート）の文字なし版の Editor 画像は未撮影。Game.unity に保存されたカメラは 65° のまま（実行時に Fit が置き直すので影響なし）。
+- 検証（T358 後）: EditMode 544/544、PlayMode 54/54、ハーネス 7/8（失敗はユーザーの未追跡 `change.txt` の行末空白だけ）。テスト手順・code execute の制約・撮影の注意は [`UNITY_AUTOMATION.md`](UNITY_AUTOMATION.md) の Tests 節。code execute は引用符の都合で `-f ファイル` で渡すと確実。
+- Unity 接続: 停止済み（8080 閉を確認）。Editor は開いたまま（Game シーン、未変更）。
+- 既知の問題: プレイヤービルドで戦闘マスがマゼンタ（シェーダー欠落、未調査）。Shift+数字と Esc の振り分けは plan 3章。
 
 ## 再開のしかた
 
