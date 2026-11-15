@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
@@ -12,9 +13,11 @@ using UnitySlotTower.Slot;
 namespace UnitySlotTower.Flow
 {
     /// <summary>
-    /// 一時停止中の説明（T404、FR-012、plan 8章）。一時停止中だけ「?」ボタンを出し、押すと早見表を開く。
-    /// 上半分はスロット: 現在のハズレ率、図柄ごとの1ゲームあたりの確率と効果（払い出し×ゲーム数・倍率と秒数・回復の%・払い出し）。
-    /// 下半分は味方: 本体の色、右向きの範囲図、現在の強化段階での HP・攻撃（回復）・防御・攻撃間隔・ブロック数・コスト・待ち時間。
+    /// 一時停止中の説明（T404・T351、FR-012、plan 16.10）。一時停止中だけ「?」ボタンを出し、押すと早見表を開く。
+    /// 上半分はスロット: 現在の設定の20パターンの内訳（ハズレと図柄ごとの %＝個数×5）と効果（色7 → その職とゲージ+1、
+    /// バー → 攻撃力 +10%〔上限〕、コイン → 所持金の倍率〔上限〕。値は slot_rules.csv）。
+    /// 下半分は味方: 本体の色とスキルの色、右向きの範囲図、現在の強化段階での HP・攻撃（バッファーは倍率）・防御・攻撃間隔・
+    /// ブロック数・コスト・待ち時間。
     /// キーボードは ?（/）キーで開閉（一時停止していなければ一時停止して開く）。◀ で閉じる。再開すると閉じる。
     /// </summary>
     public sealed class HelpScreen : MonoBehaviour
@@ -31,8 +34,13 @@ namespace UnitySlotTower.Flow
             public Color bodyColor = Color.white;
             [Tooltip("攻撃の味方で出すアイコン。")]
             public GameObject attackIcon;
-            [Tooltip("回復の味方で攻撃アイコンの代わりに出すアイコン。")]
-            public GameObject healIcon;
+            [Tooltip("バッファーで攻撃アイコンの代わりに出すアイコン（数字は倍率）。")]
+            [FormerlySerializedAs("healIcon")]
+            public GameObject buffIcon;
+            [Tooltip("スキルの印（ゲージの点）。スキルのない職では隠す。")]
+            public GameObject skillMark;
+            [Tooltip("スキルの印の点。スキルの色に塗る。")]
+            public Image[] skillDots = Array.Empty<Image>();
             public TMP_Text hpText;
             public TMP_Text atkText;
             public TMP_Text defText;
@@ -51,12 +59,17 @@ namespace UnitySlotTower.Flow
         [SerializeField] private GameObject panel;
         [SerializeField] private Button closeButton;
         [SerializeField] private TMP_Text missText;
-        [Tooltip("図柄ごとの1ゲームあたりの確率（SlotSymbol の順）。")]
+        [Tooltip("図柄ごとの20パターン中の割合（SlotSymbol の順）。")]
         [SerializeField] private TMP_Text[] chanceTexts = new TMP_Text[SlotSymbols.Count];
         [Tooltip("図柄ごとの効果の数値（SlotSymbol の順）。")]
         [SerializeField] private TMP_Text[] effectTexts = new TMP_Text[SlotSymbols.Count];
-        [Tooltip("効果の秒数（SlotSymbol の順。秒数のない図柄は空）。")]
-        [SerializeField] private TMP_Text[] secondsTexts = new TMP_Text[SlotSymbols.Count];
+        [Tooltip("効果の上限（SlotSymbol の順。上限のない図柄は null）。")]
+        [FormerlySerializedAs("secondsTexts")]
+        [SerializeField] private TMP_Text[] capTexts = new TMP_Text[SlotSymbols.Count];
+        [Tooltip("色7の行の、その色のスキルを持つ職の札（SlotSymbol の順。色7以外は null）。職の本体の色に塗る。")]
+        [SerializeField] private Image[] jobCards = new Image[SlotSymbols.Count];
+        [Tooltip("色7（赤・青・緑・黄）の色。スキルの印に使う。")]
+        [SerializeField] private Color[] sevenColors = new Color[4];
         [Tooltip("units.csv の並び。")]
         [SerializeField] private UnitRow[] unitRows = Array.Empty<UnitRow>();
         [SerializeField] private Color rangeCellColor = new Color(1f, 0.6f, 0.15f);
@@ -144,10 +157,10 @@ namespace UnitySlotTower.Flow
             Open();
         }
 
-        // 開くたびに今の値で書き直す（難易度・リール配列・強化段階は一時停止の前に変わっている）。
+        // 開くたびに今の値で書き直す（設定・強化段階は一時停止の前に変わっている）。
         private void Refresh()
         {
-            // T341 のつなぎ: 20パターンの中の割合だけを出す。効果の欄と上半分の作り直しは T351。
+            // 20パターンの内訳（plan 16.10）。% は個数×(100/合計)。
             var patterns = slotCabinet.Patterns;
             var counts = new int[SlotSymbols.Count + 1];
             foreach (var outcome in patterns)
@@ -155,20 +168,13 @@ namespace UnitySlotTower.Flow
                 counts[outcome.HasValue ? (int)outcome.Value : SlotSymbols.Count]++;
             }
 
-            missText.SetText("{0:1}%", counts[SlotSymbols.Count] * 100f / patterns.Count);
+            missText.SetText("{0}%", Percent(counts[SlotSymbols.Count], patterns.Count));
             for (var s = 0; s < SlotSymbols.Count; s++)
             {
-                chanceTexts[s].SetText("{0:1}%", counts[s] * 100f / patterns.Count);
-                if (effectTexts[s] != null)
-                {
-                    effectTexts[s].SetText(string.Empty);
-                }
-
-                if (secondsTexts[s] != null)
-                {
-                    secondsTexts[s].SetText(string.Empty);
-                }
+                chanceTexts[s].SetText("{0}%", Percent(counts[s], patterns.Count));
             }
+
+            RefreshEffects();
 
             var units = battle.Units.All;
             for (var i = 0; i < unitRows.Length && i < units.Count; i++)
@@ -176,12 +182,34 @@ namespace UnitySlotTower.Flow
                 var row = unitRows[i];
                 var unit = units[i];
                 var level = battle.Upgrades.Current(unit.Id);
-                // バッファーは攻撃しないので攻撃の絵を隠し、旧ヒーラーの欄の絵を仮に出す（説明の作り直しは T351）。
+                // バッファーは攻撃しないので、攻撃の代わりに倍率を出す（倍率は強化で変わらない）。
                 var buffs = unit.Role == UnitRole.Buff;
                 row.attackIcon.SetActive(!buffs);
-                row.healIcon.SetActive(buffs);
+                row.buffIcon.SetActive(buffs);
                 row.hpText.SetText("{0}", level.MaxHpOf(unit));
-                row.atkText.SetText("{0}", level.AtkOf(unit));
+                if (buffs)
+                {
+                    row.atkText.SetText("×{0:1}", (float)unit.BuffRate);
+                }
+                else
+                {
+                    row.atkText.SetText("{0}", level.AtkOf(unit));
+                }
+
+                var skillColor = default(SlotSymbol);
+                var hasSkill = battle.Skills != null && battle.Skills.TryGetColor(unit.Id, out skillColor);
+                if (row.skillMark != null)
+                {
+                    row.skillMark.SetActive(hasSkill);
+                    if (hasSkill)
+                    {
+                        for (var d = 0; d < row.skillDots.Length; d++)
+                        {
+                            row.skillDots[d].color = SevenColor(skillColor);
+                        }
+                    }
+                }
+
                 row.defText.SetText("{0}", level.DefOf(unit));
                 row.intervalText.SetText("{0:1}", (float)unit.AttackInterval);
                 row.blockText.SetText("{0}", unit.Block);
@@ -190,6 +218,65 @@ namespace UnitySlotTower.Flow
             }
 
             BuildGridsOnce();
+        }
+
+        private static int Percent(int count, int total) =>
+            total > 0 ? (int)Math.Round(count * 100.0 / total, MidpointRounding.AwayFromZero) : 0;
+
+        private Color SevenColor(SlotSymbol color) =>
+            (int)color < sevenColors.Length ? sevenColors[(int)color] : Color.white;
+
+        // 効果の欄（plan 16.4）: 色7 → その職の札とゲージ+1、バー → 攻撃力の上がり幅と上限、コイン → 所持金の倍率と上限。
+        private void RefreshEffects()
+        {
+            var rules = slotCabinet.Rules;
+            var units = battle.Units.All;
+            for (var s = 0; s < SlotSymbols.Count; s++)
+            {
+                var symbol = (SlotSymbol)s;
+                var effect = effectTexts[s];
+                var cap = s < capTexts.Length ? capTexts[s] : null;
+                if (effect == null)
+                {
+                    continue;
+                }
+
+                switch (symbol)
+                {
+                    case SlotSymbol.Bar:
+                        effect.SetText("+{0}%", (int)Math.Round(rules.BarStep * 100, MidpointRounding.AwayFromZero));
+                        if (cap != null)
+                        {
+                            cap.SetText("+{0}%", (int)Math.Round(rules.BarCap * 100, MidpointRounding.AwayFromZero));
+                        }
+
+                        break;
+                    case SlotSymbol.Coin:
+                        effect.SetText("×{0:1}", (float)(1 + rules.CoinStep));
+                        if (cap != null)
+                        {
+                            cap.SetText("×{0:1}", (float)rules.CoinCap);
+                        }
+
+                        break;
+                    default:
+                        effect.SetText("+1");
+                        var card = s < jobCards.Length ? jobCards[s] : null;
+                        if (card != null && battle.Skills != null)
+                        {
+                            var unitId = battle.Skills.For(symbol).UnitId;
+                            for (var i = 0; i < units.Count && i < unitRows.Length; i++)
+                            {
+                                if (units[i].Id == unitId)
+                                {
+                                    card.color = unitRows[i].bodyColor;
+                                }
+                            }
+                        }
+
+                        break;
+                }
+            }
         }
 
         // 範囲図: 全員の範囲（右向き）と本人のマスが収まる同じ大きさの格子に、範囲のマスを塗る。本人のマスは本体の色に ▶ で向きを示す。

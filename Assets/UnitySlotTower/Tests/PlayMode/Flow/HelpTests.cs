@@ -12,7 +12,6 @@ using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Core.Ui;
 using UnitySlotTower.Flow;
-using UnitySlotTower.Tests.PlayMode.Battle;
 
 namespace UnitySlotTower.Tests.PlayMode.Flow
 {
@@ -81,7 +80,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
 
             Assert.That(battle != null && battle.Run != null, Is.True, "Game シーンの進行が作られない");
-            yield return ReelCustomTestUtil.CloseWithDefault(battle);
+            yield return null;
             var help = Object.FindAnyObjectByType<HelpScreen>(FindObjectsInactive.Include);
             Assert.That(help, Is.Not.Null, "説明画面がシーンにない");
 
@@ -97,11 +96,31 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(help.OpenButton.gameObject.activeInHierarchy, Is.True, "一時停止中に「?」が出ない");
             help.OpenButton.onClick.Invoke();
             Assert.That(help.IsOpen, Is.True, "「?」で開かない");
-            // T341 のつなぎの表示（20パターン中の割合）。上半分の作り直しは T351。
-            Assert.That(Text(help, "missText"), Is.EqualTo("30.0%"), "設定3のハズレ（6/20）");
+            // 上半分: 20パターンの内訳（個数×5%）と効果（plan 16.10、値は slot_rules.csv）。
+            Assert.That(Text(help, "missText"), Is.EqualTo("30%"), "設定3のハズレ（6/20）");
             var chances = (TMP_Text[])Field(help, "chanceTexts");
-            Assert.That(chances[(int)SlotSymbol.Red7].text, Is.EqualTo("15.0%"), "設定3の赤7（3/20）");
-            Assert.That(chances[(int)SlotSymbol.Coin].text, Is.EqualTo("5.0%"), "設定3のコイン（1/20）");
+            Assert.That(chances[(int)SlotSymbol.Red7].text, Is.EqualTo("15%"), "設定3の赤7（3/20）");
+            Assert.That(chances[(int)SlotSymbol.Coin].text, Is.EqualTo("5%"), "設定3のコイン（1/20）");
+            var effects = (TMP_Text[])Field(help, "effectTexts");
+            var caps = (TMP_Text[])Field(help, "capTexts");
+            Assert.That((effects[(int)SlotSymbol.Bar].text, caps[(int)SlotSymbol.Bar].text), Is.EqualTo(("+10%", "+50%")),
+                "バー: 攻撃力 +10%（上限 +50%）");
+            Assert.That((effects[(int)SlotSymbol.Coin].text, caps[(int)SlotSymbol.Coin].text), Is.EqualTo(("×1.1", "×1.5")),
+                "コイン: 所持金 ×1.1（上限 ×1.5）");
+            Assert.That(effects[(int)SlotSymbol.Red7].text, Is.EqualTo("+1"), "色7: ゲージ+1");
+            var rows = (HelpScreen.UnitRow[])Field(help, "unitRows");
+            var jobs = (UnityEngine.UI.Image[])Field(help, "jobCards");
+            Assert.That(jobs[(int)SlotSymbol.Red7].color, Is.EqualTo(rows[1].bodyColor), "赤7 の札は剣士（操作バーの2番目）の色");
+
+            // 下半分: バッファーは攻撃の代わりに倍率、全員にスキルの印。
+            var buffer = rows[3];
+            Assert.That((buffer.attackIcon.activeSelf, buffer.buffIcon.activeSelf, buffer.atkText.text),
+                Is.EqualTo((false, true, "×1.3")), "バッファーの行に倍率が出ない");
+            Assert.That((rows[0].attackIcon.activeSelf, rows[0].buffIcon.activeSelf), Is.EqualTo((true, false)));
+            foreach (var row in rows)
+            {
+                Assert.That(row.skillMark.activeSelf, Is.True, "スキルの印がない");
+            }
             foreach (var text in help.GetComponentsInChildren<TMP_Text>(true))
             {
                 Assert.That(NumericText.FindInvalid(text.text), Is.EqualTo(-1), $"{text.name} に許可されない文字: {text.text}");

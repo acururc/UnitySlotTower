@@ -154,6 +154,9 @@ namespace UnitySlotTower.Battle
         /// <summary>説明の撤退の題目を表示中は true（D-56）。このあいだの撤退は召喚コストの全額を返す。</summary>
         public bool FullRefundRetreat { get; set; }
 
+        /// <summary>このシーン（1回のプレイ）でスキルを発動した回数（説明の進行に使う）。</summary>
+        public int SkillActivations { get; private set; }
+
         /// <summary>準備中なら戦闘を始める（▶、plan 4章）。一時停止中は受け付けない。</summary>
         public void StartWave()
         {
@@ -174,7 +177,13 @@ namespace UnitySlotTower.Battle
                 return false;
             }
 
-            return Run.TryActivateSkill(Skills.For(color)) == SkillResult.Activated;
+            if (Run.TryActivateSkill(Skills.For(color)) != SkillResult.Activated)
+            {
+                return false;
+            }
+
+            SkillActivations++;
+            return true;
         }
 
         private void UpdateSlotLock()

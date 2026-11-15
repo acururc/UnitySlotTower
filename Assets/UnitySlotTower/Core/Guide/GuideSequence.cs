@@ -2,43 +2,55 @@ using UnitySlotTower.Core.Battle;
 
 namespace UnitySlotTower.Core.Guide
 {
-    /// <summary>文字なし説明（FR-004、T403）の題目。1回のプレイでそれぞれ一度だけ説明する。</summary>
+    /// <summary>文字なし説明（FR-004、plan 16.10）の題目。1回のプレイでそれぞれ一度だけ説明する。</summary>
     public enum GuideTopic
     {
-        ReelCustom,
         /// <summary>召喚・配置・向き（最初の1体を置くまで）。</summary>
         Deploy,
+        /// <summary>レバーを引いてリールが止まるまで。</summary>
         Slot,
-        Bonus,
+        /// <summary>初めてゲージが満タンになり発動できるとき、そのゲージを押すまで。</summary>
+        Skill,
         Upgrade,
         Retreat,
+        /// <summary>初めてルート画面に戻ったとき、行き先を決めるまで。</summary>
+        Route,
     }
 
     /// <summary>いま見せる説明（対象と手の動き）。</summary>
     public enum GuideHint
     {
         None,
-        ReelCustom,
         Summon,
         Place,
         Facing,
         Lever,
-        Stop,
-        Bonus,
+        /// <summary>リールが自動で止まるまでリール窓を見せる。</summary>
+        Spinning,
+        Skill,
         Upgrade,
         SelectUnit,
         Retreat,
+        /// <summary>ルート選びでレバーを引く。</summary>
+        RouteLever,
+        /// <summary>回っているリールのうち行き先のあるものを押す。</summary>
+        RoutePick,
     }
 
     /// <summary>説明の進行を決めるための、そのフレームのゲームの様子。</summary>
     public struct GuideObservation
     {
-        public bool Customizing;
         public bool Paused;
         public bool Finished;
+        /// <summary>戦闘以外のマスの画面（ショップ・回復）を開いている。説明は出さない。</summary>
+        public bool OnScreen;
+        /// <summary>ルート画面で行き先を選んでいる。</summary>
+        public bool ChoosingRoute;
+        /// <summary>ルート選びのリールが回っている。</summary>
+        public bool RouteSpinning;
         /// <summary>ウェーブの準備中（▶ の前）。</summary>
         public bool Preparing;
-        /// <summary>ステージ内のウェーブ番号（1 から）。</summary>
+        /// <summary>戦闘マス内のウェーブ番号（1 から）。</summary>
         public int Wave;
         public DeployPhase Deploy;
         /// <summary>操作バーの先頭の味方をいま召喚できる。</summary>
@@ -49,9 +61,12 @@ namespace UnitySlotTower.Core.Guide
         public bool SlotSpinning;
         /// <summary>このプレイでリールを回した回数。</summary>
         public int SpinCount;
-        /// <summary>レバーを引ける（コインが足りる）。</summary>
+        /// <summary>レバーを引ける（コインか回数固定が足りる）。</summary>
         public bool CanLever;
-        public bool BonusActive;
+        /// <summary>ゲージが満タンで、いま発動できる職の操作バーの位置（0 始まり）。なければ -1。</summary>
+        public int SkillSlot;
+        /// <summary>このプレイでスキルを発動した回数。</summary>
+        public int SkillActivations;
         /// <summary>配置中の味方のうち、いま強化できる種類の操作バーの位置（0 始まり）。なければ -1。</summary>
         public int UpgradeSlot;
         /// <summary>全種類の強化段階の合計（強化したかを見る）。</summary>
@@ -59,10 +74,11 @@ namespace UnitySlotTower.Core.Guide
     }
 
     /// <summary>
-    /// 文字なし説明の進行（FR-004、T403、plan 8章）。毎フレーム様子を受け取り、見せる説明を返す。
+    /// 文字なし説明の進行（FR-004、plan 16.10）。毎フレーム様子を受け取り、見せる説明を返す。
     /// 各題目は、その操作を初めて使う場面で一度だけ出し、示した操作を実際に行うと終わる。説明中は戦闘の時間を止める
     /// （<see cref="HoldsBattle"/>）。示した操作ができなくなったら（コイン不足など）終えずに引っ込め、また条件がそろえば出す。
-    /// 一時停止中は隠すだけで進めない。ゲームを読み込み直す（リトライ）と最初から（ユーザー決定: 毎プレイ）。
+    /// 一時停止中・ショップなどの画面中は隠すだけで進めない。ルート選びのあいだは戦闘の題目を出さない。
+    /// ゲームを読み込み直す（リトライ）と最初から（ユーザー決定: 毎プレイ）。
     /// </summary>
     public sealed class GuideSequence
     {
@@ -73,7 +89,7 @@ namespace UnitySlotTower.Core.Guide
         /// <summary>最後の <see cref="Update"/> で決めた説明。</summary>
         public GuideHint Current { get; private set; }
 
-        /// <summary>強化の説明で示す操作バーの位置（0 始まり）。</summary>
+        /// <summary>スキル・強化の説明で示す操作バーの位置（0 始まり）。</summary>
         public int TargetSlot { get; private set; } = -1;
 
         /// <summary>説明を見せているあいだは戦闘の時間を止める（スロットは動かす）。</summary>
@@ -110,11 +126,17 @@ namespace UnitySlotTower.Core.Guide
                 }
             }
 
+            // 画面中は新しい題目を始めない（ルートで行き先を決めてショップに入った、は上でルートの完了になる）。
+            if (o.OnScreen)
+            {
+                return Current = GuideHint.None;
+            }
+
             if (_active == null && Next(o) is GuideTopic next)
             {
                 _active = next;
                 _baseline = o;
-                TargetSlot = o.UpgradeSlot;
+                TargetSlot = next == GuideTopic.Skill ? o.SkillSlot : o.UpgradeSlot;
             }
 
             return Current = _active is GuideTopic shown ? HintFor(shown, o) : GuideHint.None;
@@ -124,19 +146,19 @@ namespace UnitySlotTower.Core.Guide
         {
             switch (topic)
             {
-                case GuideTopic.ReelCustom:
-                    return !o.Customizing;
                 case GuideTopic.Deploy:
                     return o.FieldUnits > _baseline.FieldUnits;
                 case GuideTopic.Slot:
                     return o.SpinCount > _baseline.SpinCount && !o.SlotSpinning;
-                case GuideTopic.Bonus:
-                    return o.SpinCount > _baseline.SpinCount;
+                case GuideTopic.Skill:
+                    return o.SkillActivations > _baseline.SkillActivations;
                 case GuideTopic.Upgrade:
                     return o.UpgradeLevels > _baseline.UpgradeLevels;
                 case GuideTopic.Retreat:
                     // ▶ で始めたら撤退しないことを選んだとみなす。
                     return o.FieldUnits < _baseline.FieldUnits || o.FieldUnits == 0 || !o.Preparing;
+                case GuideTopic.Route:
+                    return !o.ChoosingRoute;
                 default:
                     return true;
             }
@@ -144,7 +166,7 @@ namespace UnitySlotTower.Core.Guide
 
         private bool IsWithdrawn(GuideTopic topic, in GuideObservation o)
         {
-            if (o.Customizing && topic != GuideTopic.ReelCustom)
+            if ((o.ChoosingRoute || o.OnScreen) && topic != GuideTopic.Route)
             {
                 return true;
             }
@@ -155,8 +177,8 @@ namespace UnitySlotTower.Core.Guide
                     return o.Deploy == DeployPhase.Idle && !o.CanSummon;
                 case GuideTopic.Slot:
                     return !o.SlotSpinning && !o.CanLever && o.SpinCount == _baseline.SpinCount;
-                case GuideTopic.Bonus:
-                    return !o.SlotSpinning && (!o.CanLever || !o.BonusActive);
+                case GuideTopic.Skill:
+                    return o.SkillSlot < 0;
                 case GuideTopic.Upgrade:
                     return o.UpgradeSlot < 0;
                 default:
@@ -166,9 +188,9 @@ namespace UnitySlotTower.Core.Guide
 
         private GuideTopic? Next(in GuideObservation o)
         {
-            if (o.Customizing)
+            if (o.ChoosingRoute)
             {
-                return IsDone(GuideTopic.ReelCustom) ? (GuideTopic?)null : GuideTopic.ReelCustom;
+                return IsDone(GuideTopic.Route) ? (GuideTopic?)null : GuideTopic.Route;
             }
 
             var idle = o.Deploy == DeployPhase.Idle;
@@ -182,9 +204,9 @@ namespace UnitySlotTower.Core.Guide
                 return GuideTopic.Slot;
             }
 
-            if (!IsDone(GuideTopic.Bonus) && idle && o.BonusActive && !o.SlotSpinning && o.CanLever)
+            if (!IsDone(GuideTopic.Skill) && idle && !o.SlotSpinning && o.SkillSlot >= 0)
             {
-                return GuideTopic.Bonus;
+                return GuideTopic.Skill;
             }
 
             if (!IsDone(GuideTopic.Upgrade) && IsDone(GuideTopic.Slot) && idle && o.UpgradeSlot >= 0)
@@ -204,20 +226,20 @@ namespace UnitySlotTower.Core.Guide
         {
             switch (topic)
             {
-                case GuideTopic.ReelCustom:
-                    return GuideHint.ReelCustom;
                 case GuideTopic.Deploy:
                     return o.Deploy == DeployPhase.ChoosingCell ? GuideHint.Place
                         : o.Deploy == DeployPhase.ChoosingFacing ? GuideHint.Facing
                         : GuideHint.Summon;
                 case GuideTopic.Slot:
-                    return o.SlotSpinning ? GuideHint.Stop : GuideHint.Lever;
-                case GuideTopic.Bonus:
-                    return GuideHint.Bonus;
+                    return o.SlotSpinning ? GuideHint.Spinning : GuideHint.Lever;
+                case GuideTopic.Skill:
+                    return GuideHint.Skill;
                 case GuideTopic.Upgrade:
                     return GuideHint.Upgrade;
                 case GuideTopic.Retreat:
                     return o.UnitSelected ? GuideHint.Retreat : GuideHint.SelectUnit;
+                case GuideTopic.Route:
+                    return o.RouteSpinning ? GuideHint.RoutePick : GuideHint.RouteLever;
                 default:
                     return GuideHint.None;
             }

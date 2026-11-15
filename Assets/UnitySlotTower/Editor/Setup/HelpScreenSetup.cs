@@ -57,10 +57,7 @@ namespace UnitySlotTower.Editor.Setup
                 return;
             }
 
-            _knob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
-            _box = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontPath);
-
+            LoadAssets();
             var screenRect = CreateRect(RootName, root, Vector2.zero, Vector2.one);
             screenRect.SetSiblingIndex(result.transform.GetSiblingIndex());
             var screen = screenRect.gameObject.AddComponent<HelpScreen>();
@@ -109,11 +106,24 @@ namespace UnitySlotTower.Editor.Setup
             Debug.Log("[SlotTower Setup] 説明画面を作成した。");
         }
 
-        // スロット: 1行目はハズレ（暗い枠に赤い×）、続いて6図柄。各行は 図柄・確率・▶・効果。
-        private static void BuildSlot(RectTransform area, SerializedObject serialized)
+        /// <summary>早見表の上半分（スロット）をまとめる親の名前。作り直すときはこれを消す。</summary>
+        internal const string SlotRowsName = "Slot Rows";
+
+        internal static void LoadAssets()
+        {
+            _knob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
+            _box = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontPath);
+        }
+
+        // スロット（T351、plan 16.10）: 1行目はハズレ（暗い枠に赤い×）、続いて6図柄。各行は 図柄・20パターン中の %・▶・効果。
+        // 効果: 色7 → その職の札（色は実行時）＋ゲージの点＋「+1」、バー → 攻撃の印「+10%」と上限の印「+50%」、
+        // コイン → コイン「×1.1」と上限の印「×1.5」。
+        internal static void BuildSlot(RectTransform panel, SerializedObject serialized)
         {
             const float top = 0.92f;
             const float height = 0.05f;
+            var area = CreateRect(SlotRowsName, panel, Vector2.zero, Vector2.one);
             var miss = Row(area, "Miss", top, height);
             var missIcon = CreateImage("Icon", miss, new Vector2(0.06f, 0.08f), new Vector2(0.06f + 0.84f * height * Square, 0.92f),
                 DarkColor, _box);
@@ -126,8 +136,16 @@ namespace UnitySlotTower.Editor.Setup
 
             var chances = serialized.FindProperty("chanceTexts");
             var effects = serialized.FindProperty("effectTexts");
-            var seconds = serialized.FindProperty("secondsTexts");
-            chances.arraySize = effects.arraySize = seconds.arraySize = SlotSymbols.Count;
+            var caps = serialized.FindProperty("capTexts");
+            var jobs = serialized.FindProperty("jobCards");
+            chances.arraySize = effects.arraySize = caps.arraySize = jobs.arraySize = SlotSymbols.Count;
+            var sevens = serialized.FindProperty("sevenColors");
+            sevens.arraySize = SlotSymbolArt.SevenColors.Length;
+            for (var i = 0; i < SlotSymbolArt.SevenColors.Length; i++)
+            {
+                sevens.GetArrayElementAtIndex(i).colorValue = SlotSymbolArt.SevenColors[i];
+            }
+
             for (var s = 0; s < SlotSymbols.Count; s++)
             {
                 var symbol = (SlotSymbol)s;
@@ -139,28 +157,112 @@ namespace UnitySlotTower.Editor.Setup
                 var icon = CreateRect("Symbol", card.rectTransform, new Vector2(0.08f, 0.08f), new Vector2(0.92f, 0.92f));
                 SlotSymbolArt.Create(symbol, icon);
                 chances.GetArrayElementAtIndex(s).objectReferenceValue = Chance(row);
-                var arrow = CreateRect("Arrow", row, new Vector2(0.42f, 0.3f), new Vector2(0.45f, 0.7f));
+                var arrow = CreateRect("Arrow", row, new Vector2(0.36f, 0.3f), new Vector2(0.39f, 0.7f));
                 arrow.gameObject.AddComponent<TriangleGraphic>().color = DimColor;
 
-                // T341 のつなぎ: コインの図柄はコインのアイコンを前に置き、バー（旧の攻撃力アップ）は時計と秒数の欄を持つ。作り直しは T351。
-                var paysCoins = symbol == SlotSymbol.Coin;
-                var valueMin = 0.48f;
-                if (paysCoins)
+                var iconWidth = 0.72f * height * Square;
+                var iconMin = new Vector2(0.43f, 0.14f);
+                var iconMax = new Vector2(0.43f + iconWidth, 0.86f);
+                jobs.GetArrayElementAtIndex(s).objectReferenceValue = null;
+                caps.GetArrayElementAtIndex(s).objectReferenceValue = null;
+                switch (symbol)
                 {
-                    CreateImage("Coin Icon", row, new Vector2(0.48f, 0.18f), new Vector2(0.48f + 0.64f * height * Square, 0.82f),
-                        SlotSymbolArt.CoinColor, _knob);
-                    valueMin = 0.54f;
+                    case SlotSymbol.Bar:
+                        AttackIcon(CreateRect("Attack Icon", row, iconMin, iconMax));
+                        break;
+                    case SlotSymbol.Coin:
+                        CreateImage("Coin Icon", row, iconMin, iconMax, SlotSymbolArt.CoinColor, _knob).preserveAspect = true;
+                        break;
+                    default:
+                    {
+                        // その色のスキルを持つ職の札（色は実行時に職の本体の色）と、その色のゲージの点（1つ目だけ点く）。
+                        var job = CreateImage("Job Card", row, iconMin, iconMax, Color.white, _box);
+                        job.type = Image.Type.Sliced;
+                        jobs.GetArrayElementAtIndex(s).objectReferenceValue = job;
+                        GaugeDots(CreateRect("Gauge", row, new Vector2(0.52f, 0.3f), new Vector2(0.68f, 0.7f)),
+                            SlotSymbolArt.SevenColors[s], 1);
+                        break;
+                    }
                 }
 
-                var value = CreateText("Effect", row, new Vector2(valueMin, 0.05f), new Vector2(0.78f, 0.95f), Color.white);
+                var isSeven = symbol != SlotSymbol.Bar && symbol != SlotSymbol.Coin;
+                var value = CreateText("Effect", row, new Vector2(isSeven ? 0.7f : 0.5f, 0.05f), new Vector2(isSeven ? 0.86f : 0.7f, 0.95f),
+                    Color.white);
                 effects.GetArrayElementAtIndex(s).objectReferenceValue = value;
-                if (symbol == SlotSymbol.Bar)
+                if (!isSeven)
                 {
-                    Clock(row, new Vector2(0.8f, 0.18f), new Vector2(0.8f + 0.64f * height * Square, 0.82f));
-                    seconds.GetArrayElementAtIndex(s).objectReferenceValue =
-                        CreateText("Seconds", row, new Vector2(0.86f, 0.05f), new Vector2(0.97f, 0.95f), Color.white);
+                    CapIcon(CreateRect("Cap Icon", row, new Vector2(0.73f, 0.14f), new Vector2(0.73f + iconWidth, 0.86f)));
+                    caps.GetArrayElementAtIndex(s).objectReferenceValue =
+                        CreateText("Cap", row, new Vector2(0.8f, 0.05f), new Vector2(0.97f, 0.95f), Color.white);
                 }
             }
+        }
+
+        // ゲージの点を横に count 個（plan 16.8 の操作バーと同じ5つ）。lit 個だけ color、残りは暗い。戻り値は点。
+        internal static Image[] GaugeDots(RectTransform parent, Color color, int lit, int count = 5)
+        {
+            var dots = new Image[count];
+            for (var i = 0; i < count; i++)
+            {
+                var dot = CreateImage($"Dot {i + 1}", parent, new Vector2((i + 0.1f) / count, 0f), new Vector2((i + 0.9f) / count, 1f),
+                    i < lit ? color : new Color(1f, 1f, 1f, 0.2f), _knob);
+                dot.preserveAspect = true;
+                dots[i] = dot;
+            }
+
+            return dots;
+        }
+
+        // 上限: 上に白い横棒、その下に上向きの ▲（ここまでしか上がらない）。
+        private static void CapIcon(RectTransform parent)
+        {
+            CreateImage("Lid", parent, new Vector2(0.05f, 0.82f), new Vector2(0.95f, 0.98f), Color.white, null);
+            var up = CreateRect("Up", parent, new Vector2(0.15f, 0f), new Vector2(0.85f, 0.72f));
+            up.localEulerAngles = new Vector3(0f, 0f, 90f);
+            var triangle = up.gameObject.AddComponent<TriangleGraphic>();
+            triangle.color = DimColor;
+            triangle.raycastTarget = false;
+        }
+
+        // バッファーの倍率: 緑の ▲（味方の攻撃を上げる）。
+        internal static void BuffIcon(RectTransform parent)
+        {
+            var up = CreateRect("Up", parent, new Vector2(0.1f, 0.1f), new Vector2(0.9f, 0.9f));
+            up.localEulerAngles = new Vector3(0f, 0f, 90f);
+            var triangle = up.gameObject.AddComponent<TriangleGraphic>();
+            triangle.color = SlotSymbolArt.HealColor;
+            triangle.raycastTarget = false;
+        }
+
+        // スキルの印: 本体の札の下にゲージの点5つ（色は実行時にスキルの色）。
+        internal static void SkillMark(RectTransform row, SerializedProperty element, float height)
+        {
+            var mark = CreateRect("Skill Mark", row, new Vector2(0.025f, 0.06f), new Vector2(0.055f + 0.6f * height * Square, 0.28f));
+            var dots = GaugeDots(mark, Color.white, 5);
+            element.FindPropertyRelative("skillMark").objectReferenceValue = mark.gameObject;
+            var property = element.FindPropertyRelative("skillDots");
+            property.arraySize = dots.Length;
+            for (var i = 0; i < dots.Length; i++)
+            {
+                property.GetArrayElementAtIndex(i).objectReferenceValue = dots[i];
+            }
+        }
+
+        // 攻撃のアイコン枠に、バッファーのときだけ出すアイコンを重ねる。
+        internal static void AddBuffIcon(RectTransform atkIcon, SerializedProperty element)
+        {
+            var buff = CreateRect("Buff Icon", atkIcon, Vector2.zero, Vector2.one);
+            BuffIcon(buff);
+            element.FindPropertyRelative("buffIcon").objectReferenceValue = buff.gameObject;
+            buff.gameObject.SetActive(false);
+        }
+
+        /// <summary>味方の行の本体の札の位置（スキルの印の上）。</summary>
+        internal static void PlaceBody(RectTransform body, float height)
+        {
+            body.anchorMin = new Vector2(0.04f, 0.36f);
+            body.anchorMax = new Vector2(0.04f + 0.6f * height * Square, 0.96f);
+            body.offsetMin = body.offsetMax = Vector2.zero;
         }
 
         private static RectTransform Row(RectTransform area, string name, float top, float height) =>
@@ -168,16 +270,19 @@ namespace UnitySlotTower.Editor.Setup
 
         private static TextMeshProUGUI Chance(RectTransform row)
         {
-            var text = CreateText("Chance", row, new Vector2(0.16f, 0.05f), new Vector2(0.4f, 0.95f), Color.white);
+            var text = CreateText("Chance", row, new Vector2(0.16f, 0.05f), new Vector2(0.34f, 0.95f), Color.white);
             text.alignment = TextAlignmentOptions.Right;
             return text;
         }
 
-        // 味方: 本体の色の札、範囲図（実行時に作る）、左列に HP・攻撃（回復）・防御・攻撃間隔、右列にブロック・コスト・待ち時間。
+        internal const float UnitRowHeight = 0.13f;
+
+        // 味方: 本体の色の札とスキルの印、範囲図（実行時に作る）、左列に HP・攻撃（バッファーは倍率）・防御・攻撃間隔、
+        // 右列にブロック・コスト・待ち時間。
         private static void BuildUnits(RectTransform area, Transform bar, SerializedObject serialized)
         {
             const float top = 0.54f;
-            const float height = 0.13f;
+            const float height = UnitRowHeight;
             var rows = serialized.FindProperty("unitRows");
             rows.arraySize = UnitCount;
             for (var i = 0; i < UnitCount; i++)
@@ -185,9 +290,9 @@ namespace UnitySlotTower.Editor.Setup
                 var row = Row(area, $"Unit {i + 1}", top - i * height, height);
                 var body = bar.Find($"Unit Icon {i + 1}")?.GetComponent<Image>();
                 var color = body != null ? body.color : Color.white;
-                var card = CreateImage("Body", row, new Vector2(0.04f, 0.2f), new Vector2(0.04f + 0.6f * height * Square, 0.8f),
-                    color, _box);
+                var card = CreateImage("Body", row, Vector2.zero, Vector2.one, color, _box);
                 card.type = Image.Type.Sliced;
+                PlaceBody(card.rectTransform, height);
                 var rangeArea = CreateRect("Range", row, new Vector2(0.17f, 0.06f), new Vector2(0.45f, 0.94f));
 
                 var element = rows.GetArrayElementAtIndex(i);
@@ -197,11 +302,9 @@ namespace UnitySlotTower.Editor.Setup
                 var line = 1f / 4f;
                 Stat(row, element, "hpText", 0.5f, 3, line, HpIcon);
                 var atk = Stat(row, element, "atkText", 0.5f, 2, line, AttackIcon);
-                var heal = CreateRect("Heal Icon", atk.parent as RectTransform, Vector2.zero, Vector2.one);
-                SlotSymbolArt.Heal(heal);
                 element.FindPropertyRelative("attackIcon").objectReferenceValue = atk.gameObject;
-                element.FindPropertyRelative("healIcon").objectReferenceValue = heal.gameObject;
-                heal.gameObject.SetActive(false);
+                AddBuffIcon((RectTransform)atk.parent, element);
+                SkillMark(row, element, height);
                 Stat(row, element, "defText", 0.5f, 1, line, DefenseIcon);
                 Stat(row, element, "intervalText", 0.5f, 0, line, (parent) => Clock(parent, Vector2.zero, Vector2.one));
                 Stat(row, element, "blockText", 0.75f, 3, line, BlockIcon);

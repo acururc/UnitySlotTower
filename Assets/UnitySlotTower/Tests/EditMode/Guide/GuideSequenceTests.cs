@@ -6,7 +6,7 @@ namespace UnitySlotTower.Tests.EditMode.Guide
 {
     public sealed class GuideSequenceTests
     {
-        // W1 の準備中、カスタムを閉じた直後（味方は召喚できる、レバーも引ける）。
+        // 最初の戦闘の W1 の準備中（味方は召喚できる、レバーも引ける）。
         private static GuideObservation Ready() => new GuideObservation
         {
             Preparing = true,
@@ -14,6 +14,7 @@ namespace UnitySlotTower.Tests.EditMode.Guide
             Deploy = DeployPhase.Idle,
             CanSummon = true,
             CanLever = true,
+            SkillSlot = -1,
             UpgradeSlot = -1,
         };
 
@@ -35,23 +36,6 @@ namespace UnitySlotTower.Tests.EditMode.Guide
             o.SlotSpinning = false;
             guide.Update(o);
             return guide;
-        }
-
-        [Test]
-        public void Reel_Custom_Is_Shown_While_Customizing_And_Done_When_Closed()
-        {
-            var guide = new GuideSequence();
-            var o = Ready();
-            o.Customizing = true;
-
-            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.ReelCustom));
-
-            o.Customizing = false;
-            guide.Update(o);
-            Assert.That(guide.IsDone(GuideTopic.ReelCustom), Is.True);
-
-            o.Customizing = true;
-            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None), "2回目のカスタムでは出さない");
         }
 
         [Test]
@@ -82,7 +66,7 @@ namespace UnitySlotTower.Tests.EditMode.Guide
             Assert.That(guide.Current, Is.EqualTo(GuideHint.Lever));
             o.SlotSpinning = true;
             o.SpinCount = 1;
-            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Stop));
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Spinning));
             o.SlotSpinning = false;
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None));
             Assert.That(guide.IsDone(GuideTopic.Slot), Is.True);
@@ -101,21 +85,107 @@ namespace UnitySlotTower.Tests.EditMode.Guide
         }
 
         [Test]
-        public void Bonus_Is_Shown_When_A_Bonus_Starts_And_Done_At_The_Next_Lever()
+        public void Skill_Is_Shown_When_A_Gauge_Becomes_Usable_And_Done_When_Activated()
         {
             var o = Ready();
             var guide = AfterSlot(ref o);
             o.Preparing = false;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None), "満タンになるまでは出さない");
 
-            o.BonusActive = true;
-            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Bonus));
-            Assert.That(guide.HoldsBattle, Is.True);
+            o.SkillSlot = 1;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Skill));
+            Assert.That((guide.TargetSlot, guide.HoldsBattle), Is.EqualTo((1, true)), "その職のゲージを指して戦闘を止める");
 
+            o.SkillActivations = 1;
+            o.SkillSlot = -1;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None));
+            Assert.That(guide.IsDone(GuideTopic.Skill), Is.True);
+
+            o.SkillSlot = 2;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None), "2回目の満タンでは出さない");
+        }
+
+        [Test]
+        public void Skill_Is_Withdrawn_When_It_Can_No_Longer_Be_Activated()
+        {
+            var o = Ready();
+            var guide = AfterSlot(ref o);
+            o.SkillSlot = 0;
+            guide.Update(o);
+
+            // その職がやられて配置0人になったなど。
+            o.SkillSlot = -1;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None));
+            Assert.That(guide.IsDone(GuideTopic.Skill), Is.False);
+
+            o.SkillSlot = 0;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Skill));
+        }
+
+        [Test]
+        public void Skill_Waits_Until_The_Reels_Stop()
+        {
+            var o = Ready();
+            var guide = AfterSlot(ref o);
             o.SlotSpinning = true;
             o.SpinCount = 2;
+            o.SkillSlot = 0;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None), "回っている途中では出さない");
+
+            o.SlotSpinning = false;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Skill));
+        }
+
+        [Test]
+        public void Route_Is_Shown_On_The_First_Route_Choice_From_Lever_To_Pick()
+        {
+            var o = Ready();
+            var guide = AfterSlot(ref o);
+            o.Preparing = false;
+            o.ChoosingRoute = true;
+
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RouteLever));
+            o.RouteSpinning = true;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RoutePick));
+
+            o.ChoosingRoute = false;
+            o.RouteSpinning = false;
+            guide.Update(o);
+            Assert.That(guide.IsDone(GuideTopic.Route), Is.True);
+
+            o.ChoosingRoute = true;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None), "2回目のルートでは出さない");
+        }
+
+        [Test]
+        public void Route_Choice_Suspends_Battle_Hints()
+        {
+            var o = Ready();
+            var guide = AfterSlot(ref o);
+            o.UpgradeSlot = 0;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Upgrade));
+
+            o.ChoosingRoute = true;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RouteLever), "ルートの説明に切り替える");
+            Assert.That(guide.IsDone(GuideTopic.Upgrade), Is.False);
+        }
+
+        [Test]
+        public void Node_Screen_Shows_No_Hints_But_Completes_The_Route()
+        {
+            var o = Ready();
+            var guide = AfterSlot(ref o);
+            o.ChoosingRoute = true;
+            guide.Update(o);
+
+            // 行き先を決めたフレームでショップの画面が開いた（画面中は何も出さない）。
+            o.ChoosingRoute = false;
+            o.OnScreen = true;
+            o.UpgradeSlot = 0;
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None));
-            Assert.That(guide.IsDone(GuideTopic.Bonus), Is.True);
             Assert.That(guide.HoldsBattle, Is.False);
+            Assert.That(guide.IsDone(GuideTopic.Route), Is.True, "行き先は決めたのでルートは済み");
+            Assert.That(guide.IsDone(GuideTopic.Upgrade), Is.False, "画面中に強化の題目を始めない");
         }
 
         [Test]
@@ -196,19 +266,6 @@ namespace UnitySlotTower.Tests.EditMode.Guide
             o.Paused = false;
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Summon));
             Assert.That(guide.IsDone(GuideTopic.Deploy), Is.False);
-        }
-
-        [Test]
-        public void Customizing_Suspends_Other_Hints()
-        {
-            var o = Ready();
-            var guide = AfterDeploy(ref o);
-            Assert.That(guide.Current, Is.EqualTo(GuideHint.Lever));
-
-            o.Customizing = true;
-            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.ReelCustom), "カスタムの説明がまだなら先に出す");
-            o.Customizing = false;
-            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Lever));
         }
 
         [Test]

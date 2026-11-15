@@ -8,10 +8,10 @@ using UnitySlotTower.Slot;
 namespace UnitySlotTower.Flow
 {
     /// <summary>
-    /// 文字なし説明の表示（T403、FR-004、plan 8章）。進行は <see cref="GuideSequence"/> が決め、ここは毎フレーム様子を渡して
+    /// 文字なし説明の表示（T403・T351、FR-004、plan 16.10）。進行は <see cref="GuideSequence"/> が決め、ここは毎フレーム様子を渡して
     /// 結果を描く: 対象の周りだけを残して画面を薄暗くし（暗い部分はクリックを通さない）、対象を光る枠で囲み、
     /// 手（白い指先の三角と、押した所に広がる輪）のアニメで操作を示す。向き選びでは4方向の矢印も出す。
-    /// 説明中は戦闘の時間を止める（<see cref="BattleController.IsHeldByGuide"/>）。カスタム画面は自身が背景を暗くするので薄暗くしない。
+    /// 説明中は戦闘の時間を止める（<see cref="BattleController.IsHeldByGuide"/>）。ショップ・回復の画面中は出さない。
     /// </summary>
     [DefaultExecutionOrder(-20)]
     public sealed class GuideOverlay : MonoBehaviour
@@ -24,6 +24,8 @@ namespace UnitySlotTower.Flow
         [SerializeField] private SlotCabinet slotCabinet;
         [SerializeField] private BattleFieldView fieldView;
         [SerializeField] private Camera battleCamera;
+        [SerializeField] private RunController runController;
+        [SerializeField] private RouteScreen routeScreen;
 
         [Header("Targets")]
         [Tooltip("操作バーの味方アイコン（units.csv の並び）。")]
@@ -52,6 +54,7 @@ namespace UnitySlotTower.Flow
 
         private readonly GuideSequence _sequence = new GuideSequence();
         private readonly Vector3[] _corners = new Vector3[4];
+        private readonly RectTransform[] _skillButtons = new RectTransform[4];
         private Canvas _canvas;
         private GuideHint _shownHint = (GuideHint)(-1);
         private float _hintStarted;
@@ -67,6 +70,12 @@ namespace UnitySlotTower.Flow
         private void Awake()
         {
             _canvas = root.GetComponentInParent<Canvas>();
+            for (var i = 0; i < unitIcons.Length && i < _skillButtons.Length; i++)
+            {
+                var icon = unitIcons[i] != null ? unitIcons[i].GetComponent<UnitBarIcon>() : null;
+                _skillButtons[i] = icon != null ? icon.SkillButtonRect : null;
+            }
+
             root.gameObject.SetActive(false);
             if (DisabledForTests)
             {
@@ -123,23 +132,36 @@ namespace UnitySlotTower.Flow
             }
 
             var upgradeSlot = -1;
+            var skillSlot = -1;
             var levels = 0;
+            var fighting = run.Phase == WavePhase.Preparing || run.Phase == WavePhase.Fighting;
             for (var slot = 0; slot < units.Count; slot++)
             {
                 var id = units[slot].Id;
                 levels += run.Upgrades.Level(id);
-                if (upgradeSlot < 0 && slot < upgradeIcons.Length && IsDeployed(field, id)
+                var deployed = IsDeployed(field, id);
+                if (upgradeSlot < 0 && slot < upgradeIcons.Length && deployed
                     && run.Upgrades.Check(id) == UpgradeResult.Upgraded)
                 {
                     upgradeSlot = slot;
                 }
+
+                // 発動できる条件（plan 16.4）: 満タン・その職が配置中・準備中か戦闘中。
+                if (skillSlot < 0 && fighting && deployed && slot < _skillButtons.Length && _skillButtons[slot] != null
+                    && battle.Skills != null && battle.Skills.TryGetColor(id, out var color) && run.State.Gauges.IsFull(color))
+                {
+                    skillSlot = slot;
+                }
             }
 
+            var choosingRoute = runController != null && runController.IsChoosingRoute;
             return new GuideObservation
             {
-                Customizing = battle.IsCustomizing,
                 Paused = battle.IsPaused,
                 Finished = battle.IsFinished,
+                OnScreen = runController != null && runController.OpenScreen != null,
+                ChoosingRoute = choosingRoute,
+                RouteSpinning = choosingRoute && slotCabinet.IsRouteSpinning,
                 Preparing = run.Phase == WavePhase.Preparing,
                 Wave = run.Wave,
                 Deploy = run.Deployment.Phase,
@@ -149,7 +171,8 @@ namespace UnitySlotTower.Flow
                 SlotSpinning = slotCabinet.IsSpinning,
                 SpinCount = slotCabinet.SpinCount,
                 CanLever = slotCabinet.CanLever,
-                BonusActive = false, // ボーナスは廃止（2026-11-14）。題目の整理は T351。
+                SkillSlot = skillSlot,
+                SkillActivations = battle.SkillActivations,
                 UpgradeSlot = upgradeSlot,
                 UpgradeLevels = levels,
             };
@@ -170,13 +193,18 @@ namespace UnitySlotTower.Flow
 
         private void Draw(GuideHint hint, BattleNodeRun run, float t)
         {
-            var dimmed = hint != GuideHint.ReelCustom;
+            const bool dimmed = true;
             SetArrows(false, default);
+            // リールが止まるのを待つあいだは押す操作がないので手を出さない。
+            var showHand = hint != GuideHint.Spinning;
+            if (hand.gameObject.activeSelf != showHand)
+            {
+                hand.gameObject.SetActive(showHand);
+                ripple.gameObject.SetActive(showHand);
+            }
+
             switch (hint)
             {
-                case GuideHint.ReelCustom:
-                    // カスタムは廃止（2026-11-14）。この題目は出ない（T351 で題目から消す）。
-                    break;
                 case GuideHint.Summon:
                     TapTarget(UiRect(unitIcons[0]), t, dimmed);
                     break;
@@ -197,15 +225,20 @@ namespace UnitySlotTower.Flow
                     break;
                 }
                 case GuideHint.Lever:
+                case GuideHint.RouteLever:
                     TapTarget(UiRect(slotCabinet.LeverRect), t, dimmed);
                     break;
-                case GuideHint.Stop:
-                    // リールは自動で止まる（plan 16.3）。止まるまでリール窓を見せるだけ（題目の作り直しは T351）。
+                case GuideHint.Spinning:
+                    // リールは自動で止まる（plan 16.3）。止まるまでリール窓を見せる。
                     ShowTarget(UiRect(slotCabinet.ReelWindowRect), dimmed);
                     break;
-                case GuideHint.Bonus:
-                    // ボーナスは廃止（2026-11-14）。この題目は出ない（T351 で題目から消す）。
-                    TapTarget(UiRect(slotCabinet.LeverRect), t, dimmed);
+                case GuideHint.Skill:
+                    TapTarget(UiRect(_skillButtons[Mathf.Clamp(_sequence.TargetSlot, 0, _skillButtons.Length - 1)]), t, dimmed);
+                    break;
+                case GuideHint.RoutePick:
+                    // どの行き先も選べるよう、行き先のある矢印をまとめて穴にし、手はそのうち1つを押す。
+                    ShowTarget(RouteArrowsRect(), dimmed);
+                    Tap(UiRect(RoutePickTarget()).center, Mathf.Repeat(t, TapSeconds));
                     break;
                 case GuideHint.Upgrade:
                     TapTarget(UiRect(upgradeIcons[Mathf.Clamp(_sequence.TargetSlot, 0, upgradeIcons.Length - 1)]), t, dimmed);
@@ -371,6 +404,48 @@ namespace UnitySlotTower.Flow
             }
 
             return 0;
+        }
+
+        private Rect RouteArrowsRect()
+        {
+            var arrows = routeScreen.ArrowButtons;
+            var any = false;
+            var union = default(Rect);
+            for (var reel = 0; reel < arrows.Count; reel++)
+            {
+                if (!slotCabinet.HasRouteDirection(reel))
+                {
+                    continue;
+                }
+
+                var rect = UiRect(arrows[reel].transform);
+                union = any ? Rect.MinMaxRect(Mathf.Min(union.xMin, rect.xMin), Mathf.Min(union.yMin, rect.yMin),
+                    Mathf.Max(union.xMax, rect.xMax), Mathf.Max(union.yMax, rect.yMax)) : rect;
+                any = true;
+            }
+
+            return any ? union : UiRect(RoutePickTarget());
+        }
+
+        // 行き先のあるリールの矢印（中央を優先、なければ左から）。
+        private Transform RoutePickTarget()
+        {
+            var arrows = routeScreen.ArrowButtons;
+            const int center = 1;
+            if (center < arrows.Count && slotCabinet.HasRouteDirection(center))
+            {
+                return arrows[center].transform;
+            }
+
+            for (var reel = 0; reel < arrows.Count; reel++)
+            {
+                if (slotCabinet.HasRouteDirection(reel))
+                {
+                    return arrows[reel].transform;
+                }
+            }
+
+            return arrows[center].transform;
         }
 
         private static GridPoint FirstUnitCell(BattleNodeRun run)

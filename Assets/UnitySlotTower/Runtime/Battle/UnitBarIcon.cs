@@ -57,6 +57,9 @@ namespace UnitySlotTower.Battle
         private bool _hasSkill;
         private SlotSymbol _skillColor;
 
+        /// <summary>スキルゲージのボタン（説明で指す）。なければ null。</summary>
+        public RectTransform SkillButtonRect => skillButton != null ? (RectTransform)skillButton.transform : null;
+
         private void Awake()
         {
             _bodyColor = body.color;

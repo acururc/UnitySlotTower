@@ -112,6 +112,7 @@ namespace UnitySlotTower.Editor.Setup
             serialized.FindProperty("placementInput").objectReferenceValue = input;
             serialized.FindProperty("slotCabinet").objectReferenceValue = cabinet;
             serialized.FindProperty("fieldView").objectReferenceValue = field;
+            WireRoute(serialized);
             serialized.FindProperty("battleCamera").objectReferenceValue =
                 new SerializedObject(input).FindProperty("battleCamera").objectReferenceValue;
             SetSlotTargets(serialized.FindProperty("unitIcons"), Object.FindObjectsByType<UnitBarIcon>(FindObjectsInactive.Include, FindObjectsSortMode.None));
@@ -135,6 +136,16 @@ namespace UnitySlotTower.Editor.Setup
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             Debug.Log("[SlotTower Setup] 文字なし説明を作成した。");
+        }
+
+        /// <summary>ルートの説明（T351）のため、進行とルート画面に結ぶ。どちらも見つかったら true。</summary>
+        internal static bool WireRoute(SerializedObject guide)
+        {
+            var run = Object.FindAnyObjectByType<RunController>(FindObjectsInactive.Include);
+            var route = Object.FindAnyObjectByType<RouteScreen>(FindObjectsInactive.Include);
+            guide.FindProperty("runController").objectReferenceValue = run;
+            guide.FindProperty("routeScreen").objectReferenceValue = route;
+            return run != null && route != null;
         }
 
         // 各アイコンの slot（units.csv の並び）の位置に入れる。
