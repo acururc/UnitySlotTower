@@ -57,7 +57,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                 yield return null;
             }
 
-            yield return ReelCustomTestUtil.CloseWithDefault(_battle);
+            yield return null;
             for (var i = 0; i < 300 && (_battle.Field == null || _battle.Field.Enemies.Count == 0); i++)
             {
                 _battle.StartWave();

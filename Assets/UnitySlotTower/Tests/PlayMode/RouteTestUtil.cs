@@ -1,6 +1,10 @@
+using System.IO;
+using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.UI;
+using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Run;
+using UnitySlotTower.Core.Simulation;
 using UnitySlotTower.Flow;
 using UnitySlotTower.Slot;
 
@@ -52,6 +56,40 @@ namespace UnitySlotTower.Tests.PlayMode
             }
 
             return current.ReelOf(current.Next[0]);
+        }
+
+        /// <summary>
+        /// 2階にその種類のマスがあるシード（<see cref="RunController.SeedOverride"/> 用）。RunController はシードの乱数で最初にルートを
+        /// 作るので、同じ表とシードなら同じルートになる。表はプロジェクトの route_rules.csv（Editor で実行するテストだけで使う）。
+        /// </summary>
+        public static ulong SeedWithSecondFloor(string kind)
+        {
+            var path = Path.Combine(Application.dataPath, "UnitySlotTower/Data/Tables", RouteRules.FileName);
+            var rules = RouteRules.Load(CsvParser.Parse(RouteRules.FileName, File.ReadAllText(path)));
+            for (ulong seed = 1; seed < 5000; seed++)
+            {
+                if (ReelTo(RouteGenerator.Generate(rules, new SeededRandom(seed)).Start, kind) >= 0)
+                {
+                    return seed;
+                }
+            }
+
+            Assert.Fail($"2階に {kind} のあるシードが見つからない");
+            return 0;
+        }
+
+        /// <summary>今のマスから、その種類の行き先に止めるリールの番号。なければ -1。</summary>
+        public static int ReelTo(RouteNode current, string kind)
+        {
+            for (var reel = 0; reel < 3; reel++)
+            {
+                if (current.NextOnReel(reel)?.Kind == kind)
+                {
+                    return reel;
+                }
+            }
+
+            return -1;
         }
     }
 }

@@ -16,7 +16,6 @@ using UnitySlotTower.Core.Run;
 using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Flow;
 using UnitySlotTower.Slot;
-using UnitySlotTower.Tests.PlayMode.Battle;
 
 namespace UnitySlotTower.Tests.PlayMode.Flow
 {
@@ -154,7 +153,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
             var battle = Object.FindAnyObjectByType<BattleController>();
             var result = Object.FindAnyObjectByType<ResultScreen>();
-            yield return ReelCustomTestUtil.CloseWithDefault(battle);
+            yield return null;
             // ルートは最長7戦（T350a）で、敵1体ずつでもライフ 10 では足りないため、戦闘マスごとにライフを戻す。
             var run = Object.FindAnyObjectByType<RunController>();
             void Refill() => run.State.Heal(run.State.MaxLife);

@@ -8,15 +8,17 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
+using UnitySlotTower.Core.Run;
 using UnitySlotTower.Flow;
 using UnitySlotTower.Slot;
-using UnitySlotTower.Tests.PlayMode.Battle;
 
 namespace UnitySlotTower.Tests.PlayMode.Flow
 {
-    [Description("AC-002: タイトルからリールのカスタムと1ウェーブまでを、キーボードだけ・マウスだけで通す。リザルトもマウスで操作できる（FR-002, T405）")]
+    [Description("AC-002: タイトルから1戦闘（召喚・配置・向き・強化・スキル・レバー・一時停止・早見表・撤退）、ルートのマス選び、" +
+                 "ショップ（購入・両替）までをマウスだけで通す。リザルトもマウスで操作できる（FR-002, T353。キーボードだけの通しは D-55 で削除）")]
     public sealed class InputOnlyRunTests
     {
         // S1-W1 は近接の敵1体だけにして、1ウェーブを短く終わらせる。
@@ -44,6 +46,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         private InputSettings.EditorInputBehaviorInPlayMode _editorBehavior;
         private InputSettings.BackgroundBehavior _backgroundBehavior;
         private BattleController _battle;
+        private RunController _run;
         private SlotCabinet _cabinet;
         private BattleFieldView _fieldView;
         private Camera _camera;
@@ -84,6 +87,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         {
             SceneManager.sceneLoaded -= ReplaceWaves;
             _waves = null;
+            RunController.SeedOverride = null;
             SlotCabinet.RandomOverride = null;
             Time.timeScale = 1f;
             InputSystem.RemoveDevice(_keyboard);
@@ -100,70 +104,11 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         [UnityTest]
-        public IEnumerator Keyboard_Alone_Goes_From_Title_Through_Reel_Custom_And_Wave_1()
+        public IEnumerator Mouse_Alone_Goes_From_Title_Through_A_Battle_The_Route_And_The_Shop()
         {
             _waves = ShortWaves;
-            yield return SceneManager.LoadSceneAsync(GameSession.TitleScene);
-            // 前のテストの Game シーンから非同期で読み替えた直後は、最初の Enter を UI が取りこぼすことがある（2026-11-04 に確認。
-            // 実際の ◀ からの遷移では取りこぼさない: Title_Accepts_Input_After_Returning_From_The_Game）。少し待ってから押す。
-            for (var i = 0; i < 30 || (i < 90 && !IsSelected("Start Button")); i++)
-            {
-                yield return null;
-            }
-
-            // タイトル → 難易度（初期選択の設定1 → 設定2） → Game。
-            yield return Press(Key.Enter, () => IsSelected("Setting 1"));
-            Assert.That(IsSelected("Setting 1"), Is.True, "Enter で難易度選択（設定1）に進まない");
-            yield return Press(Key.RightArrow, () => IsSelected("Setting 2"));
-            Assert.That(IsSelected("Setting 2"), Is.True, "→ で設定2に移らない");
-            yield return Press(Key.Enter, () => SceneManager.GetActiveScene().name == GameSession.GameScene);
-            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(GameSession.GameScene), "Enter で Game に移らない");
-            yield return WaitForGame();
-            Assert.That(_cabinet.Setting, Is.EqualTo(2), "キーボードで設定2を選べない");
-
-            // リールのカスタムは 2026-11-14 に廃止（T341 で画面を削除）。
-
-            // 召喚・配置・向き（1 → 矢印 → Enter → ↑ → Enter）、強化（Shift + 1）、▶（Enter）。
-            var target = FirstPlaceableCell();
-            yield return Tap(Key.Digit1);
-            yield return MoveCursorTo(target);
-            yield return Tap(Key.Enter);
-            yield return Tap(Key.UpArrow);
-            yield return Tap(Key.Enter);
-            Assert.That(_battle.Field.Units.Count, Is.EqualTo(1), "キーボードで味方を置けない");
-            AddUpgradeCoins();
-            yield return Tap(Key.LeftShift, Key.Digit1);
-            Assert.That(_battle.Upgrades.Level("tank"), Is.EqualTo(2), "Shift + 1 で強化できない");
-            yield return Tap(Key.Enter);
-            Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.Fighting), "Enter で戦闘が始まらない");
-
-            // スロット: Space でレバー。最初の戦闘は回数固定なので残り回数が減る。リールは自動で止まる。
-            var spins = _cabinet.FixedSpinsLeft;
-            yield return Tap(Key.Space);
-            Assert.That((_cabinet.IsSpinning, _cabinet.FixedSpinsLeft), Is.EqualTo((true, spins - 1)), "Space でレバーを引けない");
-            yield return WaitForReelsToStop();
-
-            // 一時停止（P）と早見表（/）。再開（P）で早見表も閉じる。
-            var help = Object.FindAnyObjectByType<HelpScreen>();
-            yield return Tap(Key.P);
-            Assert.That(_battle.IsPaused, Is.True, "P で一時停止しない");
-            yield return Tap(Key.Slash);
-            Assert.That(help.IsOpen, Is.True, "/ で早見表が開かない");
-            yield return Tap(Key.P);
-            Assert.That((_battle.IsPaused, help.IsOpen), Is.EqualTo((false, false)), "P で再開しない／早見表が閉じない");
-
-            // 撤退（Tab で選んで X）。
-            yield return Tap(Key.Tab);
-            yield return Tap(Key.X);
-            Assert.That(_battle.Field.Units.Count, Is.EqualTo(0), "Tab と X で撤退できない");
-
-            yield return WaitForWave1ToEnd();
-        }
-
-        [UnityTest]
-        public IEnumerator Mouse_Alone_Goes_From_Title_Through_Reel_Custom_And_Wave_1()
-        {
-            _waves = ShortWaves;
+            // 2階にショップがあるルートにする（行き先のリールでショップを選ぶため）。
+            RunController.SeedOverride = RouteTestUtil.SeedWithSecondFloor(RouteNodeKinds.Shop);
             yield return SceneManager.LoadSceneAsync(GameSession.TitleScene);
 
             // タイトル ▶ → 設定2 のプレート → Game。
@@ -191,6 +136,13 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             AddUpgradeCoins();
             yield return Click(GameObject.Find("Upgrade Icon 1").transform);
             Assert.That(_battle.Upgrades.Level("tank"), Is.EqualTo(2), "強化アイコンで強化できない");
+
+            // スキル: 満タンのゲージをクリック（ゲージを貯める部分は操作の確認の対象外なので直接満たす）。
+            FillGaugeOf("tank");
+            var activations = _battle.SkillActivations;
+            yield return Click(GameObject.Find("Skill Gauge 1").transform);
+            Assert.That(_battle.SkillActivations, Is.EqualTo(activations + 1), "ゲージのクリックでスキルが発動しない");
+
             yield return Click(bar.Find("Start Button"));
             Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.Fighting), "▶ で戦闘が始まらない");
 
@@ -221,6 +173,50 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(_battle.Field.Units.Count, Is.EqualTo(0), "クリックと撤退アイコンで撤退できない");
 
             yield return WaitForWave1ToEnd();
+
+            // 2ウェーブ目も ▶ のクリックで始め、戦闘マスを終えてルート選びに進む。
+            yield return Click(bar.Find("Start Button"));
+            Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.Fighting), "2ウェーブ目が ▶ で始まらない");
+            yield return WaitForRouteChoice();
+
+            // ルート: レバーのクリックで回し、ショップのリールのボタンをクリックして止める。
+            var reel = RouteTestUtil.ReelTo(_run.State.Current, RouteNodeKinds.Shop);
+            Assert.That(reel, Is.GreaterThanOrEqualTo(0), "2階にショップがない");
+            yield return Click(_cabinet.LeverRect);
+            Assert.That(_cabinet.IsRouteSpinning, Is.True, "ルート選びでレバーのクリックで回らない");
+            yield return Click(RouteReelButton(reel).transform);
+            for (var limit = Time.realtimeSinceStartup + 5f; _run.OpenScreen == null && Time.realtimeSinceStartup < limit;)
+            {
+                yield return null;
+            }
+
+            var shop = _run.OpenScreen as ShopScreen;
+            Assert.That(shop != null && shop.IsOpen, Is.True, "リールのボタンのクリックでショップに入らない");
+
+            // ショップ: 品の札をクリックして買い、「所持金→コイン」をクリックして両替する。
+            var state = _run.State;
+            state.Money.Add(1000);
+            yield return null;
+            var offer = -1;
+            for (var i = 0; i < shop.OfferButtons.Count && offer < 0; i++)
+            {
+                if (shop.Shop.Check(i) == ShopResult.Bought)
+                {
+                    offer = i;
+                }
+            }
+
+            Assert.That(offer, Is.GreaterThanOrEqualTo(0), "所持金 1000 で買える品がない");
+            yield return Click(shop.OfferButtons[offer].transform);
+            Assert.That(shop.Shop.IsSold(offer), Is.True, "品の札のクリックで買えない");
+            var coins = state.Coins.Coins;
+            yield return Click(shop.BuyCoinsButton.transform);
+            Assert.That(state.Coins.Coins, Is.EqualTo(coins + shop.Exchange.CoinsPerTrade), "クリックで両替できない");
+
+            // ◀ のクリックでルート画面に戻る。
+            yield return Click(shop.BackButton.transform);
+            Assert.That((shop.IsOpen, _run.OpenScreen == null, _run.IsChoosingRoute), Is.EqualTo((false, true, true)),
+                "◀ のクリックでルート画面に戻らない");
         }
 
         [UnityTest]
@@ -284,9 +280,37 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         // 初期コイン（30）では召喚（15）と強化（20）を両方は払えないので、強化の分だけ足す（操作の確認が目的）。
         private void AddUpgradeCoins() => _battle.Wallet.Add(_battle.Upgrades.NextCost("tank").Value);
 
+        private void FillGaugeOf(string unitId)
+        {
+            Assert.That(_battle.Skills.TryGetColor(unitId, out var color), Is.True, unitId);
+            var gauges = _battle.Run.State.Gauges;
+            for (var i = 0; i < gauges.Max; i++)
+            {
+                gauges.Add(color);
+            }
+        }
+
+        private Button RouteReelButton(int reel) =>
+            ((Button[])typeof(SlotCabinet).GetField("routeReelButtons", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(_cabinet))[reel];
+
+        private IEnumerator WaitForRouteChoice()
+        {
+            Time.timeScale = 20f;
+            var limit = Time.realtimeSinceStartup + 60f;
+            while (!_run.IsChoosingRoute && !_battle.IsFinished && Time.realtimeSinceStartup < limit)
+            {
+                yield return null;
+            }
+
+            Time.timeScale = 1f;
+            Assert.That(_run.IsChoosingRoute, Is.True, "最初の戦闘マスを終えてもルート選びにならない");
+            yield return null;
+        }
+
         private IEnumerator LoseTheGame()
         {
-            yield return ReelCustomTestUtil.CloseWithDefault(_battle);
+            yield return null;
             _battle.StartWave();
             Time.timeScale = 20f;
             var limit = Time.realtimeSinceStartup + 60f;
@@ -343,6 +367,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
 
             Assert.That(_battle != null && _battle.Run != null, Is.True, "Game シーンの進行が作られない");
+            _run = Object.FindAnyObjectByType<RunController>();
             _cabinet = Object.FindAnyObjectByType<SlotCabinet>();
             _fieldView = Object.FindAnyObjectByType<BattleFieldView>();
             _camera = GameObject.Find("Battle Camera").GetComponent<Camera>();
@@ -367,20 +392,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
             Assert.Fail("置けるマスがない");
             return default;
-        }
-
-        private IEnumerator MoveCursorTo(GridPoint target)
-        {
-            var deployment = _battle.Deployment;
-            while (deployment.Cursor.X != target.X)
-            {
-                yield return Tap(deployment.Cursor.X < target.X ? Key.RightArrow : Key.LeftArrow);
-            }
-
-            while (deployment.Cursor.Y != target.Y)
-            {
-                yield return Tap(deployment.Cursor.Y < target.Y ? Key.DownArrow : Key.UpArrow);
-            }
         }
 
         private static bool IsSelected(string buttonName)
@@ -411,31 +422,12 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return null;
         }
 
-        private IEnumerator Tap(params Key[] keys)
-        {
-            InputSystem.QueueStateEvent(_keyboard, new KeyboardState(keys));
-            yield return null;
-            InputSystem.QueueStateEvent(_keyboard, new KeyboardState());
-            yield return null;
-        }
-
         private IEnumerator Click(Transform target)
         {
             var screen = ScreenOf(target);
             yield return MouseAt(screen, false);
             yield return MouseAt(screen, true);
             yield return MouseAt(screen, false);
-        }
-
-        private IEnumerator Drag(Transform from, Transform to)
-        {
-            var start = ScreenOf(from);
-            var end = ScreenOf(to);
-            yield return MouseAt(start, false);
-            yield return MouseAt(start, true);
-            yield return MouseAt(Vector2.Lerp(start, end, 0.5f), true);
-            yield return MouseAt(end, true);
-            yield return MouseAt(end, false);
         }
 
         private IEnumerator MouseAt(Vector2 position, bool pressed)

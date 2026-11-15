@@ -115,8 +115,6 @@ namespace UnitySlotTower.Battle
         /// <summary>一時停止中か（FR-012）。時間が止まり、配置・撤退・強化・スロットの操作を受け付けない。</summary>
         public bool IsPaused { get; private set; }
 
-        /// <summary>リールのカスタム画面を開いているか。カスタムは廃止（2026-11-14）で常に false。参照の掃除は T354。</summary>
-        public bool IsCustomizing => false;
 
         /// <summary>クリア（ボスマスを終えた）かゲームオーバーで、ゲームが終わったか（リザルトを出す: T402）。</summary>
         public bool IsFinished => Run != null && (Run.IsRunCleared || Run.Phase == WavePhase.GameOver);

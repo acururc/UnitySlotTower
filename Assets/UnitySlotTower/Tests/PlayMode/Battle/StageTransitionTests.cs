@@ -54,7 +54,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(_battle.Run, Is.Not.Null, "Game シーンの進行が作られない");
-            yield return ReelCustomTestUtil.CloseWithDefault(_battle);
+            yield return null;
         }
 
         [TearDown]
