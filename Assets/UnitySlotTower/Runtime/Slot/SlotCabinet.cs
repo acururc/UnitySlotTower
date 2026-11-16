@@ -137,7 +137,10 @@ namespace UnitySlotTower.Slot
         public event Action<int> RouteReelChosen;
 
         public RectTransform LeverRect => (RectTransform)leverButton.transform;
-        public RectTransform ReelWindowRect => reelWindow != null ? reelWindow : (RectTransform)reels[0].transform.parent;
+        /// <summary>そのリール（0=左・1=中・2=右）の中段のマス（FR-044 の演出で光らせる）。</summary>
+        public RectTransform ReelCenterCell(int reel) => reels[reel].CenterCell;
+
+        public RectTransform ReelWindowRect =>reelWindow != null ? reelWindow : (RectTransform)reels[0].transform.parent;
 
         /// <summary>
         /// コインの財布を差し替えて抽選器を作り直す（ゲーム1回分の <c>RunState.Coins</c> と共有するため。回す前に呼ぶ）。

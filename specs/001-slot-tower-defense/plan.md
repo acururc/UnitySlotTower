@@ -384,7 +384,8 @@ Assets/UnitySlotTower/
 - 倍速: `BattleController.BattleSpeed`（1・2・3。Game シーン＝ゲーム1回分の間だけ持つので、新しいゲーム〔シーンの読み込み〕で1。T365 で GameSession から変更）。戦闘中は `Time.timeScale` = 倍率（一時停止は 0、解くと倍率に戻す）、戦闘を出るとき 1 に戻す。戦闘の時計は `Time.deltaTime` を使っているので敵・味方・待ち時間・スキルの時間・リールが一緒に速くなる。ボタンは一時停止の隣（「×1」「×2」「×3」の数字。文字あり版は「速さ ×2」）。
 
 ### 17.6 揃った時の演出（FR-044, D-85）
-- `SlotCabinet` が当たりを出し終えたとき、中段の3つの図柄を光らせ、光の玉（UI の Image）を効果の行き先の RectTransform（色7 → その職のゲージ、バー → 攻撃力の倍率、コイン → 所持金の倍率）へ 0.4 秒ほどで飛ばし、着いたら行き先を一瞬大きくする。行き先は操作バーが登録する。`Awaitable` と `destroyCancellationToken` で動かし、レバーは止めない。
+- `SlotCabinet` が当たりを出し終えたとき、中段の3つの図柄を光らせ、光の玉（UI の Image）を効果の行き先の RectTransform（色7 → その職のゲージ、バー → 攻撃力の倍率、コイン → 所持金の倍率）へ 0.4 秒ほどで飛ばし、着いたら行き先を一瞬大きくする。`Awaitable` と `destroyCancellationToken` で動かし、レバーは止めない。
+- （T366 で実装）`Runtime/Battle/SlotAlignEffect` が `SlotCabinet.Aligned` を受ける。行き先は自分で引く（`OperationBarStatus.AttackRateRect`・`MoneyRateRect`、色7は `UnitBarIcon.HasSkillColor` のアイコンの `SkillButtonRect`。その色の職がいなければ光るだけ）。中段のマスは `SlotCabinet.ReelCenterCell`。時間は `Time.deltaTime`（一時停止で止まり、倍速で速い）。効果そのもの（ゲージ・倍率）は揃った時点で入り、演出は見た目だけ。層は `Portrait Root` の中の `Guide` の前（メニュー `Build Slot Align Effect (T366)`）。光の色・長さ・玉の大きさは Claude の仮置き。
 
 ### 17.7 ルート3列・同じマップを続けない（FR-010, FR-018, D-88, D-89）
 - `RouteMap` の生成を3列の格子にする: 1階は中央の `first` 1つ、2階〜ボスの2つ前の階は各3マス、ボスの直前の階は回復3つ、最上階はボス1つ。つながりは列の差 −1〜+1 のすべて（1階の中央から2階の3つ、直前の階の3つからボス）。マスの種類は重みで選び、強敵の出始めの階と、つながった上下でショップ・回復が続かない決まりは残す。`route_rules.csv` の `paths` は消し、`columns` は 3 に固定（3 以外を検証器でエラー）。表示のずれ（T358）は消す（格子なのでまっすぐ・斜めが見分けやすい）。

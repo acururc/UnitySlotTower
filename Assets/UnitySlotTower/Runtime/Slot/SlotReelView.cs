@@ -28,6 +28,9 @@ namespace UnitySlotTower.Slot
 
         public bool IsSpinning { get; private set; }
 
+        /// <summary>中段のマス（止まっているときは窓の中央にある。揃った時の演出の出発点: T366）。</summary>
+        public RectTransform CenterCell => cells[cells.Length / 2];
+
         /// <summary>今ストップを押したときの押し位置（中段へ下りてくる途中の図柄）。</summary>
         public int PressPosition => _layout.Wrap((int)System.Math.Floor(_position));
 

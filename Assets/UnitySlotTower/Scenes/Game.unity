@@ -18928,6 +18928,7 @@ RectTransform:
   - {fileID: 1231036952}
   - {fileID: 1831073884}
   - {fileID: 1218902055}
+  - {fileID: 773774397}
   - {fileID: 644351562}
   - {fileID: 1645850814}
   - {fileID: 1356511646}
@@ -36512,6 +36513,76 @@ MonoBehaviour:
     fontSizeMax: 0
     color: {r: 0.12, g: 0.12, b: 0.15, a: 1}
     hidden: 0
+--- !u!1 &773774396
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 773774397}
+  - component: {fileID: 773774398}
+  m_Layer: 5
+  m_Name: Slot Align Effect
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &773774397
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 773774396}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 415374489}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &773774398
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 773774396}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fde0f255f424a554aa3b51b44cab3e63, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnitySlotTower.Runtime::UnitySlotTower.Battle.SlotAlignEffect
+  cabinet: {fileID: 83309650}
+  status: {fileID: 1215967987}
+  icons:
+  - {fileID: 913775484}
+  - {fileID: 1151347633}
+  - {fileID: 197872841}
+  - {fileID: 1796242258}
+  glowSprite: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
+  symbolColors:
+  - {r: 1, g: 0.45, b: 0.45, a: 1}
+  - {r: 0.5, g: 0.7, b: 1, a: 1}
+  - {r: 0.5, g: 1, b: 0.55, a: 1}
+  - {r: 1, g: 0.95, b: 0.45, a: 1}
+  - {r: 1, g: 1, b: 1, a: 1}
+  - {r: 1, g: 0.85, b: 0.3, a: 1}
+  glowSeconds: 0.45
+  flyDelay: 0.12
+  flySeconds: 0.4
+  punchSeconds: 0.2
+  punchScale: 1.3
+  orbSize: 0.45
+  arc: 0.18
 --- !u!1 &775504235
 GameObject:
   m_ObjectHideFlags: 0

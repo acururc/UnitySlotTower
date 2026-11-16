@@ -45,6 +45,12 @@ namespace UnitySlotTower.Battle
         private int _shownRemaining = -1;
         private int _shownSpeed = -1;
 
+        /// <summary>バーの攻撃力倍率の表示（揃った時の演出の行き先: T366）。</summary>
+        public RectTransform AttackRateRect => (RectTransform)attackRateGroup.transform;
+
+        /// <summary>コインの所持金倍率の表示（揃った時の演出の行き先: T366）。</summary>
+        public RectTransform MoneyRateRect => (RectTransform)moneyRateGroup.transform;
+
         private void Awake()
         {
             _pauseNormalColor = pauseBackground.color;

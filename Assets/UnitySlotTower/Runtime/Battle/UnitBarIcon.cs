@@ -71,6 +71,9 @@ namespace UnitySlotTower.Battle
         /// <summary>スキルゲージのボタン（説明で指す）。なければ null。</summary>
         public RectTransform SkillButtonRect => skillButton != null ? (RectTransform)skillButton.transform : null;
 
+        /// <summary>このアイコンのスキルゲージがその色7のものか（揃った時の演出の行き先: T366）。</summary>
+        public bool HasSkillColor(SlotSymbol color) => _hasSkill && _skillColor == color;
+
         /// <summary>待ち時間の残り秒数（切り上げ）の文字。待ち時間がないときは隠す（T355）。</summary>
         public TMP_Text CooldownText => _cooldownText;
 

@@ -10,6 +10,7 @@ using UnityEngine.TestTools;
 using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Simulation;
+using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Slot;
 
 namespace UnitySlotTower.Tests.PlayMode.Battle
@@ -96,10 +97,73 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That(_battle.Field.Tick, Is.GreaterThan(tick), "スロットのあとも戦闘が進む");
         }
 
+        [UnityTest]
+        [Description("AC-046: 揃いで中段が光って効果の行き先へ光が飛び、ハズレでは出ない。演出中も敵が進み、レバーを引ける")]
+        public IEnumerator Aligning_Plays_The_Effect_Toward_Its_Target_Without_Stopping_The_Battle()
+        {
+            yield return LoadGame();
+            var effect = Object.FindAnyObjectByType<SlotAlignEffect>();
+            Assert.That(effect, Is.Not.Null, "Game シーンに揃った時の演出がない（Build Slot Align Effect (T366)）");
+            var status = Object.FindAnyObjectByType<OperationBarStatus>();
+
+            // バー → 攻撃力の倍率。演出中に敵が進み、レバーを引ける。
+            var attackScale = status.AttackRateRect.localScale;
+            yield return SpinAndStopAll();
+            Assert.That((effect.PlayCount, effect.LastSymbol, effect.LastTarget),
+                Is.EqualTo((1, (SlotSymbol?)SlotSymbol.Bar, status.AttackRateRect)));
+            Assert.That(effect.IsPlaying, Is.True, "止まり終えたら演出が始まる");
+            var tick = _battle.Field.Tick;
+            yield return Tap(Key.Space);
+            Assert.That(_cabinet.IsSpinning, Is.True, "演出中もレバーを引ける");
+            yield return new WaitForSeconds(0.1f);
+            Assert.That(_battle.Field.Tick, Is.GreaterThan(tick), "演出中も戦闘が進む");
+            yield return WaitForStop();
+            yield return WaitForEffect(effect);
+            Assert.That(status.AttackRateRect.localScale, Is.EqualTo(attackScale), "行き先の大きさが元に戻る");
+
+            // コイン → 所持金の倍率。
+            Select(SlotSymbol.Coin);
+            yield return SpinAndStopAll();
+            Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Coin, status.MoneyRateRect)));
+            yield return WaitForEffect(effect);
+
+            // 色7 → その色の職のスキルゲージ。
+            SlotSymbol? color = null;
+            foreach (var c in new[] { SlotSymbol.Red7, SlotSymbol.Blue7, SlotSymbol.Green7, SlotSymbol.Yellow7 })
+            {
+                if (color == null && effect.TargetOf(c) != null && _random.IndexOf(_cabinet, c) >= 0)
+                {
+                    color = c;
+                }
+            }
+
+            Assert.That(color, Is.Not.Null, "スキルゲージのある色7が抽選表にない");
+            Select(color.Value);
+            yield return SpinAndStopAll();
+            // スキルゲージはアイコンの子ではなく操作バーの別の部品なので、その色のアイコンの SkillButtonRect と比べる。
+            var gauge = false;
+            foreach (var icon in Object.FindObjectsByType<UnitBarIcon>(FindObjectsSortMode.None))
+            {
+                gauge |= icon.HasSkillColor(color.Value) && effect.LastTarget != null && icon.SkillButtonRect == effect.LastTarget;
+            }
+
+            Assert.That((effect.LastSymbol, gauge), Is.EqualTo((color, true)), "色7はその色の職のスキルゲージへ飛ぶ");
+            yield return WaitForEffect(effect);
+
+            // ハズレ → 演出なし。
+            var count = effect.PlayCount;
+            Select(null);
+            yield return SpinAndStopAll();
+            yield return null;
+            Assert.That((effect.PlayCount, effect.IsPlaying), Is.EqualTo((count, false)), "ハズレでは演出を出さない");
+        }
+
+        private FixedRandom _random;
+
         private IEnumerator LoadGame()
         {
-            var random = new FixedRandom();
-            SlotCabinet.RandomOverride = random;
+            _random = new FixedRandom();
+            SlotCabinet.RandomOverride = _random;
             yield return SceneManager.LoadSceneAsync("Game");
             _battle = Object.FindAnyObjectByType<BattleController>();
             _cabinet = Object.FindAnyObjectByType<SlotCabinet>();
@@ -110,19 +174,38 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             Assert.That(_battle?.Field, Is.Not.Null, "Game シーンの戦闘が始まらない");
             yield return RouteTestUtil.WaitForIntro(_battle);
-            // この難易度の20パターンからバーの番号を選ぶ。
-            random.Index = -1;
-            for (var i = 0; i < _cabinet.Patterns.Count && random.Index < 0; i++)
-            {
-                if (_cabinet.Patterns[i] == Core.Slot.SlotSymbol.Bar)
-                {
-                    random.Index = i;
-                }
-            }
-
-            Assert.That(random.Index, Is.GreaterThanOrEqualTo(0), "抽選表にバーがない");
+            Select(SlotSymbol.Bar);
             yield return null;
             _reels = _cabinet.GetComponentsInChildren<SlotReelView>();
+        }
+
+        // この難易度の20パターンからその出目（null はハズレ）の番号を選ぶ。
+        private void Select(SlotSymbol? outcome)
+        {
+            _random.Index = _random.IndexOf(_cabinet, outcome);
+            Assert.That(_random.Index, Is.GreaterThanOrEqualTo(0), $"抽選表に {outcome?.ToString() ?? "ハズレ"} がない");
+        }
+
+        private IEnumerator WaitForStop()
+        {
+            var until = Time.realtimeSinceStartup + 5f;
+            while (_cabinet.IsSpinning && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That(_cabinet.IsSpinning, Is.False, "リールが止まらない");
+        }
+
+        private static IEnumerator WaitForEffect(SlotAlignEffect effect)
+        {
+            var until = Time.realtimeSinceStartup + 5f;
+            while (effect.IsPlaying && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That(effect.IsPlaying, Is.False, "演出が終わらない");
         }
 
         // Space で回し、リールが自動で止まるまで実時間で待つ。
@@ -156,6 +239,19 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         private sealed class FixedRandom : IRandom
         {
             public int Index;
+
+            public int IndexOf(SlotCabinet cabinet, SlotSymbol? outcome)
+            {
+                for (var i = 0; i < cabinet.Patterns.Count; i++)
+                {
+                    if (cabinet.Patterns[i] == outcome)
+                    {
+                        return i;
+                    }
+                }
+
+                return -1;
+            }
 
             public int NextInt(int minInclusive, int maxExclusive) => Index;
 
