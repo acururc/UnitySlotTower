@@ -62,9 +62,10 @@ namespace UnitySlotTower.Editor.Setup
             field.transform.localScale = new Vector3(0.9f, 1f, 0.6f);
 
             var scaler = CreateCanvas(out var root);
-            CreatePanel("Operation Bar", root, new Vector2(0f, SlotAreaTop), new Vector2(1f, 1f - (float)PortraitLayout.BattleHeightRatio),
-                new Color(0.12f, 0.12f, 0.14f));
-            var slot = CreatePanel("Slot Area", root, Vector2.zero, new Vector2(1f, SlotAreaTop), new Color(0.35f, 0.08f, 0.1f));
+            CreatePanel("Operation Bar", root, new Vector2(0f, PortraitLayout.SlotAreaTop),
+                new Vector2(1f, 1f - (float)PortraitLayout.BattleHeightRatio), new Color(0.12f, 0.12f, 0.14f));
+            var slot = CreatePanel("Slot Area", root, Vector2.zero, new Vector2(1f, PortraitLayout.SlotAreaTop),
+                new Color(0.35f, 0.08f, 0.1f));
             CreatePanel("Reel Window", slot, new Vector2(0.1f, 0.45f), new Vector2(0.9f, 0.9f), new Color(0.92f, 0.92f, 0.9f));
 
             new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
@@ -84,47 +85,51 @@ namespace UnitySlotTower.Editor.Setup
             Debug.Log($"[SlotTower Setup] {ScenePath} を作成した。");
         }
 
-        /// <summary>
-        /// 3:4 領域の 0〜SlotAreaTop がスロット筐体、SlotAreaTop〜(1 − 戦闘の割合) が操作バー（T317、plan 2章）。
-        /// 操作バーは T308 と同じ高さ（基準 154 px）を保つ。
-        /// </summary>
-        private const float SlotAreaTop = 0.32f;
+        // 筐体の中（1440×720 px、左下原点）の部品の位置（px）。リール窓は T315 と同じ縦横比（約 2.03:1）で 1016×500 px。
+        // 窓の下の段（高さ 約 200 px）の左にレバー、右にコインの絵と枚数（plan 17.9、Claude の仮置き）。
+        internal static readonly Rect ReelWindowPx = new Rect(212f, 205f, 1016f, 500f);
+        internal static readonly Rect LeverPx = new Rect(40f, 22f, 260f, 166f);
+        internal static readonly Rect CoinIconPx = new Rect(1036f, 70f, 104f, 90f);
+        internal static readonly Rect CreditPx = new Rect(1150f, 62f, 270f, 106f);
 
         /// <summary>
-        /// 既にある Game シーンを戦闘 60%・下部 40% に詰め直す（T317）。操作バーは高さを保って移し、
-        /// 筐体はリール窓の縦横比を保ったまま中央に置き、レバー・ボーナス表示を左、クレジット・払い出しを右下に寄せる。
+        /// 既にある Game シーンを戦闘 50%・下部 50% にする（T368、D-87、plan 17.9。旧 T317 の 6:4）。
+        /// 操作バーは 240 px に高くし（中の部品は割合なので一緒に大きくなる）、筐体はリール窓を大きくして窓の下にレバー・コインを置く。
+        /// ルート画面は操作バーの下端から上を覆い、行き先の札をリールの真上に置き直す（文字なし版の値。文字あり版は Build Text Mode Layout）。
         /// 何度実行しても同じ配置になる。
         /// </summary>
-        [MenuItem(MenuRoot + "Apply 6:4 Layout (T317)")]
-        private static void ApplySixFourLayout()
+        [MenuItem(MenuRoot + "Apply Half Layout (T368)")]
+        private static void ApplyHalfLayout()
         {
             var bar = GameObject.Find("Operation Bar")?.GetComponent<RectTransform>();
             var slot = GameObject.Find("Slot Area")?.GetComponent<RectTransform>();
             var camera = GameObject.Find("Battle Camera")?.GetComponent<Camera>();
-            if (bar == null || slot == null || camera == null)
+            var route = GameObject.Find("Route Screen")?.GetComponent<RectTransform>();
+            var cabinet = Object.FindAnyObjectByType<UnitySlotTower.Slot.SlotCabinet>(FindObjectsInactive.Include);
+            if (bar == null || slot == null || camera == null || route == null || cabinet == null)
             {
-                Debug.LogError("[SlotTower Setup] Game シーンの Operation Bar / Slot Area / Battle Camera が見つからない。");
+                Debug.LogError("[SlotTower Setup] Game シーンの Operation Bar / Slot Area / Battle Camera / Route Screen / SlotCabinet が見つからない。");
                 return;
             }
 
-            SetAnchors(bar, new Vector2(0f, SlotAreaTop), new Vector2(1f, 1f - (float)PortraitLayout.BattleHeightRatio));
-            SetAnchors(slot, Vector2.zero, new Vector2(1f, SlotAreaTop));
+            SetAnchors(bar, new Vector2(0f, PortraitLayout.SlotAreaTop), new Vector2(1f, 1f - (float)PortraitLayout.BattleHeightRatio));
+            SetAnchors(slot, Vector2.zero, new Vector2(1f, PortraitLayout.SlotAreaTop));
+            SetAnchors(route, new Vector2(0f, PortraitLayout.SlotAreaTop), Vector2.one);
 
-            // 戦闘の領域が 1440×1152 px（5:4）になり横の画角が狭まるため、9 列が左右に収まるよう引いて俯角を深くする。
             // 注視点はマップの中心（原点）のまま。俯角は T357 で 55°。実行時は BattleFieldView が BattleCameraFit で置き直す。
-            camera.fieldOfView = 45f;
-            camera.transform.SetPositionAndRotation(new Vector3(0f, 10.5f, -7.36f), Quaternion.Euler(55f, 0f, 0f));
+            camera.fieldOfView = (float)UnitySlotTower.Core.Battle.BattleCameraFit.DefaultVerticalFovDegrees;
+            camera.transform.SetPositionAndRotation(new Vector3(0f, 9.4f, -6.6f), Quaternion.Euler(55f, 0f, 0f));
 
-            // 筐体の中は 1440×614 px。リール窓は T315 と同じ縦横比（約 2.03:1）で 842×414 px。
-            var windowMin = new Vector2(0.208f, 0.293f);
-            var windowMax = new Vector2(0.792f, 0.967f);
+            var size = new Vector2(PortraitLayout.ReferenceWidth, PortraitLayout.ReferenceHeight * PortraitLayout.SlotAreaTop);
+            var windowMin = ReelWindowPx.min / size;
+            var windowMax = ReelWindowPx.max / size;
             var placed = new (string Name, Vector2 Min, Vector2 Max)[]
             {
                 ("Reel Window", windowMin, windowMax),
-                ("Lever Button", new Vector2(0.03f, 0.065f), new Vector2(0.18f, 0.267f)),
-                ("Coin Icon", new Vector2(0.76f, 0.261f), new Vector2(0.819f, 0.362f)),
-                ("Fixed Spins Icon", new Vector2(0.76f, 0.261f), new Vector2(0.819f, 0.362f)),
-                ("Credit", new Vector2(0.823f, 0.252f), new Vector2(0.986f, 0.371f)),
+                ("Lever Button", LeverPx.min / size, LeverPx.max / size),
+                ("Coin Icon", CoinIconPx.min / size, CoinIconPx.max / size),
+                ("Fixed Spins Icon", CoinIconPx.min / size, CoinIconPx.max / size),
+                ("Credit", CreditPx.min / size, CreditPx.max / size),
             };
             foreach (var (name, min, max) in placed)
             {
@@ -145,9 +150,49 @@ namespace UnitySlotTower.Editor.Setup
             SetAnchors((RectTransform)slot.Find("Payline Mark Right"), new Vector2(windowMax.x + 0.005f, y - half),
                 new Vector2(windowMax.x + 0.035f, y + half));
 
+            // ルートの行き先の札（RouteScreenSetup と同じ幅）の中心をリールの真上に。文字あり版の値は Build Text Mode Layout が文字なし版の中心から作る。
+            Canvas.ForceUpdateCanvases();
+            var reels = RouteScreenSetup.ReelRects(cabinet);
+            for (var i = 0; i < reels.Length; i++)
+            {
+                var card = FindDeep(route, $"Direction {i + 1}");
+                if (card == null)
+                {
+                    Debug.LogError($"[SlotTower Setup] Route Screen / Direction {i + 1} が見つからない。");
+                    return;
+                }
+
+                var center = RouteScreenSetup.CenterX(reels[i], (RectTransform)card.parent);
+                var layout = card.GetComponent<UnitySlotTower.Ui.TextModeLayout>();
+                var noText = layout != null ? layout.NoText : default;
+                card.anchorMin = new Vector2(center - 0.08f, card.anchorMin.y);
+                card.anchorMax = new Vector2(center + 0.08f, card.anchorMax.y);
+                if (layout != null)
+                {
+                    noText.anchorMin.x = card.anchorMin.x;
+                    noText.anchorMax.x = card.anchorMax.x;
+                    Undo.RecordObject(layout, "Half Layout");
+                    layout.Configure(layout.Affected, noText, layout.Text);
+                    EditorUtility.SetDirty(layout);
+                }
+            }
+
             EditorSceneManager.MarkSceneDirty(slot.gameObject.scene);
             EditorSceneManager.SaveScene(slot.gameObject.scene);
-            Debug.Log("[SlotTower Setup] Game シーンを戦闘 60%・下部 40% の配置にした。");
+            Debug.Log("[SlotTower Setup] Game シーンを戦闘 50%・下部 50% の配置にした。");
+        }
+
+        private static RectTransform FindDeep(Transform parent, string name)
+        {
+            foreach (var child in parent.GetComponentsInChildren<RectTransform>(true))
+            {
+                if (child.name == name)
+                {
+                    return child;
+                }
+            }
+
+            return null;
         }
 
         private static void SetAnchors(RectTransform rect, Vector2 anchorMin, Vector2 anchorMax)

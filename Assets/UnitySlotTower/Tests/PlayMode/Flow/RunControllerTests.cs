@@ -141,8 +141,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(CornersVisible(_fieldView.Map), Is.True, $"{mapId} の四隅がカメラに収まらない");
         }
 
+        // 地面の四隅は視野の中。空中の高さの四隅は上下だけ視野の中（D-87、T368: 左右の余白をなくし、空中の敵は手前の角でわずかに切れてよい）。
         private bool CornersVisible(BattleMap map)
         {
+            const float epsilon = 1e-4f;
             var camera = GameObject.Find("Battle Camera").GetComponent<Camera>();
             foreach (var x in new[] { -0.5, map.Width - 0.5 })
             {
@@ -151,7 +153,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                     foreach (var air in new[] { false, true })
                     {
                         var p = camera.WorldToViewportPoint(_fieldView.PositionToWorld(x, y, air));
-                        if (p.z <= 0f || p.x < 0f || p.x > 1f || p.y < 0f || p.y > 1f)
+                        var outsideX = !air && (p.x < -epsilon || p.x > 1f + epsilon);
+                        if (p.z <= 0f || outsideX || p.y < -epsilon || p.y > 1f + epsilon)
                         {
                             Debug.Log($"{map.Id} ({x},{y},{air}) → {p}");
                             return false;

@@ -124,7 +124,7 @@ namespace UnitySlotTower.Battle
             FitCamera();
         }
 
-        // 戦闘の領域の縦横比は縦長レイアウトで 1440:1152 に固定なので、BattleCameraFit の既定値で計算する（plan 16.6）。
+        // 戦闘の領域の縦横比は縦長レイアウトで 1440:960 に固定なので、BattleCameraFit の既定値で計算する（plan 16.6・17.9）。
         private void FitCamera()
         {
             if (battleCamera == null)
@@ -132,7 +132,7 @@ namespace UnitySlotTower.Battle
                 return;
             }
 
-            var pose = BattleCameraFit.Fit(Map.Width, Map.Height, height: airPathHeight);
+            var pose = BattleCameraFit.Fit(Map.Width, Map.Height, height: airPathHeight, sideHeight: highGroundHeight);
             battleCamera.fieldOfView = (float)pose.VerticalFovDegrees;
             battleCamera.transform.SetPositionAndRotation(
                 transform.TransformPoint(new Vector3(0f, (float)pose.PositionY, (float)pose.PositionZ)),

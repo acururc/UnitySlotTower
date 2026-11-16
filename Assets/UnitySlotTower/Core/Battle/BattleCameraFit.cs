@@ -9,16 +9,23 @@ namespace UnitySlotTower.Core.Battle
     public static class BattleCameraFit
     {
         public const double DefaultPitchDegrees = 55;
-        public const double DefaultVerticalFovDegrees = 45;
 
-        /// <summary>戦闘領域の縦横比（1440:1152）。</summary>
-        public const double DefaultAspect = 1440.0 / 1152.0;
+        /// <summary>戦闘領域の縦横比（1440:960、D-87・T368 で上半分）。</summary>
+        public const double DefaultAspect = 1440.0 / 960.0;
 
-        /// <summary>マップの外側に足す余白（マス）。</summary>
-        public const double DefaultMargin = 0.3;
+        /// <summary>
+        /// 縦の画角。横の画角を 6:4 のとき（縦 45°・1440:1152）と同じにする値: 2·atan(tan 22.5° × 1.25 ÷ 1.5)。
+        /// </summary>
+        public const double DefaultVerticalFovDegrees = 38.08709224;
 
-        /// <summary>収める高さ（空中の敵の高さ）。</summary>
+        /// <summary>マップの外側に足す余白（マス）。D-87（T368）で 0。</summary>
+        public const double DefaultMargin = 0;
+
+        /// <summary>上下に収める高さ（空中の敵の高さ）。</summary>
         public const double DefaultHeight = 1.2;
+
+        /// <summary>左右に収める高さ（高台の上面）。空中の敵は手前の角で左右がわずかに切れてよい（D-87、T368）。</summary>
+        public const double DefaultSideHeight = 0.5;
 
         /// <summary>カメラの置き方。<see cref="IsVisible"/> で点が視野に入るかを確かめられる。</summary>
         public readonly struct Pose
@@ -71,12 +78,12 @@ namespace UnitySlotTower.Core.Battle
         }
 
         /// <summary>
-        /// 列数×行数のマップの四隅（地面と <paramref name="height"/> の高さ、外側に <paramref name="margin"/> の余白）が
-        /// すべて視野に入る最小の距離を、注視点をマップの中心にして求める。
+        /// 列数×行数のマップの四隅（外側に <paramref name="margin"/> の余白）が視野に入る最小の距離を、注視点をマップの中心にして求める。
+        /// 上下は地面と <paramref name="height"/>、左右は地面と <paramref name="sideHeight"/> の高さで収める。
         /// </summary>
         public static Pose Fit(int columns, int rows, double pitchDegrees = DefaultPitchDegrees,
             double verticalFovDegrees = DefaultVerticalFovDegrees, double aspect = DefaultAspect,
-            double margin = DefaultMargin, double height = DefaultHeight)
+            double margin = DefaultMargin, double height = DefaultHeight, double sideHeight = DefaultSideHeight)
         {
             if (columns <= 0 || rows <= 0)
             {
@@ -93,14 +100,17 @@ namespace UnitySlotTower.Core.Battle
 
             // 注視点から見た点 Q で、カメラは注視点 − 前方×距離。深さ = Q·前方 + 距離、上下 = Q·上、左右 = Q.x。
             var distance = 0.0;
-            foreach (var y in new[] { 0.0, height })
+            foreach (var z in new[] { -hz, hz })
             {
-                foreach (var z in new[] { -hz, hz })
+                foreach (var y in new[] { 0.0, height })
                 {
-                    var forward = -y * sin + z * cos;
                     var up = y * cos + z * sin;
-                    distance = Math.Max(distance, Math.Abs(up) / tanV - forward);
-                    distance = Math.Max(distance, hx / tanH - forward);
+                    distance = Math.Max(distance, Math.Abs(up) / tanV - (-y * sin + z * cos));
+                }
+
+                foreach (var y in new[] { 0.0, sideHeight })
+                {
+                    distance = Math.Max(distance, hx / tanH - (-y * sin + z * cos));
                 }
             }
 

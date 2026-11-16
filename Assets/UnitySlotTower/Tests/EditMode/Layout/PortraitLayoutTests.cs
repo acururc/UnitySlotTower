@@ -41,11 +41,22 @@ namespace UnitySlotTower.Tests.EditMode.Layout
         }
 
         [Test]
-        public void Battle_View_Is_Top_60_Percent_Of_Letterbox()
+        [Description("D-87（T368）: 戦闘は 3:4 の領域の上半分")]
+        public void Battle_View_Is_Top_Half_Of_Letterbox()
         {
             var battle = PortraitLayout.Battle(1080, 2400);
 
-            Assert.That(Tuple(battle), Is.EqualTo((0.0, 0.2 + 0.6 * 0.4, 1.0, 0.6 * 0.6)).Using(new Tolerance()));
+            Assert.That(Tuple(battle), Is.EqualTo((0.0, 0.2 + 0.6 * 0.5, 1.0, 0.6 * 0.5)).Using(new Tolerance()));
+        }
+
+        [Test]
+        [Description("D-87（T368）: 操作バーは戦闘の下端と筐体の上端の間（240 px）、筐体は 720 px")]
+        public void Operation_Bar_Sits_Between_Battle_And_Slot()
+        {
+            var bar = (1 - PortraitLayout.BattleHeightRatio - PortraitLayout.SlotAreaTop) * PortraitLayout.ReferenceHeight;
+            var slot = PortraitLayout.SlotAreaTop * PortraitLayout.ReferenceHeight;
+
+            Assert.That(new[] { bar, slot }, Is.EqualTo(new[] { 240.0, 720.0 }).Within(1e-6));
         }
 
         [Test]

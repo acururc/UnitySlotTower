@@ -2,6 +2,7 @@ using System;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnitySlotTower.Core.Layout;
 using UnitySlotTower.Flow;
 using UnitySlotTower.Slot;
 using UnitySlotTower.Ui;
@@ -264,11 +265,13 @@ namespace UnitySlotTower.Editor.Setup
 
         // --- T359d ルート ---
 
-        // Route Screen は Portrait Root の y 0.32〜1（1440×1306 px）。値はその割合。
+        // Route Screen は Portrait Root の y SlotAreaTop〜1（1440×1200 px）。値はその割合。
+        private const float RouteHeight = (1f - PortraitLayout.SlotAreaTop) * PortraitLayout.ReferenceHeight;
         private const float RouteStripBottom = 0.88f;
         private const float RouteMapLeft = 0.02f;
         private const float RouteMapRight = 0.66f;
-        private const float RouteCardTop = 0.22f;
+        // 札の高さ 約 288 px（T368 でルート画面が 1306→1200 px になったので 0.22 から上げた）。
+        private const float RouteCardTop = 0.24f;
         private const float RouteCardHalfWidth = 0.093f;
         private const float RouteFont = 40f;
         private const float RouteTitleFont = 56f;
@@ -284,7 +287,7 @@ namespace UnitySlotTower.Editor.Setup
 
             var status = Child(panel, "Status");
             SetRect(status, new Vector2(0f, RouteStripBottom), Vector2.one);
-            var stripHeight = (1f - RouteStripBottom) * 1306f;
+            var stripHeight = (1f - RouteStripBottom) * RouteHeight;
             RouteItem(Child(status, "Life Icon"), Child(status, "Life"), "life", 0.01f, 0.2f, stripHeight);
             RouteItem(Child(status, "Money Icon"), Child(status, "Money"), "money", 0.21f, 0.4f, stripHeight);
             RouteItem(Child(status, "Coin Icon"), Child(status, "Coins"), "coins", 0.41f, 0.6f, stripHeight);
@@ -343,32 +346,32 @@ namespace UnitySlotTower.Editor.Setup
         private const float CabinetFont = 40f;
 
         /// <summary>
-        /// レバー・コイン・回数固定の名前を、リール窓の外の余白に大きく出す。筐体の部品の配置と見た目は変えない（ラベルだけ動かす）。
-        /// 筐体の中は 1440×614 px、リール窓は x 300〜1140・y 180〜594（GameSceneSetup）。左右の余白は幅 約 300 px。
+        /// レバー・コイン・回数固定の名前を、リール窓の下の段に大きく出す。筐体の部品の配置と見た目は変えない（ラベルだけ動かす）。
+        /// 筐体の中は 1440×720 px、リール窓は x 212〜1228・y 205〜705、窓の下の段にレバーとコイン（GameSceneSetup、T368）。
         /// </summary>
         private static void BuildCabinetLabels(RectTransform cabinet)
         {
-            // レバー（x 43〜259・y 40〜164）: 左の余白、レバーの上に2行（x 8〜292・y 172〜272）。
+            // レバー（x 40〜300・y 22〜188）: レバーの右に2行（x 310〜640）。
             var lever = Child(cabinet, "Lever Button");
-            SetLabel(Child(lever, "Text Label cabinet_lever"), new Vector2(0f, 1f), Vector2.one,
-                new Vector2(-35f, 8f), new Vector2(33f, 108f), CabinetFont);
+            SetLabel(Child(lever, "Text Label cabinet_lever"), new Vector2(1f, 0f), Vector2.one,
+                new Vector2(10f, 0f), new Vector2(340f, 0f), CabinetFont);
 
-            // コイン（x 1185〜1420・y 155〜228）: 右の余白、数字の上に2行（x 1148〜1432・y 236〜336）。右の矢印（y 360 付近から上）には掛けない。
+            // コイン（数字 x 1150〜1420・y 62〜168、絵 x 1036〜1140）: 絵の左に2行（x 650〜1026）。
             var credit = Child(cabinet, "Credit");
-            SetLabel(Child(credit, "Text Label cabinet_credit"), new Vector2(0f, 1f), Vector2.one,
-                new Vector2(-37f, 8f), new Vector2(12f, 108f), CabinetFont);
+            SetLabel(Child(credit, "Text Label cabinet_credit"), Vector2.zero, new Vector2(0f, 1f),
+                new Vector2(-500f, 0f), new Vector2(-124f, 0f), CabinetFont);
 
-            // 回数固定（アイコン x 1094〜1179・y 160〜222）: アイコンの下、リール窓の下の空き（x 1036〜1236・y 104〜156）。
+            // 回数固定（絵 x 1036〜1140・y 70〜160）: 絵の下（x 990〜1190・y 8〜62）。
             var fixedSpins = Child(cabinet, "Fixed Spins Icon");
             SetLabel(Child(fixedSpins, "Text Label cabinet_fixed"), Vector2.zero, new Vector2(1f, 0f),
-                new Vector2(-58f, -56f), new Vector2(57f, -4f), CabinetFont);
+                new Vector2(-46f, -62f), new Vector2(50f, -8f), CabinetFont);
         }
 
         // --- T359b 戦闘の HUD ---
 
         // 操作バーの位置（Portrait Root の割合）。バーの子の割合はこれで換算する。
-        private const float BarBottom = 0.32f;
-        private const float BarTop = 0.40f;
+        private const float BarBottom = PortraitLayout.SlotAreaTop;
+        private const float BarTop = 1f - (float)PortraitLayout.BattleHeightRatio;
 
         // 文字あり版の状態の帯（Portrait Root の割合）。戦闘フィールドの上の空き（Battle Camera の上端）に重ねる。
         private const float BandBottom = 1752f / 1920f;

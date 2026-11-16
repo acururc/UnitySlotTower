@@ -4,6 +4,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
 using UnitySlotTower.Battle;
+using UnitySlotTower.Core.Layout;
 using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Flow;
 using UnitySlotTower.Slot;
@@ -22,8 +23,8 @@ namespace UnitySlotTower.Editor.Setup
         private const string FontPath = "Assets/UnitySlotTower/Art/Fonts/NumericOnly SDF.asset";
         private const string RootName = "Route Screen";
 
-        // 操作バーの下端（Game シーンの 6:4 配置: GameSceneSetup.SlotAreaTop）から上を覆う。
-        private const float ScreenBottom = 0.32f;
+        // 操作バーの下端（PortraitLayout.SlotAreaTop）から上を覆う。
+        private const float ScreenBottom = PortraitLayout.SlotAreaTop;
 
         private static readonly Color PanelColor = new Color(0.07f, 0.08f, 0.12f, 1f);
         private static readonly Color StripColor = new Color(0.12f, 0.13f, 0.18f, 1f);
@@ -169,7 +170,7 @@ namespace UnitySlotTower.Editor.Setup
             Debug.Log("[SlotTower Setup] ルート画面を作成した。");
         }
 
-        private static RectTransform[] ReelRects(SlotCabinet cabinet)
+        internal static RectTransform[] ReelRects(SlotCabinet cabinet)
         {
             var property = new SerializedObject(cabinet).FindProperty("reels");
             var rects = new RectTransform[property.arraySize];
@@ -182,7 +183,7 @@ namespace UnitySlotTower.Editor.Setup
         }
 
         // リールの中心の x を、area の左端 0・右端 1 の割合で返す（同じキャンバスの中なのでワールド座標で比べる）。
-        private static float CenterX(RectTransform reel, RectTransform area)
+        internal static float CenterX(RectTransform reel, RectTransform area)
         {
             var reelCorners = new Vector3[4];
             var areaCorners = new Vector3[4];

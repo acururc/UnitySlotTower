@@ -21,13 +21,18 @@ namespace UnitySlotTower.Core.Layout
 
     /// <summary>
     /// 縦長 3:4（12:16）の画面配置（plan 2章）。どの解像度でも 3:4 の領域を中央に置き、余白は黒帯にする。
-    /// 3:4 領域の上部 60% が戦闘カメラ、下部 40% が操作バーとスロット筐体（2026-11-01 変更、旧 38%）。
+    /// 3:4 領域の上半分が戦闘カメラ、下半分が操作バーとスロット筐体（2026-11-17 D-87・T368 で 6:4 から変更）。
     /// </summary>
     public static class PortraitLayout
     {
         public const int ReferenceWidth = 1440;
         public const int ReferenceHeight = 1920;
-        public const double BattleHeightRatio = 0.60;
+
+        /// <summary>戦闘の高さの割合（上から。基準解像度で 960 px）。</summary>
+        public const double BattleHeightRatio = 0.50;
+
+        /// <summary>スロット筐体の上端（下からの割合。基準解像度で 720 px）。ここから戦闘の下端までが操作バー（240 px）。</summary>
+        public const float SlotAreaTop = 0.375f;
 
         private const double Aspect = (double)ReferenceWidth / ReferenceHeight;
 
