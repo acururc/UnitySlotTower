@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UnitySlotTower.Core.Data;
@@ -137,6 +138,24 @@ namespace UnitySlotTower.Tests.EditMode.Data
             var report = GameDataValidator.ValidateAll(files);
 
             Assert.That(report.Errors.Select(e => e.File), Does.Contain("game_config.csv"));
+        }
+
+        [Test]
+        [Description("FR-074: 配置中の時間の倍率は 0 より大きく 1 以下（0 だと止まり、1 より大きいと速くなる）")]
+        public void Placement_Time_Scale_Outside_Zero_To_One_Fails()
+        {
+            var errors = new List<string>();
+            foreach (var value in new[] { "0", "1.5" })
+            {
+                var files = TablePaths.ReadAll();
+                files["game_config.csv"] = files["game_config.csv"].Replace("placement_time_scale,0.1", "placement_time_scale," + value);
+                if (GameDataValidator.ValidateAll(files).Errors.Any(e => e.File == "game_config.csv"))
+                {
+                    errors.Add(value);
+                }
+            }
+
+            Assert.That(errors, Is.EqualTo(new[] { "0", "1.5" }));
         }
 
         [Test]

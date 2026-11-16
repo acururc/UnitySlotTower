@@ -21,6 +21,7 @@ namespace UnitySlotTower.Core.Data
             ColumnRule.Int("deploy_limit", 1, 100),
             ColumnRule.Float("retreat_refund_rate", 0, 1),
             ColumnRule.Float("intro_seconds", 0, 10),
+            ColumnRule.Float("placement_time_scale", 0.01, 1),
         };
 
         private static readonly ColumnRule[] SlotRuleKeys =

@@ -15,6 +15,9 @@ namespace UnitySlotTower.Core.Data
         /// <summary>戦闘マスの開始の演出の秒数（FR-019、plan 17.2）。この間は戦闘の時間が進まず操作もできない。</summary>
         public double IntroSeconds { get; private set; }
 
+        /// <summary>札を選んでから配置を終えるかやめるまでの時間の倍率（FR-074、D-99、plan 18.1）。倍速に関係なくこの値。</summary>
+        public double PlacementTimeScale { get; private set; }
+
         public static GameConfig Load(CsvTable table)
         {
             var values = new KeyValueTable(table);
@@ -27,6 +30,7 @@ namespace UnitySlotTower.Core.Data
                 DeployLimit = values.GetInt("deploy_limit"),
                 RetreatRefundRate = values.GetDouble("retreat_refund_rate"),
                 IntroSeconds = values.GetDouble("intro_seconds"),
+                PlacementTimeScale = values.GetDouble("placement_time_scale"),
             };
         }
     }

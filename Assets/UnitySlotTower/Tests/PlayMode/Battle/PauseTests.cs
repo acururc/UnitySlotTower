@@ -184,6 +184,81 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That((paused, speedWhilePaused, _battle.BattleSpeed, Time.timeScale), Is.EqualTo((0f, 3, 3, 3f)));
         }
 
+        [UnityTest]
+        [Description("AC-055, D-99: 札を選んでから配置をやめるまで 3倍でも 0.1 倍で進み、一時停止中は 0、やめると 3倍に戻る")]
+        public IEnumerator Placing_Slows_Time_Regardless_Of_Speed_Until_Cancelled()
+        {
+            yield return PressSpeed();
+            yield return PressSpeed();
+            var slow = (float)_battle.Config.PlacementTimeScale;
+
+            yield return Tap(Key.Digit1);
+            yield return null;
+            var choosingCell = (_battle.Deployment.Phase, Time.timeScale);
+            var tick = _battle.Field.Tick;
+            yield return new WaitForSecondsRealtime(1f);
+            var slowSteps = _battle.Field.Tick - tick;
+
+            yield return Tap(Key.P);
+            var paused = Time.timeScale;
+            yield return Tap(Key.P);
+            yield return null;
+            var resumed = Time.timeScale;
+
+            yield return Tap(Key.Escape);
+            yield return null;
+            var cancelled = (_battle.Deployment.Phase, Time.timeScale, _battle.BattleSpeed);
+
+            Assert.That((choosingCell, paused, resumed, cancelled),
+                Is.EqualTo(((DeployPhase.ChoosingCell, slow), 0f, slow, (DeployPhase.Idle, 3f, 3))));
+            // 1倍で約 SimulationClock.StepsPerSecond ステップ/秒。0.1 倍なら 1 秒で 1 割前後。
+            Assert.That(slowSteps, Is.LessThanOrEqualTo(UnitySlotTower.Core.Simulation.SimulationClock.StepsPerSecond * slow * 2 + 1),
+                $"配置中に {slowSteps} ステップ進んだ");
+        }
+
+        [UnityTest]
+        [Description("AC-055: 向きを決めて置き終えると選んでいた倍速（2倍）に戻る")]
+        public IEnumerator Finishing_Placement_Returns_To_The_Chosen_Speed()
+        {
+            yield return PressSpeed();
+            yield return Tap(Key.Digit1);
+            yield return null;
+            var placing = Time.timeScale;
+
+            // 置けるマスまでカーソルを動かし、向きを決める（Enter 2回）。
+            var deployment = _battle.Deployment;
+            var map = _battle.Run.Map;
+            var target = deployment.Cursor;
+            for (var y = map.Height - 1; y >= 0; y--)
+            {
+                for (var x = 0; x < map.Width; x++)
+                {
+                    if (deployment.CanPlace(new GridPoint(x, y)))
+                    {
+                        target = new GridPoint(x, y);
+                    }
+                }
+            }
+
+            while (deployment.Cursor.X != target.X)
+            {
+                yield return Tap(deployment.Cursor.X < target.X ? Key.RightArrow : Key.LeftArrow);
+            }
+
+            while (deployment.Cursor.Y != target.Y)
+            {
+                yield return Tap(deployment.Cursor.Y < target.Y ? Key.DownArrow : Key.UpArrow);
+            }
+
+            Assert.That(deployment.CanPlace(target), Is.True, "置けるマスがない");
+            yield return Tap(Key.Enter);
+            yield return Tap(Key.Enter);
+            yield return null;
+
+            Assert.That((placing, deployment.Phase, _battle.Field.Units.Count > 0, Time.timeScale),
+                Is.EqualTo(((float)_battle.Config.PlacementTimeScale, DeployPhase.Idle, true, 2f)));
+        }
+
         private IEnumerator PressSpeed()
         {
             Object.FindAnyObjectByType<OperationBarStatus>().transform.Find("Speed Button")

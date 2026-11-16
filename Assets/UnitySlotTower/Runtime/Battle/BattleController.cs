@@ -155,8 +155,7 @@ namespace UnitySlotTower.Battle
         public const int MaxBattleSpeed = 3;
 
         /// <summary>
-        /// 戦闘の速さ（FR-011、D-84）。1 から <see cref="MaxBattleSpeed"/>。Game シーン（ゲーム1回分）の間は戦闘マスをまたいで引き継ぎ、
-        /// 新しいゲーム（シーンの読み込み）で 1 に戻る。
+        /// 戦闘の速さ（FR-011、D-84）。1 から <see cref="MaxBattleSpeed"/>。戦闘マスに入るたびに 1 に戻る（D-96）。
         /// </summary>
         public int BattleSpeed { get; private set; } = 1;
 
@@ -172,11 +171,21 @@ namespace UnitySlotTower.Battle
             ApplyTimeScale();
         }
 
-        // Time.timeScale を書くのはここだけ（plan 17.5）。一時停止中は 0、戦闘中は倍率、それ以外（開始の演出・ルートなど）は 1。
+        /// <summary>
+        /// 戦闘中に札を選んでから配置を終えるかやめるまで（FR-074、D-99）。このあいだ時間は倍速に関係なく
+        /// <see cref="GameConfig.PlacementTimeScale"/> で進む。
+        /// </summary>
+        public bool IsPlacing => Run != null && Run.Phase == WavePhase.Fighting && Run.Deployment.Phase != DeployPhase.Idle;
+
+        // Time.timeScale を書くのはここだけ（plan 17.5・18.1）。一時停止中は 0、配置中は placement_time_scale、戦闘中は倍率、
+        // それ以外（開始の演出・ルートなど）は 1。
         // 決まる値が変わったときだけ書く（テストが早送りに使う timeScale を毎フレーム上書きしない）。
         private void ApplyTimeScale()
         {
-            var scale = IsPaused ? 0f : Run != null && Run.Phase == WavePhase.Fighting ? BattleSpeed : 1f;
+            var scale = IsPaused ? 0f
+                : IsPlacing ? (float)Config.PlacementTimeScale
+                : Run != null && Run.Phase == WavePhase.Fighting ? BattleSpeed
+                : 1f;
             if (scale != _appliedTimeScale)
             {
                 _appliedTimeScale = scale;
@@ -258,6 +267,7 @@ namespace UnitySlotTower.Battle
             Run = new BattleNodeRun(Config, Units, Ranges, state, encounter, map,
                 WaveSchedule.Load(_waves, encounter.Id, map, _enemies), _random);
             NodeCount++;
+            BattleSpeed = 1;
             _completionReported = false;
             UpdateSlotLock();
             fieldView.Show(map);

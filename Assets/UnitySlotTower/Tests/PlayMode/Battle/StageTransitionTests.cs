@@ -100,8 +100,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        [Description("AC-015, D-84: 選んだ速さは次の戦闘マスに引き継ぎ、戦闘の外（ルート・開始の演出）では 1倍")]
-        public IEnumerator Battle_Speed_Carries_Over_To_The_Next_Node()
+        [Description("AC-015, D-96: 次の戦闘マスは 1倍で始まり、戦闘の外（ルート・開始の演出）でも 1倍")]
+        public IEnumerator Next_Node_Starts_At_Normal_Speed()
         {
             yield return RouteTestUtil.WaitForIntro(_battle);
             _battle.CycleBattleSpeed();
@@ -124,7 +124,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return null;
 
             Assert.That((outside, _battle.Run.Phase, _battle.BattleSpeed, Time.timeScale),
-                Is.EqualTo((1f, WavePhase.Fighting, 3, 3f)));
+                Is.EqualTo((1f, WavePhase.Fighting, 1, 1f)));
         }
 
         private int TileRoots()

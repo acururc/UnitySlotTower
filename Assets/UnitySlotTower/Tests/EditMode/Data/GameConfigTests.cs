@@ -7,7 +7,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
     public sealed class GameConfigTests
     {
         private const string ValidConfig =
-            "key,value\ninitial_coins,15\ninitial_money,30\nbet,3\nlife,10\ndeploy_limit,8\nretreat_refund_rate,0.5\nintro_seconds,2\n";
+            "key,value\ninitial_coins,15\ninitial_money,30\nbet,3\nlife,10\ndeploy_limit,8\nretreat_refund_rate,0.5\nintro_seconds,2\nplacement_time_scale,0.1\n";
 
         [Test]
         [Description("plan 16.2: コインと所持金の初期値を別々に読む（ライフボーナスのキーはない）")]
@@ -60,6 +60,18 @@ namespace UnitySlotTower.Tests.EditMode.Data
             Assert.That((GameConfig.Load(CsvParser.Parse("game_config.csv", ValidConfig.Replace("intro_seconds,2", "intro_seconds,1.5"))).IntroSeconds,
                     GameConfig.Load(CsvParser.Parse("game_config.csv", text)).IntroSeconds),
                 Is.EqualTo((1.5, 2.0)));
+        }
+
+        [Test]
+        [Description("FR-074, plan 18.1: 配置中の時間の倍率を読む（プロジェクトの表は仮 0.1）")]
+        public void Placement_Time_Scale_Is_Read()
+        {
+            var text = File.ReadAllText(Path.Combine(TablePaths.Root, "game_config.csv"));
+
+            Assert.That((GameConfig.Load(CsvParser.Parse("game_config.csv",
+                        ValidConfig.Replace("placement_time_scale,0.1", "placement_time_scale,0.25"))).PlacementTimeScale,
+                    GameConfig.Load(CsvParser.Parse("game_config.csv", text)).PlacementTimeScale),
+                Is.EqualTo((0.25, 0.1)));
         }
 
         [Test]

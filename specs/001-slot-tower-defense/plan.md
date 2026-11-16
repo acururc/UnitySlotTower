@@ -427,7 +427,7 @@ Assets/UnitySlotTower/
 
 ### 18.1 倍速を戦闘ごとに1倍・配置中のスロー（FR-011, FR-074, D-96, D-99）
 - 倍速: `BattleController.BeginNode` で `BattleSpeed = 1`。`StageTransitionTests.Battle_Speed_Carries_Over_To_The_Next_Node` を「次の戦闘マスは1倍」に書き直す。
-- スロー: `BattleController` に「配置中」（札を選んでから向きを決めるかやめるまで、`UnitPlacementView` が知らせる）を持ち、`ApplyTimeScale` の決まりを「一時停止 0 → 配置中 `placement_time_scale`（`game_config.csv`、仮 0.1） → 戦闘中は倍率 → それ以外 1」にする。書くのは今までどおり `ApplyTimeScale` だけ。開始の演出・説明中の扱いは今のまま。
+- スロー: `BattleController` に「配置中」（`IsPlacing`: 戦闘中に `UnitDeployment.Phase` が Idle 以外 = 札を選んでから向きを決めるかやめるまで）を持ち、`ApplyTimeScale` の決まりを「一時停止 0 → 配置中 `placement_time_scale`（`game_config.csv`、仮 0.1） → 戦闘中は倍率 → それ以外 1」にする。書くのは今までどおり `ApplyTimeScale` だけ。開始の演出・説明中の扱いは今のまま。
 
 ### 18.2 弓の弱体化と重装（FR-075, D-97）
 - `enemies.csv` に `ranged_damage_rate`（遠距離の味方から受けるダメージの倍率、既定 1）を足し、`Damage` の計算で攻撃側が遠距離職のときだけ掛ける（TDD）。重装 `heavy`: 体力・防御力が高く、`ranged_damage_rate` 0.4（仮）。地上の近距離。見た目は大きな盾の付いた大きめの体（`PresentationCatalog`）。
