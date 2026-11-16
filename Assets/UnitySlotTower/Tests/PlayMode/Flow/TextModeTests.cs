@@ -185,7 +185,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 }
             }
 
-            cabinet.LeverRect.GetComponent<Button>().onClick.Invoke();
+            yield return RouteTestUtil.WaitForRouteSpin(cabinet);
             Assert.That(cabinet.PickRouteReel(reel), Is.True, "行き先のリールを止められない");
             limit = Time.realtimeSinceStartup + 5f;
             while (run.OpenScreen == null && Time.realtimeSinceStartup < limit)

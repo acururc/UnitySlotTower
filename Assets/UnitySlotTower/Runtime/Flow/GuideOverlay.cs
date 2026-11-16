@@ -170,9 +170,11 @@ namespace UnitySlotTower.Flow
             {
                 Paused = battle.IsPaused,
                 Finished = battle.IsFinished,
-                OnScreen = runController != null && runController.OpenScreen != null,
+                // ルートの移動のアニメ中（D-90）も画面中として扱い、戦闘の題目を始めない。
+                OnScreen = runController != null && runController.OpenScreen != null || routeScreen != null && routeScreen.IsMoving,
                 ChoosingRoute = choosingRoute,
-                RouteSpinning = choosingRoute && slotCabinet.IsRouteSpinning,
+                // ルート選びのリールは入った時点で自動で回る（D-90）ので、レバーは指さずに行き先のリールを指す。
+                RouteSpinning = choosingRoute,
                 Intro = run.Phase == WavePhase.Intro,
                 BattleNode = battle.NodeCount,
                 Deploy = run.Deployment.Phase,

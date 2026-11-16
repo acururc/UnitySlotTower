@@ -52,6 +52,14 @@ namespace UnitySlotTower.Flow
         [SerializeField] private float lineWidth = 6f;
         [SerializeField, Range(0f, 1f)] private float emptyDotAlpha = 0.2f;
 
+        [Header("Move (FR-064)")]
+        [Tooltip("行き先が決まった後、今のマスから行き先へ印が線に沿って進む秒数（実時間）。")]
+        [SerializeField] private float moveSeconds = 0.5f;
+        [Tooltip("印が行き先に着いてから次の画面に移るまでの秒数（実時間）。")]
+        [SerializeField] private float arriveHoldSeconds = 0.4f;
+        [SerializeField] private Color markerColor = Color.white;
+        [SerializeField, Range(0f, 1f)] private float markerSize = 0.55f;
+
         private sealed class NodeView
         {
             public RectTransform Root;
@@ -70,8 +78,19 @@ namespace UnitySlotTower.Flow
         private int _shownLife = -1;
         private int _shownMoney = -1;
         private int _shownCoins = -1;
+        private RectTransform _marker;
+        private RouteNode _moveFrom;
+        private RouteNode _moveTo;
+        private float _moveElapsed;
+        private Action _onArrived;
 
         public bool IsOpen => panel != null && panel.activeSelf;
+
+        /// <summary>行き先へ進む移動のアニメ中か（<see cref="BeginMove"/> から次の画面に移るまで。この間は操作を受けない）。</summary>
+        public bool IsMoving => _onArrived != null;
+
+        /// <summary>移動のアニメの印（テスト・撮影用。作る前は null）。</summary>
+        public RectTransform Marker => _marker;
 
         /// <summary>行き先の矢印（左・中・右）。</summary>
         public IReadOnlyList<Button> ArrowButtons => arrowButtons;
@@ -125,6 +144,98 @@ namespace UnitySlotTower.Flow
             panel.SetActive(false);
             _pulsing.Clear();
             _visited = null;
+            _onArrived = null;
+            if (_marker != null)
+            {
+                _marker.gameObject.SetActive(false);
+            }
+        }
+
+        /// <summary>
+        /// 今のマスから <paramref name="to"/> へ印が線に沿って進むアニメを見せ、着いて少し待ってから <paramref name="onArrived"/> を呼ぶ
+        /// （D-90、plan 17.8）。アニメ中は行き先の矢印を押せない。画面が開いていなければすぐ呼ぶ。
+        /// </summary>
+        public void BeginMove(RouteNode to, Action onArrived)
+        {
+            if (onArrived == null)
+            {
+                throw new ArgumentNullException(nameof(onArrived));
+            }
+
+            var from = _state?.Current;
+            if (!IsOpen || from == null || to == null || _marker == null)
+            {
+                onArrived();
+                return;
+            }
+
+            _moveFrom = from;
+            _moveTo = to;
+            _moveElapsed = 0f;
+            _onArrived = onArrived;
+
+            // 行き先だけを光らせ、そこへの線を通ってきた道の色にする。
+            _pulsing.Clear();
+            foreach (var pair in _nodes)
+            {
+                var keep = pair.Key == from || pair.Key == to;
+                pair.Value.Ring.gameObject.SetActive(keep);
+                pair.Value.Ring.localScale = Vector3.one;
+                if (pair.Key == to)
+                {
+                    pair.Value.Group.alpha = 1f;
+                    _pulsing.Add(pair.Value.Ring);
+                }
+            }
+
+            foreach (var (lineFrom, lineTo, line) in _lines)
+            {
+                if (lineFrom == from)
+                {
+                    var chosen = lineTo == to;
+                    line.color = chosen ? pathColor : lineColor;
+                    line.rectTransform.sizeDelta = new Vector2(line.rectTransform.sizeDelta.x, chosen ? lineWidth * 1.6f : lineWidth);
+                }
+            }
+
+            for (var reel = 0; reel < arrowButtons.Length; reel++)
+            {
+                if (arrowButtons[reel] != null)
+                {
+                    arrowButtons[reel].interactable = false;
+                }
+
+                if (arrowGroups[reel] != null && from.NextOnReel(reel) != to)
+                {
+                    arrowGroups[reel].alpha = 0.25f;
+                }
+            }
+
+            PlaceMarker(0f);
+            _marker.gameObject.SetActive(true);
+        }
+
+        private void PlaceMarker(float t)
+        {
+            var route = _state.Route;
+            var point = Vector2.Lerp(Normalized(route, _moveFrom), Normalized(route, _moveTo), Mathf.SmoothStep(0f, 1f, t));
+            _marker.anchorMin = _marker.anchorMax = point;
+            _marker.anchoredPosition = Vector2.zero;
+        }
+
+        private void UpdateMove()
+        {
+            _moveElapsed += Time.unscaledDeltaTime;
+            PlaceMarker(moveSeconds > 0f ? Mathf.Clamp01(_moveElapsed / moveSeconds) : 1f);
+            if (_moveElapsed < moveSeconds + arriveHoldSeconds)
+            {
+                return;
+            }
+
+            var arrived = _onArrived;
+            _onArrived = null;
+            _marker.gameObject.SetActive(false);
+            arrived();
         }
 
         /// <summary>そのマスが行き先として光っているか（テスト用）。</summary>
@@ -137,8 +248,8 @@ namespace UnitySlotTower.Flow
                 return;
             }
 
-            // 開いたまま文字あり／なしが切り替わった。
-            if (mapArea.rect.size != _builtSize)
+            // 開いたまま文字あり／なしが切り替わった（移動のアニメ中は作り直さない）。
+            if (!IsMoving && mapArea.rect.size != _builtSize)
             {
                 Build(_state.Route);
                 Refresh(_visited);
@@ -152,6 +263,10 @@ namespace UnitySlotTower.Flow
             }
 
             RefreshStatus(false);
+            if (IsMoving)
+            {
+                UpdateMove();
+            }
         }
 
         private void Build(RouteMap route)
@@ -203,6 +318,13 @@ namespace UnitySlotTower.Flow
                     Ring = ring,
                 };
             }
+
+            // 移動のアニメの印（マスより手前）。縁取りの金の円の上に白い円。
+            _marker = RouteNodeIcons.CreateRect("Marker", nodes, Vector2.zero, Vector2.zero);
+            _marker.sizeDelta = new Vector2(cell, cell) * markerSize;
+            RouteNodeIcons.CreateImage("Rim", _marker, new Vector2(-0.15f, -0.15f), new Vector2(1.15f, 1.15f), ringColor, knobSprite);
+            RouteNodeIcons.CreateImage("Dot", _marker, Vector2.zero, Vector2.one, markerColor, knobSprite);
+            _marker.gameObject.SetActive(false);
         }
 
         // 階は下から上、列は左から右。マスはその区画の中心（3列の格子なので、まっすぐと斜めがそのまま見分けられる: D-88）。

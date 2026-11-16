@@ -216,12 +216,18 @@ namespace UnitySlotTower.Flow
                 return;
             }
 
+            // 移動のアニメ（D-90）を見せてからそのマスに入る。アニメ中は筐体のレバーも止める。
             _choosingRoute = false;
-            routeScreen.Hide();
-            if (!Enter(next))
+            slotCabinet.HeldByScreen = true;
+            routeScreen.BeginMove(next, () =>
             {
-                OpenNodeScreen(next);
-            }
+                slotCabinet.HeldByScreen = false;
+                routeScreen.Hide();
+                if (!Enter(next))
+                {
+                    OpenNodeScreen(next);
+                }
+            });
         }
 
         // 戦闘以外のマスの画面を開く。画面のない種類はすぐルート画面に戻る。

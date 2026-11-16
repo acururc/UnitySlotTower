@@ -150,9 +150,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return null;
             AssertNoLetters("ルート");
 
-            cabinet.LeverRect.GetComponent<Button>().onClick.Invoke();
-            yield return null;
-            Assert.That(cabinet.IsRouteSpinning, Is.True, "ルート選びでレバーを引けない");
+            yield return RouteTestUtil.WaitForRouteSpin(cabinet);
             AssertNoLetters("ルート（回転中）");
 
             Assert.That(cabinet.PickRouteReel(RouteTestUtil.ReelTo(run.State.Current, kind)), Is.True, "行き先のリールを止められない");

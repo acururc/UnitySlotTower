@@ -84,6 +84,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That((_run.IsChoosingRoute, _screen.IsOpen, _cabinet.IsChoosingRoute, _battle.IsInputBlocked),
                 Is.EqualTo((true, true, true, true)), "戦闘マスの後にルート画面が開かない／戦闘の操作を止めない");
             Assert.That(_screen.NodeViewCount, Is.EqualTo(state.Route.All.Count), "マップに全マスが並ばない");
+            // 入った時点でリールが回っている（FR-064）。
+            yield return RouteTestUtil.WaitForRouteSpin(_cabinet);
+            Assert.That(_cabinet.IsSpinning, Is.True, "ルート画面に入ってもリールが回っていない");
 
             for (var reel = 0; reel < 3; reel++)
             {
@@ -99,7 +102,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         [UnityTest]
-        public IEnumerator Lever_Spins_Without_Coins_And_The_Clicked_Reel_Enters_That_Node()
+        [Description("T367 (FR-064, AC-018): 入った時点でリールが回り、止めたリールが最初に、残りが左から順に止まり、移動のアニメの後にそのマスに入る")]
+        public IEnumerator Reels_Spin_On_Entry_And_The_Clicked_Reel_Stops_First_Then_The_Move_Animates_Into_That_Node()
         {
             yield return FinishBattle();
             var state = _run.State;
@@ -108,29 +112,73 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var fixedSpins = _cabinet.FixedSpinsLeft;
             var spins = _cabinet.SpinCount;
 
-            // 回す前のリールのクリックは効かない。
-            var reel = RouteTestUtil.PreferredReel(current);
-            PickButton(reel).onClick.Invoke();
-            Assert.That(_cabinet.RoutePick, Is.Null, "回す前にリールが止まった");
-
+            yield return RouteTestUtil.WaitForRouteSpin(_cabinet);
+            // レバーは何もしない（コインも回数も使わない）。通常の自動停止（約1.8秒）を過ぎても止まらない。
             _cabinet.LeverRect.GetComponent<Button>().onClick.Invoke();
-            Assert.That((_cabinet.IsRouteSpinning, _cabinet.IsSpinning), Is.EqualTo((true, true)), "レバーでリールが回らない");
-            // 通常の自動停止（約1.8秒）を過ぎても止まらない。
             yield return WaitReal(2.5f);
             Assert.That((_cabinet.IsSpinning, _run.IsChoosingRoute), Is.EqualTo((true, true)), "ルート選びのリールが自動で止まった");
             // 回数固定は次の戦闘マスの出現で置き換わるので、マスに入る前に確かめる。
-            Assert.That((state.Coins.Coins, _cabinet.FixedSpinsLeft), Is.EqualTo((coins, fixedSpins)), "レバーでコインか回数固定が減った");
+            Assert.That((state.Coins.Coins, _cabinet.FixedSpinsLeft, _cabinet.SpinCount), Is.EqualTo((coins, fixedSpins, spins)),
+                "ルート選びでコインか回数固定か回した回数が変わった");
 
+            var reels = (SlotReelView[])Field("reels");
+            var reel = RouteTestUtil.PreferredReel(current);
             var target = current.NextOnReel(reel);
             PickButton(reel).onClick.Invoke();
             Assert.That(_cabinet.RoutePick, Is.EqualTo(reel), "行き先のあるリールのクリックで止まらない");
+
+            // 各リールが止まった順を記録する。
+            var stopOrder = new System.Collections.Generic.List<int>();
             var limit = Time.realtimeSinceStartup + 5f;
+            while (stopOrder.Count < 3 && Time.realtimeSinceStartup < limit)
+            {
+                for (var i = 0; i < 3; i++)
+                {
+                    if (!reels[i].IsSpinning && !stopOrder.Contains(i))
+                    {
+                        stopOrder.Add(i);
+                    }
+                }
+
+                yield return null;
+            }
+
+            var expectedOrder = new System.Collections.Generic.List<int> { reel };
+            for (var i = 0; i < 3; i++)
+            {
+                if (i != reel)
+                {
+                    expectedOrder.Add(i);
+                }
+            }
+
+            Assert.That(stopOrder, Is.EqualTo(expectedOrder), "止めたリールが最初に、残りが左から順に止まらない");
+
+            // 止まった後は移動のアニメ。まだマスに入らず、印が今のマスから行き先へ進む。
+            var stoppedAt = Time.realtimeSinceStartup;
+            while (!_screen.IsMoving && Time.realtimeSinceStartup < stoppedAt + 1f)
+            {
+                yield return null;
+            }
+
+            Assert.That((_screen.IsMoving, _screen.IsOpen, state.Current, _screen.Marker.gameObject.activeSelf),
+                Is.EqualTo((true, true, current, true)), "止まった後に移動のアニメにならない");
+            Assert.That(_screen.ArrowButtons[reel].interactable, Is.False, "移動のアニメ中に行き先を押せる");
+            var startPos = _screen.Marker.position;
+            yield return WaitReal(0.3f);
+            Assert.That(Vector3.Distance(_screen.Marker.position, startPos), Is.GreaterThan(1f), "移動のアニメで印が動かない");
+            // アニメ中のレバーで筐体が回らない。
+            _cabinet.LeverRect.GetComponent<Button>().onClick.Invoke();
+            Assert.That(_cabinet.IsSpinning, Is.False, "移動のアニメ中にレバーで回った");
+
+            limit = Time.realtimeSinceStartup + 5f;
             while (state.Current != target && Time.realtimeSinceStartup < limit)
             {
                 yield return null;
             }
 
-            Assert.That((state.Current, _run.Visited[_run.Visited.Count - 1]), Is.EqualTo((target, target)),
+            Assert.That(Time.realtimeSinceStartup - stoppedAt, Is.GreaterThan(0.7f), "移動のアニメを見せずに次の画面に移った");
+            Assert.That((state.Current, _run.Visited[_run.Visited.Count - 1], _screen.IsMoving), Is.EqualTo((target, target, false)),
                 "止めたリールの方向のマスに進まない");
             Assert.That((state.Coins.Coins, _cabinet.SpinCount), Is.EqualTo((coins, spins)),
                 "ルート選びでコイン・回した回数が変わった");
@@ -199,7 +247,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 "文字あり版の札の真ん中のクリックが札に当たらない（いちばん上: " + (hits.Count > 0 ? hits[0].gameObject.name : "なし") + "）");
 
             var chosen = current.NextOnReel(reelToPick);
-            _cabinet.LeverRect.GetComponent<Button>().onClick.Invoke();
+            yield return RouteTestUtil.WaitForRouteSpin(_cabinet);
             _screen.ArrowButtons[reelToPick].onClick.Invoke();
             var limit = Time.realtimeSinceStartup + 5f;
             while (state.Current != chosen && Time.realtimeSinceStartup < limit)
@@ -225,8 +273,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             {
                 _cabinet.BeginRouteChoice(new[] { false, true, false });
                 Assert.That((Dim(0).activeSelf, Dim(1).activeSelf, Dim(2).activeSelf), Is.EqualTo((true, false, true)));
-                _cabinet.LeverRect.GetComponent<Button>().onClick.Invoke();
-                Assert.That(_cabinet.IsRouteSpinning, Is.True);
+                yield return RouteTestUtil.WaitForRouteSpin(_cabinet);
 
                 PickButton(0).onClick.Invoke();
                 PickButton(2).onClick.Invoke();

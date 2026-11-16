@@ -178,11 +178,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             // 戦闘マスを終えてルート選びに進む（1ウェーブ: D-78）。
             yield return WaitForRouteChoice();
 
-            // ルート: レバーのクリックで回し、ショップのリールのボタンをクリックして止める。
+            // ルート: リールは入った時点で回る（D-90）。ショップのリールのボタンをクリックして止める。
             var reel = RouteTestUtil.ReelTo(_run.State.Current, RouteNodeKinds.Shop);
             Assert.That(reel, Is.GreaterThanOrEqualTo(0), "2階にショップがない");
-            yield return Click(_cabinet.LeverRect);
-            Assert.That(_cabinet.IsRouteSpinning, Is.True, "ルート選びでレバーのクリックで回らない");
+            yield return RouteTestUtil.WaitForRouteSpin(_cabinet);
             yield return Click(RouteReelButton(reel).transform);
             for (var limit = Time.realtimeSinceStartup + 5f; _run.OpenScreen == null && Time.realtimeSinceStartup < limit;)
             {

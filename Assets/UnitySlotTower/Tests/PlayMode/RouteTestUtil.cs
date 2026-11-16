@@ -31,7 +31,22 @@ namespace UnitySlotTower.Tests.PlayMode
         }
 
         /// <summary>
-        /// ルート選び中なら、レバーを引き、回り出したら戦闘マスを優先して行き先のあるリールを止める（旧 T350a の自動進行と同じ選び方）。
+        /// ルート選びのリール（入った時点で自動で回る: D-90）が回り出すまで待つ。戦闘の最後の回転が止まり終わる前にルート選びに
+        /// 入ると、止まり終えてから回り出す。
+        /// </summary>
+        public static System.Collections.IEnumerator WaitForRouteSpin(SlotCabinet cabinet)
+        {
+            var limit = Time.realtimeSinceStartup + 5f;
+            while (!cabinet.IsRouteSpinning && Time.realtimeSinceStartup < limit)
+            {
+                yield return null;
+            }
+
+            Assert.That(cabinet.IsRouteSpinning, Is.True, "ルート選びに入ってもリールが回り出さない");
+        }
+
+        /// <summary>
+        /// ルート選び中なら、リールが回り出したら戦闘マスを優先して行き先のあるリールを止める（旧 T350a の自動進行と同じ選び方）。
         /// ショップ・回復の画面（T350c）が開いていれば ◀ で閉じる。
         /// </summary>
         public static void Step()
@@ -45,14 +60,8 @@ namespace UnitySlotTower.Tests.PlayMode
 
             var cabinet = Object.FindAnyObjectByType<SlotCabinet>();
             if (run == null || cabinet == null || !run.IsChoosingRoute || !cabinet.IsChoosingRoute ||
-                cabinet.RoutePick.HasValue || cabinet.IsSpinning && !cabinet.IsRouteSpinning)
+                cabinet.RoutePick.HasValue || !cabinet.IsRouteSpinning)
             {
-                return;
-            }
-
-            if (!cabinet.IsRouteSpinning)
-            {
-                cabinet.LeverRect.GetComponent<Button>().onClick.Invoke();
                 return;
             }
 

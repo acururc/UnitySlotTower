@@ -190,11 +190,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(run.IsChoosingRoute, Is.True, "最初の戦闘マスを終えてもルート選びにならない");
             _guide.enabled = true;
             yield return null;
-            Assert.That(_guide.Current, Is.EqualTo(GuideHint.RouteLever), "初めてのルートでレバーを指す");
-
-            yield return Click(_cabinet.LeverRect);
-            Assert.That((_cabinet.IsRouteSpinning, _guide.Current), Is.EqualTo((true, GuideHint.RoutePick)),
-                "レバーを引くと行き先のリールを指す");
+            // リールは入った時点で回る（D-90）ので、初めてのルートではレバーではなく行き先のリールを指す。
+            Assert.That(_guide.Current, Is.EqualTo(GuideHint.RoutePick), "初めてのルートで行き先のリールを指さない");
+            yield return RouteTestUtil.WaitForRouteSpin(_cabinet);
 
             var reel = -1;
             for (var r = 0; r < 3 && reel < 0; r++)
@@ -209,11 +207,19 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var route = Object.FindAnyObjectByType<RouteScreen>();
             yield return Click(route.ArrowButtons[reel].transform);
             limit = Time.realtimeSinceStartup + 5f;
+            var moveFrames = 0;
             while (run.OpenScreen == null && Time.realtimeSinceStartup < limit)
             {
+                // 移動のアニメ中（D-90）は説明を出さない（戦闘の題目が割り込まない）。説明の更新は1フレーム遅れうる。
+                if (route.IsMoving && ++moveFrames >= 2)
+                {
+                    Assert.That(_guide.Current, Is.EqualTo(GuideHint.None), "移動のアニメ中に説明が出た");
+                }
+
                 yield return null;
             }
 
+            Assert.That(moveFrames, Is.GreaterThan(0), "ショップに入る前に移動のアニメがない");
             yield return null;
             Assert.That((run.OpenScreen is ShopScreen, _guide.Current, _guide.transform.Find("Overlay").gameObject.activeSelf,
                     _guide.Sequence.IsDone(GuideTopic.Route)),
