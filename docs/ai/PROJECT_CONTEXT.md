@@ -24,6 +24,7 @@ Unity project at repository root (created 2026-10-26). This is an index of confi
 - Agent rules: `AGENTS.md` is canonical; `CLAUDE.md` imports it. Skills canonical in `.agents/skills/` with thin `.claude/skills/` entries.
 - Unity automation ported from CookingShot (verified there on 6000.3): on-demand start, bounded waits, explicit Stop; no permanently registered MCP server. Shares port 8080 with CookingShot, so one project at a time.
 - Blender tooling is intentionally not included.
+- Personal, non-commercial project (user, 2026-11-17): assets need not be free or commercially licensed; paid or non-commercial assets are fine. Still record source and license in `docs/ASSET_LICENSES.md`.
 
 ## Maintenance
 Keep confirmed facts/decisions here and continuation state in `HANDOFF.md`; replace obsolete state rather than append history. Update version facts when authoritative settings change.
