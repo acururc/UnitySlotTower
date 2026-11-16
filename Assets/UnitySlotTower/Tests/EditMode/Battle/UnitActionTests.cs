@@ -65,6 +65,20 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
+        [Description("AC-024, FR-060: 弓は範囲内に空中の敵がいれば、ゴールにもっと近い地上の敵より先に狙う")]
+        public void Archer_Targets_An_Air_Enemy_Before_A_Ground_Enemy_Closer_To_The_Goal()
+        {
+            // 85 ステップ後: melee は (1,0)・残り約1.58、air は (1,1)・残り約3.17。どちらも弓 (1,1) の範囲内。
+            var field = Create("0,melee,S1,g,0\n1,air,S2,a,0\n");
+            field.Advance(85);
+            Place(field, "archer", 1, 1);
+
+            field.Advance(1);
+
+            Assert.That((field.Enemies[0].Hp, field.Enemies[1].Hp), Is.EqualTo((1000, 600 - (350 - 20))));
+        }
+
+        [Test]
         [Description("FR-031: 弓以外は空中の敵を攻撃しない")]
         public void Tank_Does_Not_Attack_An_Air_Enemy()
         {

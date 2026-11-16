@@ -441,13 +441,14 @@ namespace UnitySlotTower.Core.Battle
         }
 
         /// <summary>
-        /// ブロック中の敵があればその中から、なければ範囲内の敵から、ゴールに最も近い敵（同じなら先に出た敵）を選ぶ。
-        /// 空中の敵は遠距離職（弓）だけが狙える（FR-031）。
+        /// 近距離職はブロック中の敵、遠距離職は範囲内の空中の敵があればその中から（FR-060）、なければ範囲内の敵から、
+        /// ゴールに最も近い敵（同じなら先に出た敵）を選ぶ。空中の敵は遠距離職（弓）だけが狙える（FR-031）。
         /// </summary>
         private BattleEnemy FindTarget(BattleUnit unit)
         {
             BattleEnemy target = null;
-            var targetBlocked = false;
+            var targetFirst = false;
+            var ranged = unit.Definition.Role == UnitRole.Ranged;
             foreach (var enemy in _enemies)
             {
                 if (!enemy.IsAlive)
@@ -460,13 +461,14 @@ namespace UnitySlotTower.Core.Battle
                     continue;
                 }
 
-                var blocked = enemy.BlockedBy == unit;
+                // 近距離職はブロック中の敵が先、遠距離職は空中の敵が先（FR-060）。
+                var first = ranged ? enemy.Definition.IsAir : enemy.BlockedBy == unit;
 
-                if (target == null || blocked && !targetBlocked ||
-                    blocked == targetBlocked && enemy.RemainingDistance < target.RemainingDistance)
+                if (target == null || first && !targetFirst ||
+                    first == targetFirst && enemy.RemainingDistance < target.RemainingDistance)
                 {
                     target = enemy;
-                    targetBlocked = blocked;
+                    targetFirst = first;
                 }
             }
 
