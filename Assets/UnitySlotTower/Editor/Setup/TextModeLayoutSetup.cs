@@ -439,7 +439,7 @@ namespace UnitySlotTower.Editor.Setup
                 new Vector2((left + 340f) / width, iconTop));
         }
 
-        // 帯: ライフ・所持金（左）、倍率（中、BuildRates）、撤退・一時停止（右）。▶ とウェーブは T361 で廃止。
+        // 帯: ライフ・所持金・残りの敵（左）、倍率（中、BuildRates）、倍速・撤退・一時停止（右）。▶ とウェーブは T361 で廃止。
         private static void BuildStatusBand(RectTransform bar)
         {
             var status = Child(bar, "Status");
@@ -448,6 +448,11 @@ namespace UnitySlotTower.Editor.Setup
 
             NamedIcon(Child(status, "Life Icon"), Child(status, "Life"), "life", 0.012f, 0.13f, bandHeight);
             NamedIcon(Child(status, "Coin Icon"), Child(status, "Coins"), "money", 0.142f, 0.27f, bandHeight);
+            // T370: 残りの敵（所持金と倍率の間）と倍速（倍率と撤退の間、撤退・一時停止と同じ形）。部品は BattleSpeedSetup（T365）。
+            NamedIcon(Child(status, "Enemy Icon"), Child(status, "Remaining"), "bar_remaining", 0.282f, 0.405f, bandHeight);
+            var speed = Child(status, "Speed Button");
+            BandButton(speed, "bar_speed", 0.63f, 0.74f);
+            SetRect(Child(speed, "Speed"), new Vector2(0.08f, 0.44f), new Vector2(0.92f, 0.96f));
 
             var retreat = Child(status, "Retreat Button");
             BandButton(retreat, "bar_retreat", 0.75f, 0.86f);

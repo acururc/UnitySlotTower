@@ -74,6 +74,7 @@ namespace UnitySlotTower.Editor.Setup
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             // 文字あり版: 帯の所持金と倍率の間に残りの数、撤退の左に倍速（TextModeLayoutSetup の BuildStatusBand の空き）。
+            // T370 から名前のラベルは Add Text Mode Labels、最終的な位置は Build Text Mode Layout が置く（このメニューの後に両方を実行し直す）。
             SetTextRect(icon.rectTransform, new Vector2(0.285f, 0.10f), new Vector2(0.319f, 0.48f));
             SetTextRect(remaining.rectTransform, new Vector2(0.321f, BandValueBottom), new Vector2(0.40f, BandValueTop));
             SetTextRect(speedImage.rectTransform, new Vector2(0.63f, BandValueBottom), new Vector2(0.74f, BandNameTop));

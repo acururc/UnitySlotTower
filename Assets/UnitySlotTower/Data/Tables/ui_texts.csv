@@ -18,8 +18,9 @@ money,所持金
 coins,コイン
 back,もどる
 bar_upgrade,強化
-bar_wave,ウェーブ
-bar_start,開始
+bar_remaining,残りの敵
+bar_speed,速さ
+battle_start,戦闘開始
 bar_pause,一時停止
 bar_retreat,撤退
 bar_skill,スキル
@@ -27,7 +28,7 @@ bar_attack_rate,攻撃力
 bar_money_rate,獲得金
 cabinet_lever,レバー（Space）
 cabinet_credit,"コイン
-（3枚で1回）"
+（2枚で1回）"
 cabinet_fixed,回数固定
 route_title,行き先を選ぶ
 node_first,最初の戦闘
@@ -37,7 +38,7 @@ node_shop,ショップ
 node_rest,休憩所
 node_boss,ボス
 node_first_desc,一本道の戦闘
-node_battle_desc,敵と2ウェーブ
+node_battle_desc,敵の群れと戦う
 node_elite_desc,中ボスで高報酬
 node_shop_desc,品を買う・両替
 node_rest_desc,ライフを回復
@@ -59,8 +60,8 @@ shop_gauge_desc,ゲージ+1段
 shop_upgrade_desc,1段強くなる
 shop_buy_coins,所持金でコインを買う
 shop_sell_coins,コインを所持金に替える
-shop_buy_rate,所持金 {0} → コイン {1}
-shop_sell_rate,コイン {0} → 所持金 {1}
+shop_buy_rate,¥{0} → コイン {1}
+shop_sell_rate,コイン {0} → ¥{1}
 result_clear,クリア！
 result_game_over,ゲームオーバー
 result_floor,到達した階
@@ -98,7 +99,7 @@ help_col_stats,能力
 guide_summon,職のアイコンを押して召喚する
 guide_place,置きたいマスへドラッグして配置する
 guide_facing,ドラッグして向きを決める
-guide_lever,レバーを引く（クリックかSpace）。コイン3枚で1回
+guide_lever,レバーを引く（クリックかSpace）。コイン2枚で1回
 guide_spinning,リールは自動で止まる。中段の出目で効果が出る
 guide_skill,満タンのスキルゲージを押してスキルを使う
 guide_upgrade,強化を押して職を強くする

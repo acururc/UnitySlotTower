@@ -107,7 +107,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
             var shown = ShownIds();
             Assert.That(shown, Does.Contain("unit_tank").And.Contain("unit_buffer").And.Contain("bar_upgrade").And.Contain("life")
-                .And.Contain("bar_pause").And.Contain("cabinet_lever").And.Contain("cabinet_credit"), "操作バーか筐体にラベルが出ない");
+                .And.Contain("bar_pause").And.Contain("cabinet_lever").And.Contain("cabinet_credit")
+                .And.Contain("bar_remaining").And.Contain("bar_speed"), "操作バーか筐体にラベルが出ない");
             Assert.That(shown, Does.Contain(GuideOverlay.CaptionId(guide.Current)), "説明の文が出ない");
 
             battle.SetPaused(true);
@@ -213,8 +214,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             // T359e: 両替は数字の入った文（値は Exchange のもの）。
             var exchange = shop.Exchange;
             Assert.That((shop.BuyCoinsRateLabel.IsShown, shop.BuyCoinsRateLabel.Text.text, shop.SellCoinsRateLabel.Text.text),
-                Is.EqualTo((true, $"所持金 {exchange.MoneyPerTrade} → コイン {exchange.CoinsPerTrade}",
-                    $"コイン {exchange.CoinsPerTrade} → 所持金 {exchange.MoneyPerTrade}")), "両替の文が出ない");
+                Is.EqualTo((true, $"¥{exchange.MoneyPerTrade} → コイン {exchange.CoinsPerTrade}",
+                    $"コイン {exchange.CoinsPerTrade} → ¥{exchange.MoneyPerTrade}")), "両替の文が出ない");
         }
 
         [UnityTest]

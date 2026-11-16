@@ -5,6 +5,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TextCore.LowLevel;
 using UnityEngine.UI;
+using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Run;
 using UnitySlotTower.Core.Ui;
@@ -184,6 +185,9 @@ namespace UnitySlotTower.Editor.Setup
             IconTag(Child(status, "Coin Icon"), "money", 16f);
             InsideBottom(Child(status, "Retreat Button"), "bar_retreat", 22f, 16f);
             InsideBottom(Child(status, "Pause Button"), "bar_pause", 22f, 16f);
+            // T365 の残りの敵の数と倍速（BattleSpeedSetup が作る。作り直したらこのメニューも実行し直す）。T370。
+            IconTag(Child(status, "Enemy Icon"), "bar_remaining", 16f);
+            InsideBottom(Child(status, "Speed Button"), "bar_speed", 22f, 16f);
             var rates = Child(bar, "Rates");
             Label(Child(rates, "Attack Rate"), "bar_attack_rate", new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -20f), Vector2.zero, 15f);
             Label(Child(rates, "Money Rate"), "bar_money_rate", new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -20f), Vector2.zero, 15f);
@@ -194,6 +198,10 @@ namespace UnitySlotTower.Editor.Setup
             Label(Child(slot, "Credit"), "cabinet_credit", new Vector2(-0.4f, 1f), Vector2.one, new Vector2(0f, 2f),
                 new Vector2(0f, 34f), 20f);
             Below(Child(slot, "Fixed Spins Icon"), "cabinet_fixed", 26f, 18f);
+
+            // 開始の演出の ▶ の下（BattleIntroSetup が作る Play の子。▶ と一緒に出て消える）。T370。
+            var intro = Object.FindAnyObjectByType<BattleIntroView>(FindObjectsInactive.Include);
+            Below(Child((RectTransform)intro.transform, "Play"), "battle_start", 84f, 64f);
 
             AddRouteLabels(root);
             AddNodeLabels(root);
