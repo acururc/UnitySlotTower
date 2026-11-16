@@ -135,14 +135,19 @@ namespace UnitySlotTower.Tests.EditMode.Guide
         }
 
         [Test]
-        public void Route_Is_Shown_On_The_First_Route_Choice_From_Lever_To_Pick()
+        [Description("FR-004, D-91")]
+        public void Route_Shows_The_Node_Contents_Until_Tapped_Then_Points_At_The_Reels()
         {
             var o = Ready();
             var guide = AfterSlot(ref o);
             o.ChoosingRoute = true;
-
-            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RouteLever));
             o.RouteSpinning = true;
+
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RouteNodes), "まずマスの中身の絵");
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RouteNodes), "押すまで残る");
+            o.Tapped = true;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RoutePick), "押したら行き先のリール");
+            o.Tapped = false;
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RoutePick));
 
             o.ChoosingRoute = false;
@@ -163,7 +168,8 @@ namespace UnitySlotTower.Tests.EditMode.Guide
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Upgrade));
 
             o.ChoosingRoute = true;
-            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RouteLever), "ルートの説明に切り替える");
+            o.RouteSpinning = true;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RouteNodes), "ルートの説明に切り替える");
             Assert.That(guide.IsDone(GuideTopic.Upgrade), Is.False);
         }
 
@@ -183,6 +189,49 @@ namespace UnitySlotTower.Tests.EditMode.Guide
             Assert.That(guide.HoldsBattle, Is.False);
             Assert.That(guide.IsDone(GuideTopic.Route), Is.True, "行き先は決めたのでルートは済み");
             Assert.That(guide.IsDone(GuideTopic.Upgrade), Is.False, "画面中に強化の題目を始めない");
+        }
+
+        [Test]
+        [Description("FR-004, D-91")]
+        public void Block_Is_Shown_When_A_Ground_Enemy_Is_First_Stopped_And_Ends_On_Tap()
+        {
+            var o = Ready();
+            var guide = AfterSlot(ref o);
+            Assert.That(guide.Current, Is.EqualTo(GuideHint.None));
+
+            o.GroundBlocked = true;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Block));
+            Assert.That(guide.HoldsBattle, Is.True, "見せているあいだ戦闘を止める");
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Block), "押すまで残る");
+
+            o.Tapped = true;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None));
+            o.Tapped = false;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None), "1回のプレイで一度だけ");
+            Assert.That(guide.IsDone(GuideTopic.Block), Is.True);
+        }
+
+        [Test]
+        public void Block_Waits_Until_The_Reels_Stop()
+        {
+            var o = Ready();
+            var guide = AfterSlot(ref o);
+            o.GroundBlocked = true;
+            o.SlotSpinning = true;
+            o.SpinCount = 2;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None), "回っている途中では出さない");
+
+            o.SlotSpinning = false;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Block));
+        }
+
+        [Test]
+        public void Block_Waits_Until_The_First_Unit_Is_Placed()
+        {
+            var guide = new GuideSequence();
+            var o = Ready();
+            o.GroundBlocked = true;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Summon), "配置の説明が先");
         }
 
         [Test]

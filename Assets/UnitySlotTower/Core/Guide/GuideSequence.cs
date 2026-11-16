@@ -15,6 +15,8 @@ namespace UnitySlotTower.Core.Guide
         Retreat,
         /// <summary>初めてルート画面に戻ったとき、行き先を決めるまで。</summary>
         Route,
+        /// <summary>地上の敵が初めて地上の味方に止められたとき、押すまで（D-91）。</summary>
+        Block,
     }
 
     /// <summary>いま見せる説明（対象と手の動き）。</summary>
@@ -35,6 +37,10 @@ namespace UnitySlotTower.Core.Guide
         RouteLever,
         /// <summary>回っているリールのうち行き先のあるものを押す。</summary>
         RoutePick,
+        /// <summary>足止め: 止めている味方と敵を指し、職ごとに止められる数を見せる（D-91）。押すと閉じる。</summary>
+        Block,
+        /// <summary>ルートのマスのアイコンごとに中身の絵を見せる（D-91）。押すと行き先のリールの説明へ。</summary>
+        RouteNodes,
     }
 
     /// <summary>説明の進行を決めるための、そのフレームのゲームの様子。</summary>
@@ -71,6 +77,10 @@ namespace UnitySlotTower.Core.Guide
         public int UpgradeSlot;
         /// <summary>全種類の強化段階の合計（強化したかを見る）。</summary>
         public int UpgradeLevels;
+        /// <summary>地上の敵のどれかが地上の味方に止められている。</summary>
+        public bool GroundBlocked;
+        /// <summary>このフレームに、見せている説明を押した（見せてから短い時間は数えない: 表示側で決める）。</summary>
+        public bool Tapped;
     }
 
     /// <summary>
@@ -82,9 +92,10 @@ namespace UnitySlotTower.Core.Guide
     /// </summary>
     public sealed class GuideSequence
     {
-        private readonly bool[] _done = new bool[6];
+        private readonly bool[] _done = new bool[7];
         private GuideTopic? _active;
         private GuideObservation _baseline;
+        private bool _routeNodesSeen;
 
         /// <summary>最後の <see cref="Update"/> で決めた説明。</summary>
         public GuideHint Current { get; private set; }
@@ -115,6 +126,12 @@ namespace UnitySlotTower.Core.Guide
 
             if (_active is GuideTopic active)
             {
+                // ルートは中身の絵を押してから行き先のリールの説明に進む（D-91）。
+                if (active == GuideTopic.Route && Current == GuideHint.RouteNodes && o.Tapped)
+                {
+                    _routeNodesSeen = true;
+                }
+
                 if (IsCompleted(active, o))
                 {
                     _done[(int)active] = true;
@@ -160,6 +177,9 @@ namespace UnitySlotTower.Core.Guide
                         || o.Deploy != DeployPhase.Idle;
                 case GuideTopic.Route:
                     return !o.ChoosingRoute;
+                case GuideTopic.Block:
+                    // 見せたフレームの押下では閉じない（表示を始めたときの様子は baseline）。
+                    return o.Tapped && Current == GuideHint.Block;
                 default:
                     return true;
             }
@@ -205,6 +225,12 @@ namespace UnitySlotTower.Core.Guide
                 return GuideTopic.Slot;
             }
 
+            // 地上の敵が初めて止められたとき（D-91）。リールが回っている途中は止まってから。
+            if (!IsDone(GuideTopic.Block) && idle && !o.SlotSpinning && o.GroundBlocked)
+            {
+                return GuideTopic.Block;
+            }
+
             if (!IsDone(GuideTopic.Skill) && idle && !o.SlotSpinning && o.SkillSlot >= 0)
             {
                 return GuideTopic.Skill;
@@ -224,7 +250,7 @@ namespace UnitySlotTower.Core.Guide
             return null;
         }
 
-        private static GuideHint HintFor(GuideTopic topic, in GuideObservation o)
+        private GuideHint HintFor(GuideTopic topic, in GuideObservation o)
         {
             switch (topic)
             {
@@ -241,7 +267,10 @@ namespace UnitySlotTower.Core.Guide
                 case GuideTopic.Retreat:
                     return o.UnitSelected ? GuideHint.Retreat : GuideHint.SelectUnit;
                 case GuideTopic.Route:
-                    return o.RouteSpinning ? GuideHint.RoutePick : GuideHint.RouteLever;
+                    return !_routeNodesSeen ? GuideHint.RouteNodes
+                        : o.RouteSpinning ? GuideHint.RoutePick : GuideHint.RouteLever;
+                case GuideTopic.Block:
+                    return GuideHint.Block;
                 default:
                     return GuideHint.None;
             }

@@ -71,6 +71,9 @@ namespace UnitySlotTower.Battle
         /// <summary>スキルゲージのボタン（説明で指す）。なければ null。</summary>
         public RectTransform SkillButtonRect => skillButton != null ? (RectTransform)skillButton.transform : null;
 
+        /// <summary>職の絵（説明で写す: T369）。</summary>
+        public Image Body => body;
+
         /// <summary>このアイコンのスキルゲージがその色7のものか（揃った時の演出の行き先: T366）。</summary>
         public bool HasSkillColor(SlotSymbol color) => _hasSkill && _skillColor == color;
 

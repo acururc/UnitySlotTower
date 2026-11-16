@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
@@ -19,6 +20,9 @@ namespace UnitySlotTower.Flow
     {
         private const float TapSeconds = 1.2f;
         private const float DragSeconds = 1.8f;
+        // 押して閉じる説明（足止め・マスの中身）は、出てすぐの押下を数えない（Claude の仮置き）。
+        private const float MinTapSeconds = 0.6f;
+        private const float PanelGap = 24f;
 
         [SerializeField] private BattleController battle;
         [SerializeField] private UnitPlacementInput placementInput;
@@ -65,6 +69,11 @@ namespace UnitySlotTower.Flow
         private GuideHint _shownHint = (GuideHint)(-1);
         private float _hintStarted;
         private Rect _hole;
+        // T369 で実行時に作る部品（初めて要るときに作る）。
+        private RectTransform _blocker;
+        private RectTransform _blockPanel;
+        private RectTransform _routePanel;
+        private readonly RectTransform[] _blockArrows = new RectTransform[2];
 
         /// <summary>テスト用: true のあいだに読み込まれた Game シーンでは説明を出さない（既存の操作テストを妨げないため）。</summary>
         public static bool DisabledForTests { get; set; }
@@ -109,7 +118,10 @@ namespace UnitySlotTower.Flow
                 return;
             }
 
-            var hint = _sequence.Update(Observe(run));
+            var observation = Observe(run);
+            observation.Tapped = IsTapToClose(_shownHint) && Time.unscaledTime - _hintStarted >= MinTapSeconds
+                && Pointer.current != null && Pointer.current.press.wasPressedThisFrame;
+            var hint = _sequence.Update(observation);
             battle.IsHeldByGuide = _sequence.HoldsBattle;
             battle.FullRefundRetreat = _sequence.ShowsRetreat;
             if (hint != _shownHint)
@@ -117,6 +129,7 @@ namespace UnitySlotTower.Flow
                 _shownHint = hint;
                 _hintStarted = Time.unscaledTime;
                 root.gameObject.SetActive(hint != GuideHint.None);
+                ShowPictures(hint);
                 if (caption != null && hint != GuideHint.None)
                 {
                     caption.SetIds(CaptionId(hint));
@@ -188,7 +201,26 @@ namespace UnitySlotTower.Flow
                 SkillActivations = battle.SkillActivations,
                 UpgradeSlot = upgradeSlot,
                 UpgradeLevels = levels,
+                GroundBlocked = BlockedEnemy(run) != null,
             };
+        }
+
+        private static bool IsTapToClose(GuideHint hint) => hint == GuideHint.Block || hint == GuideHint.RouteNodes;
+
+        // 地上の味方に止められている地上の敵（最初の1体）。
+        private static BattleEnemy BlockedEnemy(BattleNodeRun run)
+        {
+            var enemies = run.Field.Enemies;
+            for (var i = 0; i < enemies.Count; i++)
+            {
+                var enemy = enemies[i];
+                if (enemy.IsAlive && !enemy.Definition.IsAir && enemy.BlockedBy != null && enemy.BlockedBy.IsAlive)
+                {
+                    return enemy;
+                }
+            }
+
+            return null;
         }
 
         private static bool IsDeployed(System.Collections.Generic.IReadOnlyList<BattleUnit> field, string id)
@@ -262,9 +294,147 @@ namespace UnitySlotTower.Flow
                 case GuideHint.Retreat:
                     TapTarget(UiRect(retreatButton), t, dimmed);
                     break;
+                case GuideHint.Block:
+                    DrawBlock(run, t, dimmed);
+                    break;
+                case GuideHint.RouteNodes:
+                {
+                    // マップの上の方に一覧を出し、手でその板を押して見せる（押すと行き先のリールの説明へ）。
+                    var area = root.rect;
+                    var size = _routePanel.sizeDelta;
+                    var panel = new Rect(area.center.x - size.x * 0.5f, area.yMax - area.height * 0.08f - size.y, size.x, size.y);
+                    ShowTarget(panel, dimmed);
+                    Place(_routePanel, panel);
+                    Tap(new Vector2(panel.xMax - 80f, panel.yMin + 60f), Mathf.Repeat(t, TapSeconds));
+                    break;
+                }
             }
 
             PlaceCaption();
+        }
+
+        // 止めている味方と止められている敵を1つの穴にして上から矢印で指し、職ごとに止められる数の板を空いている側に置く。
+        private void DrawBlock(BattleNodeRun run, float t, bool dimmed)
+        {
+            var enemy = BlockedEnemy(run);
+            var unitRect = enemy != null ? CellRect(enemy.BlockedBy.Cell) : CellRect(run.Deployment.Cursor);
+            var enemyRect = enemy != null ? EnemyRect(enemy, unitRect.size) : unitRect;
+            var hole = Rect.MinMaxRect(Mathf.Min(unitRect.xMin, enemyRect.xMin), Mathf.Min(unitRect.yMin, enemyRect.yMin),
+                Mathf.Max(unitRect.xMax, enemyRect.xMax), Mathf.Max(unitRect.yMax, enemyRect.yMax));
+            ShowTarget(hole, dimmed);
+
+            var bob = 14f * Mathf.Sin(Time.unscaledTime * 6f);
+            PlaceArrow(_blockArrows[0], unitRect, bob);
+            PlaceArrow(_blockArrows[1], enemyRect, bob);
+
+            var area = root.rect;
+            var size = _blockPanel.sizeDelta;
+            var below = _hole.yMin - area.yMin >= area.yMax - _hole.yMax;
+            var y = below ? _hole.yMin - PanelGap - size.y : _hole.yMax + PanelGap;
+            y = Mathf.Clamp(y, area.yMin + PanelGap, area.yMax - PanelGap - size.y);
+            var x = Mathf.Clamp(_hole.center.x - size.x * 0.5f, area.xMin + PanelGap, area.xMax - PanelGap - size.x);
+            var panel = new Rect(x, y, size.x, size.y);
+            Place(_blockPanel, panel);
+            // 文字あり版の説明文は穴と板の外に置く。
+            _hole = Rect.MinMaxRect(Mathf.Min(_hole.xMin, panel.xMin), Mathf.Min(_hole.yMin, panel.yMin),
+                Mathf.Max(_hole.xMax, panel.xMax), Mathf.Max(_hole.yMax, panel.yMax));
+            Tap(new Vector2(panel.xMax - 60f, panel.yMin + 50f), Mathf.Repeat(t, TapSeconds));
+        }
+
+        // 下向きの矢印を対象の真上に置く。
+        private void PlaceArrow(RectTransform arrow, Rect target, float bob)
+        {
+            var size = Mathf.Clamp(target.width * 0.6f, 48f, 110f);
+            arrow.sizeDelta = new Vector2(size, size);
+            arrow.anchoredPosition = new Vector2(target.center.x, target.yMax + framePadding + size * 0.6f + bob);
+        }
+
+        // 敵の足元を画面に写し、マスと同じ大きさの矩形にする。
+        private Rect EnemyRect(BattleEnemy enemy, Vector2 size)
+        {
+            var world = fieldView.PositionToWorld(enemy.X, enemy.Y, false);
+            var uiCamera = _canvas != null && _canvas.renderMode != RenderMode.ScreenSpaceOverlay ? _canvas.worldCamera : null;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(root, battleCamera.WorldToScreenPoint(world), uiCamera,
+                out var point);
+            return new Rect(point - size * 0.5f, size);
+        }
+
+        // 足止め・マスの中身の絵を、その説明のときだけ出す。初めて要るときに作る。
+        private void ShowPictures(GuideHint hint)
+        {
+            var block = hint == GuideHint.Block;
+            var nodes = hint == GuideHint.RouteNodes;
+            if ((block || nodes) && _blocker == null)
+            {
+                BuildPictures();
+            }
+
+            if (_blocker == null)
+            {
+                return;
+            }
+
+            // 押して閉じる説明のあいだは、穴の中も含めて下の画面に押下を通さない。
+            SetActive(_blocker, block || nodes);
+            SetActive(_blockPanel, block);
+            SetActive(_blockArrows[0], block);
+            SetActive(_blockArrows[1], block);
+            SetActive(_routePanel, nodes);
+        }
+
+        private static void SetActive(Component target, bool active)
+        {
+            if (target.gameObject.activeSelf != active)
+            {
+                target.gameObject.SetActive(active);
+            }
+        }
+
+        private void BuildPictures()
+        {
+            var knob = routeScreen.KnobSprite;
+            var box = routeScreen.BoxSprite;
+            _blocker = RouteNodeIcons.CreateRect("Tap Blocker", root, Vector2.zero, Vector2.one);
+            var blocker = _blocker.gameObject.AddComponent<Image>();
+            blocker.color = Color.clear;
+            _blocker.SetSiblingIndex(0);
+
+            // 足止め: 操作バーの並びのうちバッファー以外の職（タンク・剣士・弓兵）。
+            var units = new System.Collections.Generic.List<(Image body, int block)>();
+            TMPro.TMP_FontAsset font = null;
+            var all = battle.Units.All;
+            for (var slot = 0; slot < all.Count && slot < unitIcons.Length; slot++)
+            {
+                var icon = unitIcons[slot] != null ? unitIcons[slot].GetComponent<UnitBarIcon>() : null;
+                if (icon == null)
+                {
+                    continue;
+                }
+
+                font = font != null ? font : icon.CooldownText.font;
+                if (all[slot].Role != UnitRole.Buff)
+                {
+                    units.Add((icon.Body, all[slot].Block));
+                }
+            }
+
+            _blockPanel = GuidePictures.BlockPanel(root, units, font, box);
+            _blockPanel.sizeDelta = new Vector2(GuidePictures.BlockColumnWidth * units.Count, GuidePictures.BlockPanelHeight);
+            for (var i = 0; i < _blockArrows.Length; i++)
+            {
+                _blockArrows[i] = GuidePictures.PointerArrow(root);
+                _blockArrows[i].pivot = new Vector2(0.5f, 0.5f);
+                _blockArrows[i].localEulerAngles = new Vector3(0f, 0f, -90f);
+                _blockArrows[i].name = i == 0 ? "Block Arrow Unit" : "Block Arrow Enemy";
+            }
+
+            _routePanel = GuidePictures.RoutePanel(root, knob, box);
+            _routePanel.sizeDelta = new Vector2(GuidePictures.RoutePanelWidth,
+                GuidePictures.RouteRowHeight * GuidePictures.RouteKinds.Length);
+
+            // 手と輪は板より前に出す。
+            ripple.SetAsLastSibling();
+            hand.SetAsLastSibling();
         }
 
         private void TapTarget(Rect target, float t, bool dimmed)

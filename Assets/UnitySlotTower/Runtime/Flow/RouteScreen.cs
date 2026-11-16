@@ -95,6 +95,11 @@ namespace UnitySlotTower.Flow
         /// <summary>行き先の矢印（左・中・右）。</summary>
         public IReadOnlyList<Button> ArrowButtons => arrowButtons;
 
+        /// <summary>マスのアイコンの丸と箱の絵（説明でアイコンを作るのに使う: T369）。</summary>
+        public Sprite KnobSprite => knobSprite;
+
+        public Sprite BoxSprite => boxSprite;
+
         /// <summary>マップに並べたマスの数（作る前は0）。</summary>
         public int NodeViewCount => _nodes.Count;
 

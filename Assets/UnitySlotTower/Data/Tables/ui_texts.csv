@@ -106,3 +106,5 @@ guide_selectunit,置いたユニットを押して選ぶ
 guide_retreat,撤退で戻す（今回は全額返る）
 guide_routelever,レバーを引いて行き先のリールを回す
 guide_routepick,行きたい道の回っているリールを押す
+guide_block,敵を足止めできるのは地上の近接職だけ（数字は止められる数）。押して閉じる
+guide_routenodes,マスの印で中身が分かる。押して次へ

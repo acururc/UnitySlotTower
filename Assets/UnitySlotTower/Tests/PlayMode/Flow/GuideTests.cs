@@ -190,8 +190,20 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(run.IsChoosingRoute, Is.True, "最初の戦闘マスを終えてもルート選びにならない");
             _guide.enabled = true;
             yield return null;
-            // リールは入った時点で回る（D-90）ので、初めてのルートではレバーではなく行き先のリールを指す。
-            Assert.That(_guide.Current, Is.EqualTo(GuideHint.RoutePick), "初めてのルートで行き先のリールを指さない");
+            // 初めてのルートでは、まずマスの中身の絵を見せ（D-91）、押すと行き先のリールを指す（リールは入った時点で回る: D-90）。
+            var overlay = _guide.transform.Find("Overlay");
+            Assert.That((_guide.Current, overlay.Find("Route Panel")?.gameObject.activeSelf),
+                Is.EqualTo((GuideHint.RouteNodes, (bool?)true)), "初めてのルートでマスの中身を見せない");
+            var center = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            yield return MouseAt(center, true);
+            yield return MouseAt(center, false);
+            Assert.That(_guide.Current, Is.EqualTo(GuideHint.RouteNodes), "出てすぐの押下で閉じた");
+
+            yield return new WaitForSecondsRealtime(0.7f);
+            yield return MouseAt(center, true);
+            yield return MouseAt(center, false);
+            Assert.That((_guide.Current, run.IsChoosingRoute, overlay.Find("Route Panel").gameObject.activeSelf),
+                Is.EqualTo((GuideHint.RoutePick, true, false)), "押すと行き先のリールの説明へ（行き先は決まらない）");
             yield return RouteTestUtil.WaitForRouteSpin(_cabinet);
 
             var reel = -1;
@@ -224,6 +236,48 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That((run.OpenScreen is ShopScreen, _guide.Current, _guide.transform.Find("Overlay").gameObject.activeSelf,
                     _guide.Sequence.IsDone(GuideTopic.Route)),
                 Is.EqualTo((true, GuideHint.None, false, true)), "ショップの画面中は説明を出さず、ルートの題目は済み");
+        }
+
+        [UnityTest]
+        [Description("FR-004, D-91")]
+        public IEnumerator Block_Hint_Points_At_The_Stopped_Enemy_And_Closes_On_A_Click()
+        {
+            yield return null;
+            // 最初の敵の道の途中にタンクを置き、スロットの題目を済ませてから戦闘を進める。
+            var limit = Time.realtimeSinceStartup + 10f;
+            while (_battle.Field.Enemies.Count == 0 && Time.realtimeSinceStartup < limit)
+            {
+                _guide.enabled = false;
+                yield return null;
+            }
+
+            _guide.enabled = true;
+            Assert.That(_battle.Field.Enemies.Count, Is.GreaterThan(0), "敵が出ない");
+            Assert.That(PlaceOnPath("tank", _battle.Field.Enemies[0]), Is.True, "敵の道にタンクを置けない");
+            yield return null;
+            Assert.That(_guide.Current, Is.EqualTo(GuideHint.Lever));
+            yield return Click(_cabinet.LeverRect);
+            yield return WaitForReels();
+
+            limit = Time.realtimeSinceStartup + 30f;
+            while (_guide.Current != GuideHint.Block && Time.realtimeSinceStartup < limit)
+            {
+                yield return null;
+            }
+
+            var overlay = _guide.transform.Find("Overlay");
+            Assert.That((_guide.Current, _battle.IsHeldByGuide, overlay.Find("Block Panel")?.gameObject.activeSelf),
+                Is.EqualTo((GuideHint.Block, true, (bool?)true)), "止められたときに足止めの説明が出ず戦闘も止まらない");
+            var panel = overlay.Find("Block Panel");
+            Assert.That(panel.childCount, Is.EqualTo(3), "タンク・剣士・弓兵の3つ");
+            Assert.That(panel.GetChild(0).Find("Block").GetComponent<TMPro.TMP_Text>().text, Is.EqualTo("3"), "タンクは3体");
+
+            yield return new WaitForSecondsRealtime(0.7f);
+            var center = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            yield return MouseAt(center, true);
+            yield return MouseAt(center, false);
+            Assert.That((_guide.Current, _guide.Sequence.IsDone(GuideTopic.Block), _battle.IsHeldByGuide, panel.gameObject.activeSelf),
+                Is.EqualTo((GuideHint.None, true, false, false)), "押すと閉じて戦闘が進む");
         }
 
         [UnityTest]
@@ -322,6 +376,31 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                         deployment.SetFacing(Facing.Right);
                         return deployment.Confirm() == SummonResult.Summoned;
                     }
+                }
+            }
+
+            deployment.Cancel();
+            return false;
+        }
+
+        // 敵の道のうち、敵より先でタンクを置けるマスに置く（敵が向かってきて止められる）。
+        private bool PlaceOnPath(string unitId, BattleEnemy enemy)
+        {
+            var deployment = _battle.Deployment;
+            if (deployment.Select(unitId) != SummonResult.Summoned)
+            {
+                return false;
+            }
+
+            var cells = enemy.Path.Cells;
+            for (var i = (int)enemy.Distance + 2; i < cells.Count - 1; i++)
+            {
+                if (deployment.CanPlace(cells[i]))
+                {
+                    deployment.SetCursor(cells[i]);
+                    deployment.ChooseCell();
+                    deployment.SetFacing(Facing.Right);
+                    return deployment.Confirm() == SummonResult.Summoned;
                 }
             }
 
