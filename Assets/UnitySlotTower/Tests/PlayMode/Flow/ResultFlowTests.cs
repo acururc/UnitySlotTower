@@ -114,7 +114,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That((result.IsOpen, result.IsClear, Text(result, "floorText"), battle.IsInputBlocked, cabinet.InputLocked),
                 Is.EqualTo((true, false, "1", true, true)), "ゲームオーバーのリザルトが開かない／到達階が違う／操作を止めない");
             Assert.That((Text(result, "moneyText"), Text(result, "slotCoinsText")),
-                Is.EqualTo((oldState.Money.Coins.ToString(), oldState.Coins.Coins.ToString())), "所持金・コインの表示が違う");
+                Is.EqualTo(("¥" + oldState.Money.Coins, oldState.Coins.Coins.ToString())), "所持金・コインの表示が違う");
             battle.SetPaused(true);
             Assert.That(battle.IsPaused, Is.False, "リザルト中に一時停止できてしまう");
 
@@ -178,7 +178,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That((result.IsOpen, result.IsClear, Text(result, "floorText")),
                 Is.EqualTo((true, true, run.Rules.Floors.ToString())), "クリアのリザルトが開かない／到達階が違う");
             Assert.That((Text(result, "moneyText"), Text(result, "slotCoinsText")),
-                Is.EqualTo((run.State.Money.Coins.ToString(), run.State.Coins.Coins.ToString())), "所持金・コインの表示が違う");
+                Is.EqualTo(("¥" + run.State.Money.Coins, run.State.Coins.Coins.ToString())), "所持金・コインの表示が違う");
 
             yield return Press(Key.RightArrow, () => result.Selected == 1);
             Assert.That(result.Selected, Is.EqualTo(1), "→ で ◀（タイトル）を選べない");

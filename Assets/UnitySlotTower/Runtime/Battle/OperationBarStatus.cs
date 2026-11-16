@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
 using UnitySlotTower.Core.Battle;
+using UnitySlotTower.Core.Ui;
 
 namespace UnitySlotTower.Battle
 {
@@ -68,7 +69,7 @@ namespace UnitySlotTower.Battle
             }
 
             SetNumber(lifeText, run.Field.Life, ref _shownLife);
-            SetNumber(moneyText, run.Wallet.Coins, ref _shownMoney);
+            SetNumber(moneyText, run.Wallet.Coins, ref _shownMoney, NumericText.YenFormat);
             if (run.Wave != _shownWave)
             {
                 _shownWave = run.Wave;
@@ -110,12 +111,12 @@ namespace UnitySlotTower.Battle
             }
         }
 
-        private static void SetNumber(TMP_Text text, int value, ref int shown)
+        private static void SetNumber(TMP_Text text, int value, ref int shown, string format = "{0}")
         {
             if (value != shown)
             {
                 shown = value;
-                text.SetText("{0}", value);
+                text.SetText(format, value);
             }
         }
     }

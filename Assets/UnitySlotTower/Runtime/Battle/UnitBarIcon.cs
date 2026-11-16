@@ -4,6 +4,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Slot;
+using UnitySlotTower.Core.Ui;
 
 namespace UnitySlotTower.Battle
 {
@@ -182,7 +183,7 @@ namespace UnitySlotTower.Battle
             if (unit.Cost != _shownCost)
             {
                 _shownCost = unit.Cost;
-                costText.SetText("{0}", unit.Cost);
+                costText.SetText(NumericText.YenFormat, unit.Cost);
             }
 
             var remaining = summoner.IgnoresCooldown ? 0d : summoner.CooldownRemaining(unit.Id);

@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnitySlotTower.Core.Battle;
+using UnitySlotTower.Core.Ui;
 
 namespace UnitySlotTower.Battle
 {
@@ -62,7 +63,7 @@ namespace UnitySlotTower.Battle
             {
                 _shownCost = cost;
                 costText.gameObject.SetActive(cost > 0);
-                costText.SetText("{0}", cost);
+                costText.SetText(NumericText.YenFormat, cost);
             }
 
             var available = upgrades.Check(unitId) == UpgradeResult.Upgraded ? 1 : 0;

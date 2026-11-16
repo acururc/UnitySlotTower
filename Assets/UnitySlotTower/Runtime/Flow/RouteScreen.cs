@@ -6,6 +6,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnitySlotTower.Core.Run;
 using UnitySlotTower.Core.Slot;
+using UnitySlotTower.Core.Ui;
 using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Flow
@@ -285,7 +286,7 @@ namespace UnitySlotTower.Flow
             if (force || _state.Money.Coins != _shownMoney)
             {
                 _shownMoney = _state.Money.Coins;
-                moneyText.SetText("{0}", _shownMoney);
+                moneyText.SetText(NumericText.YenFormat, _shownMoney);
             }
 
             if (force || _state.Coins.Coins != _shownCoins)

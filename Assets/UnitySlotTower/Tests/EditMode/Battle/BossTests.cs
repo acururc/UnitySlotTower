@@ -94,7 +94,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("plan 16.2: 中ボスはコインなし・所持金 100% で 15、最終ボスは落とさない")]
+        [Description("plan 16.2・17.1: 中ボスはコインなし・所持金 100% で 120 円、最終ボスは落とさない")]
         public void Project_Boss_Drops_Follow_Plan()
         {
             var enemies = ProjectEnemies();
@@ -102,7 +102,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var final = enemies.Get("final_boss");
 
             Assert.That((mid.CoinRate, mid.MoneyRate, mid.MoneyMin, mid.MoneyMax, final.CoinRate, final.MoneyRate),
-                Is.EqualTo((0.0, 1.0, 15, 15, 0.0, 0.0)));
+                Is.EqualTo((0.0, 1.0, 120, 120, 0.0, 0.0)));
         }
 
         [Test]

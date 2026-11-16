@@ -74,10 +74,10 @@ namespace UnitySlotTower.Tests.EditMode.Data
 
         private static int SpentOnSummon(IReadOnlyDictionary<string, string> files, string unitId)
         {
-            var wallet = new CoinWallet(100);
+            var wallet = new CoinWallet(1000);
             var summoner = new UnitSummoner(UnitTable.Load(Parse(files, UnitTable.FileName)), wallet, 8, 0.5);
             Assert.That(summoner.TrySummon(unitId), Is.EqualTo(SummonResult.Summoned));
-            return 100 - wallet.Coins;
+            return 1000 - wallet.Coins;
         }
 
         private static int Red7Hits(IReadOnlyDictionary<string, string> files, int spins)
@@ -110,9 +110,9 @@ namespace UnitySlotTower.Tests.EditMode.Data
         private static int MoneyPaidForCoins(IReadOnlyDictionary<string, string> files)
         {
             var rules = RouteRules.Load(Parse(files, RouteRules.FileName));
-            var run = RunFixtures.CreateRun(coins: 15, money: 30);
-            Assert.That(new Exchange(run, 3, rules.ExchangeMoneyPerCoin).TryBuyCoins(), Is.True);
-            return 30 - run.Money.Coins;
+            var run = RunFixtures.CreateRun(coins: 15, money: 300);
+            Assert.That(new Exchange(run, 2, rules.ExchangeMoneyPerCoin).TryBuyCoins(), Is.True);
+            return 300 - run.Money.Coins;
         }
 
         private static RouteMap Route(IReadOnlyDictionary<string, string> files, ulong seed) =>
@@ -130,13 +130,13 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Unchanged_Project_Tables_Are_Valid() => AssertValid(TablePaths.ReadAll());
 
         [Test]
-        [Description("召喚費用: units.csv の sword の cost 12 → 20")]
+        [Description("召喚費用: units.csv の sword の cost 100 → 160")]
         public void Summon_Cost_Follows_Units_Csv()
         {
-            var changed = TablesWith(UnitTable.FileName, "cost", "20", ("id", "sword"));
+            var changed = TablesWith(UnitTable.FileName, "cost", "160", ("id", "sword"));
 
             Assert.That((SpentOnSummon(TablePaths.ReadAll(), "sword"), SpentOnSummon(changed, "sword")),
-                Is.EqualTo((12, 20)));
+                Is.EqualTo((100, 160)));
         }
 
         [Test]
@@ -168,12 +168,12 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("両替レート: route_rules.csv の exchange_money_per_coin 2 → 3（コイン3枚の値段 6 → 9）")]
+        [Description("両替レート: route_rules.csv の exchange_money_per_coin 10 → 15（コイン2枚の値段 20 → 30）")]
         public void Exchange_Rate_Follows_Route_Rules_Csv()
         {
-            var changed = TablesWith(RouteRules.FileName, "value", "3", ("key", "exchange_money_per_coin"));
+            var changed = TablesWith(RouteRules.FileName, "value", "15", ("key", "exchange_money_per_coin"));
 
-            Assert.That((MoneyPaidForCoins(TablePaths.ReadAll()), MoneyPaidForCoins(changed)), Is.EqualTo((6, 9)));
+            Assert.That((MoneyPaidForCoins(TablePaths.ReadAll()), MoneyPaidForCoins(changed)), Is.EqualTo((20, 30)));
         }
 
         [Test]

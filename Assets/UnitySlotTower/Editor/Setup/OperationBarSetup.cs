@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Slot;
+using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Editor.Setup
 {
@@ -274,8 +275,9 @@ namespace UnitySlotTower.Editor.Setup
             CreateImage("Life Icon", status, new Vector2(0.03f, 0.58f), new Vector2(0.13f, 0.9f), new Color(0.9f, 0.25f, 0.3f), _knob)
                 .preserveAspect = true;
             var life = CreateNumber("Life", status, new Vector2(0.14f, 0.52f), new Vector2(0.3f, 0.96f), Color.white);
-            CreateImage("Coin Icon", status, new Vector2(0.33f, 0.58f), new Vector2(0.43f, 0.9f), new Color(0.98f, 0.8f, 0.2f), _knob)
-                .preserveAspect = true;
+            // 名前は以前のまま（文字あり版の設定が名前で探す）。中身は所持金のお札（T360）。
+            MoneyIconArt.Apply(CreateImage("Coin Icon", status, new Vector2(0.33f, 0.58f), new Vector2(0.43f, 0.9f),
+                new Color(0.98f, 0.8f, 0.2f), _knob), _box, _knob);
             var coins = CreateNumber("Coins", status, new Vector2(0.44f, 0.52f), new Vector2(0.7f, 0.96f), Color.white);
             var wave = CreateNumber("Wave", status, new Vector2(0.73f, 0.52f), new Vector2(0.98f, 0.96f), Color.white);
 

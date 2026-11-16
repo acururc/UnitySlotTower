@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Run;
 using UnitySlotTower.Flow;
+using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Editor.Setup
 {
@@ -216,7 +217,7 @@ namespace UnitySlotTower.Editor.Setup
         }
 
         private static void MoneyIcon(string name, RectTransform parent, Vector2 min, Vector2 max) =>
-            CreateImage(name, parent, min, max, GoldColor, _knob).preserveAspect = true;
+            MoneyIconArt.Apply(CreateImage(name, parent, min, max, GoldColor, _knob), _box, _knob);
 
         // コインは所持金と同じ金色に、内側の暗い輪で見分ける（ルート画面と同じ仮の絵）。
         private static void CoinIcon(string name, RectTransform parent, Vector2 min, Vector2 max)

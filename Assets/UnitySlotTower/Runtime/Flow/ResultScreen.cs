@@ -6,6 +6,7 @@ using UnityEngine.Serialization;
 using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
+using UnitySlotTower.Core.Ui;
 
 namespace UnitySlotTower.Flow
 {
@@ -99,7 +100,7 @@ namespace UnitySlotTower.Flow
             // 到達した階・所持金・コイン（T350d、plan 16章）。
             var state = run.State;
             floorText.SetText("{0}", (float)state.Floor);
-            moneyText.SetText("{0}", (float)state.Money.Coins);
+            moneyText.SetText(NumericText.YenFormat, (float)state.Money.Coins);
             slotCoinsText.SetText("{0}", (float)state.Coins.Coins);
             _openedFrame = Time.frameCount;
             Select(0);

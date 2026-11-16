@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Run;
+using UnitySlotTower.Core.Ui;
 using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Flow
@@ -137,10 +138,10 @@ namespace UnitySlotTower.Flow
             _skills = run.Skills;
             Shop = run.CreateShop();
             Exchange = run.CreateExchange();
-            buyCoinsMoneyText.SetText("{0}", Exchange.MoneyPerTrade);
+            buyCoinsMoneyText.SetText(NumericText.YenFormat, Exchange.MoneyPerTrade);
             buyCoinsCoinsText.SetText("{0}", Exchange.CoinsPerTrade);
             sellCoinsCoinsText.SetText("{0}", Exchange.CoinsPerTrade);
-            sellCoinsMoneyText.SetText("{0}", Exchange.MoneyPerTrade);
+            sellCoinsMoneyText.SetText(NumericText.YenFormat, Exchange.MoneyPerTrade);
             if (buyCoinsRateLabel != null)
             {
                 buyCoinsRateLabel.SetFormat("shop_buy_rate", Exchange.MoneyPerTrade, Exchange.CoinsPerTrade);
@@ -202,9 +203,8 @@ namespace UnitySlotTower.Flow
                 var arrow = arrowRect.gameObject.AddComponent<NudgeArrow>();
                 arrow.Configure(0.4f, 1.2f);
 
-                var priceIcon = RouteNodeIcons.CreateImage("Money Icon", card.rectTransform, new Vector2(0.1f, 0.06f),
-                    new Vector2(0.34f, 0.24f), moneyColor, knobSprite);
-                priceIcon.preserveAspect = true;
+                MoneyIconArt.Create("Money Icon", card.rectTransform, new Vector2(0.1f, 0.06f), new Vector2(0.34f, 0.24f),
+                    boxSprite, knobSprite);
                 var price = CreateNumber("Price", card.rectTransform, new Vector2(0.36f, 0.04f), new Vector2(0.92f, 0.26f));
                 AddOfferLabel(card.rectTransform, item);
                 _cards.Add((button, group, price, arrow));
@@ -316,7 +316,7 @@ namespace UnitySlotTower.Flow
         {
             _shownMoney = _state.Money.Coins;
             _shownCoins = _state.Coins.Coins;
-            moneyText.SetText("{0}", _shownMoney);
+            moneyText.SetText(NumericText.YenFormat, _shownMoney);
             coinsText.SetText("{0}", _shownCoins);
             for (var i = 0; i < _cards.Count; i++)
             {
@@ -328,7 +328,7 @@ namespace UnitySlotTower.Flow
                 group.alpha = result == ShopResult.Bought ? 1f : disabledAlpha;
                 var shown = Shop.IsSold(i) || result == ShopResult.Unavailable;
                 price.gameObject.SetActive(!shown);
-                price.SetText("{0}", Shop.PriceOf(i));
+                price.SetText(NumericText.YenFormat, Shop.PriceOf(i));
             }
 
             SetEnabled(buyCoinsButton, _buyGroup, _buyArrow, Exchange.CanBuyCoins);

@@ -7,6 +7,7 @@ using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Flow;
 using UnitySlotTower.Slot;
+using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Editor.Setup
 {
@@ -71,7 +72,7 @@ namespace UnitySlotTower.Editor.Setup
             var strip = CreateImage("Status", area, new Vector2(0f, 0.92f), Vector2.one, StripColor, null).rectTransform;
             CreateImage("Life Icon", strip, new Vector2(0.02f, 0.2f), new Vector2(0.07f, 0.8f), LifeColor, _knob).preserveAspect = true;
             var life = CreateNumber("Life", strip, new Vector2(0.075f, 0.1f), new Vector2(0.19f, 0.9f));
-            CreateImage("Money Icon", strip, new Vector2(0.21f, 0.2f), new Vector2(0.26f, 0.8f), GoldColor, _knob).preserveAspect = true;
+            MoneyIconArt.Apply(CreateImage("Money Icon", strip, new Vector2(0.21f, 0.2f), new Vector2(0.26f, 0.8f), GoldColor, _knob), _box, _knob);
             var money = CreateNumber("Money", strip, new Vector2(0.265f, 0.1f), new Vector2(0.42f, 0.9f));
             // コインは筐体のコインと同じ金色に、内側の暗い輪で所持金と見分ける（仮）。
             var coinIcon = CreateImage("Coin Icon", strip, new Vector2(0.44f, 0.2f), new Vector2(0.49f, 0.8f), GoldColor, _knob);

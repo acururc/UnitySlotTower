@@ -8,6 +8,7 @@ using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Slot;
+using UnitySlotTower.Core.Ui;
 using UnitySlotTower.Slot;
 
 namespace UnitySlotTower.Flow
@@ -213,7 +214,7 @@ namespace UnitySlotTower.Flow
                 row.defText.SetText("{0}", level.DefOf(unit));
                 row.intervalText.SetText("{0:1}", (float)unit.AttackInterval);
                 row.blockText.SetText("{0}", unit.Block);
-                row.costText.SetText("{0}", unit.Cost);
+                row.costText.SetText(NumericText.YenFormat, unit.Cost);
                 row.cooldownText.SetText("{0}", (float)Math.Ceiling(unit.Cooldown));
             }
 

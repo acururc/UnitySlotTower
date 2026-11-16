@@ -1,7 +1,7 @@
 id,kind,map_id,min_floor,max_floor,fixed_spins,reward_money,reward_coins
-first,first,first,1,1,6,10,3
-battle_a,battle,battle_a,2,7,0,10,3
-battle_b,battle,battle_b,2,7,0,10,3
-battle_c,battle,battle_c,2,7,0,10,3
-elite_a,elite,elite_a,3,7,0,25,8
+first,first,first,1,1,6,80,6
+battle_a,battle,battle_a,2,7,0,80,6
+battle_b,battle,battle_b,2,7,0,80,6
+battle_c,battle,battle_c,2,7,0,80,6
+elite_a,elite,elite_a,3,7,0,200,12
 boss_a,boss,boss_a,1,99,0,0,0

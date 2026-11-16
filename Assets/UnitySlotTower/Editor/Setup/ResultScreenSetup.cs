@@ -6,6 +6,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Flow;
+using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Editor.Setup
 {
@@ -94,7 +95,7 @@ namespace UnitySlotTower.Editor.Setup
             floor.text = "1";
 
             // 所持金（金の丸）とコイン（金の丸に暗い輪。ルート・ショップ画面と同じ仮の絵）。
-            CreateImage("Money Icon", area, MoneyRow.IconMin, MoneyRow.IconMax, GoldColor, _knob).preserveAspect = true;
+            MoneyIconArt.Apply(CreateImage("Money Icon", area, MoneyRow.IconMin, MoneyRow.IconMax, GoldColor, _knob), _box, _knob);
             var money = CreateText("Money", area, MoneyRow.TextMin, MoneyRow.TextMax, Color.white);
             var coins = CreateCoinRow(area);
 
