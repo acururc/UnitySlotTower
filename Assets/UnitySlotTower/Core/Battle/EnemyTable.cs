@@ -9,7 +9,7 @@ namespace UnitySlotTower.Core.Battle
         internal EnemyDefinition(string id, int maxHp, int atk, int def, double attackInterval, double moveSpeed,
             double range, bool isAir, int blockCost, int lifeDamage, double coinRate, int coinMin, int coinMax,
             double moneyRate, int moneyMin, int moneyMax,
-            int areaAtk, double areaRadius, double areaInterval)
+            int areaAtk, double areaRadius, double areaInterval, double rangedDamageRate = 1)
         {
             Id = id;
             MaxHp = maxHp;
@@ -30,12 +30,16 @@ namespace UnitySlotTower.Core.Battle
             AreaAtk = areaAtk;
             AreaRadius = areaRadius;
             AreaInterval = areaInterval;
+            RangedDamageRate = rangedDamageRate;
         }
 
         public string Id { get; }
         public int MaxHp { get; }
         public int Atk { get; }
         public int Def { get; }
+
+        /// <summary>遠距離職から受ける、防御計算後のダメージ倍率（FR-075）。</summary>
+        public double RangedDamageRate { get; }
 
         /// <summary>攻撃間隔（秒）。</summary>
         public double AttackInterval { get; }
@@ -126,12 +130,19 @@ namespace UnitySlotTower.Core.Battle
                     throw row.Error("money_rate", $"敵 '{id}' のコインと所持金のドロップ率の和が 1 を超える");
                 }
 
+                var rangedDamageRate = table.HasColumn("ranged_damage_rate")
+                    ? row.GetDouble("ranged_damage_rate") : 1;
+                if (!(rangedDamageRate > 0 && rangedDamageRate <= 1))
+                {
+                    throw row.Error("ranged_damage_rate", "遠距離ダメージ倍率は 0 より大きく 1 以下");
+                }
+
                 enemies._enemies.Add(id, new EnemyDefinition(id, row.GetInt("max_hp"), row.GetInt("atk"),
                     row.GetInt("def"), row.GetDouble("attack_interval"), row.GetDouble("move_speed"),
                     row.GetDouble("range"), row.GetBool("is_air"), row.GetInt("block_cost"), row.GetInt("life_damage"),
                     coinRate, row.GetInt("coin_min"), row.GetInt("coin_max"),
                     moneyRate, row.GetInt("money_min"), row.GetInt("money_max"),
-                    areaAtk, row.GetDouble("area_radius"), areaInterval));
+                    areaAtk, row.GetDouble("area_radius"), areaInterval, rangedDamageRate));
             }
 
             return enemies;

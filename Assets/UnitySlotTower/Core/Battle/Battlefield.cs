@@ -160,7 +160,8 @@ namespace UnitySlotTower.Core.Battle
             {
                 if (enemy.IsAlive && CanTarget(unit, enemy))
                 {
-                    enemy.TakeDamage(Damage.Calculate(atk, enemy.Definition.Def));
+                    enemy.TakeDamage(Damage.Calculate(atk, enemy.Definition.Def,
+                        unit.Definition.Role, enemy.Definition.RangedDamageRate));
                 }
             }
         }
@@ -421,7 +422,8 @@ namespace UnitySlotTower.Core.Battle
                     continue;
                 }
 
-                target.TakeDamage(Damage.Calculate(EffectiveAtk(unit), target.Definition.Def));
+                target.TakeDamage(Damage.Calculate(EffectiveAtk(unit), target.Definition.Def,
+                    unit.Definition.Role, target.Definition.RangedDamageRate));
 
                 unit.AttackCooldownSteps = (int)Math.Round(
                     unit.Definition.AttackInterval * unit.IntervalRate * SimulationClock.StepsPerSecond);

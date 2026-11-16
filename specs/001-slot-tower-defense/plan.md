@@ -430,9 +430,11 @@ Assets/UnitySlotTower/
 - スロー: `BattleController` に「配置中」（`IsPlacing`: 戦闘中に `UnitDeployment.Phase` が Idle 以外 = 札を選んでから向きを決めるかやめるまで）を持ち、`ApplyTimeScale` の決まりを「一時停止 0 → 配置中 `placement_time_scale`（`game_config.csv`、仮 0.1） → 戦闘中は倍率 → それ以外 1」にする。書くのは今までどおり `ApplyTimeScale` だけ。開始の演出・説明中の扱いは今のまま。
 
 ### 18.2 弓の弱体化と重装（FR-075, D-97）
-- `enemies.csv` に `ranged_damage_rate`（遠距離の味方から受けるダメージの倍率、既定 1）を足し、`Damage` の計算で攻撃側が遠距離職のときだけ掛ける（TDD）。重装 `heavy`: 体力・防御力が高く、`ranged_damage_rate` 0.4（仮）。地上の近距離。見た目は大きな盾の付いた大きめの体（`PresentationCatalog`）。
+- `enemies.csv` に `ranged_damage_rate`（遠距離の味方から受けるダメージの倍率、既定 1）を足し、`Damage` の計算で攻撃側が遠距離職のときだけ掛ける（TDD）。重装 `heavy`: 体力・防御力が高く、`ranged_damage_rate` 0.4（仮）。地上の近距離。見た目は大きな盾の付いた大きめの体（`BattleActorsView` が `ranged_damage_rate` < 1 の敵に盾を付ける。block_cost 2 で体も大きい）。
 - 弓: atk・attack_interval・強化の伸び（`unit_upgrades.csv`）を下げる。目安は「強化2段の弓2体では群れ1つ（4〜5体）を本拠地までに倒しきれない」。EditMode のシミュレーション（固定の配置で1つの群れを流す）で確かめ、値はテストの引数にする。
 - `waves.csv` の通常・強敵・ボスの群れに重装を混ぜる。最初の戦闘には出さない（検証器でエラー）。所持金・コインのドロップは近距離雑魚と同じ程度。
+- T381 実装値（2026-11-17、Claude の仮置き）: 弓 atk 240・attack_interval 0.9秒、強化段階2〜5の HP/攻撃/防御倍率 1.05/1.10/1.15/1.20。間隔は短くするが基礎DPSは350→約267。重装は HP2200・atk200・def180・間隔1.5秒・速度0.8・block_cost2・life_damage1・遠距離倍率0.4、ドロップは melee と同じ。防御計算後に耐性を掛け四捨五入する。通常3種・強敵・ボスで4体の近距離群の末尾1体を重装に置換（合計数を維持）。
+- `ArcherBalanceTests.Two_Archers_Stop_Air_But_Not_Ground_Groups`: 9マスの直線、固定高台(2,1)/(3,1)、弓2体、60秒。段階2と「2回強化」の段階3、地上4〜5体（間隔1〜1.2秒）と空中4〜5体（2.5秒）、近距離3＋重装1をテスト引数で確認。配置・群れ間隔への依存はあり、通しプレイの代替ではない。
 
 ### 18.3 2方向・本拠地2つのマップ（FR-076, D-98）
 - 道は `map_paths.csv` の経路ごとに終点の本拠地（`MapTile.Goal`）に着けばよく、本拠地が複数でも Core はそのまま動く見込み。EditMode で「本拠地2つのマップで、どちらに入ってもライフが `life_damage` だけ減る」を先に確かめる。

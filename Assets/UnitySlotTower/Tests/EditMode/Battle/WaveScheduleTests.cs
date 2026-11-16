@@ -110,12 +110,18 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("FR-034, plan 17.3: 群れは3〜5体のまとまり（データの書き直しで1体だけの行を残さない。ボスは1体）")]
+        [Description("FR-034 / FR-075: 群れは3〜5体。重装1体は同じ経路の直前の3体の群れに続く。ボスは1体")]
         public void Project_Groups_Have_Three_To_Five_Enemies_Except_Bosses()
         {
             var waves = CsvParser.Parse(WaveSchedule.FileName, TablePaths.ReadAll()[WaveSchedule.FileName]);
             var wrong = waves.Rows
-                .Where(r => r.GetBool("is_boss") ? r.GetInt("count") != 1 : r.GetInt("count") < 3 || r.GetInt("count") > 5)
+                .Where(r => r.GetBool("is_boss") ? r.GetInt("count") != 1 :
+                    r.Get("enemy_id") == "heavy" ? r.GetInt("count") != 1 || !waves.Rows.Any(group =>
+                        group.Get("encounter_id") == r.Get("encounter_id") &&
+                        group.Get("path_id") == r.Get("path_id") && group.Get("enemy_id") == "melee" &&
+                        group.GetInt("count") == 3 && System.Math.Abs(group.GetDouble("time") +
+                            3 * group.GetDouble("interval") - r.GetDouble("time")) < 0.0001) :
+                    r.GetInt("count") < 3 || r.GetInt("count") > 5)
                 .Select(r => r.Line)
                 .ToArray();
 

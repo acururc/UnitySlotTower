@@ -624,6 +624,13 @@ namespace UnitySlotTower.Core.Data
                 if (encounter.Kind == EncounterKind.First)
                 {
                     ValidateCenterLane(waves, encounter.Id, map, report);
+                    foreach (var row in waves.Rows)
+                    {
+                        if (row.Get("encounter_id") == encounter.Id && row.Get("enemy_id") == "heavy")
+                        {
+                            report.Add(row.Error("enemy_id", "最初の戦闘には重装を出せない（FR-075）").Error);
+                        }
+                    }
                 }
             }
         }

@@ -48,6 +48,8 @@ namespace UnitySlotTower.Battle
         [SerializeField] private Color airEnemyColor = new Color(0.35f, 0.2f, 0.6f);
         [SerializeField] private Color shadowColor = new Color(0.1f, 0.1f, 0.12f);
         [SerializeField] private float enemySize = 0.5f;
+        [Tooltip("遠距離に強い敵（ranged_damage_rate < 1）の盾の色。")]
+        [SerializeField] private Color shieldColor = new Color(0.62f, 0.66f, 0.72f);
 
         [Header("HP Gauge")]
         [SerializeField] private Vector2 gaugeSize = new Vector2(0.8f, 0.1f);
@@ -226,6 +228,13 @@ namespace UnitySlotTower.Battle
 
             var height = BodyHeight(shape, scale.y);
             body.localPosition = Vector3.up * (height * 0.5f);
+            if (definition.RangedDamageRate < 1)
+            {
+                // 遠距離に強い敵（重装、FR-075）は手前に大きな盾を持たせて見分けられるようにする。
+                var shield = CreatePrimitive(PrimitiveType.Cube, "Shield", root, shieldColor);
+                shield.localScale = new Vector3(size * 1.2f, height * 0.95f, size * 0.18f);
+                shield.localPosition = new Vector3(0, height * 0.5f, -size * 0.6f);
+            }
             return CreateActor(root, height, enemyGaugeColor);
         }
 

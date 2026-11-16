@@ -10,6 +10,44 @@ namespace UnitySlotTower.Tests.EditMode.Data
 {
     public sealed class TableValidationTests
     {
+        [TestCase("battle_a")]
+        [TestCase("battle_b")]
+        [TestCase("battle_c")]
+        [TestCase("elite_a")]
+        [TestCase("boss_a")]
+        public void Later_Battles_Mix_Heavy_Into_Ground_Groups(string encounter)
+        {
+            var rows = CsvParser.Parse("waves.csv", TablePaths.ReadAll()["waves.csv"]).Rows;
+            Assert.That(rows.Any(row => row.Get("encounter_id") == encounter && row.Get("enemy_id") == "heavy"),
+                Is.True);
+        }
+
+        [Test]
+        [Description("AC-056: first のIDを変えても、最初の戦闘種別には重装を出せない")]
+        public void Heavy_In_First_Battle_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["encounters.csv"] = files["encounters.csv"].Replace("first,first,", "tutorial,first,");
+            files["waves.csv"] = files["waves.csv"].Replace("first,", "tutorial,") +
+                "tutorial,70,heavy,S2,first_g2,0,1,0\n";
+            var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
+            Assert.That(GameDataValidator.ValidateAll(files).Errors.Select(e => (e.File, e.Line, e.Column)),
+                Does.Contain(("waves.csv", line, 3)));
+        }
+
+        [TestCase("0")]
+        [TestCase("-0.1")]
+        [TestCase("1.01")]
+        [TestCase("NaN")]
+        [TestCase("Infinity")]
+        public void Invalid_Enemy_Ranged_Damage_Rate_Is_Reported(string rate)
+        {
+            var files = TablePaths.ReadAll();
+            files["enemies.csv"] = files["enemies.csv"].Replace(",0.4\n", "," + rate + "\n");
+            Assert.That(GameDataValidator.ValidateAll(files).Errors.Any(e =>
+                e.File == "enemies.csv" && e.Column == 20), Is.True);
+        }
+
         private static readonly TableSchema UnitSchema = new TableSchema("units.csv", new[] { "id" },
             ColumnRule.Id("id"),
             ColumnRule.Int("cost", 0, 999),

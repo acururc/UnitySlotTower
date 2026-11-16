@@ -8,6 +8,39 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 {
     public sealed class EnemyTableTests
     {
+        [Test]
+        public void Missing_Ranged_Damage_Rate_Defaults_To_One()
+        {
+            Assert.That(BattleFixtures.LoadEnemies().Get("heavy").RangedDamageRate, Is.EqualTo(1));
+        }
+
+        [TestCase("0")]
+        [TestCase("-0.1")]
+        [TestCase("1.01")]
+        [TestCase("NaN")]
+        [TestCase("Infinity")]
+        public void Invalid_Ranged_Damage_Rate_Is_A_Load_Error(string rate)
+        {
+            var csv = BattleFixtures.Enemies.TrimEnd().Split('\n');
+            csv[0] += ",ranged_damage_rate";
+            for (var i = 1; i < csv.Length; i++) csv[i] += "," + rate;
+            var ex = Assert.Throws<CsvFormatException>(() =>
+                EnemyTable.Load(CsvParser.Parse(EnemyTable.FileName, string.Join("\n", csv))));
+            Assert.That((ex.Error.File, ex.Error.Line, ex.Error.Column), Is.EqualTo(("enemies.csv", 2, 20)));
+        }
+
+        [TestCase("0.4", 0.4)]
+        [TestCase("1", 1)]
+        [TestCase("0.0001", 0.0001)]
+        public void Reads_Ranged_Damage_Rate(string rate, double expected)
+        {
+            var csv = BattleFixtures.Enemies.TrimEnd().Split('\n');
+            csv[0] += ",ranged_damage_rate";
+            for (var i = 1; i < csv.Length; i++) csv[i] += "," + rate;
+            Assert.That(EnemyTable.Load(CsvParser.Parse(EnemyTable.FileName, string.Join("\n", csv)))
+                .Get("heavy").RangedDamageRate, Is.EqualTo(expected));
+        }
+
         private static EnemyTable Project() =>
             EnemyTable.Load(CsvParser.Parse(EnemyTable.FileName,
                 File.ReadAllText(Path.Combine(TablePaths.Root, EnemyTable.FileName))));
