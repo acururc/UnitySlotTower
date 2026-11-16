@@ -27,6 +27,11 @@ namespace UnitySlotTower.Battle
         [SerializeField] private TMP_Text stockText;
         [Tooltip("召喚できないときに本体の色にかける。")]
         [SerializeField] private Color unavailableTint = new Color(0.45f, 0.45f, 0.45f);
+        [Tooltip("召喚できないときに押したら本体をこの色で光らせる（T355）。")]
+        [SerializeField] private Color rejectColor = new Color(1f, 0.25f, 0.2f);
+        [SerializeField] private float rejectSeconds = 0.35f;
+        [Tooltip("待ち時間の残り秒数の字の大きさ（T355）。")]
+        [SerializeField] private float cooldownFontSize = 44f;
 
         [Header("Skill gauge (T349)")]
         [Tooltip("この職の色のスキルゲージ。アイコン本体とは別のボタンで、満タンで光り、押すと発動する。")]
@@ -56,17 +61,54 @@ namespace UnitySlotTower.Battle
         private bool _shownFull;
         private bool _hasSkill;
         private SlotSymbol _skillColor;
+        private TMP_Text _cooldownText;
+        private int _shownSeconds = -1;
+        private float _rejectUntil;
+        private bool _rejectMoney;
+        private Color _costColor;
 
         /// <summary>スキルゲージのボタン（説明で指す）。なければ null。</summary>
         public RectTransform SkillButtonRect => skillButton != null ? (RectTransform)skillButton.transform : null;
 
+        /// <summary>待ち時間の残り秒数（切り上げ）の文字。待ち時間がないときは隠す（T355）。</summary>
+        public TMP_Text CooldownText => _cooldownText;
+
+        /// <summary>召喚できないときに押した反応（赤く光る）を表示中か（T355）。</summary>
+        public bool IsShowingReject => Time.unscaledTime < _rejectUntil;
+
         private void Awake()
         {
             _bodyColor = body.color;
+            _costColor = costText.color;
             if (skillBackground != null)
             {
                 _skillBackgroundColor = skillBackground.color;
             }
+
+            _cooldownText = CreateCooldownText();
+        }
+
+        // 待ち時間ゲージの子でゲージいっぱいの中央に置く数字（文字あり版でゲージが動いても付いていく）。
+        // シーンを作り直さずに足すので実行時に作る。
+        private TMP_Text CreateCooldownText()
+        {
+            var rect = new GameObject("Cooldown Seconds", typeof(RectTransform)).GetComponent<RectTransform>();
+            rect.SetParent(cooldownGauge.transform, false);
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            var text = rect.gameObject.AddComponent<TextMeshProUGUI>();
+            text.font = costText.font;
+            text.fontSize = cooldownFontSize;
+            text.enableAutoSizing = false;
+            text.alignment = TextAlignmentOptions.Center;
+            text.color = Color.white;
+            text.outlineWidth = 0.25f;
+            text.outlineColor = Color.black;
+            text.raycastTarget = false;
+            text.enabled = false;
+            return text;
         }
 
         private void OnEnable()
@@ -99,6 +141,24 @@ namespace UnitySlotTower.Battle
             if (eventData.button == PointerEventData.InputButton.Left)
             {
                 placementInput.SelectSlot(slot);
+                ShowRejectIfUnavailable();
+            }
+        }
+
+        // 押しても選べなかった（待ち時間・配置の上限・所持金不足）ことを赤く光らせて返す。所持金不足ならコストも赤くする（T355）。
+        private void ShowRejectIfUnavailable()
+        {
+            var summoner = battle.Summoner;
+            if (summoner == null || battle.IsInputBlocked || slot >= battle.Units.All.Count)
+            {
+                return;
+            }
+
+            var result = summoner.Check(battle.Units.All[slot].Id);
+            if (result != SummonResult.Summoned)
+            {
+                _rejectUntil = Time.unscaledTime + rejectSeconds;
+                _rejectMoney = result == SummonResult.NotEnoughCoins;
             }
         }
 
@@ -127,12 +187,30 @@ namespace UnitySlotTower.Battle
 
             var remaining = summoner.IgnoresCooldown ? 0d : summoner.CooldownRemaining(unit.Id);
             cooldownGauge.fillAmount = unit.Cooldown > 0d ? (float)(remaining / unit.Cooldown) : 0f;
+            var seconds = remaining > 0d ? (int)System.Math.Ceiling(remaining) : 0;
+            if (seconds != _shownSeconds)
+            {
+                _shownSeconds = seconds;
+                _cooldownText.enabled = seconds > 0;
+                _cooldownText.SetText("{0}", seconds);
+            }
 
             var available = summoner.Check(unit.Id) == SummonResult.Summoned;
-            if (available != _shownAvailable)
+            var rejecting = IsShowingReject;
+            if (rejecting)
+            {
+                // 光りはじめを強く、だんだん元の色へ。
+                var t = (_rejectUntil - Time.unscaledTime) / rejectSeconds;
+                var normal = available ? _bodyColor : _bodyColor * unavailableTint;
+                body.color = Color.Lerp(normal, rejectColor, t);
+                costText.color = _rejectMoney ? Color.Lerp(_costColor, rejectColor, t) : _costColor;
+                _shownAvailable = !available; // 光り終わりに色を戻させる。
+            }
+            else if (available != _shownAvailable)
             {
                 _shownAvailable = available;
                 body.color = available ? _bodyColor : _bodyColor * unavailableTint;
+                costText.color = _costColor;
             }
 
             var selected = battle.Deployment.Selected;

@@ -304,6 +304,27 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That((_battle.Run.State.Gauges.IsFull(color), tank.SkillStepsLeft), Is.EqualTo((true, 0)));
         }
 
+        [UnityTest]
+        [Description("T355: 戦闘中に召喚すると待ち時間の残り秒数がアイコンに出て、待ち時間中に押すと選ばれずに赤く光る")]
+        public IEnumerator Cooldown_Shows_Seconds_And_Clicking_During_It_Flashes_Instead_Of_Selecting()
+        {
+            var icon = GameObject.Find("Unit Icon 1").GetComponent<UnitBarIcon>();
+            Assert.That(icon.CooldownText.enabled, Is.False, "準備中に待ち時間の数字が出ている");
+
+            _battle.StartWave();
+            yield return PlaceTank(_ => { });
+            yield return null;
+            var cooldown = _battle.Units.Get("tank").Cooldown;
+            var remaining = _battle.Summoner.CooldownRemaining("tank");
+            Assert.That((icon.CooldownText.enabled, icon.CooldownText.text),
+                Is.EqualTo((true, ((int)System.Math.Ceiling(remaining)).ToString())), "待ち時間の秒数が出ない");
+            Assert.That(remaining, Is.GreaterThan(cooldown - 1d), "待ち時間が始まっていない");
+
+            yield return Click(icon.transform);
+            Assert.That((_battle.Deployment.Phase, icon.IsShowingReject), Is.EqualTo((DeployPhase.Idle, true)),
+                "待ち時間中に押して選べたか、光らない");
+        }
+
         private IEnumerator PlaceTank(System.Action<BattleUnit> placed)
         {
             yield return Tap(Key.Digit1);
