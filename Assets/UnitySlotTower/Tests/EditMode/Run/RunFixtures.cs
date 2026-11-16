@@ -12,7 +12,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
 
         // plan 16.7 の仮値。
         public const string RulesBody =
-            "floors,8\ncolumns,7\npaths,4\n" +
+            "floors,8\ncolumns,3\n" +
             "weight_battle,50\nweight_elite,14\nweight_shop,22\nweight_rest,14\n" +
             "elite_min_floor,3\nrest_heal,3\nshop_slots,3\nexchange_money_per_coin,2\n";
 

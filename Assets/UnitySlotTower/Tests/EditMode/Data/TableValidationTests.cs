@@ -405,6 +405,18 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
+        [Description("D-88, plan 17.7: route_rules の columns は 3 だけ")]
+        public void Route_Rules_With_Columns_Other_Than_Three_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["route_rules.csv"] = WithoutLinesStartingWith(files["route_rules.csv"], "columns,") + "columns,4\n";
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain("route_rules.csv"));
+        }
+
+        [Test]
         [Description("D-69: 登録表にない種類の重みが route_rules にある")]
         public void Route_Rules_With_An_Unregistered_Weight_Is_An_Error()
         {

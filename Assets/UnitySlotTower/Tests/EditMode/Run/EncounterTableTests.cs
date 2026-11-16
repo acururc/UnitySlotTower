@@ -83,6 +83,48 @@ namespace UnitySlotTower.Tests.EditMode.Run
         }
 
         [Test]
+        [Description("AC-014, D-89: 直前の戦闘マスと同じマップは選ばない（多数のシードで続けて選ぶ）")]
+        public void Battle_Map_Differs_From_The_Previous_Battle()
+        {
+            var table = Load();
+            for (ulong seed = 1; seed <= 200; seed++)
+            {
+                var run = RunFixtures.CreateRun();
+                var random = new SeededRandom(seed);
+                var previous = run.PickEncounter(table, EncounterKind.Battle, 3, random).MapId;
+                for (var i = 0; i < 20; i++)
+                {
+                    var map = run.PickEncounter(table, EncounterKind.Battle, 3, random).MapId;
+                    Assert.That(map, Is.Not.EqualTo(previous), $"seed {seed}, {i + 2}回目");
+                    previous = map;
+                }
+            }
+        }
+
+        [Test]
+        [Description("D-89: 選べるマップが1枚だけなら、直前と同じでも選ぶ")]
+        public void Only_Map_Is_Chosen_Even_If_It_Was_The_Previous_One()
+        {
+            var table = Load();
+            var run = RunFixtures.CreateRun();
+            var random = new SeededRandom(3);
+
+            Assert.That((run.PickEncounter(table, EncounterKind.Elite, 4, random).Id,
+                run.PickEncounter(table, EncounterKind.Elite, 5, random).Id), Is.EqualTo(("elite_a", "elite_a")));
+        }
+
+        [Test]
+        [Description("D-89: 選んだマップを直前の戦闘マップとして覚える")]
+        public void Picked_Map_Becomes_The_Previous_Battle_Map()
+        {
+            var run = RunFixtures.CreateRun();
+
+            var picked = run.PickEncounter(Load(), EncounterKind.Battle, 6, new SeededRandom(5));
+
+            Assert.That(run.LastBattleMapId, Is.EqualTo(picked.MapId));
+        }
+
+        [Test]
         public void Pick_Without_A_Match_Throws()
         {
             var table = Load();

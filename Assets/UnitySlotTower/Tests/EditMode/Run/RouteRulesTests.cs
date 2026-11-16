@@ -13,9 +13,9 @@ namespace UnitySlotTower.Tests.EditMode.Run
             var rules = RunFixtures.LoadRules();
 
             Assert.That(
-                (rules.Floors, rules.Columns, rules.Paths, rules.EliteMinFloor, rules.RestHeal, rules.ShopSlots,
+                (rules.Floors, rules.Columns, rules.EliteMinFloor, rules.RestHeal, rules.ShopSlots,
                     rules.ExchangeMoneyPerCoin),
-                Is.EqualTo((8, 7, 4, 3, 3, 3, 2)));
+                Is.EqualTo((8, 3, 3, 3, 3, 2)));
         }
 
         [Test]
@@ -43,7 +43,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
             var error = Assert.Throws<CsvFormatException>(() =>
                 RunFixtures.LoadRules(RunFixtures.RulesBody + "weight_casino,5\n")).Error;
 
-            Assert.That(error.Line, Is.EqualTo(13));
+            Assert.That(error.Line, Is.EqualTo(12));
         }
 
         [Test]
@@ -51,6 +51,13 @@ namespace UnitySlotTower.Tests.EditMode.Run
         public void Exchange_Weight_Is_An_Error()
         {
             Assert.Throws<CsvFormatException>(() => RunFixtures.LoadRules(RunFixtures.RulesBody + "weight_exchange,10\n"));
+        }
+
+        [Test]
+        [Description("D-88, plan 17.7: 列は3に固定。3 以外はエラー")]
+        public void Columns_Other_Than_Three_Is_An_Error([Values("2", "4", "7")] string columns)
+        {
+            Assert.Throws<CsvFormatException>(() => RunFixtures.LoadRulesWith(("columns", columns)));
         }
 
         [Test]

@@ -8,6 +8,9 @@ namespace UnitySlotTower.Core.Run
     {
         public const string FileName = "route_rules.csv";
 
+        /// <summary>D-88: ルートの列の数（固定）。</summary>
+        public const int GridColumns = 3;
+
         /// <summary>最も少ない階の数（最初の戦闘・回復・ボス）。</summary>
         public const int MinFloors = 3;
 
@@ -20,11 +23,8 @@ namespace UnitySlotTower.Core.Run
         /// <summary>階の数（1階 = 最初の戦闘、最上階 = ボス、その直前 = 回復）。3以上。</summary>
         public int Floors { get; private set; }
 
-        /// <summary>列の数。</summary>
+        /// <summary>列の数（<see cref="GridColumns"/> だけ）。</summary>
         public int Columns { get; private set; }
-
-        /// <summary>1階から上へ引く道の本数。</summary>
-        public int Paths { get; private set; }
 
         /// <summary>強敵が出る最低の階。</summary>
         public int EliteMinFloor { get; private set; }
@@ -46,7 +46,7 @@ namespace UnitySlotTower.Core.Run
 
         /// <summary>
         /// 登録表の重みで選ばれる種類ごとに <c>weight_&lt;id&gt;</c> が必要。登録にない <c>weight_</c> のキー・
-        /// 3階未満・列や道が0以下・負の値は <see cref="CsvFormatException"/>。
+        /// 3階未満・列が3以外・負の値は <see cref="CsvFormatException"/>。
         /// </summary>
         public static RouteRules Load(CsvTable table)
         {
@@ -54,8 +54,7 @@ namespace UnitySlotTower.Core.Run
             var rules = new RouteRules
             {
                 Floors = AtLeast(values, "floors", MinFloors),
-                Columns = AtLeast(values, "columns", 1),
-                Paths = AtLeast(values, "paths", 1),
+                Columns = Exactly(values, "columns", GridColumns),
                 EliteMinFloor = AtLeast(values, "elite_min_floor", 1),
                 RestHeal = AtLeast(values, "rest_heal", 0),
                 ShopSlots = AtLeast(values, "shop_slots", 0),
@@ -81,6 +80,13 @@ namespace UnitySlotTower.Core.Run
             }
 
             return rules;
+        }
+
+        private static int Exactly(KeyValueTable values, string key, int expected)
+        {
+            var row = values.Row(key);
+            var value = row.GetInt(KeyValueTable.ValueColumn);
+            return value == expected ? value : throw row.Error(KeyValueTable.ValueColumn, $"{key} は {expected} だけ: {value}");
         }
 
         private static int AtLeast(KeyValueTable values, string key, int min)

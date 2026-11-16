@@ -177,16 +177,16 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("ルート生成: route_rules.csv の columns 7 → 3")]
-        public void Route_Width_Follows_Route_Rules_Csv()
+        [Description("ルート生成: route_rules.csv の floors 8 → 6（列は3に固定: D-88）")]
+        public void Route_Height_Follows_Route_Rules_Csv()
         {
-            var changed = TablesWith(RouteRules.FileName, "value", "3", ("key", "columns"));
+            var changed = TablesWith(RouteRules.FileName, "value", "6", ("key", "floors"));
 
             for (ulong seed = 1; seed <= 20; seed++)
             {
-                Assert.That((Route(TablePaths.ReadAll(), seed).Columns, Route(changed, seed).Columns),
-                    Is.EqualTo((7, 3)));
-                Assert.That(Route(changed, seed).All.All(node => node.Column < 3), Is.True, $"seed {seed}");
+                Assert.That((Route(TablePaths.ReadAll(), seed).Floors, Route(changed, seed).Floors),
+                    Is.EqualTo((8, 6)));
+                Assert.That(Route(changed, seed).Boss.Floor, Is.EqualTo(6), $"seed {seed}");
             }
         }
 

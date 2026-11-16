@@ -17,8 +17,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
         {
             new (string, string)[0],
             new[] { ("floors", "3") },
-            new[] { ("columns", "1"), ("paths", "1") },
-            new[] { ("floors", "15"), ("columns", "7"), ("paths", "6") },
+            new[] { ("floors", "15") },
         };
 
         /// <summary>各形 × シード 1〜<see cref="SeedCount"/> のルート。</summary>
@@ -42,9 +41,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
             var text = new StringBuilder();
             foreach (var node in map.All)
             {
-                text.Append(node.Floor).Append(':').Append(node.Column).Append(':').Append(node.Kind).Append(':')
-                    .Append(node.DisplayOffsetX.ToString("R")).Append('/')
-                    .Append(node.DisplayOffsetY.ToString("R")).Append('>')
+                text.Append(node.Floor).Append(':').Append(node.Column).Append(':').Append(node.Kind).Append('>')
                     .Append(string.Join(",", node.Next.Select(n => n.Column))).Append(' ');
             }
 
@@ -162,9 +159,82 @@ namespace UnitySlotTower.Tests.EditMode.Run
         {
             foreach (var (rules, map) in Routes())
             {
-                Assert.That(map.Columns, Is.EqualTo(rules.Columns));
-                Assert.That(map.All.Select(n => n.Column), Is.All.InRange(0, rules.Columns - 1));
+                Assert.That(map.Columns, Is.EqualTo(3));
+                Assert.That(map.All.Select(n => n.Column), Is.All.InRange(0, 2));
             }
+        }
+
+        [Test]
+        [Description("D-88: 1階は中央の列の1マス、最上階のボスも中央の列")]
+        public void Start_And_Boss_Are_In_The_Center_Column()
+        {
+            foreach (var (_, map) in Routes())
+            {
+                Assert.That((map.Start.Column, map.Boss.Column), Is.EqualTo((1, 1)));
+            }
+        }
+
+        [Test]
+        [Description("D-88: 2階からボスの直前の階までは各階3マス（0・1・2列）")]
+        public void Middle_Floors_Have_All_Three_Columns()
+        {
+            foreach (var (rules, map) in Routes())
+            {
+                for (var floor = 2; floor < rules.Floors; floor++)
+                {
+                    Assert.That(map.NodesOn(floor).Select(n => n.Column), Is.EqualTo(new[] { 0, 1, 2 }), $"{floor}階");
+                }
+            }
+        }
+
+        [Test]
+        [Description("D-88, AC-010: 各マスは真上と斜め上のすべてにつながる（端は2方向・中央は3方向、1階の中央から2階の3つ）")]
+        public void Every_Node_Links_Straight_And_Diagonally_Up()
+        {
+            foreach (var (_, map) in Routes())
+            {
+                foreach (var node in map.All.Where(n => n.Floor < map.Floors - 1))
+                {
+                    var expected = new[] { node.Column - 1, node.Column, node.Column + 1 }.Where(c => c >= 0 && c <= 2);
+                    Assert.That(node.Next.Select(n => n.Column), Is.EqualTo(expected), $"{node.Floor}-{node.Column}");
+                }
+            }
+        }
+
+        [Test]
+        [Description("D-88: ボスの直前の階の3マスはすべてボスへつながる")]
+        public void Every_Rest_Links_To_The_Boss()
+        {
+            foreach (var (_, map) in Routes())
+            {
+                foreach (var rest in map.NodesOn(map.Floors - 1))
+                {
+                    Assert.That(rest.Next, Is.EqualTo(new[] { map.Boss }));
+                }
+            }
+        }
+
+        [Test]
+        [Description("D-88: マスの種類は偏り、戦闘の少ない道も選べる（既定の形で、1階からボスまでの戦闘の数の最小が最大より少ないルートが9割以上）")]
+        public void Route_Offers_A_Path_With_Fewer_Battles()
+        {
+            var varied = 0;
+            for (ulong seed = 1; seed <= SeedCount; seed++)
+            {
+                var map = Generate(seed);
+                var fewest = new Dictionary<RouteNode, int>();
+                var most = new Dictionary<RouteNode, int>();
+                foreach (var node in map.All.Reverse())
+                {
+                    var own = RouteNodeKinds.Get(node.Kind).IsBattle ? 1 : 0;
+                    fewest[node] = own + (node.Next.Count == 0 ? 0 : node.Next.Min(n => fewest[n]));
+                    most[node] = own + (node.Next.Count == 0 ? 0 : node.Next.Max(n => most[n]));
+                }
+
+                varied += fewest[map.Start] < most[map.Start] ? 1 : 0;
+            }
+
+            Assert.That(varied, Is.GreaterThanOrEqualTo(SeedCount * 9 / 10), $"{varied}/{SeedCount}");
         }
 
         [Test]
@@ -181,27 +251,6 @@ namespace UnitySlotTower.Tests.EditMode.Run
                         if (next.Floor < rules.Floors)
                         {
                             Assert.That(Math.Abs(next.Column - node.Column), Is.LessThanOrEqualTo(1));
-                        }
-                    }
-                }
-            }
-        }
-
-        [Test]
-        [Description("plan 16.7: 道は交差しない")]
-        public void Links_Do_Not_Cross()
-        {
-            foreach (var (_, map) in Routes())
-            {
-                var links = map.All.SelectMany(a => a.Next.Select(b => (a, b))).ToList();
-                foreach (var (a1, b1) in links)
-                {
-                    foreach (var (a2, b2) in links)
-                    {
-                        if (a1.Floor == a2.Floor && a1.Column < a2.Column)
-                        {
-                            Assert.That(b1.Column, Is.LessThanOrEqualTo(b2.Column),
-                                $"{a1.Floor}階 {a1.Column}→{b1.Column} と {a2.Column}→{b2.Column}");
                         }
                     }
                 }
@@ -278,16 +327,13 @@ namespace UnitySlotTower.Tests.EditMode.Run
         }
 
         [Test]
-        [Description("D-75: ボスは1つだけなので、回復の階のどの列からも列の向きのリールに載る（4列: 0列→右、2列→中、3列→左）")]
+        [Description("D-75: ボスは1つだけなので、回復の階のどの列からも列の向きのリールに載る（0列→右、1列→中、2列→左）")]
         public void Boss_Is_On_The_Reel_Toward_Its_Column()
         {
-            var map = Generate(7, ("columns", "4"));
-            var reels = map.NodesOn(map.Floors - 1).ToDictionary(n => n.Column, n => n.ReelOf(map.Boss));
+            var map = Generate(7);
+            var reels = map.NodesOn(map.Floors - 1).Select(n => n.ReelOf(map.Boss));
 
-            foreach (var (column, reel) in reels)
-            {
-                Assert.That(reel, Is.EqualTo(column < 2 ? 2 : column == 2 ? 1 : 0), $"{column}列");
-            }
+            Assert.That(reels, Is.EqualTo(new[] { 2, 1, 0 }));
         }
 
         [Test]
@@ -296,111 +342,6 @@ namespace UnitySlotTower.Tests.EditMode.Run
             var map = Generate(7);
 
             Assert.That(map.Boss.NextOnReel(1), Is.Null);
-        }
-
-        [Test]
-        public void Second_Floor_Offers_A_Choice_When_There_Are_Several_Paths()
-        {
-            for (ulong seed = 1; seed <= SeedCount; seed++)
-            {
-                Assert.That(Generate(seed).NodesOn(2).Count, Is.GreaterThanOrEqualTo(2));
-            }
-        }
-
-        [Test]
-        [Description("T358: 既定の形では道が横に広がる（1階とボスを除く使う列の数が、平均5以上・どのシードも4以上）")]
-        public void Paths_Spread_Sideways()
-        {
-            var rules = RunFixtures.LoadRules();
-            var total = 0;
-            var min = int.MaxValue;
-            for (ulong seed = 1; seed <= SeedCount; seed++)
-            {
-                var used = Generate(seed).All.Where(n => n.Floor > 1 && n.Floor < rules.Floors)
-                    .Select(n => n.Column).Distinct().Count();
-                total += used;
-                min = Math.Min(min, used);
-            }
-
-            var average = total / (double)SeedCount;
-            Assert.That(average >= 5 && min >= 4, Is.True, $"平均 {average:F2}、最小 {min}");
-        }
-
-        [Test]
-        [Description("T358: 間の階の道は斜めに進みやすい（ボスへ以外の2階より上のつながりで、まっすぐは3割未満）")]
-        public void Middle_Links_Are_Mostly_Diagonal()
-        {
-            var straight = 0;
-            var links = 0;
-            for (ulong seed = 1; seed <= SeedCount; seed++)
-            {
-                var map = Generate(seed);
-                foreach (var node in map.All.Where(n => n.Floor >= 2))
-                {
-                    foreach (var next in node.Next.Where(n => n.Floor < map.Floors))
-                    {
-                        links++;
-                        straight += next.Column == node.Column ? 1 : 0;
-                    }
-                }
-            }
-
-            var ratio = straight / (double)links;
-            Assert.That(ratio, Is.LessThan(0.3), $"まっすぐ {straight}/{links}");
-        }
-
-        [Test]
-        [Description("T358: 表示のずれはマスの区画の中（縦横とも半マス未満）")]
-        public void Display_Offsets_Stay_Inside_The_Cell()
-        {
-            foreach (var (_, map) in Routes())
-            {
-                foreach (var node in map.All)
-                {
-                    Assert.That((Math.Abs(node.DisplayOffsetX) < 0.5, Math.Abs(node.DisplayOffsetY) < 0.5),
-                        Is.EqualTo((true, true)), $"{node.Floor}-{node.Column}");
-                }
-            }
-        }
-
-        [Test]
-        [Description("T358: 1階とボスは区画の中心、間の階のマスは格子からずれる（横に0.1マス以上ずれるマスが3割以上）")]
-        public void Middle_Nodes_Are_Offset_From_The_Grid()
-        {
-            var shifted = 0;
-            var middle = 0;
-            for (ulong seed = 1; seed <= SeedCount; seed++)
-            {
-                var map = Generate(seed);
-                Assert.That((map.Start.DisplayOffsetX, map.Start.DisplayOffsetY, map.Boss.DisplayOffsetX,
-                    map.Boss.DisplayOffsetY), Is.EqualTo((0.0, 0.0, 0.0, 0.0)));
-                foreach (var node in map.All.Where(n => n.Floor > 1 && n.Floor < map.Floors))
-                {
-                    middle++;
-                    shifted += Math.Abs(node.DisplayOffsetX) >= 0.1 ? 1 : 0;
-                }
-            }
-
-            Assert.That(shifted / (double)middle, Is.GreaterThanOrEqualTo(0.3), $"{shifted}/{middle}");
-        }
-
-        [Test]
-        [Description("T358, D-75: ずらしても向きが見分けられる（ボスへ以外のつながりの表示上の横の差は、まっすぐなら半列未満、斜めなら半列より大きい）")]
-        public void Displayed_Direction_Matches_The_Reel()
-        {
-            foreach (var (_, map) in Routes())
-            {
-                foreach (var node in map.All)
-                {
-                    foreach (var next in node.Next.Where(n => n.Floor < map.Floors))
-                    {
-                        var dx = next.Column + next.DisplayOffsetX - (node.Column + node.DisplayOffsetX);
-                        var ok = next.Column == node.Column ? Math.Abs(dx) < 0.5
-                            : Math.Abs(dx) > 0.5 && Math.Sign(dx) == Math.Sign(next.Column - node.Column);
-                        Assert.That(ok, Is.True, $"{node.Floor}-{node.Column} → {next.Column}: {dx:F2}");
-                    }
-                }
-            }
         }
 
         [Test]

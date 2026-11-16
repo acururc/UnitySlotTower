@@ -214,8 +214,7 @@ namespace UnitySlotTower.Core.Data
             var keys = new List<ColumnRule>
             {
                 ColumnRule.Int("floors", RouteRules.MinFloors, 30),
-                ColumnRule.Int("columns", 1, 9),
-                ColumnRule.Int("paths", 1, 10),
+                ColumnRule.Int("columns", RouteRules.GridColumns, RouteRules.GridColumns),
                 ColumnRule.Int("elite_min_floor", 1, 99),
                 ColumnRule.Int("rest_heal", 0, 1000),
                 ColumnRule.Int("shop_slots", 0, 10),

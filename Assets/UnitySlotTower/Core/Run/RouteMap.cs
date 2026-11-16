@@ -21,12 +21,6 @@ namespace UnitySlotTower.Core.Run
         /// <summary>0 から。</summary>
         public int Column { get; }
 
-        /// <summary>T358: ルート画面での表示位置のずれ（列の幅を1とする横方向。マスの区画の中に収まる）。1階とボスは0。</summary>
-        public double DisplayOffsetX { get; internal set; }
-
-        /// <summary>T358: ルート画面での表示位置のずれ（階の高さを1とする縦方向、上が正）。1階とボスは0。</summary>
-        public double DisplayOffsetY { get; internal set; }
-
         /// <summary><see cref="RouteNodeKinds"/> の id。</summary>
         public string Kind { get; internal set; }
 
@@ -161,11 +155,10 @@ namespace UnitySlotTower.Core.Run
     }
 
     /// <summary>
-    /// ルートの生成（plan 16.7）。1階は最初の戦闘の1マス、最上階はボスの1マス、その直前の階は全部回復。
-    /// 間の階は道を1階から列を ±1 ずつ動かしながら上へ引き（交差しない）、通ったマスの種類を重みで選ぶ。
-    /// 同じ乱数の列で同じルートになる（AC-010）。
+    /// ルートの生成（plan 16.7、17.7、D-88）。3列の格子: 1階は中央の最初の戦闘、2階からボスの直前の階までは各階3マス、
+    /// ボスの直前の階は全部回復、最上階は中央のボス。各マスは真上と斜め上（列の差 −1〜+1）のすべてにつながる。
+    /// 間の階のマスの種類は重みで選ぶ。同じ乱数の列で同じルートになる（AC-010）。
     /// ショップ・回復（戦闘でないマス）はつながった2マスで続かない（回復の階の直前の階は戦闘だけ）。
-    /// 間の階のマスには表示位置のずれ（区画の中）を付ける（T358）。
     /// </summary>
     public static class RouteGenerator
     {
@@ -182,41 +175,34 @@ namespace UnitySlotTower.Core.Run
             }
 
             var floors = rules.Floors;
-            var columns = rules.Columns;
+            var columns = RouteRules.GridColumns;
+            var center = columns / 2;
             var restFloor = floors - 1;
             var map = new RouteMap(floors, columns);
-            var start = map.GetOrAdd(1, columns / 2);
-
-            // D-75: 2階は1階の列 ±1 から始め、行き先を左・中・右のリールに1つずつ載せる。
-            var minColumn = Math.Max(0, start.Column - 1);
-            var maxColumn = Math.Min(columns - 1, start.Column + 1);
-            var firstColumn = -1;
-            for (var path = 0; path < rules.Paths; path++)
+            var start = map.GetOrAdd(1, center);
+            for (var floor = 2; floor < floors; floor++)
             {
-                var column = random.NextInt(minColumn, maxColumn + 1);
-                // 2本目は1本目と別の列から始め、2階で選べるようにする。
-                while (path == 1 && maxColumn > minColumn && column == firstColumn)
+                for (var column = 0; column < columns; column++)
                 {
-                    column = random.NextInt(minColumn, maxColumn + 1);
-                }
-
-                if (path == 0)
-                {
-                    firstColumn = column;
-                }
-
-                var node = map.GetOrAdd(2, column);
-                start.Link(node);
-                for (var floor = 2; floor < restFloor; floor++)
-                {
-                    column = NextColumn(map, floor, column, columns, random);
-                    var next = map.GetOrAdd(floor + 1, column);
-                    node.Link(next);
-                    node = next;
+                    map.GetOrAdd(floor, column);
                 }
             }
 
-            var boss = map.GetOrAdd(floors, columns / 2);
+            var boss = map.GetOrAdd(floors, center);
+            for (var floor = 1; floor < restFloor; floor++)
+            {
+                foreach (var node in map.NodesOn(floor))
+                {
+                    foreach (var next in map.NodesOn(floor + 1))
+                    {
+                        if (Math.Abs(next.Column - node.Column) <= 1)
+                        {
+                            node.Link(next);
+                        }
+                    }
+                }
+            }
+
             foreach (var rest in map.NodesOn(restFloor))
             {
                 rest.Link(boss);
@@ -238,66 +224,8 @@ namespace UnitySlotTower.Core.Run
                 rest.Kind = RouteNodeKinds.Rest;
             }
 
-            // T358: 格子に並んで一直線に見えないよう、間の階のマスの表示位置をずらす（構造を決めた後に引くので道は変わらない）。
-            for (var floor = 2; floor < floors; floor++)
-            {
-                foreach (var node in map.NodesOn(floor))
-                {
-                    node.DisplayOffsetX = (random.NextDouble() * 2 - 1) * MaxDisplayOffsetX;
-                    node.DisplayOffsetY = (random.NextDouble() * 2 - 1) * MaxDisplayOffsetY;
-                }
-            }
-
             map.Seal();
             return map;
-        }
-
-        /// <summary>表示のずれの最大（横は列の幅、縦は階の高さに対する割合。T358）。横は隣どうしの差が半列未満になる大きさにして、まっすぐと斜めを見分けられるようにする。</summary>
-        public const double MaxDisplayOffsetX = 0.2;
-        public const double MaxDisplayOffsetY = 0.2;
-
-        /// <summary>
-        /// 道の次の列。左・まっすぐ・右から、範囲内で既存の斜めのつながりと交差しないものを選ぶ。
-        /// T358: 横に広がるよう、斜めは重み2・まっすぐは重み1。
-        /// </summary>
-        private static int NextColumn(RouteMap map, int floor, int column, int columns, IRandom random)
-        {
-            var candidates = new int[3];
-            var weights = new int[3];
-            var count = 0;
-            var total = 0;
-            for (var delta = -1; delta <= 1; delta++)
-            {
-                var target = column + delta;
-                if (target < 0 || target >= columns)
-                {
-                    continue;
-                }
-
-                // (floor, column) → (floor+1, column+d) は (floor, column+d) → (floor+1, column) と交差する。
-                var neighbor = delta == 0 ? null : map.Find(floor, target);
-                var below = map.Find(floor + 1, column);
-                if (neighbor != null && below != null && map.CanMove(neighbor, below))
-                {
-                    continue;
-                }
-
-                weights[count] = delta == 0 ? 1 : 2;
-                total += weights[count];
-                candidates[count++] = target;
-            }
-
-            var roll = random.NextInt(0, total);
-            for (var i = 0; i < count - 1; i++)
-            {
-                roll -= weights[i];
-                if (roll < 0)
-                {
-                    return candidates[i];
-                }
-            }
-
-            return candidates[count - 1];
         }
 
         private static bool HasNonBattleParent(RouteMap map, RouteNode node)

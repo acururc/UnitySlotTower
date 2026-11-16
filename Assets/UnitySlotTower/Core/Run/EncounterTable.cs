@@ -81,21 +81,31 @@ namespace UnitySlotTower.Core.Run
                 ? encounter
                 : throw new KeyNotFoundException($"戦闘マス '{id}' がない");
 
-        /// <summary>種類と階が合う行から一様に1つ選ぶ。合う行がなければ <see cref="InvalidOperationException"/>。</summary>
-        public Encounter Pick(EncounterKind kind, int floor, IRandom random)
+        /// <summary>
+        /// 種類と階が合う行から一様に1つ選ぶ。合う行がなければ <see cref="InvalidOperationException"/>。
+        /// D-89: <paramref name="avoidMapId"/> のマップの行は、ほかのマップの行もあるときだけ除く。
+        /// </summary>
+        public Encounter Pick(EncounterKind kind, int floor, IRandom random, string avoidMapId = null)
         {
             _matches.Clear();
+            var avoided = 0;
             foreach (var encounter in _encounters)
             {
                 if (encounter.Kind == kind && encounter.IsOnFloor(floor))
                 {
                     _matches.Add(encounter);
+                    avoided += encounter.MapId == avoidMapId ? 1 : 0;
                 }
             }
 
             if (_matches.Count == 0)
             {
                 throw new InvalidOperationException($"{KindIds[(int)kind]} の {floor} 階に合う戦闘マスがない");
+            }
+
+            if (avoided > 0 && avoided < _matches.Count)
+            {
+                _matches.RemoveAll(encounter => encounter.MapId == avoidMapId);
             }
 
             return _matches[random.NextInt(0, _matches.Count)];

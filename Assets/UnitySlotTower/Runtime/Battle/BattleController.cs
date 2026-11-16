@@ -217,7 +217,7 @@ namespace UnitySlotTower.Battle
 
             var kind = RouteNodeKinds.Get(node.Kind).Encounter
                 ?? throw new ArgumentException($"戦闘マスではない: {node.Kind}", nameof(node));
-            var encounter = _encounters.Pick(kind, node.Floor, _random);
+            var encounter = state.PickEncounter(_encounters, kind, node.Floor, _random);
             slotCabinet.SetFixedSpins(encounter.FixedSpins);
             var map = fieldView.LoadMap(encounter.MapId);
             Floor = node.Floor;

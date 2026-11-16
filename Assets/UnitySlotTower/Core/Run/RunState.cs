@@ -2,6 +2,7 @@ using System;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Economy;
+using UnitySlotTower.Core.Simulation;
 using UnitySlotTower.Core.Slot;
 
 namespace UnitySlotTower.Core.Run
@@ -61,6 +62,24 @@ namespace UnitySlotTower.Core.Run
         {
             Route = route ?? throw new ArgumentNullException(nameof(route));
             Current = null;
+        }
+
+        /// <summary>D-89: 直前の戦闘マスのマップの id（まだ戦っていなければ null）。</summary>
+        public string LastBattleMapId { get; private set; }
+
+        /// <summary>
+        /// D-89: 戦闘マスの出現を、直前の戦闘マスと同じマップを避けて（ほかに選べるときだけ）選び、そのマップを <see cref="LastBattleMapId"/> として覚える。
+        /// </summary>
+        public Encounter PickEncounter(EncounterTable table, EncounterKind kind, int floor, IRandom random)
+        {
+            if (table == null)
+            {
+                throw new ArgumentNullException(nameof(table));
+            }
+
+            var encounter = table.Pick(kind, floor, random, LastBattleMapId);
+            LastBattleMapId = encounter.MapId;
+            return encounter;
         }
 
         /// <summary>そのマスに進めるか（ルートの外からは1階、以後はいまのマスにつながった上の階のマス）。</summary>
