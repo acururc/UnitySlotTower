@@ -249,6 +249,104 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             battle.SetPaused(false);
         }
 
+        [UnityTest]
+        [Description("T359g (plan 16.13, AC-005): 文字あり版の全画面で、表示中の日本語は 36 以上・画面からはみ出さない・省略されない・同じ親の中で重ならない")]
+        public IEnumerator Every_Screen_Shows_Japanese_Text_Large_Inside_And_Apart()
+        {
+            GameSession.SetTextMode(true);
+            var problems = new List<string>();
+
+            yield return SceneManager.LoadSceneAsync(GameSession.TitleScene);
+            yield return Settle();
+            Readable("タイトル", problems);
+            GameObject.Find("Start Button").GetComponent<Button>().onClick.Invoke();
+            yield return Settle();
+            Readable("難易度", problems);
+
+            // 戦闘（最初の説明が出ている状態）、一時停止中の「?」、早見表。
+            RunController.SeedOverride = 1;
+            GuideOverlay.DisabledForTests = false;
+            var battle = default(BattleController);
+            yield return LoadGame(b => battle = b);
+            yield return Settle();
+            Readable("戦闘", problems);
+            battle.SetPaused(true);
+            yield return Settle();
+            Readable("一時停止", problems);
+            var help = Object.FindAnyObjectByType<HelpScreen>();
+            help.Open();
+            yield return Settle();
+            Readable("早見表", problems);
+            help.Close();
+            battle.SetPaused(false);
+
+            // 最初の戦闘を終えてルート、そこからショップ・回復・リザルトを直接開く。
+            GuideOverlay.DisabledForTests = true;
+            yield return LoadGame(b => battle = b);
+            var run = Object.FindAnyObjectByType<RunController>();
+            Time.timeScale = 20f;
+            var limit = Time.realtimeSinceStartup + 30f;
+            while (!run.IsChoosingRoute && battle.Run.Phase != WavePhase.GameOver && Time.realtimeSinceStartup < limit)
+            {
+                battle.StartWave();
+                yield return null;
+            }
+
+            Time.timeScale = 1f;
+            Assert.That(run.IsChoosingRoute, Is.True, "最初の戦闘マスを終えてもルート選びにならない");
+            yield return Settle();
+            Readable("ルート", problems);
+
+            yield return CollectNodeScreen<ShopScreen>(run, RouteNodeKinds.Shop, "ショップ", problems);
+            yield return CollectNodeScreen<RestScreen>(run, RouteNodeKinds.Rest, "回復", problems);
+
+            var result = Object.FindAnyObjectByType<ResultScreen>();
+            typeof(ResultScreen).GetMethod("Open", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(result, new object[] { battle.Run });
+            yield return Settle();
+            Readable("リザルト", problems);
+
+            Assert.That(problems, Is.Empty, "読みにくい文字:\n" + string.Join("\n", problems));
+        }
+
+        private static IEnumerator CollectNodeScreen<T>(RunController run, string kind, string screen, List<string> problems)
+            where T : NodeScreen
+        {
+            RouteNode found = null;
+            for (var floor = 1; floor <= run.State.Route.Floors && found == null; floor++)
+            {
+                foreach (var node in run.State.Route.NodesOn(floor))
+                {
+                    if (node.Kind == kind)
+                    {
+                        found = node;
+                        break;
+                    }
+                }
+            }
+
+            Assert.That(found, Is.Not.Null, $"ルートに {kind} のマスがない");
+            var opened = Object.FindAnyObjectByType<T>(FindObjectsInactive.Include);
+            opened.Open(run, found);
+            yield return Settle();
+            Readable(screen, problems);
+            opened.Close();
+            yield return null;
+        }
+
+        // 判定が空振りしていないこと（その画面で日本語のテキストを1つ以上調べた）も確かめる。
+        private static void Readable(string screen, List<string> problems) =>
+            Assert.That(TextReadability.Collect(screen, problems), Is.GreaterThan(0), $"{screen}: 表示中の日本語のテキストが見つからない");
+
+        // 開く動きが落ち着くまで実時間で待つ。
+        private static IEnumerator Settle()
+        {
+            var until = Time.realtimeSinceStartup + 0.4f;
+            while (Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+        }
+
         // ラベル以外の文字の大きさ・絵の色・CanvasGroup の濃さ（部品のパスごと）。
         private static Dictionary<Graphic, string> Looks()
         {
