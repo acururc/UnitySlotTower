@@ -180,12 +180,50 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Wave_Spawn_Not_On_Its_Path_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["waves.csv"] += "first,0,melee,S2,first_g1,0\n";
+            files["waves.csv"] += "first,0,melee,S1,first_g2,0,3,1\n";
             var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
 
             var report = GameDataValidator.ValidateAll(files);
 
             Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("waves.csv", line, 4)));
+        }
+
+        [Test]
+        [Description("FR-034, AC-031: 最初の戦闘の敵が中央のレーン以外から出るとエラー")]
+        public void First_Battle_Enemy_Off_The_Center_Lane_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["waves.csv"] += "first,70,melee,S1,first_g1,0,3,1\n";
+            var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("waves.csv", line, 5)));
+        }
+
+        [Test]
+        [Description("FR-034: 中央のレーン以外から出てよいのは最初の戦闘ではない戦闘マス")]
+        public void Normal_Battle_Enemy_Off_The_Center_Lane_Is_Allowed()
+        {
+            var files = TablePaths.ReadAll();
+            files["waves.csv"] += "boss_a,70,melee,S1,boss_a_g1,0,3,1\n";
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Where(e => e.File == "waves.csv"), Is.Empty);
+        }
+
+        [Test]
+        [Description("FR-034: 群れの数は1以上")]
+        public void Group_Of_Zero_Is_A_Validation_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files["waves.csv"] += "battle_a,70,melee,S1,battle_a_g1,0,0,1\n";
+            var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("waves.csv", line, 7)));
         }
 
         [Test]
@@ -310,7 +348,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Wave_Of_An_Unknown_Encounter_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["waves.csv"] += "nowhere,1,0,melee,S1,first_g1,0\n";
+            files["waves.csv"] += "nowhere,0,melee,S1,first_g1,0,1,0\n";
             var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
 
             var report = GameDataValidator.ValidateAll(files);
@@ -468,7 +506,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Boss_In_A_Normal_Battle_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["waves.csv"] += "battle_a,70,mid_boss,S1,battle_a_g1,1\n";
+            files["waves.csv"] += "battle_a,70,mid_boss,S1,battle_a_g1,1,1,0\n";
             var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
 
             var report = GameDataValidator.ValidateAll(files);
@@ -483,7 +521,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
             var files = TablePaths.ReadAll();
             files[EncounterTable.FileName] += "battle_d,battle,boss_a,2,7,0,10,3\n";
             var line = files[EncounterTable.FileName].TrimEnd('\n').Split('\n').Length;
-            files["waves.csv"] += "battle_d,0,melee,S1,boss_a_g1,0\n";
+            files["waves.csv"] += "battle_d,0,melee,S1,boss_a_g1,0,3,1\n";
 
             var report = GameDataValidator.ValidateAll(files);
 

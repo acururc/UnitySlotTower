@@ -105,7 +105,9 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Id("enemy_id"),
                 ColumnRule.Id("spawn"),
                 ColumnRule.Id("path_id"),
-                ColumnRule.Bool("is_boss")),
+                ColumnRule.Bool("is_boss"),
+                ColumnRule.Int(WaveSchedule.CountColumn, 1, 50),
+                ColumnRule.Float(WaveSchedule.IntervalColumn, 0, 60)),
             new TableSchema(SlotPatterns.FileName, new[] { "setting", "outcome" },
                 ColumnRule.Int("setting", 1, SlotPatterns.SettingCount),
                 ColumnRule.Enum("outcome", OutcomeIds),
@@ -617,6 +619,30 @@ namespace UnitySlotTower.Core.Data
                 catch (CsvFormatException ex)
                 {
                     report.Add(ex.Error);
+                }
+
+                if (encounter.Kind == EncounterKind.First)
+                {
+                    ValidateCenterLane(waves, encounter.Id, map, report);
+                }
+            }
+        }
+
+        /// <summary>最初の戦闘の敵は中央のレーン（出現口がマップの中央の行にある道）からだけ出る（FR-034, D-80）。</summary>
+        private static void ValidateCenterLane(CsvTable waves, string encounterId, BattleMap map, ValidationReport report)
+        {
+            foreach (var row in waves.Rows)
+            {
+                if (row.Get("encounter_id") != encounterId)
+                {
+                    continue;
+                }
+
+                var path = map.FindPath(row.Get("path_id"));
+                if (path != null && path.Cells[0].Y * 2 != map.Height - 1)
+                {
+                    report.Add(row.Error("path_id",
+                        $"最初の戦闘の敵は中央のレーンから出る: 経路 '{path.Id}' の出現口は中央の行（y={(map.Height - 1) / 2.0}）にない").Error);
                 }
             }
         }

@@ -73,7 +73,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("plan 17.1: ドロップは 近 コイン40%で2／所持金40%で16円、遠・空 コイン45%で2／所持金40%で16〜24円")]
+        [Description("plan 17.1・17.3: ドロップは 近 コイン40%で2／所持金28%で16円、遠・空 コイン45%で2／所持金28%で16〜24円")]
         public void Project_Grunt_Drops_Follow_Plan()
         {
             var enemies = Project();
@@ -86,7 +86,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             }
 
             Assert.That(actual,
-                Is.EqualTo(new[] { (0.4, 2, 2, 0.4, 16, 16), (0.45, 2, 2, 0.4, 16, 24), (0.45, 2, 2, 0.4, 16, 24) }));
+                Is.EqualTo(new[] { (0.4, 2, 2, 0.28, 16, 16), (0.45, 2, 2, 0.28, 16, 24), (0.45, 2, 2, 0.28, 16, 24) }));
         }
     }
 }

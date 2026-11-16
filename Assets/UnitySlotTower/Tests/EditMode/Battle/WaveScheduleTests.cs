@@ -58,12 +58,68 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("D-78: waves.csv に wave 列はない（戦闘マスは1ウェーブ）")]
-        public void Project_Waves_Have_No_Wave_Column()
+        [Description("D-78, FR-034: waves.csv に wave 列はなく（戦闘マスは1ウェーブ）、群れの count・interval 列がある")]
+        public void Project_Waves_Have_Group_Columns_And_No_Wave_Column()
         {
             var header = TablePaths.ReadAll()[WaveSchedule.FileName].Split('\n')[0].Trim();
 
-            Assert.That(header, Is.EqualTo("encounter_id,time,enemy_id,spawn,path_id,is_boss"));
+            Assert.That(header, Is.EqualTo("encounter_id,time,enemy_id,spawn,path_id,is_boss,count,interval"));
+        }
+
+        [Test]
+        [Description("FR-034, AC-031: 1行の群れは count 体を interval 秒ごとに出す")]
+        public void Group_Row_Spawns_Count_Enemies_At_The_Interval()
+        {
+            var wave = BattleFixtures.LoadGroupWave("10,melee,S1,g,0,3,1.5\n");
+
+            Assert.That(wave.Spawns.Select(s => (s.Time, s.Enemy.Id, s.Path.Id)),
+                Is.EqualTo(new[] { (10.0, "melee", "g"), (11.5, "melee", "g"), (13.0, "melee", "g") }));
+        }
+
+        [Test]
+        [Description("FR-034: 重なった群れは出る時刻の順に混ざる")]
+        public void Overlapping_Groups_Interleave_By_Time()
+        {
+            var wave = BattleFixtures.LoadGroupWave("0,melee,S1,g,0,3,2\n1,air,S2,a,0,2,2\n");
+
+            Assert.That(wave.Spawns.Select(s => (s.Time, s.Enemy.Id)),
+                Is.EqualTo(new[] { (0.0, "melee"), (1.0, "air"), (2.0, "melee"), (3.0, "air"), (4.0, "melee") }));
+        }
+
+        [Test]
+        [Description("plan 17.3: count・interval の列がなければ1行1体")]
+        public void Rows_Without_Group_Columns_Spawn_One_Enemy_Each()
+        {
+            Assert.That(BattleFixtures.LoadWave("0,melee,S1,g,0\n3,ranged,S1,g,0\n").Spawns.Count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void Group_Of_Zero_Is_An_Error_At_Its_Cell()
+        {
+            var error = Assert.Throws<CsvFormatException>(() => BattleFixtures.LoadGroupWave("0,melee,S1,g,0,0,1\n")).Error;
+
+            Assert.That((error.Line, error.Column), Is.EqualTo((2, 7)));
+        }
+
+        [Test]
+        public void Negative_Interval_Is_An_Error_At_Its_Cell()
+        {
+            var error = Assert.Throws<CsvFormatException>(() => BattleFixtures.LoadGroupWave("0,melee,S1,g,0,2,-1\n")).Error;
+
+            Assert.That((error.Line, error.Column), Is.EqualTo((2, 8)));
+        }
+
+        [Test]
+        [Description("FR-034, plan 17.3: 群れは3〜5体のまとまり（データの書き直しで1体だけの行を残さない。ボスは1体）")]
+        public void Project_Groups_Have_Three_To_Five_Enemies_Except_Bosses()
+        {
+            var waves = CsvParser.Parse(WaveSchedule.FileName, TablePaths.ReadAll()[WaveSchedule.FileName]);
+            var wrong = waves.Rows
+                .Where(r => r.GetBool("is_boss") ? r.GetInt("count") != 1 : r.GetInt("count") < 3 || r.GetInt("count") > 5)
+                .Select(r => r.Line)
+                .ToArray();
+
+            Assert.That(wrong, Is.Empty);
         }
 
         [Test]

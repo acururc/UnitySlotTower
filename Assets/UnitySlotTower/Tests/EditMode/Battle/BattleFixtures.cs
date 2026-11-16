@@ -102,6 +102,15 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             WaveSchedule.Load(CsvParser.Parse(WaveSchedule.FileName, WavesHeader + rows), encounterId, LoadMap(),
                 LoadEnemies());
 
+        public const string GroupWavesHeader = "encounter_id,time,enemy_id,spawn,path_id,is_boss,count,interval\n";
+
+        /// <summary>群れの列つき（FR-034）。行は encounter_id 列を省いて書く（time,enemy_id,spawn,path_id,is_boss,count,interval）。</summary>
+        public static WaveSchedule LoadGroupWave(string rows) =>
+            WaveSchedule.Load(
+                CsvParser.Parse(WaveSchedule.FileName,
+                    GroupWavesHeader + Regex.Replace(rows, "^(?=.)", "e,", RegexOptions.Multiline)),
+                "e", LoadMap(), LoadEnemies());
+
         /// <summary>既定はライフ10・シード1の戦闘。</summary>
         public static Battlefield CreateField(string waveRows, int life = 10, IRandom random = null) =>
             new Battlefield(LoadWave(waveRows), LoadRanges(), life, random ?? new SeededRandom(1));
