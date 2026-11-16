@@ -8,14 +8,14 @@ using UnitySlotTower.Tests.EditMode.Slot;
 
 namespace UnitySlotTower.Tests.EditMode.Battle
 {
-    [Description("FR-010, FR-013〜016: 戦闘マスの2ウェーブ・終了・ストック・報酬とマスをまたぐ状態（AC-010, AC-012）")]
+    [Description("FR-010, FR-013〜016, FR-019: 戦闘マスの開始の演出・1ウェーブ・終了・ストック・報酬とマスをまたぐ状態（AC-010, AC-012, AC-016）")]
     public sealed class BattleNodeRunTests
     {
         // フィクスチャの地図（4×2）。地上マスは (1,0)(2,0)、高台マスは (1,1)(3,1)。
         //   S1 G G E
         //   S2 H X H
-        // fodder（HP1・攻撃0・1マス/秒・コインだけ落とす）は 0 秒に出て約3秒でゴールに着く。行は encounter_id,wave,time,enemy_id,spawn,path_id,is_boss。
-        private const string OneFodderPerWave = "e,1,0,fodder,S1,g,0\ne,2,0,fodder,S1,g,0\n";
+        // fodder（HP1・攻撃0・1マス/秒・コインだけ落とす）は 0 秒に出て約3秒でゴールに着く。行は encounter_id,time,enemy_id,spawn,path_id,is_boss。
+        private const string OneFodder = "e,0,fodder,S1,g,0\n";
 
         // 通常 e は報酬 所持金10・コイン3、ボス boss は報酬なし、最初 first は回数固定6。
         private const string Encounters =
@@ -24,8 +24,11 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             "boss,boss,m,1,99,0,0,0\n" +
             "first,first,m,1,1,6,10,3\n";
 
-        // 10 秒あればどのウェーブも終わる。
+        // 10 秒あればどの戦闘も終わる。
         private const int WaveSteps = 600;
+
+        // 開始の演出は既定 1 秒。
+        private const int IntroSteps = SimulationClock.StepsPerSecond;
 
         private static readonly EncounterTable EncounterFixtures =
             EncounterTable.Load(CsvParser.Parse(EncounterTable.FileName, Encounters));
@@ -37,11 +40,11 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         private string _waveRows;
 
         private BattleNodeRun Create(int money = 100, int coins = 50, int life = 10, int deployLimit = 8,
-            string waveRows = OneFodderPerWave, string encounterId = "e")
+            string waveRows = OneFodder, string encounterId = "e", double introSeconds = 1)
         {
             _config = GameConfig.Load(CsvParser.Parse(GameConfig.FileName,
                 $"key,value\ninitial_coins,{coins}\ninitial_money,{money}\nbet,3\nlife,{life}\n" +
-                $"deploy_limit,{deployLimit}\nretreat_refund_rate,0.5\n"));
+                $"deploy_limit,{deployLimit}\nretreat_refund_rate,0.5\nintro_seconds,{introSeconds}\n"));
             _state = new RunState(_config, BattleFixtures.LoadUpgrades(), SlotTestRules.Create(), 1);
             _waveRows = waveRows;
             return Next(encounterId);
@@ -53,7 +56,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var encounter = EncounterFixtures.Get(encounterId);
             var rows = _waveRows.Replace("e,", encounterId + ",");
             return new BattleNodeRun(_config, BattleFixtures.LoadUnits(), BattleFixtures.LoadRanges(), _state, encounter,
-                BattleFixtures.LoadMap(), wave => BattleFixtures.LoadEncounterWave(rows, encounterId, wave),
+                BattleFixtures.LoadMap(), BattleFixtures.LoadEncounterWave(rows, encounterId),
                 new SeededRandom(1));
         }
 
@@ -70,17 +73,9 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             return run.Deployment.Confirm();
         }
 
-        private static void PlayWave(BattleNodeRun run)
-        {
-            run.Start();
-            run.Advance(WaveSteps);
-        }
+        private static void SkipIntro(BattleNodeRun run) => run.Advance(IntroSteps);
 
-        private static void PlayNode(BattleNodeRun run)
-        {
-            PlayWave(run);
-            PlayWave(run);
-        }
+        private static void PlayNode(BattleNodeRun run) => run.Advance(IntroSteps + WaveSteps);
 
         /// <summary>剣士を1体置いて1つ目の戦闘マスを終え、次のマスに入った状態（剣士のストック1）。</summary>
         private BattleNodeRun ClearFirstNodeWithSword(int money = 100, int deployLimit = 8)
@@ -94,116 +89,88 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        public void Node_Starts_In_Preparation_Of_Wave_1()
+        [Description("AC-016: 戦闘マスは準備を経ずに開始の演出から始まる")]
+        public void Node_Starts_With_The_Intro()
         {
             var run = Create();
 
-            Assert.That((run.Wave, run.Phase), Is.EqualTo((1, WavePhase.Preparing)));
+            Assert.That(run.Phase, Is.EqualTo(WavePhase.Intro));
         }
 
         [Test]
-        public void Enemies_Do_Not_Appear_During_Preparation()
+        [Description("AC-016: 開始の演出のあいだは戦闘の時間が進まない")]
+        public void Battle_Time_Does_Not_Advance_During_The_Intro()
         {
             var run = Create();
 
-            run.Advance(WaveSteps);
+            run.Advance(IntroSteps - 1);
 
-            Assert.That((run.Field.Enemies.Count, run.Field.Tick), Is.EqualTo((0, 0L)));
+            Assert.That((run.Phase, run.Field.Tick, run.Field.Enemies.Count), Is.EqualTo((WavePhase.Intro, 0L, 0)));
         }
 
         [Test]
-        public void Starting_Begins_The_Fight()
+        [Description("AC-016: 開始の演出が intro_seconds で終わると戦闘が始まり、残りのステップで時間が進む")]
+        public void Fight_Begins_When_The_Intro_Ends()
         {
             var run = Create();
 
-            run.Start();
-            run.Advance(1);
+            run.Advance(IntroSteps + 1);
 
-            Assert.That((run.Phase, run.Field.Enemies.Count), Is.EqualTo((WavePhase.Fighting, 1)));
+            Assert.That((run.Phase, run.Field.Tick, run.Field.Enemies.Count), Is.EqualTo((WavePhase.Fighting, 1L, 1)));
         }
 
         [Test]
-        [Description("plan C-3: 準備中は召喚の待ち時間を無視する")]
-        public void Same_Type_Can_Be_Summoned_Again_During_Preparation()
+        public void Intro_Seconds_Set_The_Intro_Length()
         {
-            var run = Create();
-            Place(run, "sword", 1, 0);
+            var run = Create(introSeconds: 2);
 
-            Assert.That(Place(run, "sword", 2, 0), Is.EqualTo(SummonResult.Summoned));
+            run.Advance(2 * SimulationClock.StepsPerSecond - 1);
+
+            Assert.That(run.Phase, Is.EqualTo(WavePhase.Intro));
         }
 
         [Test]
-        public void Preparation_Summons_Leave_No_Cooldown_For_The_Fight()
+        [Description("plan 17.2: 開始の演出の進み具合（表示用）は 0 から 1 へ進む")]
+        public void Intro_Progress_Goes_From_Zero_To_One()
         {
-            var run = Create();
-            Place(run, "sword", 1, 0);
+            var run = Create(introSeconds: 2);
+            var start = run.IntroProgress;
 
-            run.Start();
+            run.Advance(SimulationClock.StepsPerSecond);
+            var half = run.IntroProgress;
+            run.Advance(SimulationClock.StepsPerSecond);
 
-            Assert.That(run.Summoner.CooldownRemaining("sword"), Is.EqualTo(0));
+            Assert.That((start, half, run.IntroProgress), Is.EqualTo((0.0, 0.5, 1.0)));
         }
 
         [Test]
+        public void Zero_Intro_Seconds_Start_The_Fight_At_Once()
+        {
+            Assert.That(Create(introSeconds: 0).Phase, Is.EqualTo(WavePhase.Fighting));
+        }
+
+        [Test]
+        [Description("D-41: 所持金での召喚は戦闘中に待ち時間を始める")]
         public void Cooldown_Applies_During_The_Fight()
         {
             var run = Create();
-            run.Start();
+            SkipIntro(run);
             Place(run, "sword", 1, 0);
 
             Assert.That(run.Deployment.Select("sword"), Is.EqualTo(SummonResult.CoolingDown));
         }
 
         [Test]
-        [Description("FR-010: W1 を終えると同じマップで W2 の準備に入る")]
-        public void Clearing_Wave_1_Moves_To_Wave_2_On_The_Same_Map()
+        [Description("FR-022, D-79: 待ち時間中でも無料ストックからは配置できる")]
+        public void Stock_Can_Be_Placed_While_The_Type_Cools_Down()
         {
-            var run = Create();
-            var map = run.Map;
-            var waves = 0;
-            run.WaveBegan += () => waves++;
-
-            PlayWave(run);
-
-            Assert.That((run.Wave, run.Phase, run.Map, waves), Is.EqualTo((2, WavePhase.Preparing, map, 1)));
-        }
-
-        [Test]
-        [Description("AC-010: ウェーブ切り替えで配置が保たれる（同じ個体なので HP も残る）")]
-        public void Deployed_Units_Stay_On_The_Field_Into_Wave_2()
-        {
-            var run = Create();
+            var run = ClearFirstNodeWithSword();
+            SkipIntro(run);
+            _state.Stock.TryTake("sword");
             Place(run, "sword", 1, 0);
-            var sword = run.Field.Units[0];
+            _state.Stock.Add("sword", 1);
 
-            PlayWave(run);
-
-            Assert.That((run.Field.Units.Count, run.Field.Units[0], run.Summoner.DeployedCount, run.Stock.Count("sword")),
-                Is.EqualTo((1, sword, 1, 0)));
-        }
-
-        [Test]
-        [Description("plan 4章: W2 の準備でも召喚の待ち時間を無視し、戦闘開始時の待ち時間は 0")]
-        public void Wave_2_Preparation_Clears_Cooldowns()
-        {
-            var run = Create();
-            run.Start();
-            Place(run, "sword", 1, 0);
-            run.Advance(WaveSteps);
-
-            Assert.That((run.Wave, run.Summoner.CooldownRemaining("sword"), Place(run, "sword", 2, 0)),
-                Is.EqualTo((2, 0.0, SummonResult.Summoned)));
-        }
-
-        [Test]
-        public void Wave_2_Spawns_Its_Own_Enemies_From_Time_Zero()
-        {
-            var run = Create();
-            PlayWave(run);
-
-            run.Start();
-            run.Advance(1);
-
-            Assert.That((run.Field.Tick, run.Field.Enemies.Count), Is.EqualTo((1L, 1)));
+            Assert.That(Place(run, "sword", 2, 0), Is.EqualTo(SummonResult.Summoned));
         }
 
         [Test]
@@ -212,7 +179,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             var run = Create(life: 10);
 
-            PlayWave(run);
+            PlayNode(run);
 
             Assert.That((_state.Life, run.Field.Life), Is.EqualTo((9, 9)));
         }
@@ -225,14 +192,14 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var ended = 0;
             run.Ended += () => ended++;
 
-            PlayWave(run);
+            PlayNode(run);
 
-            Assert.That((run.Wave, run.Phase, _state.IsGameOver, ended), Is.EqualTo((1, WavePhase.GameOver, true, 1)));
+            Assert.That((run.Phase, _state.IsGameOver, ended), Is.EqualTo((WavePhase.GameOver, true, 1)));
         }
 
         [Test]
-        [Description("AC-010: 2ウェーブを終えると戦闘マスが終わる（ボスでないのでクリアではない）")]
-        public void Clearing_Wave_2_Completes_The_Node()
+        [Description("AC-010, D-78: 1ウェーブを終えると戦闘マスが終わる（ボスでないのでクリアではない）")]
+        public void Clearing_The_Wave_Completes_The_Node()
         {
             var run = Create();
             var ended = 0;
@@ -240,7 +207,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
             PlayNode(run);
 
-            Assert.That((run.Wave, run.Phase, run.IsRunCleared, ended), Is.EqualTo((2, WavePhase.Completed, false, 1)));
+            Assert.That((run.Phase, run.IsRunCleared, ended), Is.EqualTo((WavePhase.Completed, false, 1)));
         }
 
         [Test]
@@ -260,12 +227,10 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             // ボス役の fodder は約 0.5 秒で剣士に倒される。雑魚は 5 秒に出る。
             var run = Create(encounterId: "boss",
-                waveRows: "e,1,0,fodder,S1,g,0\ne,2,0,fodder,S1,g,1\ne,2,5,fodder,S1,g,0\n");
+                waveRows: "e,0,fodder,S1,g,1\ne,5,fodder,S1,g,0\n");
             Place(run, "sword", 1, 0);
-            PlayWave(run);
-            run.Start();
 
-            run.Advance(120);
+            run.Advance(IntroSteps + 120);
 
             Assert.That((run.Field.Enemies.Count, run.Phase), Is.EqualTo((0, WavePhase.Fighting)));
         }
@@ -288,7 +253,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             var run = Create(money: 100, coins: 50, life: 1);
 
-            PlayWave(run);
+            PlayNode(run);
 
             Assert.That((_state.Money.Coins, _state.Coins.Coins), Is.EqualTo((100, 50)));
         }
@@ -305,16 +270,16 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("AC-012: 配置中だった数と同数の無料ストックができる")]
         public void Deployed_Units_Become_Free_Stock_By_Type()
         {
-            // 剣士が fodder を止めて倒し、弓2体は高台に居るだけ。
-            var run = Create();
+            // 剣士が fodder を止めて倒し、弓とバッファーは高台に居るだけ（同じ種類の2体目は待ち時間に当たるので別の種類）。
+            var run = Create(money: 1000);
             Place(run, "sword", 1, 0);
             Place(run, "archer", 1, 1);
-            Place(run, "archer", 3, 1);
+            Place(run, "buffer", 3, 1);
 
             PlayNode(run);
 
-            Assert.That((run.Stock.Count("sword"), run.Stock.Count("archer"), run.Stock.Count("tank")),
-                Is.EqualTo((1, 2, 0)));
+            Assert.That((run.Stock.Count("sword"), run.Stock.Count("archer"), run.Stock.Count("buffer"), run.Stock.Count("tank")),
+                Is.EqualTo((1, 1, 1, 0)));
         }
 
         [Test]
@@ -323,31 +288,31 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var run = ClearFirstNodeWithSword();
 
             Assert.That((run.Field.Units.Count, run.Summoner.DeployedCount, run.Phase),
-                Is.EqualTo((0, 0, WavePhase.Preparing)));
+                Is.EqualTo((0, 0, WavePhase.Intro)));
         }
 
         [Test]
         [Description("AC-012, FR-013: ライフは戦闘マスをまたいで引き継ぐ（満タンに戻らない）")]
         public void Life_Carries_Over_To_The_Next_Node()
         {
-            // 2 体の fodder がゴールに着いてライフ 8。
+            // fodder がゴールに着いてライフ 9。
             var first = Create(life: 10);
             PlayNode(first);
 
             var next = Next();
 
-            Assert.That((_state.Life, next.Field.Life), Is.EqualTo((8, 8)));
+            Assert.That((_state.Life, next.Field.Life), Is.EqualTo((9, 9)));
         }
 
         [Test]
         [Description("AC-012: 次のマスで残りライフ分の敵が着くとゲームオーバー")]
         public void Carried_Life_Can_Run_Out_In_The_Next_Node()
         {
-            var first = Create(life: 3);
+            var first = Create(life: 2);
             PlayNode(first);
             var next = Next();
 
-            PlayWave(next);
+            PlayNode(next);
 
             Assert.That((next.Phase, _state.Life), Is.EqualTo((WavePhase.GameOver, 0)));
         }
@@ -477,13 +442,12 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         public void Coin_Drops_Go_Into_The_Coins_During_The_Fight()
         {
             // rich は倒されると必ずコインを 2〜3 枚落とす。
-            var run = Create(waveRows: "e,1,0,rich,S1,g,0\ne,1,5,fodder,S1,g,0\n");
+            var run = Create(waveRows: "e,0,rich,S1,g,0\ne,5,fodder,S1,g,0\n");
             Place(run, "sword", 1, 0);
             var coins = _state.Coins.Coins;
             var money = _state.Money.Coins;
-            run.Start();
 
-            run.Advance(120);
+            run.Advance(IntroSteps + 120);
 
             Assert.That((_state.Coins.Coins - coins is >= 2 and <= 3, _state.Money.Coins - money),
                 Is.EqualTo((true, 0)));
@@ -494,33 +458,15 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         public void Money_Drops_Go_Into_The_Money_During_The_Fight()
         {
             // banker は倒されると必ず所持金を 2〜3 落とす。
-            var run = Create(waveRows: "e,1,0,banker,S1,g,0\ne,1,5,fodder,S1,g,0\n");
+            var run = Create(waveRows: "e,0,banker,S1,g,0\ne,5,fodder,S1,g,0\n");
             Place(run, "sword", 1, 0);
             var coins = _state.Coins.Coins;
             var money = _state.Money.Coins;
-            run.Start();
 
-            run.Advance(120);
+            run.Advance(IntroSteps + 120);
 
             Assert.That((_state.Money.Coins - money is >= 2 and <= 3, _state.Coins.Coins - coins),
                 Is.EqualTo((true, 0)));
-        }
-
-        [Test]
-        [Description("FR-033: W2 の撃破ドロップも二重に数えず入る")]
-        public void Drops_Of_Wave_2_Are_Added_Once()
-        {
-            // 報酬なしのボスマスで、W2 の banker の分だけ所持金が増える。
-            var run = Create(encounterId: "boss", waveRows: "e,1,0,rich,S1,g,0\ne,2,0,banker,S1,g,0\n");
-            Place(run, "sword", 1, 0);
-            PlayWave(run);
-            var coins = _state.Coins.Coins;
-            var money = _state.Money.Coins;
-
-            PlayWave(run);
-
-            Assert.That((_state.Coins.Coins - coins, _state.Money.Coins - money is >= 2 and <= 3),
-                Is.EqualTo((0, true)));
         }
 
         [TestCase(SlotSymbol.Red7)]
@@ -606,11 +552,12 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("AC-023: 満タンで配置1体以上なら発動し、ゲージが0になり、配置中のタンクに効果が付く（準備中でも可）")]
+        [Description("AC-023: 満タンで配置1体以上なら発動し、ゲージが0になり、配置中のタンクに効果が付く")]
         public void Full_Gauge_Activates_The_Skill_And_Empties_The_Gauge()
         {
             var run = Create();
             Place(run, "tank", 1, 0);
+            SkipIntro(run);
             FillGauge(SlotSymbol.Yellow7);
 
             var result = run.TryActivateSkill(Skills.For(SlotSymbol.Yellow7));
@@ -624,11 +571,23 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             var run = Create();
             Place(run, "tank", 1, 0);
-            run.Start();
-            run.Advance(10);
+            run.Advance(IntroSteps + 10);
             FillGauge(SlotSymbol.Yellow7);
 
             Assert.That(run.TryActivateSkill(Skills.For(SlotSymbol.Yellow7)), Is.EqualTo(SkillResult.Activated));
+        }
+
+        [Test]
+        [Description("AC-016, plan 17.2: 開始の演出のあいだはスキルを拒否し、ゲージは満タンのまま")]
+        public void Skill_During_The_Intro_Is_Refused()
+        {
+            var run = Create();
+            Place(run, "tank", 1, 0);
+            FillGauge(SlotSymbol.Yellow7);
+
+            var result = run.TryActivateSkill(Skills.For(SlotSymbol.Yellow7));
+
+            Assert.That((result, _state.Gauges.IsFull(SlotSymbol.Yellow7)), Is.EqualTo((SkillResult.NotInBattle, true)));
         }
 
         [Test]
@@ -637,6 +596,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             var run = Create();
             Place(run, "tank", 1, 0);
+            SkipIntro(run);
             _state.Gauges.Add(SlotSymbol.Yellow7);
 
             var result = run.TryActivateSkill(Skills.For(SlotSymbol.Yellow7));
@@ -651,6 +611,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             var run = Create();
             Place(run, "sword", 1, 0);
+            SkipIntro(run);
             FillGauge(SlotSymbol.Yellow7);
 
             var result = run.TryActivateSkill(Skills.For(SlotSymbol.Yellow7));
@@ -664,7 +625,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             var run = Create(life: 1);
             Place(run, "buffer", 1, 1);
-            PlayWave(run);
+            PlayNode(run);
             Assert.That(run.Phase, Is.EqualTo(WavePhase.GameOver), "ゲームオーバーにならない");
             FillGauge(SlotSymbol.Green7);
 

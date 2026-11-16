@@ -245,10 +245,6 @@ namespace UnitySlotTower.Battle
             {
                 deployment.Confirm();
             }
-            else
-            {
-                battle.StartWave();
-            }
         }
 
         private void OnCancelAction(InputAction.CallbackContext context)

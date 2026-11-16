@@ -8,8 +8,8 @@ using UnitySlotTower.Core.Ui;
 namespace UnitySlotTower.Battle
 {
     /// <summary>
-    /// 操作バーの状態表示とボタン（T308・T349、plan 16.8）: ライフ・所持金・ウェーブ n/2、
-    /// ▶（準備中だけ出す）・撤退（味方を選んでいるときだけ出す）・一時停止（一時停止中は色を変える）、
+    /// 操作バーの状態表示とボタン（T308・T349、plan 16.8・17.2）: ライフ・所持金、
+    /// 撤退（味方を選んでいるときだけ出す）・一時停止（一時停止中は色を変える）、
     /// この戦闘のバーの攻撃力倍率とコインの所持金倍率（×1.2 など。倍率なしのときは薄く ×1.0）。
     /// </summary>
     public sealed class OperationBarStatus : MonoBehaviour
@@ -19,8 +19,6 @@ namespace UnitySlotTower.Battle
         [SerializeField] private TMP_Text lifeText;
         [FormerlySerializedAs("coinText")]
         [SerializeField] private TMP_Text moneyText;
-        [SerializeField] private TMP_Text waveText;
-        [SerializeField] private Button startButton;
         [SerializeField] private Button retreatButton;
         [SerializeField] private Button pauseButton;
         [SerializeField] private Image pauseBackground;
@@ -36,7 +34,6 @@ namespace UnitySlotTower.Battle
         private Color _pauseNormalColor;
         private int _shownLife = -1;
         private int _shownMoney = -1;
-        private int _shownWave = -1;
         private bool _shownPaused;
         private int _shownAttackRate = -1;
         private int _shownMoneyRate = -1;
@@ -48,14 +45,12 @@ namespace UnitySlotTower.Battle
 
         private void OnEnable()
         {
-            startButton.onClick.AddListener(battle.StartWave);
             retreatButton.onClick.AddListener(placementInput.RetreatSelected);
             pauseButton.onClick.AddListener(battle.TogglePause);
         }
 
         private void OnDisable()
         {
-            startButton.onClick.RemoveListener(battle.StartWave);
             retreatButton.onClick.RemoveListener(placementInput.RetreatSelected);
             pauseButton.onClick.RemoveListener(battle.TogglePause);
         }
@@ -70,17 +65,10 @@ namespace UnitySlotTower.Battle
 
             SetNumber(lifeText, run.Field.Life, ref _shownLife);
             SetNumber(moneyText, run.Wallet.Coins, ref _shownMoney, NumericText.YenFormat);
-            if (run.Wave != _shownWave)
-            {
-                _shownWave = run.Wave;
-                waveText.SetText("{0}/{1}", (float)run.Wave, WaveSchedule.WavesPerEncounter);
-            }
-
             var boosts = run.Field.Boosts;
             SetRate(attackRateGroup, attackRateText, boosts?.AttackRate ?? 1d, ref _shownAttackRate);
             SetRate(moneyRateGroup, moneyRateText, boosts?.MoneyRate ?? 1d, ref _shownMoneyRate);
 
-            SetActive(startButton, run.Phase == WavePhase.Preparing);
             SetActive(retreatButton, placementInput.SelectedUnit != null);
             if (battle.IsPaused != _shownPaused)
             {

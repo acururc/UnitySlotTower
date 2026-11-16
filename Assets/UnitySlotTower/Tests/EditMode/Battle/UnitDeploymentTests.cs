@@ -260,7 +260,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("FR-021: 倒された味方は配置数から外れる（返還はない）")]
         public void A_Fallen_Unit_Frees_A_Deploy_Slot_Without_Refund()
         {
-            var deployment = Create(coins: 30, waveRows: "1,0,brute,S1,g,0\n");
+            var deployment = Create(coins: 30, waveRows: "0,brute,S1,g,0\n");
             deployment.Select("sword");
             deployment.SetCursor(new GridPoint(1, 0));
             deployment.ChooseCell();

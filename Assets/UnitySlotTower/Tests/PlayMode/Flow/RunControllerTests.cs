@@ -15,15 +15,15 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
     [Description("T350a (FR-010, FR-017, AC-010, AC-014): RunController がルートを作って戦闘マスを続け、状態を引き継ぎ、カメラをマップに合わせる")]
     public sealed class RunControllerTests
     {
-        // どの戦闘マスも各ウェーブ近接の敵1体だけ。
+        // どの戦闘マスも近接の敵2体だけ。
         private const string ShortWaves =
-            "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "first,1,0,melee,S1,first_g1,0\nfirst,2,0,melee,S1,first_g1,0\n" +
-            "battle_a,1,0,melee,S1,battle_a_g1,0\nbattle_a,2,0,melee,S1,battle_a_g1,0\n" +
-            "battle_b,1,0,melee,S1,battle_b_g1,0\nbattle_b,2,0,melee,S1,battle_b_g1,0\n" +
-            "battle_c,1,0,melee,S1,battle_c_g1,0\nbattle_c,2,0,melee,S1,battle_c_g1,0\n" +
-            "elite_a,1,0,melee,S1,elite_a_g1,0\nelite_a,2,0,melee,S1,elite_a_g1,0\n" +
-            "boss_a,1,0,melee,S1,boss_a_g1,0\nboss_a,2,0,melee,S1,boss_a_g1,0\n";
+            "encounter_id,time,enemy_id,spawn,path_id,is_boss\n" +
+            "first,0,melee,S1,first_g1,0\nfirst,3,melee,S1,first_g1,0\n" +
+            "battle_a,0,melee,S1,battle_a_g1,0\nbattle_a,3,melee,S1,battle_a_g1,0\n" +
+            "battle_b,0,melee,S1,battle_b_g1,0\nbattle_b,3,melee,S1,battle_b_g1,0\n" +
+            "battle_c,0,melee,S1,battle_c_g1,0\nbattle_c,3,melee,S1,battle_c_g1,0\n" +
+            "elite_a,0,melee,S1,elite_a_g1,0\nelite_a,3,melee,S1,elite_a_g1,0\n" +
+            "boss_a,0,melee,S1,boss_a_g1,0\nboss_a,3,melee,S1,boss_a_g1,0\n";
 
         private static readonly string[] MapIds = { "first", "battle_a", "battle_b", "battle_c", "elite_a", "boss_a" };
 
@@ -79,21 +79,14 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         [UnityTest]
-        public IEnumerator Placement_Survives_Wave_2_And_State_Carries_To_The_Next_Battle()
+        public IEnumerator Placement_Becomes_Stock_And_State_Carries_To_The_Next_Battle()
         {
             var state = _run.State;
             var first = _battle.Run;
+            yield return RouteTestUtil.WaitForIntro(_battle);
             Assert.That(Place("archer"), Is.True, "弓を置けない");
 
-            // W1 → 準備（配置と HP を保つ: AC-010）。
-            Time.timeScale = 20f;
-            _battle.StartWave();
-            yield return WaitUntil(() => first.Wave == 2 || first.Phase == WavePhase.GameOver, 30f);
-            Time.timeScale = 1f;
-            Assert.That((first.Wave, first.Phase, _battle.Field.Units.Count, _battle.Field.Units[0].Definition.Id),
-                Is.EqualTo((2, WavePhase.Preparing, 1, "archer")), "W1 の後に配置が残らない");
-
-            // W2 → このマスの終了。配置中の弓はストックに戻る。
+            // 1ウェーブ（D-78）でこのマスが終わる。配置中の弓はストックに戻る。
             var completed = false;
             void OnCompleted() => completed = true;
             _battle.NodeCompleted += OnCompleted;
@@ -103,7 +96,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var stockAtEnd = 0;
             first.Ended += Snapshot;
             Time.timeScale = 20f;
-            _battle.StartWave();
             var limit = Time.realtimeSinceStartup + 30f;
             while (_battle.Run == first && first.Phase != WavePhase.GameOver && Time.realtimeSinceStartup < limit)
             {
@@ -122,9 +114,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
             var next = _battle.Run;
             Assert.That((next.Encounter.Kind != EncounterKind.First, _battle.Floor, state.Current, _fieldView.Map.Id,
-                    next.Map == _fieldView.Map, next.Wave, next.Phase),
-                Is.EqualTo((true, state.Current.Floor, _run.Visited[_run.Visited.Count - 1], next.Encounter.MapId, true, 1,
-                    WavePhase.Preparing)));
+                    next.Map == _fieldView.Map, next.Phase),
+                Is.EqualTo((true, state.Current.Floor, _run.Visited[_run.Visited.Count - 1], next.Encounter.MapId, true,
+                    WavePhase.Intro)));
             Assert.That((state.Life, state.Money.Coins, state.Coins.Coins, state.Stock.Count("archer"), _battle.Field.Units.Count),
                 Is.EqualTo((Mathf.Min(state.MaxLife, lifeAtEnd + heal), moneyAtEnd, coinsAtEnd, stockAtEnd, 0)),
                 "戦闘マスをまたいでライフ・所持金・コイン・ストックが引き継がれない");

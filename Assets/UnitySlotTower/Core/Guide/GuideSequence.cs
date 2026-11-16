@@ -48,10 +48,10 @@ namespace UnitySlotTower.Core.Guide
         public bool ChoosingRoute;
         /// <summary>ルート選びのリールが回っている。</summary>
         public bool RouteSpinning;
-        /// <summary>ウェーブの準備中（▶ の前）。</summary>
-        public bool Preparing;
-        /// <summary>戦闘マス内のウェーブ番号（1 から）。</summary>
-        public int Wave;
+        /// <summary>戦闘マスの開始の演出中（plan 17.2）。説明は出さない。</summary>
+        public bool Intro;
+        /// <summary>このプレイで何番目の戦闘マスか（1 から）。</summary>
+        public int BattleNode;
         public DeployPhase Deploy;
         /// <summary>操作バーの先頭の味方をいま召喚できる。</summary>
         public bool CanSummon;
@@ -77,7 +77,7 @@ namespace UnitySlotTower.Core.Guide
     /// 文字なし説明の進行（FR-004、plan 16.10）。毎フレーム様子を受け取り、見せる説明を返す。
     /// 各題目は、その操作を初めて使う場面で一度だけ出し、示した操作を実際に行うと終わる。説明中は戦闘の時間を止める
     /// （<see cref="HoldsBattle"/>）。示した操作ができなくなったら（コイン不足など）終えずに引っ込め、また条件がそろえば出す。
-    /// 一時停止中・ショップなどの画面中は隠すだけで進めない。ルート選びのあいだは戦闘の題目を出さない。
+    /// 一時停止中・ショップなどの画面中・戦闘マスの開始の演出中は隠すだけで進めない。ルート選びのあいだは戦闘の題目を出さない。
     /// ゲームを読み込み直す（リトライ）と最初から（ユーザー決定: 毎プレイ）。
     /// </summary>
     public sealed class GuideSequence
@@ -126,8 +126,8 @@ namespace UnitySlotTower.Core.Guide
                 }
             }
 
-            // 画面中は新しい題目を始めない（ルートで行き先を決めてショップに入った、は上でルートの完了になる）。
-            if (o.OnScreen)
+            // 画面中・開始の演出中は新しい題目を始めない（ルートで行き先を決めてショップに入った、は上でルートの完了になる）。
+            if (o.OnScreen || o.Intro)
             {
                 return Current = GuideHint.None;
             }
@@ -155,8 +155,9 @@ namespace UnitySlotTower.Core.Guide
                 case GuideTopic.Upgrade:
                     return o.UpgradeLevels > _baseline.UpgradeLevels;
                 case GuideTopic.Retreat:
-                    // ▶ で始めたら撤退しないことを選んだとみなす。
-                    return o.FieldUnits < _baseline.FieldUnits || o.FieldUnits == 0 || !o.Preparing;
+                    // 撤退せずにレバーを引くか次の召喚を始めたら、撤退しないことを選んだとみなす（▶ の代わり、plan 17.2）。
+                    return o.FieldUnits < _baseline.FieldUnits || o.FieldUnits == 0 || o.SpinCount > _baseline.SpinCount
+                        || o.Deploy != DeployPhase.Idle;
                 case GuideTopic.Route:
                     return !o.ChoosingRoute;
                 default:
@@ -214,7 +215,8 @@ namespace UnitySlotTower.Core.Guide
                 return GuideTopic.Upgrade;
             }
 
-            if (!IsDone(GuideTopic.Retreat) && idle && o.Preparing && o.Wave >= 2 && o.FieldUnits > 0)
+            // 2つ目の戦闘マスで、味方が配置されていて操作がないとき（plan 17.2）。
+            if (!IsDone(GuideTopic.Retreat) && idle && !o.SlotSpinning && o.BattleNode >= 2 && o.FieldUnits > 0)
             {
                 return GuideTopic.Retreat;
             }

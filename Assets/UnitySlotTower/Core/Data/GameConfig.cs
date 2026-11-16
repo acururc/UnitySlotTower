@@ -12,6 +12,9 @@ namespace UnitySlotTower.Core.Data
         public int DeployLimit { get; private set; }
         public double RetreatRefundRate { get; private set; }
 
+        /// <summary>戦闘マスの開始の演出の秒数（FR-019、plan 17.2）。この間は戦闘の時間が進まず操作もできない。</summary>
+        public double IntroSeconds { get; private set; }
+
         public static GameConfig Load(CsvTable table)
         {
             var values = new KeyValueTable(table);
@@ -23,6 +26,7 @@ namespace UnitySlotTower.Core.Data
                 Life = values.GetInt("life"),
                 DeployLimit = values.GetInt("deploy_limit"),
                 RetreatRefundRate = values.GetDouble("retreat_refund_rate"),
+                IntroSeconds = values.GetDouble("intro_seconds"),
             };
         }
     }

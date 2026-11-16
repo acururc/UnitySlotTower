@@ -18,7 +18,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("タンク（ブロック3）がスキルで4になり、ブロック消費2の敵を2体止める")]
         public void Tank_Skill_Adds_A_Block()
         {
-            var field = BattleFixtures.CreateField("1,0,heavy,S1,g,0\n1,0.2,heavy,S1,g,0\n");
+            var field = BattleFixtures.CreateField("0,heavy,S1,g,0\n0.2,heavy,S1,g,0\n");
             var tank = Place(field, "tank", 1, 0);
             field.ActivateSkill(Skills.For(SlotSymbol.Yellow7));
 
@@ -31,7 +31,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("brute の一撃（1000 − 防御300 = 700）がスキル中は半分の350")]
         public void Tank_Skill_Halves_The_Damage_Taken()
         {
-            var field = BattleFixtures.CreateField("1,0,brute,S1,g,0\n");
+            var field = BattleFixtures.CreateField("0,brute,S1,g,0\n");
             var tank = Place(field, "tank", 1, 0);
             field.ActivateSkill(Skills.For(SlotSymbol.Yellow7));
 
@@ -46,7 +46,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             // 80 ステップ後: 1体目は 1.33 マス・2体目は 0.83 マス（範囲内）、3体目は 0.13 マス（範囲外のマス0）。
             var field = BattleFixtures.CreateField(
-                "1,0,heavy,S1,g,0\n1,0.5,heavy,S1,g,0\n1,1.2,heavy,S1,g,0\n");
+                "0,heavy,S1,g,0\n0.5,heavy,S1,g,0\n1.2,heavy,S1,g,0\n");
             Place(field, "sword", 1, 0);
             field.Advance(80);
             var before = field.Enemies.Select(e => e.Hp).ToArray();
@@ -61,7 +61,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("弓の攻撃間隔 60 ステップがスキル中は24ステップになり、75ステップで2発（350 − 50 = 300 ずつ）")]
         public void Archer_Skill_Shortens_The_Attack_Interval()
         {
-            var field = BattleFixtures.CreateField("1,0,melee,S1,g,0\n");
+            var field = BattleFixtures.CreateField("0,melee,S1,g,0\n");
             Place(field, "archer", 1, 1);
             field.ActivateSkill(Skills.For(SlotSymbol.Blue7));
 
@@ -74,7 +74,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("バッファーの倍率 1.5 がスキル中は1.8になり、弓は 350×1.8 = 630")]
         public void Buffer_Skill_Raises_The_Buff_Rate()
         {
-            var field = BattleFixtures.CreateField("1,0,melee,S1,g,0\n");
+            var field = BattleFixtures.CreateField("0,melee,S1,g,0\n");
             Place(field, "archer", 1, 1);
             Place(field, "buffer", 0, 1);
             field.ActivateSkill(Skills.For(SlotSymbol.Green7));
@@ -88,7 +88,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("plan 16.4: 発動時にいたタンクだけに付き、あとから置いたタンクは brute の一撃700をそのまま受ける")]
         public void Skill_Does_Not_Apply_To_Units_Placed_Afterwards()
         {
-            var field = BattleFixtures.CreateField("1,0,brute,S1,g,0\n");
+            var field = BattleFixtures.CreateField("0,brute,S1,g,0\n");
             Place(field, "tank", 0, 1);
             field.ActivateSkill(Skills.For(SlotSymbol.Yellow7));
             var later = Place(field, "tank", 1, 0);
@@ -101,7 +101,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Skill_Applies_To_Every_Placed_Unit_Of_That_Kind()
         {
-            var field = BattleFixtures.CreateField("1,0,fodder,S1,g,0\n");
+            var field = BattleFixtures.CreateField("0,fodder,S1,g,0\n");
             var first = Place(field, "tank", 1, 0);
             var second = Place(field, "tank", 2, 0);
 
@@ -115,7 +115,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("効果時間10秒 = 600ステップ。戦闘ステップだけで減る")]
         public void Skill_Lasts_For_Its_Duration_In_Battle_Steps(int steps, int expectedLeft)
         {
-            var field = BattleFixtures.CreateField("1,100,fodder,S1,g,0\n");
+            var field = BattleFixtures.CreateField("100,fodder,S1,g,0\n");
             var tank = Place(field, "tank", 1, 0);
             field.ActivateSkill(Skills.For(SlotSymbol.Yellow7));
 
@@ -129,7 +129,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         public void Expired_Skill_Has_No_Effect()
         {
             var shortSkill = BattleFixtures.LoadSkills(BattleFixtures.Skills.Replace("yellow7,tank,10,", "yellow7,tank,1,"));
-            var field = BattleFixtures.CreateField("1,0,brute,S1,g,0\n");
+            var field = BattleFixtures.CreateField("0,brute,S1,g,0\n");
             var tank = Place(field, "tank", 1, 0);
             field.ActivateSkill(shortSkill.For(SlotSymbol.Yellow7));
 
@@ -142,7 +142,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Skill_Without_That_Unit_Is_Refused_And_Changes_Nothing()
         {
-            var field = BattleFixtures.CreateField("1,0,fodder,S1,g,0\n");
+            var field = BattleFixtures.CreateField("0,fodder,S1,g,0\n");
             var tank = Place(field, "tank", 1, 0);
 
             var activated = field.ActivateSkill(Skills.For(SlotSymbol.Blue7));

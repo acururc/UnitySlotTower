@@ -16,6 +16,21 @@ namespace UnitySlotTower.Tests.PlayMode
     internal static class RouteTestUtil
     {
         /// <summary>
+        /// 戦闘マスの開始の演出（FR-019、既定 2 秒の実時間）が終わるまで待つ。演出中は配置などの操作を受け付けないので、
+        /// 戦闘マスに入った直後に操作するテストはこれを挟む。
+        /// </summary>
+        public static System.Collections.IEnumerator WaitForIntro(UnitySlotTower.Battle.BattleController battle)
+        {
+            var limit = Time.realtimeSinceStartup + 10f;
+            while (battle.IsInIntro && Time.realtimeSinceStartup < limit)
+            {
+                yield return null;
+            }
+
+            Assert.That(battle.IsInIntro, Is.False, "開始の演出が終わらない");
+        }
+
+        /// <summary>
         /// ルート選び中なら、レバーを引き、回り出したら戦闘マスを優先して行き先のあるリールを止める（旧 T350a の自動進行と同じ選び方）。
         /// ショップ・回復の画面（T350c）が開いていれば ◀ で閉じる。
         /// </summary>

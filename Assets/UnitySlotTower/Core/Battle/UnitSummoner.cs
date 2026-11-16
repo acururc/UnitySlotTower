@@ -14,7 +14,8 @@ namespace UnitySlotTower.Core.Battle
     }
 
     /// <summary>
-    /// 召喚の可否判定と支払い（FR-020〜FR-022）。待ち時間は種類ごとで、召喚した瞬間から数える。
+    /// 召喚の可否判定と支払い（FR-020〜FR-022）。待ち時間は種類ごとで、所持金で召喚した瞬間から数える。
+    /// 無料ストックからの配置は待ち時間中でもでき、待ち時間も始めない（D-79）。
     /// 時間は <see cref="SimulationClock"/> の固定ステップで進める。
     /// </summary>
     public sealed class UnitSummoner
@@ -48,14 +49,12 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>フィールド上の味方の総数。</summary>
         public int DeployedCount { get; private set; }
 
-        /// <summary>準備中（plan C-3）。待ち時間で拒否せず、召喚しても待ち時間を始めない。</summary>
-        public bool IgnoresCooldown { get; set; }
-
         /// <summary>いま召喚できるかだけを調べる（何も変えない）。召喚できるなら <see cref="SummonResult.Summoned"/>。</summary>
         public SummonResult Check(string unitId)
         {
             var unit = _units.Get(unitId);
-            if (!IgnoresCooldown && _cooldownSteps[_indices[unitId]] > 0)
+            var fromStock = _stock.Count(unitId) > 0;
+            if (!fromStock && _cooldownSteps[_indices[unitId]] > 0)
             {
                 return SummonResult.CoolingDown;
             }
@@ -65,7 +64,7 @@ namespace UnitySlotTower.Core.Battle
                 return SummonResult.DeployLimitReached;
             }
 
-            return _stock.Count(unitId) == 0 && _wallet.Coins < unit.Cost
+            return !fromStock && _wallet.Coins < unit.Cost
                 ? SummonResult.NotEnoughCoins
                 : SummonResult.Summoned;
         }
@@ -83,10 +82,6 @@ namespace UnitySlotTower.Core.Battle
             if (!_stock.TryTake(unitId))
             {
                 _wallet.TrySpend(unit.Cost);
-            }
-
-            if (!IgnoresCooldown)
-            {
                 _cooldownSteps[_indices[unitId]] = (int)Math.Round(unit.Cooldown * SimulationClock.StepsPerSecond);
             }
 
@@ -120,9 +115,6 @@ namespace UnitySlotTower.Core.Battle
             _units.Get(unitId);
             return _cooldownSteps[_indices[unitId]] * SimulationClock.StepSeconds;
         }
-
-        /// <summary>全種類の待ち時間を 0 にする（ステージ内の次のウェーブの準備、plan 4章）。</summary>
-        public void ResetCooldowns() => Array.Clear(_cooldownSteps, 0, _cooldownSteps.Length);
 
         public void Advance(int steps)
         {

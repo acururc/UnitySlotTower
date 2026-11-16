@@ -28,13 +28,13 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
         // どの戦闘マスも各ウェーブ近接の敵1体だけ（最初の戦闘を早く終える）。
         private const string ShortWaves =
-            "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "first,1,0,melee,S1,first_g1,0\nfirst,2,0,melee,S1,first_g1,0\n" +
-            "battle_a,1,0,melee,S1,battle_a_g1,0\nbattle_a,2,0,melee,S1,battle_a_g1,0\n" +
-            "battle_b,1,0,melee,S1,battle_b_g1,0\nbattle_b,2,0,melee,S1,battle_b_g1,0\n" +
-            "battle_c,1,0,melee,S1,battle_c_g1,0\nbattle_c,2,0,melee,S1,battle_c_g1,0\n" +
-            "elite_a,1,0,melee,S1,elite_a_g1,0\nelite_a,2,0,melee,S1,elite_a_g1,0\n" +
-            "boss_a,1,0,melee,S1,boss_a_g1,0\nboss_a,2,0,melee,S1,boss_a_g1,0\n";
+            "encounter_id,time,enemy_id,spawn,path_id,is_boss\n" +
+            "first,0,melee,S1,first_g1,0\nfirst,3,melee,S1,first_g1,0\n" +
+            "battle_a,0,melee,S1,battle_a_g1,0\nbattle_a,3,melee,S1,battle_a_g1,0\n" +
+            "battle_b,0,melee,S1,battle_b_g1,0\nbattle_b,3,melee,S1,battle_b_g1,0\n" +
+            "battle_c,0,melee,S1,battle_c_g1,0\nbattle_c,3,melee,S1,battle_c_g1,0\n" +
+            "elite_a,0,melee,S1,elite_a_g1,0\nelite_a,3,melee,S1,elite_a_g1,0\n" +
+            "boss_a,0,melee,S1,boss_a_g1,0\nboss_a,3,melee,S1,boss_a_g1,0\n";
 
         private const float Settle = 0.4f;
 
@@ -104,7 +104,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var limit = Time.realtimeSinceStartup + 30f;
             while (!run.IsChoosingRoute && battle.Run.Phase != WavePhase.GameOver && Time.realtimeSinceStartup < limit)
             {
-                battle.StartWave();
                 yield return null;
             }
 

@@ -21,20 +21,20 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                  "ショップ（購入・両替）までをマウスだけで通す。リザルトもマウスで操作できる（FR-002, T353。キーボードだけの通しは D-55 で削除）")]
     public sealed class InputOnlyRunTests
     {
-        // S1-W1 は近接の敵1体だけにして、1ウェーブを短く終わらせる。
+        // 最初の戦闘は近接の敵2体だけにして短く終わらせる。準備フェーズがない（D-79）ので、操作を確かめ終えるまで敵を出さない（30 秒後）。
         private const string ShortWaves =
-            "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "first,1,0,melee,S1,first_g1,0\nfirst,2,0,melee,S1,first_g1,0\nbattle_a,1,0,melee,S1,battle_a_g1,0\nbattle_b,1,0,melee,S1,battle_b_g1,0\nbattle_c,1,0,melee,S1,battle_c_g1,0\nbattle_a,2,0,melee,S1,battle_a_g1,0\nbattle_b,2,0,melee,S1,battle_b_g1,0\nbattle_c,2,0,melee,S1,battle_c_g1,0\n" +
-            "boss_a,1,0,melee,S1,boss_a_g1,0\nboss_a,2,0,melee,S1,boss_a_g1,0\n";
+            "encounter_id,time,enemy_id,spawn,path_id,is_boss\n" +
+            "first,30,melee,S1,first_g1,0\nfirst,33,melee,S1,first_g1,0\nbattle_a,0,melee,S1,battle_a_g1,0\nbattle_b,0,melee,S1,battle_b_g1,0\nbattle_c,0,melee,S1,battle_c_g1,0\nbattle_a,3,melee,S1,battle_a_g1,0\nbattle_b,3,melee,S1,battle_b_g1,0\nbattle_c,3,melee,S1,battle_c_g1,0\n" +
+            "boss_a,0,melee,S1,boss_a_g1,0\nboss_a,3,melee,S1,boss_a_g1,0\n";
 
-        // ゲームオーバー用: S1-W1 に近接の敵 12 体（ライフ 10 より多い）。味方を置かないので全員ゴールに着く。
+        // ゲームオーバー用: 最初の戦闘に近接の敵 13 体（ライフ 10 より多い）。味方を置かないので全員ゴールに着く。
         private const string LosingWaves =
-            "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "first,1,0,melee,S1,first_g1,0\nfirst,1,1,melee,S1,first_g1,0\nfirst,1,2,melee,S1,first_g1,0\nfirst,1,3,melee,S1,first_g1,0\n" +
-            "first,1,4,melee,S1,first_g1,0\nfirst,1,5,melee,S1,first_g1,0\nfirst,1,6,melee,S1,first_g1,0\nfirst,1,7,melee,S1,first_g1,0\n" +
-            "first,1,8,melee,S1,first_g1,0\nfirst,1,9,melee,S1,first_g1,0\nfirst,1,10,melee,S1,first_g1,0\nfirst,1,11,melee,S1,first_g1,0\n" +
-            "first,2,0,melee,S1,first_g1,0\nbattle_a,1,0,melee,S1,battle_a_g1,0\nbattle_b,1,0,melee,S1,battle_b_g1,0\nbattle_c,1,0,melee,S1,battle_c_g1,0\nbattle_a,2,0,melee,S1,battle_a_g1,0\nbattle_b,2,0,melee,S1,battle_b_g1,0\nbattle_c,2,0,melee,S1,battle_c_g1,0\n" +
-            "boss_a,1,0,melee,S1,boss_a_g1,0\nboss_a,2,0,melee,S1,boss_a_g1,0\n";
+            "encounter_id,time,enemy_id,spawn,path_id,is_boss\n" +
+            "first,0,melee,S1,first_g1,0\nfirst,1,melee,S1,first_g1,0\nfirst,2,melee,S1,first_g1,0\nfirst,3,melee,S1,first_g1,0\n" +
+            "first,4,melee,S1,first_g1,0\nfirst,5,melee,S1,first_g1,0\nfirst,6,melee,S1,first_g1,0\nfirst,7,melee,S1,first_g1,0\n" +
+            "first,8,melee,S1,first_g1,0\nfirst,9,melee,S1,first_g1,0\nfirst,10,melee,S1,first_g1,0\nfirst,11,melee,S1,first_g1,0\n" +
+            "first,3,melee,S1,first_g1,0\nbattle_a,0,melee,S1,battle_a_g1,0\nbattle_b,0,melee,S1,battle_b_g1,0\nbattle_c,0,melee,S1,battle_c_g1,0\nbattle_a,3,melee,S1,battle_a_g1,0\nbattle_b,3,melee,S1,battle_b_g1,0\nbattle_c,3,melee,S1,battle_c_g1,0\n" +
+            "boss_a,0,melee,S1,boss_a_g1,0\nboss_a,3,melee,S1,boss_a_g1,0\n";
 
         // テスト中は Game シーンを読むたびに差し替える（リトライ後も同じ表）。
         private static string _waves;
@@ -122,7 +122,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
             // リールのカスタムは 2026-11-14 に廃止（T341 で画面を削除）。
 
-            // 召喚・配置（アイコンからマスへドラッグ）・向き（左をクリック）、強化アイコン、▶。
+            // 召喚・配置（アイコンからマスへドラッグ）・向き（左をクリック）、強化アイコン。
             var bar = Object.FindAnyObjectByType<OperationBarStatus>().transform;
             var target = FirstPlaceableCell();
             var cell = CellScreen(target);
@@ -145,9 +145,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var activations = _battle.SkillActivations;
             yield return Click(GameObject.Find("Skill Gauge 1").transform);
             Assert.That(_battle.SkillActivations, Is.EqualTo(activations + 1), "ゲージのクリックでスキルが発動しない");
-
-            yield return Click(bar.Find("Start Button"));
-            Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.Fighting), "▶ で戦闘が始まらない");
 
             // スロット: レバーのクリック。最初の戦闘は回数固定なので残り回数が減る。リールは自動で止まる。
             var spins = _cabinet.FixedSpinsLeft;
@@ -178,11 +175,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(_battle.Field.Units.Count, Is.EqualTo(0),
                 "撤退アイコンで撤退できない（当たった UI: " + HitsAt(ScreenOf(bar.Find("Retreat Button"))) + "）");
 
-            yield return WaitForWave1ToEnd();
-
-            // 2ウェーブ目も ▶ のクリックで始め、戦闘マスを終えてルート選びに進む。
-            yield return Click(bar.Find("Start Button"));
-            Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.Fighting), "2ウェーブ目が ▶ で始まらない");
+            // 戦闘マスを終えてルート選びに進む（1ウェーブ: D-78）。
             yield return WaitForRouteChoice();
 
             // ルート: レバーのクリックで回し、ショップのリールのボタンをクリックして止める。
@@ -247,8 +240,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
 
             yield return WaitForGame();
-            Assert.That((_battle != before, _battle.Floor, _battle.Run.Wave),
-                Is.EqualTo((true, 1, 1)), "↻ のクリックでリトライしない");
+            Assert.That((_battle != before, _battle.Floor), Is.EqualTo((true, 1)), "↻ のクリックでリトライしない");
 
             yield return LoseTheGame();
             result = Object.FindAnyObjectByType<ResultScreen>();
@@ -319,7 +311,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         private IEnumerator LoseTheGame()
         {
             yield return null;
-            _battle.StartWave();
             Time.timeScale = 20f;
             var limit = Time.realtimeSinceStartup + 60f;
             while (!_battle.IsFinished && Time.realtimeSinceStartup < limit)
@@ -330,20 +321,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Time.timeScale = 1f;
             Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.GameOver), "時間内にゲームオーバーにならない");
             yield return null;
-        }
-
-        private IEnumerator WaitForWave1ToEnd()
-        {
-            Time.timeScale = 20f;
-            var limit = Time.realtimeSinceStartup + 60f;
-            while (_battle.Run.Wave == 1 && !_battle.IsFinished && Time.realtimeSinceStartup < limit)
-            {
-                yield return null;
-            }
-
-            Time.timeScale = 1f;
-            Assert.That((_battle.Floor, _battle.Run.Wave, _battle.Run.Phase), Is.EqualTo((1, 2, WavePhase.Preparing)),
-                "1ウェーブを終えて次の準備に進まない");
         }
 
         private IEnumerator WaitForReelsToStop()
@@ -379,6 +356,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             _cabinet = Object.FindAnyObjectByType<SlotCabinet>();
             _fieldView = Object.FindAnyObjectByType<BattleFieldView>();
             _camera = GameObject.Find("Battle Camera").GetComponent<Camera>();
+            yield return RouteTestUtil.WaitForIntro(_battle);
             // 物理の当たり判定が揃うまで待つ。
             yield return new WaitForFixedUpdate();
             yield return null;

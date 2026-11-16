@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Reflection;
 using NUnit.Framework;
-using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
@@ -10,21 +9,20 @@ using UnitySlotTower.Core.Battle;
 
 namespace UnitySlotTower.Tests.PlayMode.Battle
 {
-    [Description("FR-010, T312: ステージが終わると戦闘フィールドが次のステージのマップに替わり、操作バーが S-W を表示する")]
+    [Description("FR-010, FR-019, T312: 戦闘マスが終わると戦闘フィールドが次の戦闘マスのマップに替わり、開始の演出の後すぐ戦闘になる（AC-016）")]
     public sealed class StageTransitionTests
     {
-        // どのウェーブも近接の敵1体だけ（最初の戦闘は2ウェーブ、通常の戦闘は W1 まで）。味方を置かないので敵はゴールに着き、ライフ1ずつ減ってウェーブが終わる。
+        // 近接の敵だけ（最初の戦闘は2体、通常の戦闘は1体）。味方を置かないので敵はゴールに着き、ライフ1ずつ減って戦闘が終わる。
         private const string ShortWaves =
-            "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "first,1,0,melee,S1,first_g1,0\n" +
-            "first,2,0,melee,S1,first_g1,0\n" +
-            "battle_a,1,0,melee,S1,battle_a_g1,0\nbattle_b,1,0,melee,S1,battle_b_g1,0\nbattle_c,1,0,melee,S1,battle_c_g1,0\n" +
-            "elite_a,1,0,melee,S1,elite_a_g1,0\n";
+            "encounter_id,time,enemy_id,spawn,path_id,is_boss\n" +
+            "first,0,melee,S1,first_g1,0\n" +
+            "first,3,melee,S1,first_g1,0\n" +
+            "battle_a,0,melee,S1,battle_a_g1,0\nbattle_b,0,melee,S1,battle_b_g1,0\nbattle_c,0,melee,S1,battle_c_g1,0\n" +
+            "elite_a,0,melee,S1,elite_a_g1,0\n";
 
         private bool _runInBackground;
         private BattleController _battle;
         private BattleFieldView _fieldView;
-        private TMP_Text _waveText;
 
         [UnitySetUp]
         public IEnumerator SetUp()
@@ -45,9 +43,6 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             _battle = Object.FindAnyObjectByType<BattleController>();
             _fieldView = Object.FindAnyObjectByType<BattleFieldView>();
-            _waveText = (TMP_Text)typeof(OperationBarStatus)
-                .GetField("waveText", BindingFlags.Instance | BindingFlags.NonPublic)
-                .GetValue(Object.FindAnyObjectByType<OperationBarStatus>());
             for (var i = 0; i < 60 && _battle.Run == null; i++)
             {
                 yield return null;
@@ -65,10 +60,10 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        public IEnumerator Clearing_Stage_1_Shows_Stage_2_Map_And_Label()
+        public IEnumerator Clearing_The_First_Node_Shows_The_Next_Map_And_Starts_After_The_Intro()
         {
             yield return null;
-            Assert.That((_fieldView.Map.Id, _waveText.text, TileRoots()), Is.EqualTo(("first", "1/2", 1)));
+            Assert.That((_fieldView.Map.Id, TileRoots()), Is.EqualTo(("first", 1)));
 
             // 敵が歩き切るまで速める（1体あたり実時間で約1秒）。
             Time.timeScale = 20f;
@@ -76,27 +71,32 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             while (_battle.Floor == 1 && _battle.Run.Phase != WavePhase.GameOver &&
                    Time.realtimeSinceStartup < limit)
             {
-                _battle.StartWave();
                 RouteTestUtil.Step();
                 yield return null;
             }
 
             Time.timeScale = 1f;
             // 次の戦闘マスはルート画面で選ぶ（ショップ・回復を挟むと3階以上: T350b）。
-            Assert.That((_battle.Floor >= 2, _battle.Run.Wave, _battle.Run.Phase),
-                Is.EqualTo((true, 1, WavePhase.Preparing)), "最初の戦闘マスを終えて次の戦闘マスの準備に入らない");
+            Assert.That((_battle.Floor >= 2, _battle.Run.Phase, _battle.IsInputBlocked),
+                Is.EqualTo((true, WavePhase.Intro, true)), "次の戦闘マスが開始の演出から始まらない（演出中は操作できない）");
 
             // 古いマスの Destroy はフレームの終わりに効く。
             yield return null;
             var map = _fieldView.Map;
             var tiles = _fieldView.transform.Find("Tiles");
             // 出現は種類と階が合う行からランダムに選ばれる（plan 16.6）。
-            Assert.That((map.Id == _battle.Run.Encounter.MapId, map == _battle.Run.Map, _waveText.text, TileRoots(), tiles.childCount),
-                Is.EqualTo((true, true, "1/2", 1, map.Width * map.Height)), map.Id);
+            Assert.That((map.Id == _battle.Run.Encounter.MapId, map == _battle.Run.Map, TileRoots(), tiles.childCount),
+                Is.EqualTo((true, true, 1, map.Width * map.Height)), map.Id);
 
-            // ステージの間で止まらず、すぐ S2 の戦闘を始められる（カスタムは 2026-11-14 に廃止）。
-            _battle.StartWave();
-            Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.Fighting), "S2 の戦闘を始められない");
+            // 演出のあいだは戦闘の時間が進まず、終わるとすぐ戦闘になる（準備フェーズはない: D-79）。
+            var cabinet = Object.FindAnyObjectByType<UnitySlotTower.Slot.SlotCabinet>();
+            var intro = Object.FindAnyObjectByType<BattleIntroView>();
+            Assert.That((_battle.Field.Tick, cabinet.InputLocked, intro.IsShowing), Is.EqualTo((0L, true, true)),
+                "開始の演出中に戦闘の時間が進むか、レバーを受け付けるか、演出が出ない");
+            yield return RouteTestUtil.WaitForIntro(_battle);
+            yield return null;
+            Assert.That((_battle.Run.Phase, _battle.IsInputBlocked, cabinet.InputLocked, intro.IsShowing),
+                Is.EqualTo((WavePhase.Fighting, false, false, false)), "開始の演出の後に戦闘が始まらないか、演出が消えない");
         }
 
         private int TileRoots()

@@ -26,19 +26,19 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
         // ゲームオーバー用: S1-W1 に近接の敵 12 体（ライフ 10 より多い）。
         private const string LosingWaves =
-            "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "first,1,0,melee,S1,first_g1,0\nfirst,1,1,melee,S1,first_g1,0\nfirst,1,2,melee,S1,first_g1,0\nfirst,1,3,melee,S1,first_g1,0\n" +
-            "first,1,4,melee,S1,first_g1,0\nfirst,1,5,melee,S1,first_g1,0\nfirst,1,6,melee,S1,first_g1,0\nfirst,1,7,melee,S1,first_g1,0\n" +
-            "first,1,8,melee,S1,first_g1,0\nfirst,1,9,melee,S1,first_g1,0\nfirst,1,10,melee,S1,first_g1,0\nfirst,1,11,melee,S1,first_g1,0\n" +
-            "first,2,0,melee,S1,first_g1,0\nbattle_a,1,0,melee,S1,battle_a_g1,0\nbattle_b,1,0,melee,S1,battle_b_g1,0\nbattle_c,1,0,melee,S1,battle_c_g1,0\nbattle_a,2,0,melee,S1,battle_a_g1,0\nbattle_b,2,0,melee,S1,battle_b_g1,0\nbattle_c,2,0,melee,S1,battle_c_g1,0\n" +
-            "boss_a,1,0,melee,S1,boss_a_g1,0\nboss_a,2,0,melee,S1,boss_a_g1,0\n";
+            "encounter_id,time,enemy_id,spawn,path_id,is_boss\n" +
+            "first,0,melee,S1,first_g1,0\nfirst,1,melee,S1,first_g1,0\nfirst,2,melee,S1,first_g1,0\nfirst,3,melee,S1,first_g1,0\n" +
+            "first,4,melee,S1,first_g1,0\nfirst,5,melee,S1,first_g1,0\nfirst,6,melee,S1,first_g1,0\nfirst,7,melee,S1,first_g1,0\n" +
+            "first,8,melee,S1,first_g1,0\nfirst,9,melee,S1,first_g1,0\nfirst,10,melee,S1,first_g1,0\nfirst,11,melee,S1,first_g1,0\n" +
+            "first,3,melee,S1,first_g1,0\nbattle_a,0,melee,S1,battle_a_g1,0\nbattle_b,0,melee,S1,battle_b_g1,0\nbattle_c,0,melee,S1,battle_c_g1,0\nbattle_a,3,melee,S1,battle_a_g1,0\nbattle_b,3,melee,S1,battle_b_g1,0\nbattle_c,3,melee,S1,battle_c_g1,0\n" +
+            "boss_a,0,melee,S1,boss_a_g1,0\nboss_a,3,melee,S1,boss_a_g1,0\n";
 
         // クリア用: 全6ウェーブとも近接の敵1体だけ。
         private const string WinningWaves =
-            "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "first,1,0,melee,S1,first_g1,0\nfirst,2,0,melee,S1,first_g1,0\nbattle_a,1,0,melee,S1,battle_a_g1,0\nbattle_b,1,0,melee,S1,battle_b_g1,0\nbattle_c,1,0,melee,S1,battle_c_g1,0\nbattle_a,2,0,melee,S1,battle_a_g1,0\nbattle_b,2,0,melee,S1,battle_b_g1,0\nbattle_c,2,0,melee,S1,battle_c_g1,0\n" +
-            "elite_a,1,0,melee,S1,elite_a_g1,0\nelite_a,2,0,melee,S1,elite_a_g1,0\n" +
-            "boss_a,1,0,melee,S1,boss_a_g1,0\nboss_a,2,0,melee,S1,boss_a_g1,0\n";
+            "encounter_id,time,enemy_id,spawn,path_id,is_boss\n" +
+            "first,0,melee,S1,first_g1,0\nfirst,3,melee,S1,first_g1,0\nbattle_a,0,melee,S1,battle_a_g1,0\nbattle_b,0,melee,S1,battle_b_g1,0\nbattle_c,0,melee,S1,battle_c_g1,0\nbattle_a,3,melee,S1,battle_a_g1,0\nbattle_b,3,melee,S1,battle_b_g1,0\nbattle_c,3,melee,S1,battle_c_g1,0\n" +
+            "elite_a,0,melee,S1,elite_a_g1,0\nelite_a,3,melee,S1,elite_a_g1,0\n" +
+            "boss_a,0,melee,S1,boss_a_g1,0\nboss_a,3,melee,S1,boss_a_g1,0\n";
 
         private static string _waves;
         private HitRandom _random;
@@ -83,7 +83,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             AssertNoLetters("開始時（準備）");
 
             // バーを揃えて操作バーに攻撃力の倍率を出す。
-            battle.StartWave();
             var cabinet = Object.FindAnyObjectByType<SlotCabinet>();
             _random.Index = -1;
             for (var i = 0; i < cabinet.Patterns.Count && _random.Index < 0; i++)
@@ -143,7 +142,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var limit = Time.realtimeSinceStartup + 60f;
             while (!run.IsChoosingRoute && !battle.IsFinished && Time.realtimeSinceStartup < limit)
             {
-                battle.StartWave();
                 yield return null;
             }
 
@@ -259,7 +257,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var limit = Time.realtimeSinceStartup + 90f;
             while (!battle.IsFinished && Time.realtimeSinceStartup < limit)
             {
-                battle.StartWave();
                 RouteTestUtil.Step();
                 yield return null;
             }

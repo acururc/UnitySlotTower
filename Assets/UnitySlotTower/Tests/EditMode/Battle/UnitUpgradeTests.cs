@@ -189,7 +189,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         public void Max_Hp_Increase_Is_Added_To_The_Current_Hp()
         {
             // 近距離の敵（攻撃200）に1回殴られて 1200 − (200 − 50) = 1050。
-            var deployment = Create("1,0,melee,S1,g,0\n");
+            var deployment = Create("0,melee,S1,g,0\n");
             var sword = Deploy(deployment, "sword", 1, 0);
             _field.Advance(40);
 
@@ -201,7 +201,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Upgraded_Defense_Reduces_Damage_Taken()
         {
-            var deployment = Create("1,0,melee,S1,g,0\n");
+            var deployment = Create("0,melee,S1,g,0\n");
             deployment.Upgrade("sword");
             var sword = Deploy(deployment, "sword", 1, 0);
 
@@ -213,7 +213,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Upgraded_Attack_Raises_Damage_Dealt()
         {
-            var deployment = Create("1,0,melee,S1,g,0\n");
+            var deployment = Create("0,melee,S1,g,0\n");
             deployment.Upgrade("archer");
             Deploy(deployment, "archer", 1, 1);
 
@@ -227,7 +227,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         public void Upgraded_Buffer_Keeps_Its_Buff_Rate()
         {
             // 高台が2マスしかないので、配置操作を通さずに強化後の段階で置く（(0,1) から前方 2×3 に弓が入る）。
-            var field = BattleFixtures.CreateField("1,0,melee,S1,g,0\n");
+            var field = BattleFixtures.CreateField("0,melee,S1,g,0\n");
             var units = BattleFixtures.LoadUnits();
             var upgrades = new UnitUpgrades(BattleFixtures.LoadUpgrades(), new CoinWallet(100));
             upgrades.TryUpgrade("buffer");

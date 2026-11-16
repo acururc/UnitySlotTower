@@ -16,7 +16,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("FR-013: ゴールに着いた敵のライフ減少量だけライフが減る")]
         public void Life_Drops_By_The_Arrived_Enemys_Life_Damage()
         {
-            var field = BattleFixtures.CreateField("1,0,heavy,S1,g,0\n");
+            var field = BattleFixtures.CreateField("0,heavy,S1,g,0\n");
 
             field.Advance(181);
 
@@ -27,7 +27,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("AC-010: ライフ0でゲームオーバー。減少量が残りより多くても0で止まる")]
         public void Game_Is_Over_When_Life_Reaches_Zero()
         {
-            var field = BattleFixtures.CreateField("1,0,heavy,S1,g,0\n", life: 1);
+            var field = BattleFixtures.CreateField("0,heavy,S1,g,0\n", life: 1);
 
             field.Advance(181);
 
@@ -37,7 +37,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Battle_Stops_After_Game_Over()
         {
-            var field = BattleFixtures.CreateField("1,0,melee,S1,g,0\n1,0.5,melee,S1,g,0\n", life: 1);
+            var field = BattleFixtures.CreateField("0,melee,S1,g,0\n0.5,melee,S1,g,0\n", life: 1);
 
             field.Advance(180 + 60);
 
@@ -51,7 +51,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         /// <param name="coinBoosts">戦闘の前にコインが揃った回数（所持金の倍率、1回 +0.1・上限 1.5）。</param>
         private static (int Coins, int Money)[] DropsOfDefeats(string enemyId, int trials, int coinBoosts = 0)
         {
-            var wave = BattleFixtures.LoadWave($"1,0,{enemyId},S1,g,0\n");
+            var wave = BattleFixtures.LoadWave($"0,{enemyId},S1,g,0\n");
             var ranges = BattleFixtures.LoadRanges();
             var sword = BattleFixtures.LoadUnits().Get("sword");
             var random = new SeededRandom(42);
@@ -149,7 +149,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("FR-033: ドロップは撃破時だけ。ゴールに着いた敵は落とさない")]
         public void Enemy_Reaching_The_Goal_Drops_Nothing()
         {
-            var field = BattleFixtures.CreateField("1,0,purse,S1,g,0\n1,0,banker,S1,g,0\n1,0,rich,S1,g,0\n");
+            var field = BattleFixtures.CreateField("0,purse,S1,g,0\n0,banker,S1,g,0\n0,rich,S1,g,0\n");
 
             field.Advance(180);
 

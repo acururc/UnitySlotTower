@@ -20,13 +20,13 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
     {
         // どの戦闘マスも各ウェーブ近接の敵1体だけ。
         private const string ShortWaves =
-            "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "first,1,0,melee,S1,first_g1,0\nfirst,2,0,melee,S1,first_g1,0\n" +
-            "battle_a,1,0,melee,S1,battle_a_g1,0\nbattle_a,2,0,melee,S1,battle_a_g1,0\n" +
-            "battle_b,1,0,melee,S1,battle_b_g1,0\nbattle_b,2,0,melee,S1,battle_b_g1,0\n" +
-            "battle_c,1,0,melee,S1,battle_c_g1,0\nbattle_c,2,0,melee,S1,battle_c_g1,0\n" +
-            "elite_a,1,0,melee,S1,elite_a_g1,0\nelite_a,2,0,melee,S1,elite_a_g1,0\n" +
-            "boss_a,1,0,melee,S1,boss_a_g1,0\nboss_a,2,0,melee,S1,boss_a_g1,0\n";
+            "encounter_id,time,enemy_id,spawn,path_id,is_boss\n" +
+            "first,0,melee,S1,first_g1,0\nfirst,3,melee,S1,first_g1,0\n" +
+            "battle_a,0,melee,S1,battle_a_g1,0\nbattle_a,3,melee,S1,battle_a_g1,0\n" +
+            "battle_b,0,melee,S1,battle_b_g1,0\nbattle_b,3,melee,S1,battle_b_g1,0\n" +
+            "battle_c,0,melee,S1,battle_c_g1,0\nbattle_c,3,melee,S1,battle_c_g1,0\n" +
+            "elite_a,0,melee,S1,elite_a_g1,0\nelite_a,3,melee,S1,elite_a_g1,0\n" +
+            "boss_a,0,melee,S1,boss_a_g1,0\nboss_a,3,melee,S1,boss_a_g1,0\n";
 
         private bool _runInBackground;
         private RunController _run;
@@ -62,6 +62,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That((_run != null, _battle != null && _battle.Run != null, _screen != null), Is.EqualTo((true, true, true)),
                 "Game シーンに RunController かルート画面がないか、最初の戦闘マスに入らない");
             Assert.That((_screen.IsOpen, _cabinet.IsChoosingRoute), Is.EqualTo((false, false)), "戦闘中にルート画面が開いている");
+            // 開始の演出中は筐体のレバーを受け付けない（AC-016）。
+            yield return RouteTestUtil.WaitForIntro(_battle);
         }
 
         [TearDown]
@@ -94,11 +96,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                     Assert.That(_screen.IsHighlighted(next), Is.True, $"リール {reel} の行き先が光らない");
                 }
             }
-
-            // ルート画面では ▶ を押しても次のウェーブは始まらない。
-            var phase = _battle.Run.Phase;
-            _battle.StartWave();
-            Assert.That(_battle.Run.Phase, Is.EqualTo(phase));
         }
 
         [UnityTest]
@@ -139,8 +136,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 "ルート選びでコイン・回した回数が変わった");
             if (RouteNodeKinds.Get(target.Kind).IsBattle)
             {
-                Assert.That((_screen.IsOpen, _battle.Floor, _battle.Run.Phase), Is.EqualTo((false, target.Floor, WavePhase.Preparing)),
-                    "戦闘マスに入ったのにルート画面が閉じない");
+                Assert.That((_screen.IsOpen, _battle.Floor, _battle.Run.Phase), Is.EqualTo((false, target.Floor, WavePhase.Intro)),
+                    "戦闘マスに入ったのにルート画面が閉じないか、開始の演出から始まらない");
             }
             else
             {
@@ -263,7 +260,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var limit = Time.realtimeSinceStartup + 30f;
             while (!_run.IsChoosingRoute && first.Phase != WavePhase.GameOver && Time.realtimeSinceStartup < limit)
             {
-                _battle.StartWave();
                 yield return null;
             }
 

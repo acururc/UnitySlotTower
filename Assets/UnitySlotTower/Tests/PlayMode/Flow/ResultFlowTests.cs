@@ -22,21 +22,21 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
     [Description("AC-004: ゲームが終わるとリザルト（到達階・所持金・コイン）が開き、リトライで同じ設定のままルートから作り直し、タイトルへも戻れる（FR-005, T402, T350d）")]
     public sealed class ResultFlowTests
     {
-        // ゲームオーバー用: S1-W1 に近接の敵 12 体（ライフ 10 より多い）。味方を置かないので全員ゴールに着く。
+        // ゲームオーバー用: 最初の戦闘に近接の敵 13 体（ライフ 10 より多い）。味方を置かないので全員ゴールに着く。
         private const string LosingWaves =
-            "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "first,1,0,melee,S1,first_g1,0\nfirst,1,1,melee,S1,first_g1,0\nfirst,1,2,melee,S1,first_g1,0\nfirst,1,3,melee,S1,first_g1,0\n" +
-            "first,1,4,melee,S1,first_g1,0\nfirst,1,5,melee,S1,first_g1,0\nfirst,1,6,melee,S1,first_g1,0\nfirst,1,7,melee,S1,first_g1,0\n" +
-            "first,1,8,melee,S1,first_g1,0\nfirst,1,9,melee,S1,first_g1,0\nfirst,1,10,melee,S1,first_g1,0\nfirst,1,11,melee,S1,first_g1,0\n" +
-            "first,2,0,melee,S1,first_g1,0\nbattle_a,1,0,melee,S1,battle_a_g1,0\nbattle_b,1,0,melee,S1,battle_b_g1,0\nbattle_c,1,0,melee,S1,battle_c_g1,0\nbattle_a,2,0,melee,S1,battle_a_g1,0\nbattle_b,2,0,melee,S1,battle_b_g1,0\nbattle_c,2,0,melee,S1,battle_c_g1,0\n" +
-            "boss_a,1,0,melee,S1,boss_a_g1,0\nboss_a,2,0,melee,S1,boss_a_g1,0\n";
+            "encounter_id,time,enemy_id,spawn,path_id,is_boss\n" +
+            "first,0,melee,S1,first_g1,0\nfirst,1,melee,S1,first_g1,0\nfirst,2,melee,S1,first_g1,0\nfirst,3,melee,S1,first_g1,0\n" +
+            "first,4,melee,S1,first_g1,0\nfirst,5,melee,S1,first_g1,0\nfirst,6,melee,S1,first_g1,0\nfirst,7,melee,S1,first_g1,0\n" +
+            "first,8,melee,S1,first_g1,0\nfirst,9,melee,S1,first_g1,0\nfirst,10,melee,S1,first_g1,0\nfirst,11,melee,S1,first_g1,0\n" +
+            "first,3,melee,S1,first_g1,0\nbattle_a,0,melee,S1,battle_a_g1,0\nbattle_b,0,melee,S1,battle_b_g1,0\nbattle_c,0,melee,S1,battle_c_g1,0\nbattle_a,3,melee,S1,battle_a_g1,0\nbattle_b,3,melee,S1,battle_b_g1,0\nbattle_c,3,melee,S1,battle_c_g1,0\n" +
+            "boss_a,0,melee,S1,boss_a_g1,0\nboss_a,3,melee,S1,boss_a_g1,0\n";
 
-        // クリア用: 全6ウェーブとも近接の敵1体だけ（ライフ1ずつ減ってウェーブが終わる）。
+        // クリア用: どの戦闘マスも近接の敵2体だけ（ライフ1ずつ減って戦闘が終わる）。
         private const string WinningWaves =
-            "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "first,1,0,melee,S1,first_g1,0\nfirst,2,0,melee,S1,first_g1,0\nbattle_a,1,0,melee,S1,battle_a_g1,0\nbattle_b,1,0,melee,S1,battle_b_g1,0\nbattle_c,1,0,melee,S1,battle_c_g1,0\nbattle_a,2,0,melee,S1,battle_a_g1,0\nbattle_b,2,0,melee,S1,battle_b_g1,0\nbattle_c,2,0,melee,S1,battle_c_g1,0\n" +
-            "elite_a,1,0,melee,S1,elite_a_g1,0\nelite_a,2,0,melee,S1,elite_a_g1,0\n" +
-            "boss_a,1,0,melee,S1,boss_a_g1,0\nboss_a,2,0,melee,S1,boss_a_g1,0\n";
+            "encounter_id,time,enemy_id,spawn,path_id,is_boss\n" +
+            "first,0,melee,S1,first_g1,0\nfirst,3,melee,S1,first_g1,0\nbattle_a,0,melee,S1,battle_a_g1,0\nbattle_b,0,melee,S1,battle_b_g1,0\nbattle_c,0,melee,S1,battle_c_g1,0\nbattle_a,3,melee,S1,battle_a_g1,0\nbattle_b,3,melee,S1,battle_b_g1,0\nbattle_c,3,melee,S1,battle_c_g1,0\n" +
+            "elite_a,0,melee,S1,elite_a_g1,0\nelite_a,3,melee,S1,elite_a_g1,0\n" +
+            "boss_a,0,melee,S1,boss_a_g1,0\nboss_a,3,melee,S1,boss_a_g1,0\n";
 
         private static string _waves;
 
@@ -131,9 +131,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(run.State, Is.Not.SameAs(oldState), "リトライで RunState が作り直されない");
             Assert.That((run.Visited.Count, run.State.Floor), Is.EqualTo((1, 1)), "リトライでルートの最初から始まらない");
             Assert.That(run.State.Current, Is.SameAs(run.State.Route.Start), "リトライで今のマスがルートの最初ではない");
-            Assert.That((battle.Floor, battle.Run.Wave, battle.Run.Phase, battle.Field.Life, run.State.Money.Coins,
-                    run.State.Coins.Coins),
-                Is.EqualTo((1, 1, WavePhase.Preparing, startLife, startMoney, startCoins)), "リトライで進行が初期化されない");
+            Assert.That((battle.Floor, battle.NodeCount, battle.Field.Life, run.State.Money.Coins, run.State.Coins.Coins),
+                Is.EqualTo((1, 1, startLife, startMoney, startCoins)), "リトライで進行が初期化されない");
             Assert.That(result.IsOpen, Is.False, "リトライ後にリザルトが開いている");
         }
 
@@ -186,14 +185,13 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(GameSession.TitleScene), "タイトルへ戻らない");
         }
 
-        // ▶ を押し続け、ルート画面では行き先を選び（T350b）、ゲームが終わるまで速めて進める。
+        // ルート画面では行き先を選び（T350b）、ゲームが終わるまで速めて進める。
         private static IEnumerator PlayUntilFinished(BattleController battle)
         {
             Time.timeScale = 20f;
             var limit = Time.realtimeSinceStartup + 90f;
             while (!battle.IsFinished && Time.realtimeSinceStartup < limit)
             {
-                battle.StartWave();
                 RouteTestUtil.Step();
                 yield return null;
             }

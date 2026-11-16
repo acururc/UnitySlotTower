@@ -109,6 +109,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(_battle?.Field, Is.Not.Null, "Game シーンの戦闘が始まらない");
+            yield return RouteTestUtil.WaitForIntro(_battle);
             // この難易度の20パターンからバーの番号を選ぶ。
             random.Index = -1;
             for (var i = 0; i < _cabinet.Patterns.Count && random.Index < 0; i++)
@@ -122,7 +123,6 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That(random.Index, Is.GreaterThanOrEqualTo(0), "抽選表にバーがない");
             yield return null;
             _reels = _cabinet.GetComponentsInChildren<SlotReelView>();
-            _battle.StartWave();
         }
 
         // Space で回し、リールが自動で止まるまで実時間で待つ。

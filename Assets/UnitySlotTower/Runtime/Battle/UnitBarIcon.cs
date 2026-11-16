@@ -186,7 +186,8 @@ namespace UnitySlotTower.Battle
                 costText.SetText(NumericText.YenFormat, unit.Cost);
             }
 
-            var remaining = summoner.IgnoresCooldown ? 0d : summoner.CooldownRemaining(unit.Id);
+            // 無料ストックがあれば待ち時間中でも出せる（D-79）。
+            var remaining = stock > 0 ? 0d : summoner.CooldownRemaining(unit.Id);
             cooldownGauge.fillAmount = unit.Cooldown > 0d ? (float)(remaining / unit.Cooldown) : 0f;
             var seconds = remaining > 0d ? (int)System.Math.Ceiling(remaining) : 0;
             if (seconds != _shownSeconds)

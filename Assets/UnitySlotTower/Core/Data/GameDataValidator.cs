@@ -20,6 +20,7 @@ namespace UnitySlotTower.Core.Data
             ColumnRule.Int("life", 1, 1000),
             ColumnRule.Int("deploy_limit", 1, 100),
             ColumnRule.Float("retreat_refund_rate", 0, 1),
+            ColumnRule.Float("intro_seconds", 0, 10),
         };
 
         private static readonly ColumnRule[] SlotRuleKeys =
@@ -100,7 +101,6 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Int("reward_coins", 0, 100000)),
             new TableSchema("waves.csv", null,
                 ColumnRule.Id("encounter_id"),
-                ColumnRule.Int("wave", 1, WaveSchedule.WavesPerEncounter),
                 ColumnRule.Float("time", 0, 3600),
                 ColumnRule.Id("enemy_id"),
                 ColumnRule.Id("spawn"),
@@ -469,11 +469,9 @@ namespace UnitySlotTower.Core.Data
                 }
 
                 bool isBoss;
-                int wave;
                 try
                 {
                     isBoss = row.GetBool("is_boss");
-                    wave = row.GetInt("wave");
                 }
                 catch (CsvFormatException)
                 {
@@ -485,14 +483,13 @@ namespace UnitySlotTower.Core.Data
                     continue;
                 }
 
-                if (IsBossKind(encounters.Get(id).Kind) && wave == WaveSchedule.WavesPerEncounter)
+                if (IsBossKind(encounters.Get(id).Kind))
                 {
                     withBoss.Add(id);
                 }
                 else
                 {
-                    report.Add(row.Error("is_boss",
-                        $"ボスが出られるのは強敵・ボスマスの W{WaveSchedule.WavesPerEncounter} だけ（'{id}' の W{wave}）").Error);
+                    report.Add(row.Error("is_boss", $"ボスが出られるのは強敵・ボスマスだけ（'{id}'）").Error);
                 }
             }
 
@@ -501,7 +498,7 @@ namespace UnitySlotTower.Core.Data
                 if (IsBossKind(encounter.Kind) && !withBoss.Contains(encounter.Id))
                 {
                     report.Add(new CsvError(waves.FileName, 0, 0,
-                        $"戦闘マス '{encounter.Id}' の W{WaveSchedule.WavesPerEncounter} にボス（is_boss）がいない"));
+                        $"戦闘マス '{encounter.Id}' にボス（is_boss）がいない"));
                 }
             }
         }
@@ -584,8 +581,8 @@ namespace UnitySlotTower.Core.Data
         }
 
         /// <summary>
-        /// 各戦闘マス（encounters.csv）の各ウェーブの行が、そのマップの経路・出現口・空中フラグと合うかを <see cref="WaveSchedule"/> で確かめる。
-        /// 敵のいないウェーブもエラーにする。
+        /// 各戦闘マス（encounters.csv）の行が、そのマップの経路・出現口・空中フラグと合うかを <see cref="WaveSchedule"/> で確かめる。
+        /// 敵のいない戦闘マスもエラーにする。
         /// </summary>
         private static void ValidateWaves(CsvTable waves, CsvTable encounterTable, CsvTable enemyTable,
             Dictionary<string, BattleMap> maps, ValidationReport report)
@@ -610,20 +607,16 @@ namespace UnitySlotTower.Core.Data
                     continue;
                 }
 
-                for (var wave = 1; wave <= WaveSchedule.WavesPerEncounter; wave++)
+                try
                 {
-                    try
+                    if (WaveSchedule.Load(waves, encounter.Id, map, enemies).Spawns.Count == 0)
                     {
-                        if (WaveSchedule.Load(waves, encounter.Id, wave, map, enemies).Spawns.Count == 0)
-                        {
-                            report.Add(new CsvError(waves.FileName, 0, 0,
-                                $"戦闘マス '{encounter.Id}' のウェーブ {wave} の敵がない"));
-                        }
+                        report.Add(new CsvError(waves.FileName, 0, 0, $"戦闘マス '{encounter.Id}' の敵がない"));
                     }
-                    catch (CsvFormatException ex)
-                    {
-                        report.Add(ex.Error);
-                    }
+                }
+                catch (CsvFormatException ex)
+                {
+                    report.Add(ex.Error);
                 }
             }
         }

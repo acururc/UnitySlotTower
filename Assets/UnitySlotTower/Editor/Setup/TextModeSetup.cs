@@ -182,8 +182,6 @@ namespace UnitySlotTower.Editor.Setup
             // 操作バーの黄色い丸の数字は所持金（OperationBarStatus.moneyText）。2026-11-15 T359b まで「コイン」と書いていた。
             DestroyChild(Child(status, "Coin Icon"), LabelPrefix + "coins");
             IconTag(Child(status, "Coin Icon"), "money", 16f);
-            Label(Child(status, "Wave"), "bar_wave", new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -20f), Vector2.zero, 16f);
-            InsideBottom(Child(status, "Start Button"), "bar_start", 22f, 16f);
             InsideBottom(Child(status, "Retreat Button"), "bar_retreat", 22f, 16f);
             InsideBottom(Child(status, "Pause Button"), "bar_pause", 22f, 16f);
             var rates = Child(bar, "Rates");

@@ -61,7 +61,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(_battle?.Deployment, Is.Not.Null, "Game シーンの戦闘が始まらない");
-            yield return null;
+            yield return RouteTestUtil.WaitForIntro(_battle);
             _fieldView = Object.FindAnyObjectByType<BattleFieldView>();
             _input = Object.FindAnyObjectByType<UnitPlacementInput>();
             _camera = GameObject.Find("Battle Camera").GetComponent<Camera>();
@@ -170,7 +170,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        public IEnumerator Keyboard_Upgrades_With_Shift_Digit_Retreats_With_Tab_And_X_And_Starts_With_Enter()
+        public IEnumerator Keyboard_Upgrades_With_Shift_Digit_And_Retreats_With_Tab_And_X()
         {
             yield return Tap(Key.Digit1);
             yield return MoveCursorTo(FirstPlaceableCell());
@@ -188,16 +188,12 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             var coins = _battle.Wallet.Coins;
             yield return Tap(Key.LeftShift, Key.Digit1);
-            Assert.That((_battle.Upgrades.Level("tank"), coins - _battle.Wallet.Coins, _battle.Run.Phase),
-                Is.EqualTo((2, _battle.Upgrades.Current("tank").Cost, WavePhase.Preparing)),
-                "Shift + 1 で強化し、▶ までは準備のまま");
-
-            yield return Tap(Key.Enter);
-            Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.Fighting), "配置操作中でない Enter で戦闘を始める");
+            Assert.That((_battle.Upgrades.Level("tank"), coins - _battle.Wallet.Coins),
+                Is.EqualTo((2, _battle.Upgrades.Current("tank").Cost)), "Shift + 1 で強化する");
         }
 
         [UnityTest]
-        public IEnumerator Mouse_Upgrades_Selects_And_Retreats_A_Unit_And_Starts_The_Wave_From_The_Bar()
+        public IEnumerator Mouse_Upgrades_Selects_And_Retreats_A_Unit_From_The_Bar()
         {
             var bar = Object.FindAnyObjectByType<OperationBarStatus>();
             yield return Tap(Key.Digit1);
@@ -216,10 +212,17 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             yield return Click(GameObject.Find("Upgrade Icon 2").transform);
             Assert.That(_battle.Upgrades.Level("sword"), Is.EqualTo(2), "強化アイコンで強化する");
+        }
 
-            yield return Click(bar.transform.Find("Start Button"));
-            Assert.That((_battle.Run.Phase, bar.transform.Find("Start Button").gameObject.activeSelf),
-                Is.EqualTo((WavePhase.Fighting, false)), "▶ で戦闘を始め、▶ を隠す");
+        [UnityTest]
+        [Description("FR-019, plan 17.2: 準備フェーズがないので操作バーに ▶ とウェーブ n/2 はない")]
+        public IEnumerator Bar_Has_No_Start_Button_Or_Wave_Count()
+        {
+            yield return null;
+            var bar = Object.FindAnyObjectByType<OperationBarStatus>().transform;
+
+            Assert.That((bar.Find("Start Button") == null, bar.Find("Wave") == null, bar.Find("Wave Icon") == null),
+                Is.EqualTo((true, true, true)));
         }
 
         [UnityTest]
@@ -246,7 +249,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        public IEnumerator Bar_Shows_Cost_Life_Coins_Wave_And_Upgrade_Cost_As_Numbers()
+        public IEnumerator Bar_Shows_Cost_Life_Coins_And_Upgrade_Cost_As_Numbers()
         {
             yield return null;
             var status = Object.FindAnyObjectByType<OperationBarStatus>().transform;
@@ -254,10 +257,9 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             var upgrade = GameObject.Find("Upgrade Icon 3").transform;
 
             Assert.That(
-                (Text(icon, "Cost"), Text(status, "Life"), Text(status, "Coins"), Text(status, "Wave"), Text(upgrade, "Cost")),
+                (Text(icon, "Cost"), Text(status, "Life"), Text(status, "Coins"), Text(upgrade, "Cost")),
                 Is.EqualTo(("¥" + _battle.Units.Get("archer").Cost, _battle.Field.Life.ToString(),
-                    "¥" + _battle.Wallet.Coins, "1/2",
-                    "¥" + _battle.Upgrades.NextCost("archer"))));
+                    "¥" + _battle.Wallet.Coins, "¥" + _battle.Upgrades.NextCost("archer"))));
         }
 
         [UnityTest]
@@ -309,9 +311,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         public IEnumerator Cooldown_Shows_Seconds_And_Clicking_During_It_Flashes_Instead_Of_Selecting()
         {
             var icon = GameObject.Find("Unit Icon 1").GetComponent<UnitBarIcon>();
-            Assert.That(icon.CooldownText.enabled, Is.False, "準備中に待ち時間の数字が出ている");
+            Assert.That(icon.CooldownText.enabled, Is.False, "召喚する前に待ち時間の数字が出ている");
 
-            _battle.StartWave();
             yield return PlaceTank(_ => { });
             yield return null;
             var cooldown = _battle.Units.Get("tank").Cooldown;

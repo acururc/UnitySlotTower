@@ -12,7 +12,7 @@ namespace UnitySlotTower.Battle
 {
     /// <summary>
     /// 戦闘マスの進行（<see cref="BattleNodeRun"/>）を組み立てて実時間で進める。スロット操作中も止まらない（FR-011）。
-    /// 戦闘は ▶（<see cref="StartWave"/>）で始める。autoStart なら準備に入るとすぐ始める。
+    /// 戦闘マスに入ると開始の演出（FR-019）の後すぐ戦闘が始まる。演出中は操作とスロットを受け付けない。
     /// ゲーム1回分の状態とルートは RunController（T350a）が持ち、戦闘マスに入るたびに <see cref="BeginNode"/> を呼ぶ。
     /// 戦闘マスが始まるとフィールドの表示をそのマップに差し替える。
     /// </summary>
@@ -32,8 +32,6 @@ namespace UnitySlotTower.Battle
         [SerializeField] private BattleFieldView fieldView;
         [Tooltip("揃った図柄を受け取るスロット筐体。")]
         [SerializeField] private SlotCabinet slotCabinet;
-        [Tooltip("準備に入ったらすぐ戦闘を始める（確認用。通常は ▶ で始める）。")]
-        [SerializeField] private bool autoStart;
 
         private SimulationClock _clock;
         private EncounterTable _encounters;
@@ -41,6 +39,7 @@ namespace UnitySlotTower.Battle
         private CsvTable _waves;
         private IRandom _random;
         private bool _completionReported;
+        private bool _slotLocked;
 
         /// <summary><see cref="Initialize"/> で読んだゲーム設定（RunState を作るのに使う）。</summary>
         public GameConfig Config { get; private set; }
@@ -62,7 +61,10 @@ namespace UnitySlotTower.Battle
         /// <summary>いまの戦闘マスの階（1 から）。</summary>
         public int Floor { get; private set; }
 
-        /// <summary>新しい戦闘マスの準備に入った。</summary>
+        /// <summary>このシーン（1回のプレイ）で入った戦闘マスの数。いまの戦闘マスが何番目か（説明の撤退の題目に使う）。</summary>
+        public int NodeCount { get; private set; }
+
+        /// <summary>新しい戦闘マスに入った（開始の演出が始まる）。</summary>
         public event Action NodeBegan;
 
         /// <summary>いまの戦闘マスがボス以外で終わった（RunController が次のマスへ進める）。1マスにつき1回。</summary>
@@ -120,9 +122,13 @@ namespace UnitySlotTower.Battle
         public bool IsFinished => Run != null && (Run.IsRunCleared || Run.Phase == WavePhase.GameOver);
 
         /// <summary>
-        /// 戦闘側の操作（配置・撤退・強化・▶・スキル）を受け付けないか。一時停止中・ゲーム終了後・戦闘マスの終了後（ルート画面: T350b）。
+        /// 戦闘側の操作（配置・撤退・強化・スキル）を受け付けないか。一時停止中・ゲーム終了後・開始の演出中（AC-016）・
+        /// 戦闘マスの終了後（ルート画面: T350b）。
         /// </summary>
-        public bool IsInputBlocked => IsPaused || IsFinished || (Run != null && Run.Phase == WavePhase.Completed);
+        public bool IsInputBlocked => IsPaused || IsFinished || IsInIntro || (Run != null && Run.Phase == WavePhase.Completed);
+
+        /// <summary>開始の演出中（FR-019）。時間は進まず、操作とスロットを受け付けない。</summary>
+        public bool IsInIntro => Run != null && Run.Phase == WavePhase.Intro;
 
         /// <summary>一時停止を切り替える。スロットのリールやウェイトも止めるため Time.timeScale を 0 にする。ゲーム終了後は何もしない。</summary>
         public void SetPaused(bool paused)
@@ -155,18 +161,9 @@ namespace UnitySlotTower.Battle
         /// <summary>このシーン（1回のプレイ）でスキルを発動した回数（説明の進行に使う）。</summary>
         public int SkillActivations { get; private set; }
 
-        /// <summary>準備中なら戦闘を始める（▶、plan 4章）。一時停止中は受け付けない。</summary>
-        public void StartWave()
-        {
-            if (!IsInputBlocked)
-            {
-                Run?.Start();
-            }
-        }
-
         /// <summary>
         /// その色のスキルを発動する（操作バーのゲージのクリック、FR-029）。一時停止中・ゲーム終了後は受け付けない（AC-011）。
-        /// ほかの条件（満タン・配置1体以上・準備中か戦闘中）は <see cref="BattleNodeRun.TryActivateSkill"/>。発動したら true。
+        /// ほかの条件（満タン・配置1体以上・戦闘中）は <see cref="BattleNodeRun.TryActivateSkill"/>。発動したら true。
         /// </summary>
         public bool TryActivateSkill(SlotSymbol color)
         {
@@ -186,9 +183,10 @@ namespace UnitySlotTower.Battle
 
         private void UpdateSlotLock()
         {
+            _slotLocked = IsPaused || IsFinished || IsInIntro;
             if (slotCabinet != null)
             {
-                slotCabinet.InputLocked = IsPaused || IsFinished;
+                slotCabinet.InputLocked = _slotLocked;
             }
         }
 
@@ -207,7 +205,7 @@ namespace UnitySlotTower.Battle
         }
 
         /// <summary>
-        /// 戦闘マス（<paramref name="node"/>）に入る。種類と階が合う出現を選んで準備に入り、フィールドの表示をそのマップに差し替える。
+        /// 戦闘マス（<paramref name="node"/>）に入る。種類と階が合う出現を選んで開始の演出に入り、フィールドの表示をそのマップに差し替える。
         /// 回数固定（<see cref="Encounter.FixedSpins"/>）を筐体へ渡す（0 ならコインで回す）。
         /// </summary>
         public void BeginNode(RunState state, RouteNode node)
@@ -224,8 +222,10 @@ namespace UnitySlotTower.Battle
             var map = fieldView.LoadMap(encounter.MapId);
             Floor = node.Floor;
             Run = new BattleNodeRun(Config, Units, Ranges, state, encounter, map,
-                wave => WaveSchedule.Load(_waves, encounter.Id, wave, map, _enemies), _random);
+                WaveSchedule.Load(_waves, encounter.Id, map, _enemies), _random);
+            NodeCount++;
             _completionReported = false;
+            UpdateSlotLock();
             fieldView.Show(map);
             NodeBegan?.Invoke();
         }
@@ -240,11 +240,6 @@ namespace UnitySlotTower.Battle
                 return;
             }
 
-            if (autoStart)
-            {
-                Run.Start();
-            }
-
             Run.Advance(_clock.Advance(IsHeldByGuide ? 0d : Time.deltaTime));
             if (Run.Phase == WavePhase.Completed && !Run.IsRunCleared && !_completionReported)
             {
@@ -252,7 +247,7 @@ namespace UnitySlotTower.Battle
                 NodeCompleted?.Invoke();
             }
 
-            if (IsFinished && !slotCabinet.InputLocked)
+            if (_slotLocked != (IsPaused || IsFinished || IsInIntro))
             {
                 UpdateSlotLock();
             }

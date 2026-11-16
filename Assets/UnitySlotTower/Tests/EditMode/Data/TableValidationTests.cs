@@ -180,12 +180,12 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Wave_Spawn_Not_On_Its_Path_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["waves.csv"] += "first,1,0,melee,S2,first_g1,0\n";
+            files["waves.csv"] += "first,0,melee,S2,first_g1,0\n";
             var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
 
             var report = GameDataValidator.ValidateAll(files);
 
-            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("waves.csv", line, 5)));
+            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("waves.csv", line, 4)));
         }
 
         [Test]
@@ -201,15 +201,15 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        public void Wave_Without_Enemies_Is_An_Error()
+        public void Encounter_Without_Enemies_Is_An_Error()
         {
-            // ボスマスの W1 だけを消す（戦闘マスのウェーブごとに確かめる）。
+            // 通常の戦闘マス battle_a の行だけを消す（マップと出現表の行は残る）。
             var files = TablePaths.ReadAll();
-            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "boss_a,1,");
+            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "battle_a,");
 
             var report = GameDataValidator.ValidateAll(files);
 
-            Assert.That(report.Errors.Select(e => e.File), Does.Contain("waves.csv"));
+            Assert.That(report.Errors.Where(e => e.File == "waves.csv").Select(e => e.Message), Has.Some.Contains("'battle_a'"));
         }
 
         [Test]
@@ -343,7 +343,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("plan 16.6: 出現表の行に2ウェーブ分の出現がなければエラー")]
+        [Description("plan 16.6: 出現表の行に出現がなければエラー")]
         public void Encounter_Without_Waves_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
@@ -452,8 +452,8 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("FR-010・plan 16.6: 強敵マスの W2 には中ボス（is_boss）が要る")]
-        public void Elite_Without_A_Boss_In_Wave_2_Is_An_Error()
+        [Description("FR-010・plan 16.6: 強敵マスには中ボス（is_boss）が要る")]
+        public void Elite_Without_A_Boss_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
             files["waves.csv"] = string.Join("\n", files["waves.csv"].Split('\n').Where(line => !line.Contains(",mid_boss,")));
@@ -464,11 +464,11 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("plan 16.6: ボス（is_boss）が出るのは強敵・ボスマスの W2 だけ")]
+        [Description("plan 16.6: ボス（is_boss）が出るのは強敵・ボスマスだけ")]
         public void Boss_In_A_Normal_Battle_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["waves.csv"] += "battle_a,2,70,mid_boss,S1,battle_a_g1,1\n";
+            files["waves.csv"] += "battle_a,70,mid_boss,S1,battle_a_g1,1\n";
             var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
 
             var report = GameDataValidator.ValidateAll(files);
@@ -483,7 +483,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
             var files = TablePaths.ReadAll();
             files[EncounterTable.FileName] += "battle_d,battle,boss_a,2,7,0,10,3\n";
             var line = files[EncounterTable.FileName].TrimEnd('\n').Split('\n').Length;
-            files["waves.csv"] += "battle_d,1,0,melee,S1,boss_a_g1,0\nbattle_d,2,0,melee,S1,boss_a_g1,0\n";
+            files["waves.csv"] += "battle_d,0,melee,S1,boss_a_g1,0\n";
 
             var report = GameDataValidator.ValidateAll(files);
 

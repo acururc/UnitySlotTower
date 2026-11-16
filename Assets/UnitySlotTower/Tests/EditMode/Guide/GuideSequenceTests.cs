@@ -6,11 +6,10 @@ namespace UnitySlotTower.Tests.EditMode.Guide
 {
     public sealed class GuideSequenceTests
     {
-        // 最初の戦闘の W1 の準備中（味方は召喚できる、レバーも引ける）。
+        // 最初の戦闘マスで開始の演出が終わった後（味方は召喚できる、レバーも引ける）。
         private static GuideObservation Ready() => new GuideObservation
         {
-            Preparing = true,
-            Wave = 1,
+            BattleNode = 1,
             Deploy = DeployPhase.Idle,
             CanSummon = true,
             CanLever = true,
@@ -89,7 +88,6 @@ namespace UnitySlotTower.Tests.EditMode.Guide
         {
             var o = Ready();
             var guide = AfterSlot(ref o);
-            o.Preparing = false;
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None), "満タンになるまでは出さない");
 
             o.SkillSlot = 1;
@@ -141,7 +139,6 @@ namespace UnitySlotTower.Tests.EditMode.Guide
         {
             var o = Ready();
             var guide = AfterSlot(ref o);
-            o.Preparing = false;
             o.ChoosingRoute = true;
 
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RouteLever));
@@ -193,7 +190,6 @@ namespace UnitySlotTower.Tests.EditMode.Guide
         {
             var o = Ready();
             var guide = AfterSlot(ref o);
-            o.Preparing = false;
 
             o.UpgradeSlot = 2;
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Upgrade));
@@ -222,13 +218,14 @@ namespace UnitySlotTower.Tests.EditMode.Guide
         }
 
         [Test]
-        public void Retreat_Is_Shown_In_The_Second_Wave_Preparation()
+        [Description("plan 17.2: 撤退の題目は2つ目の戦闘マスで味方が配置されていて操作がないときに出す")]
+        public void Retreat_Is_Shown_In_The_Second_Battle_Node()
         {
             var o = Ready();
             var guide = AfterSlot(ref o);
-            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None), "W1 では出さない");
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None), "最初の戦闘マスでは出さない");
 
-            o.Wave = 2;
+            o.BattleNode = 2;
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.SelectUnit));
             o.UnitSelected = true;
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Retreat));
@@ -242,16 +239,59 @@ namespace UnitySlotTower.Tests.EditMode.Guide
         }
 
         [Test]
-        public void Retreat_Is_Done_When_The_Wave_Is_Started_Instead()
+        [Description("plan 17.2: 撤退せずにレバーを引いたら撤退しないことを選んだとみなす（▶ の代わり）")]
+        public void Retreat_Is_Done_When_The_Lever_Is_Pulled_Instead()
         {
             var o = Ready();
             var guide = AfterSlot(ref o);
-            o.Wave = 2;
+            o.BattleNode = 2;
             guide.Update(o);
 
-            o.Preparing = false;
-            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None));
+            o.SpinCount++;
+            o.SlotSpinning = true;
+            guide.Update(o);
+
             Assert.That(guide.IsDone(GuideTopic.Retreat), Is.True);
+        }
+
+        [Test]
+        [Description("plan 17.2: 撤退せずに次の味方の召喚を始めても撤退の題目は終わる")]
+        public void Retreat_Is_Done_When_Another_Summon_Is_Started_Instead()
+        {
+            var o = Ready();
+            var guide = AfterSlot(ref o);
+            o.BattleNode = 2;
+            guide.Update(o);
+
+            o.Deploy = DeployPhase.ChoosingCell;
+            guide.Update(o);
+
+            Assert.That(guide.IsDone(GuideTopic.Retreat), Is.True);
+        }
+
+        [Test]
+        [Description("plan 17.2, AC-016: 開始の演出のあいだは説明を出さず、戦闘も止めない")]
+        public void Intro_Shows_No_Hint()
+        {
+            var guide = new GuideSequence();
+            var o = Ready();
+            o.Intro = true;
+
+            Assert.That((guide.Update(o), guide.HoldsBattle), Is.EqualTo((GuideHint.None, false)));
+        }
+
+        [Test]
+        [Description("plan 17.2: 召喚の説明は最初の戦闘の開始の演出の後に出す")]
+        public void Deploy_Is_Shown_When_The_Intro_Ends()
+        {
+            var guide = new GuideSequence();
+            var o = Ready();
+            o.Intro = true;
+            guide.Update(o);
+
+            o.Intro = false;
+
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Summon));
         }
 
         [Test]

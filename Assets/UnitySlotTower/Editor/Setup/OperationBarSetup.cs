@@ -279,12 +279,7 @@ namespace UnitySlotTower.Editor.Setup
             MoneyIconArt.Apply(CreateImage("Coin Icon", status, new Vector2(0.33f, 0.58f), new Vector2(0.43f, 0.9f),
                 new Color(0.98f, 0.8f, 0.2f), _knob), _box, _knob);
             var coins = CreateNumber("Coins", status, new Vector2(0.44f, 0.52f), new Vector2(0.7f, 0.96f), Color.white);
-            var wave = CreateNumber("Wave", status, new Vector2(0.73f, 0.52f), new Vector2(0.98f, 0.96f), Color.white);
-
-            var start = CreateButton("Start Button", status, new Vector2(0.06f, 0.06f), new Vector2(0.34f, 0.46f),
-                new Color(0.25f, 0.6f, 0.3f));
-            CreateRect("Play", start.GetComponent<RectTransform>(), new Vector2(0.38f, 0.18f), new Vector2(0.66f, 0.82f))
-                .gameObject.AddComponent<TriangleGraphic>().raycastTarget = false;
+            // ▶ とウェーブ n/2 は準備フェーズの廃止（D-79、T361）でなくなった。
 
             var retreat = CreateButton("Retreat Button", status, new Vector2(0.38f, 0.06f), new Vector2(0.64f, 0.46f),
                 new Color(0.65f, 0.2f, 0.2f));
@@ -309,8 +304,6 @@ namespace UnitySlotTower.Editor.Setup
             Assign(component, "placementInput", input);
             Assign(component, "lifeText", life);
             Assign(component, "moneyText", coins);
-            Assign(component, "waveText", wave);
-            Assign(component, "startButton", start);
             Assign(component, "retreatButton", retreat);
             Assign(component, "pauseButton", pause);
             Assign(component, "pauseBackground", pause.GetComponent<Image>());

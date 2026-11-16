@@ -15,7 +15,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
     /// </summary>
     public sealed class BossTests
     {
-        private const string Quaker = "1,0,quaker,S1,g,1\n";
+        private const string Quaker = "0,quaker,S1,g,1\n";
 
         private static Battlefield FieldWithQuaker() => BattleFixtures.CreateField(Quaker);
 
@@ -116,8 +116,8 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("FR-010: ボスは戦闘マスの W2 の最後に1体だけ。ボスマスは最終ボスで終わり、最終ボスはボスマスにだけ出る")]
-        public void Project_Bosses_Appear_Only_At_The_End_Of_Wave_2()
+        [Description("FR-010: ボスは戦闘マスの最後に1体だけ。ボスマスは最終ボスで終わり、最終ボスはボスマスにだけ出る")]
+        public void Project_Bosses_Appear_Only_At_The_End_Of_The_Wave()
         {
             // 通常の戦闘マスにボスを出さない決まり（強敵は中ボス）は、出現データを作り直す T347 で確かめる。
             var tables = TablePaths.ReadAll();
@@ -129,22 +129,19 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             foreach (var encounter in encounters.All)
             {
                 var map = BattleMap.Load(encounter.MapId, tables[BattleMap.MapFileName(encounter.MapId)], paths);
-                for (var wave = 1; wave <= WaveSchedule.WavesPerEncounter; wave++)
+                var spawns = WaveSchedule.Load(waves, encounter.Id, map, enemies).Spawns;
+                for (var i = 0; i < spawns.Count; i++)
                 {
-                    var spawns = WaveSchedule.Load(waves, encounter.Id, wave, map, enemies).Spawns;
-                    for (var i = 0; i < spawns.Count; i++)
+                    var isLast = i == spawns.Count - 1;
+                    if (spawns[i].IsBoss && !isLast)
                     {
-                        var isLast = wave == WaveSchedule.WavesPerEncounter && i == spawns.Count - 1;
-                        if (spawns[i].IsBoss && !isLast)
-                        {
-                            problems.Add($"{encounter.Id} W{wave} の {i + 1} 体目がボス");
-                        }
+                        problems.Add($"{encounter.Id} の {i + 1} 体目がボス");
+                    }
 
-                        var isFinal = spawns[i].Enemy.Id == "final_boss";
-                        if (isFinal != (isLast && encounter.Kind == EncounterKind.Boss))
-                        {
-                            problems.Add($"{encounter.Id} W{wave} の {i + 1} 体目: 最終ボスの位置が違う");
-                        }
+                    var isFinal = spawns[i].Enemy.Id == "final_boss";
+                    if (isFinal != (isLast && encounter.Kind == EncounterKind.Boss))
+                    {
+                        problems.Add($"{encounter.Id} の {i + 1} 体目: 最終ボスの位置が違う");
                     }
                 }
             }

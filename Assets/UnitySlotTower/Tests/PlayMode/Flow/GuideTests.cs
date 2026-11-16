@@ -19,15 +19,15 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
     [Description("T403・T351 / FR-004: 文字なし説明が操作の順に出て、示した操作をすると次へ進み、説明中は戦闘の時間が止まる")]
     public sealed class GuideTests
     {
-        // 各ウェーブ1体だけの短い出現（最初の戦闘をすぐ終えてルートへ進むため）。
+        // 各戦闘マス2体だけの短い出現（最初の戦闘をすぐ終えてルートへ進むため）。
         private const string ShortWaves =
-            "encounter_id,wave,time,enemy_id,spawn,path_id,is_boss\n" +
-            "first,1,0,melee,S1,first_g1,0\nfirst,2,0,melee,S1,first_g1,0\n" +
-            "battle_a,1,0,melee,S1,battle_a_g1,0\nbattle_a,2,0,melee,S1,battle_a_g1,0\n" +
-            "battle_b,1,0,melee,S1,battle_b_g1,0\nbattle_b,2,0,melee,S1,battle_b_g1,0\n" +
-            "battle_c,1,0,melee,S1,battle_c_g1,0\nbattle_c,2,0,melee,S1,battle_c_g1,0\n" +
-            "elite_a,1,0,melee,S1,elite_a_g1,0\nelite_a,2,0,melee,S1,elite_a_g1,0\n" +
-            "boss_a,1,0,melee,S1,boss_a_g1,0\nboss_a,2,0,melee,S1,boss_a_g1,0\n";
+            "encounter_id,time,enemy_id,spawn,path_id,is_boss\n" +
+            "first,0,melee,S1,first_g1,0\nfirst,3,melee,S1,first_g1,0\n" +
+            "battle_a,0,melee,S1,battle_a_g1,0\nbattle_a,3,melee,S1,battle_a_g1,0\n" +
+            "battle_b,0,melee,S1,battle_b_g1,0\nbattle_b,3,melee,S1,battle_b_g1,0\n" +
+            "battle_c,0,melee,S1,battle_c_g1,0\nbattle_c,3,melee,S1,battle_c_g1,0\n" +
+            "elite_a,0,melee,S1,elite_a_g1,0\nelite_a,3,melee,S1,elite_a_g1,0\n" +
+            "boss_a,0,melee,S1,boss_a_g1,0\nboss_a,3,melee,S1,boss_a_g1,0\n";
 
         private Keyboard _keyboard;
         private Mouse _mouse;
@@ -99,11 +99,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var overlay = _guide.transform.Find("Overlay");
             var dim = overlay.Find("Dim Top").gameObject;
             yield return null;
-            Assert.That((_guide.Current, dim.activeSelf), Is.EqualTo((GuideHint.Summon, true)), "開始時は召喚");
-
-            var bar = Object.FindAnyObjectByType<OperationBarStatus>();
-            yield return Click(bar.transform.Find("Start Button"));
-            Assert.That(_battle.Run.Phase, Is.EqualTo(WavePhase.Preparing), "暗幕の上の ▶ は押せない");
+            Assert.That((_guide.Current, dim.activeSelf), Is.EqualTo((GuideHint.Summon, true)), "開始の演出の後は召喚");
 
             var icon = GameObject.Find("Unit Icon 1").transform;
             var target = FirstPlaceableCell();
@@ -187,7 +183,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var limit = Time.realtimeSinceStartup + 30f;
             while (!run.IsChoosingRoute && first.Phase != WavePhase.GameOver && Time.realtimeSinceStartup < limit)
             {
-                _battle.StartWave();
                 yield return null;
             }
 
@@ -229,11 +224,12 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         public IEnumerator Battle_Time_Is_Held_While_A_Hint_Is_Shown()
         {
             yield return null;
-            _battle.StartWave();
             Assert.That((_battle.Run.Phase, _guide.Current), Is.EqualTo((WavePhase.Fighting, GuideHint.Summon)));
 
+            // 開始の演出が終わったフレームの残りの分だけは進んでいてよい。
+            var tick = _battle.Field.Tick;
             yield return new WaitForSeconds(0.5f);
-            Assert.That(_battle.Field.Tick, Is.EqualTo(0L), "説明中は戦闘が進まない");
+            Assert.That(_battle.Field.Tick, Is.EqualTo(tick), "説明中は戦闘が進まない");
 
             _guide.enabled = false;
             yield return new WaitForSeconds(0.5f);
@@ -263,6 +259,13 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
 
             Assert.That(_battle?.Deployment, Is.Not.Null, "Game シーンの戦闘が始まらない");
+            var introLimit = Time.realtimeSinceStartup + 5f;
+            while (_battle.IsInIntro && Time.realtimeSinceStartup < introLimit)
+            {
+                yield return null;
+            }
+
+            Assert.That(_battle.IsInIntro, Is.False, "開始の演出が終わらない");
             _guide = Object.FindAnyObjectByType<GuideOverlay>();
             Assert.That(_guide, Is.Not.Null, "Game シーンに文字なし説明がない");
             _fieldView = Object.FindAnyObjectByType<BattleFieldView>();

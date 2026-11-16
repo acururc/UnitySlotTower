@@ -9,10 +9,10 @@ namespace UnitySlotTower.Core.Battle
 {
     public enum WavePhase
     {
-        /// <summary>敵が出る前の配置時間（plan C-2）。<see cref="BattleNodeRun.Start"/> まで続く。</summary>
-        Preparing,
+        /// <summary>開始の演出（FR-019、plan 17.2）。戦闘の時間は進まず、スキルは拒否する（ほかの操作の拒否は Runtime）。</summary>
+        Intro,
         Fighting,
-        /// <summary>この戦闘マスの最後のウェーブを終えた（ストック化と報酬は済んでいる）。</summary>
+        /// <summary>この戦闘マスを終えた（ストック化と報酬は済んでいる）。</summary>
         Completed,
         GameOver,
     }
@@ -25,50 +25,47 @@ namespace UnitySlotTower.Core.Battle
         NotFull,
         /// <summary>その職が1体も配置されていない。</summary>
         NoUnits,
-        /// <summary>準備中・戦闘中でない（終了後・ゲームオーバー）。</summary>
+        /// <summary>戦闘中でない（開始の演出中・終了後・ゲームオーバー）。</summary>
         NotInBattle,
     }
 
     /// <summary>
-    /// 1つの戦闘マスの進行（FR-010, FR-013〜016、plan 16.6）。準備 → W1 → 準備（配置・HP保持）→ W2 → 終了。
+    /// 1つの戦闘マスの進行（FR-010, FR-013〜016, FR-019、plan 17.2）。開始の演出 → 戦闘（1ウェーブ）→ 終了。
     /// ライフ・お金・強化・ストック・スキルゲージは <see cref="RunState"/> を直接書き換え、戦闘（バー・コインの倍率を含む）・召喚・配置操作は
     /// このマスだけのもの。終了時に配置中の味方を種類ごとにストックへ足し、報酬を加える。ボスマスの終了でクリア。
     /// 回数固定（<see cref="Encounter.FixedSpins"/>）は Runtime がスロット（<see cref="SlotMachine.StartFixedSpins"/>）へ渡す。
     /// </summary>
     public sealed class BattleNodeRun
     {
-        private readonly Func<int, WaveSchedule> _loadWave;
-
         private int _collectedCoins;
         private int _collectedMoney;
         private int _fieldLife;
+        private readonly int _introSteps;
+        private int _introStepsLeft;
 
         /// <param name="map">この戦闘マスのマップ（<see cref="Encounter.MapId"/>）。</param>
-        /// <param name="loadWave">ウェーブ番号（1から）からそのウェーブの出現内容を返す。</param>
+        /// <param name="wave">この戦闘マスの出現内容。</param>
         public BattleNodeRun(GameConfig config, UnitTable units, UnitRanges ranges, RunState state, Encounter encounter,
-            BattleMap map, Func<int, WaveSchedule> loadWave, IRandom random)
+            BattleMap map, WaveSchedule wave, IRandom random)
         {
             State = state ?? throw new ArgumentNullException(nameof(state));
             Encounter = encounter ?? throw new ArgumentNullException(nameof(encounter));
             Map = map ?? throw new ArgumentNullException(nameof(map));
-            _loadWave = loadWave;
-            Wave = 1;
-            Phase = WavePhase.Preparing;
+            _introSteps = Math.Max(0, (int)Math.Round(config.IntroSeconds * SimulationClock.StepsPerSecond));
+            _introStepsLeft = _introSteps;
+            Phase = _introSteps > 0 ? WavePhase.Intro : WavePhase.Fighting;
             _fieldLife = state.Life;
-            Field = new Battlefield(loadWave(1), ranges, _fieldLife, random, new BattleBoosts(state.SlotRules));
-            Summoner = new UnitSummoner(units, Wallet, config.DeployLimit, config.RetreatRefundRate, Stock)
-            {
-                IgnoresCooldown = true,
-            };
+            Field = new Battlefield(wave, ranges, _fieldLife, random, new BattleBoosts(state.SlotRules));
+            Summoner = new UnitSummoner(units, Wallet, config.DeployLimit, config.RetreatRefundRate, Stock);
             Deployment = new UnitDeployment(Map, units, ranges, Summoner, Field, Upgrades);
         }
 
         public Encounter Encounter { get; }
 
-        /// <summary>戦闘マス内のウェーブ番号（1 から <see cref="WaveSchedule.WavesPerEncounter"/>）。</summary>
-        public int Wave { get; private set; }
-
         public WavePhase Phase { get; private set; }
+
+        /// <summary>開始の演出の進み具合（0 から 1、表示用）。演出がなければ 1。</summary>
+        public double IntroProgress => _introSteps == 0 ? 1d : 1d - (double)_introStepsLeft / _introSteps;
 
         /// <summary>ボスマスを終えた（最終ボス撃破、FR-010）。</summary>
         public bool IsRunCleared => Phase == WavePhase.Completed && Encounter.Kind == EncounterKind.Boss;
@@ -86,9 +83,6 @@ namespace UnitySlotTower.Core.Battle
         public Battlefield Field { get; }
         public UnitSummoner Summoner { get; }
         public UnitDeployment Deployment { get; }
-
-        /// <summary>W2 の準備に入った（W1 は作った時点で準備中なので起きない）。</summary>
-        public event Action WaveBegan;
 
         /// <summary>この戦闘マスを終えた（<see cref="WavePhase.Completed"/> か <see cref="WavePhase.GameOver"/>）。</summary>
         public event Action Ended;
@@ -114,12 +108,12 @@ namespace UnitySlotTower.Core.Battle
         }
 
         /// <summary>
-        /// スキルを発動する（FR-029、AC-023）。準備中・戦闘中で、その色のゲージが満タンで、その職が1体以上配置されているときだけ、
+        /// スキルを発動する（FR-029、AC-023）。戦闘中で、その色のゲージが満タンで、その職が1体以上配置されているときだけ、
         /// 配置中の全員に効果を出してゲージを0に戻す。拒否なら何も変えない。一時停止中の拒否は Runtime（T349）。
         /// </summary>
         public SkillResult TryActivateSkill(SkillDefinition skill)
         {
-            if (Phase != WavePhase.Preparing && Phase != WavePhase.Fighting)
+            if (Phase != WavePhase.Fighting)
             {
                 return SkillResult.NotInBattle;
             }
@@ -138,25 +132,23 @@ namespace UnitySlotTower.Core.Battle
             return SkillResult.Activated;
         }
 
-        /// <summary>準備中なら戦闘を始める（▶）。</summary>
-        public void Start()
-        {
-            if (Phase != WavePhase.Preparing)
-            {
-                return;
-            }
-
-            Phase = WavePhase.Fighting;
-            Summoner.IgnoresCooldown = false;
-        }
-
         /// <summary>
-        /// 戦闘中だけ時間を進める。撃破ドロップは落ちた時点でコイン／所持金に、ゴールに着いた敵の分はライフから引く（FR-013, FR-033）。
-        /// ウェーブが終わったら残りのステップは捨てる（次のウェーブも準備から）。
+        /// 時間を進める。開始の演出中は演出の残りだけを減らし、終わったら残りのステップで戦闘を進める（FR-019）。
+        /// 撃破ドロップは落ちた時点でコイン／所持金に、ゴールに着いた敵の分はライフから引く（FR-013, FR-033）。
+        /// 戦闘マスが終わったら残りのステップは捨てる。
         /// </summary>
         public void Advance(int steps)
         {
-            for (var i = 0; i < steps && Phase == WavePhase.Fighting; i++)
+            var i = 0;
+            for (; i < steps && Phase == WavePhase.Intro; i++)
+            {
+                if (--_introStepsLeft <= 0)
+                {
+                    Phase = WavePhase.Fighting;
+                }
+            }
+
+            for (; i < steps && Phase == WavePhase.Fighting; i++)
             {
                 Field.Advance(1);
                 Summoner.Advance(1);
@@ -170,7 +162,7 @@ namespace UnitySlotTower.Core.Battle
                 }
                 else if (Field.IsCleared)
                 {
-                    EndWave();
+                    End();
                 }
             }
         }
@@ -199,28 +191,6 @@ namespace UnitySlotTower.Core.Battle
                 State.LoseLife(_fieldLife - Field.Life);
                 _fieldLife = Field.Life;
             }
-        }
-
-        private void EndWave()
-        {
-            if (Wave < WaveSchedule.WavesPerEncounter)
-            {
-                BeginWave(Wave + 1);
-                return;
-            }
-
-            End();
-        }
-
-        /// <summary>同じマップの次のウェーブの準備に入る。配置中の味方はそのまま残り、召喚の待ち時間は 0 に戻る（plan 4章）。</summary>
-        private void BeginWave(int wave)
-        {
-            Field.BeginWave(_loadWave(wave));
-            Wave = wave;
-            Phase = WavePhase.Preparing;
-            Summoner.IgnoresCooldown = true;
-            Summoner.ResetCooldowns();
-            WaveBegan?.Invoke();
         }
 
         /// <summary>配置中の味方を種類ごとに無料ストックへ足し（FR-015）、報酬を加える（plan 16.2）。</summary>

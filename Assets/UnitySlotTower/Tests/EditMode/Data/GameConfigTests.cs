@@ -7,7 +7,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
     public sealed class GameConfigTests
     {
         private const string ValidConfig =
-            "key,value\ninitial_coins,15\ninitial_money,30\nbet,3\nlife,10\ndeploy_limit,8\nretreat_refund_rate,0.5\n";
+            "key,value\ninitial_coins,15\ninitial_money,30\nbet,3\nlife,10\ndeploy_limit,8\nretreat_refund_rate,0.5\nintro_seconds,2\n";
 
         [Test]
         [Description("plan 16.2: コインと所持金の初期値を別々に読む（ライフボーナスのキーはない）")]
@@ -49,6 +49,17 @@ namespace UnitySlotTower.Tests.EditMode.Data
             Assert.That((config.InitialCoins, config.InitialMoney, config.Bet, config.Life, config.DeployLimit,
                     config.RetreatRefundRate),
                 Is.EqualTo((15, 250, 2, 10, 8, 0.5)));
+        }
+
+        [Test]
+        [Description("FR-019, plan 17.2: 開始の演出の秒数を読む（プロジェクトの表は仮 2 秒）")]
+        public void Intro_Seconds_Are_Read()
+        {
+            var text = File.ReadAllText(Path.Combine(TablePaths.Root, "game_config.csv"));
+
+            Assert.That((GameConfig.Load(CsvParser.Parse("game_config.csv", ValidConfig.Replace("intro_seconds,2", "intro_seconds,1.5"))).IntroSeconds,
+                    GameConfig.Load(CsvParser.Parse("game_config.csv", text)).IntroSeconds),
+                Is.EqualTo((1.5, 2.0)));
         }
 
         [Test]

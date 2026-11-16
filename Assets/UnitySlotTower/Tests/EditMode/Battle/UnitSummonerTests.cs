@@ -17,11 +17,50 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             "archer,700,350,50,1,0,high,14,15,ranged,1\n";
 
         private CoinWallet _wallet;
+        private UnitStock _stock;
 
         private UnitSummoner Create(int coins, int deployLimit = 8)
         {
             _wallet = new CoinWallet(coins);
-            return new UnitSummoner(UnitTable.Load(CsvParser.Parse(UnitTable.FileName, Units)), _wallet, deployLimit, 0.5);
+            _stock = new UnitStock();
+            return new UnitSummoner(UnitTable.Load(CsvParser.Parse(UnitTable.FileName, Units)), _wallet, deployLimit, 0.5,
+                _stock);
+        }
+
+        [Test]
+        [Description("AC-020, D-79: 無料ストックからの配置は待ち時間を始めない")]
+        public void Placing_From_Stock_Starts_No_Cooldown()
+        {
+            var summoner = Create(100);
+            _stock.Add("sword", 1);
+
+            summoner.TrySummon("sword");
+
+            Assert.That((summoner.CooldownRemaining("sword"), _wallet.Coins), Is.EqualTo((0.0, 100)));
+        }
+
+        [Test]
+        [Description("AC-020, D-79: 待ち時間中でも無料ストックがあれば配置できる")]
+        public void Stock_Can_Be_Placed_During_The_Cooldown()
+        {
+            var summoner = Create(100);
+            summoner.TrySummon("sword");
+            _stock.Add("sword", 1);
+
+            Assert.That((summoner.TrySummon("sword"), _stock.Count("sword")), Is.EqualTo((SummonResult.Summoned, 0)));
+        }
+
+        [Test]
+        [Description("D-79: ストックを使い切った後の所持金での召喚は待ち時間を始める")]
+        public void Paid_Summon_After_Stock_Starts_The_Cooldown()
+        {
+            var summoner = Create(100);
+            _stock.Add("sword", 1);
+            summoner.TrySummon("sword");
+
+            summoner.TrySummon("sword");
+
+            Assert.That(summoner.TrySummon("sword"), Is.EqualTo(SummonResult.CoolingDown));
         }
 
         [Test]

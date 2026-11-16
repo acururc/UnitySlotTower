@@ -145,7 +145,7 @@ namespace UnitySlotTower.Flow
             var upgradeSlot = -1;
             var skillSlot = -1;
             var levels = 0;
-            var fighting = run.Phase == WavePhase.Preparing || run.Phase == WavePhase.Fighting;
+            var fighting = run.Phase == WavePhase.Fighting;
             for (var slot = 0; slot < units.Count; slot++)
             {
                 var id = units[slot].Id;
@@ -157,7 +157,7 @@ namespace UnitySlotTower.Flow
                     upgradeSlot = slot;
                 }
 
-                // 発動できる条件（plan 16.4）: 満タン・その職が配置中・準備中か戦闘中。
+                // 発動できる条件（plan 16.4）: 満タン・その職が配置中・戦闘中。
                 if (skillSlot < 0 && fighting && deployed && slot < _skillButtons.Length && _skillButtons[slot] != null
                     && battle.Skills != null && battle.Skills.TryGetColor(id, out var color) && run.State.Gauges.IsFull(color))
                 {
@@ -173,8 +173,8 @@ namespace UnitySlotTower.Flow
                 OnScreen = runController != null && runController.OpenScreen != null,
                 ChoosingRoute = choosingRoute,
                 RouteSpinning = choosingRoute && slotCabinet.IsRouteSpinning,
-                Preparing = run.Phase == WavePhase.Preparing,
-                Wave = run.Wave,
+                Intro = run.Phase == WavePhase.Intro,
+                BattleNode = battle.NodeCount,
                 Deploy = run.Deployment.Phase,
                 CanSummon = units.Count > 0 && run.Summoner.Check(units[0].Id) == SummonResult.Summoned,
                 FieldUnits = alive,

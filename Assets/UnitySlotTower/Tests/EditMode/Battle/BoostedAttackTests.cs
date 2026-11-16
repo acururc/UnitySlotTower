@@ -28,7 +28,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("AC-042: 弓（攻撃力350、敵の防御50）の1発目。バー1回で 350×1.1=385、3回で 350×1.3=455")]
         public void Bar_Boost_Multiplies_The_Damage(int bars, int expectedHp)
         {
-            var field = Create("1,0,melee,S1,g,0\n", bars);
+            var field = Create("0,melee,S1,g,0\n", bars);
             PlaceArcher(field);
 
             field.Advance(45);
@@ -40,7 +40,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("plan 16.4: 掛け順は 強化後の攻撃力 × バッファー × バー（弓 350 × 1.5 × 1.2 = 630）")]
         public void Buffer_And_Bar_Multiply_Together()
         {
-            var field = Create("1,0,melee,S1,g,0\n", 2);
+            var field = Create("0,melee,S1,g,0\n", 2);
             PlaceArcher(field);
             field.AddUnit(BattleFixtures.LoadUnits().Get("buffer"), new GridPoint(0, 1), Facing.Right);
 
@@ -53,7 +53,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("plan 16.4: 攻撃速度はスキルだけが変える（バーがあっても弓は75ステップで1回だけ撃つ）")]
         public void Bar_Boost_Does_Not_Change_The_Attack_Interval()
         {
-            var field = Create("1,0,melee,S1,g,0\n", 5);
+            var field = Create("0,melee,S1,g,0\n", 5);
             PlaceArcher(field);
 
             field.Advance(75);

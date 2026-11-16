@@ -5,3 +5,4 @@ bet,2
 life,10
 deploy_limit,8
 retreat_refund_rate,0.5
+intro_seconds,2

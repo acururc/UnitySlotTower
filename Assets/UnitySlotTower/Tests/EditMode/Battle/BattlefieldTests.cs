@@ -19,7 +19,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Enemy_Appears_At_Its_Spawn_Time()
         {
-            var field = Create("1,0,melee,S1,g,0\n1,2,ranged,S1,g,0\n");
+            var field = Create("0,melee,S1,g,0\n2,ranged,S1,g,0\n");
 
             field.Advance(120);
             var before = field.Enemies.Count;
@@ -31,7 +31,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Ground_Enemy_Moves_Along_Its_Path_At_Its_Speed()
         {
-            var field = Create("1,0,melee,S1,g,0\n");
+            var field = Create("0,melee,S1,g,0\n");
 
             field.Advance(90);
 
@@ -42,7 +42,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("FR-031: 空中の敵は高台・通行不可マスの上を飛ぶ")]
         public void Air_Enemy_Flies_Over_Blocked_Tiles()
         {
-            var field = Create("1,0,air,S2,a,0\n");
+            var field = Create("0,air,S2,a,0\n");
 
             field.Advance(60);
 
@@ -52,7 +52,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Enemy_Turns_At_A_Path_Corner()
         {
-            var field = Create("1,0,air,S2,a,0\n");
+            var field = Create("0,air,S2,a,0\n");
 
             field.Advance(75);
 
@@ -62,7 +62,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Enemy_Short_Of_The_Goal_Stays_On_The_Field()
         {
-            var field = Create("1,0,melee,S1,g,0\n");
+            var field = Create("0,melee,S1,g,0\n");
 
             field.Advance(170);
 
@@ -72,7 +72,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Enemy_At_The_Goal_Leaves_And_Is_Counted()
         {
-            var field = Create("1,0,melee,S1,g,0\n");
+            var field = Create("0,melee,S1,g,0\n");
 
             field.Advance(181);
 
@@ -83,7 +83,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("FR-032: 遠距離雑魚は射程内の高台の味方を攻撃する")]
         public void Ranged_Enemy_Attacks_A_High_Ground_Unit_In_Range()
         {
-            var field = Create("1,0,ranged,S1,g,0\n");
+            var field = Create("0,ranged,S1,g,0\n");
             var archer = Place(field, "archer", 1, 1);
 
             field.Advance(1);
@@ -94,7 +94,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Ranged_Enemy_Attacks_Again_After_Its_Interval()
         {
-            var field = Create("1,0,ranged,S1,g,0\n");
+            var field = Create("0,ranged,S1,g,0\n");
             var archer = Place(field, "archer", 1, 1);
 
             field.Advance(120);
@@ -107,7 +107,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Unit_Out_Of_Range_Is_Not_Attacked()
         {
-            var field = Create("1,0,ranged,S1,g,0\n");
+            var field = Create("0,ranged,S1,g,0\n");
             var archer = Place(field, "archer", 3, 1);
 
             field.Advance(60);
@@ -118,7 +118,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Ranged_Enemy_Targets_The_Nearest_Unit()
         {
-            var field = Create("1,0,ranged,S1,g,0\n");
+            var field = Create("0,ranged,S1,g,0\n");
             var archer = Place(field, "archer", 1, 1);
             var tank = Place(field, "tank", 1, 0);
 
@@ -131,7 +131,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("plan 5章: 遠距離雑魚は移動しながら攻撃する")]
         public void Ranged_Enemy_Keeps_Moving_While_Attacking()
         {
-            var field = Create("1,0,ranged,S1,g,0\n");
+            var field = Create("0,ranged,S1,g,0\n");
             Place(field, "archer", 1, 1);
 
             field.Advance(60);
@@ -143,7 +143,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("近距離雑魚はブロックした味方だけを攻撃する")]
         public void Melee_Enemy_Does_Not_Attack_Units_It_Passes()
         {
-            var field = Create("1,0,melee,S1,g,0\n");
+            var field = Create("0,melee,S1,g,0\n");
             var tank = Place(field, "tank", 1, 1);
 
             field.Advance(150);
@@ -154,7 +154,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Air_Enemy_Attacks_Units_In_Range()
         {
-            var field = Create("1,0,air,S2,a,0\n");
+            var field = Create("0,air,S2,a,0\n");
             var archer = Place(field, "archer", 1, 1);
 
             field.Advance(1);
@@ -166,7 +166,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("FR-027: ブロックされた地上の敵は味方のマスの手前の境界で止まる")]
         public void Blocked_Ground_Enemy_Stops_At_The_Edge_Of_The_Unit_Cell()
         {
-            var field = Create("1,0,melee,S1,g,0\n");
+            var field = Create("0,melee,S1,g,0\n");
             Place(field, "tank", 2, 0);
 
             field.Advance(240);
@@ -178,7 +178,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("plan 5章: 遠距離雑魚はブロックされると停止する")]
         public void Blocked_Ranged_Enemy_Stops()
         {
-            var field = Create("1,0,ranged,S1,g,0\n");
+            var field = Create("0,ranged,S1,g,0\n");
             Place(field, "tank", 1, 0);
 
             field.Advance(180);
@@ -190,7 +190,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("AC-021: タンクはブロック数3まで止め、4体目は通す")]
         public void Unit_Blocks_No_More_Enemies_Than_Its_Block_Count()
         {
-            var field = Create("1,0,melee,S1,g,0\n1,0.5,melee,S1,g,0\n1,1,melee,S1,g,0\n1,1.5,melee,S1,g,0\n");
+            var field = Create("0,melee,S1,g,0\n0.5,melee,S1,g,0\n1,melee,S1,g,0\n1.5,melee,S1,g,0\n");
             Place(field, "tank", 2, 0);
 
             field.Advance(300);
@@ -202,7 +202,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("FR-027: ブロック消費2の敵はブロック数を2使う")]
         public void Heavy_Enemy_Uses_Two_Of_The_Block_Count()
         {
-            var field = Create("1,0,heavy,S1,g,0\n1,0.5,melee,S1,g,0\n1,1,melee,S1,g,0\n");
+            var field = Create("0,heavy,S1,g,0\n0.5,melee,S1,g,0\n1,melee,S1,g,0\n");
             Place(field, "tank", 2, 0);
 
             field.Advance(300);
@@ -214,7 +214,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("FR-027: 空きが消費に足りない敵は通し、後から来た足りる敵は止める")]
         public void Enemy_Costing_More_Than_The_Free_Block_Passes()
         {
-            var field = Create("1,0,heavy,S1,g,0\n1,0.5,melee,S1,g,0\n");
+            var field = Create("0,heavy,S1,g,0\n0.5,melee,S1,g,0\n");
             Place(field, "sword", 2, 0);
 
             field.Advance(240);
@@ -226,7 +226,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("FR-031: 空中の敵はブロックされない")]
         public void Air_Enemy_Is_Not_Blocked()
         {
-            var field = Create("1,0,air,S2,a,0\n");
+            var field = Create("0,air,S2,a,0\n");
             Place(field, "tank", 2, 0);
 
             field.Advance(150);
@@ -238,7 +238,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("plan 5章: 近距離雑魚はブロックされると、ブロックした味方を攻撃する")]
         public void Blocked_Melee_Enemy_Attacks_The_Blocking_Unit()
         {
-            var field = Create("1,0,melee,S1,g,0\n");
+            var field = Create("0,melee,S1,g,0\n");
             var sword = Place(field, "sword", 1, 0);
 
             field.Advance(31);
@@ -249,7 +249,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Blocked_Melee_Enemy_Attacks_Again_After_Its_Interval()
         {
-            var field = Create("1,0,melee,S1,g,0\n");
+            var field = Create("0,melee,S1,g,0\n");
             var sword = Place(field, "sword", 1, 0);
 
             field.Advance(125);
@@ -260,7 +260,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Test]
         public void Enemy_Already_Inside_A_Newly_Placed_Unit_Cell_Is_Blocked()
         {
-            var field = Create("1,0,melee,S1,g,0\n");
+            var field = Create("0,melee,S1,g,0\n");
             field.Advance(60);
             Place(field, "tank", 1, 0);
 
@@ -273,7 +273,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         [Description("FR-025: 撤退した味方がブロックしていた敵は再び進む")]
         public void Enemy_Blocked_By_A_Retreated_Unit_Moves_On()
         {
-            var field = Create("1,0,melee,S1,g,0\n");
+            var field = Create("0,melee,S1,g,0\n");
             var tank = Place(field, "tank", 2, 0);
             field.Advance(240);
 

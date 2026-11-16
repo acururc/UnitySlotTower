@@ -436,7 +436,7 @@ namespace UnitySlotTower.Editor.Setup
                 new Vector2((left + 340f) / width, iconTop));
         }
 
-        // 帯: ライフ・所持金・ウェーブ（左）、倍率（中、BuildRates）、▶・撤退・一時停止（右）。
+        // 帯: ライフ・所持金（左）、倍率（中、BuildRates）、撤退・一時停止（右）。▶ とウェーブは T361 で廃止。
         private static void BuildStatusBand(RectTransform bar)
         {
             var status = Child(bar, "Status");
@@ -446,13 +446,6 @@ namespace UnitySlotTower.Editor.Setup
             NamedIcon(Child(status, "Life Icon"), Child(status, "Life"), "life", 0.012f, 0.13f, bandHeight);
             NamedIcon(Child(status, "Coin Icon"), Child(status, "Coins"), "money", 0.142f, 0.27f, bandHeight);
 
-            var wave = Child(status, "Wave");
-            SetRect(wave, new Vector2(0.28f, ValueBottom), new Vector2(0.40f, ValueTop));
-            SetLabel(Child(wave, "Text Label bar_wave"), new Vector2(0f, 1f), Vector2.one,
-                new Vector2(0f, (NameBottom - ValueTop) * bandHeight), new Vector2(0f, (NameTop - ValueTop) * bandHeight), BandFont);
-
-            BandButton(Child(status, "Start Button"), "bar_start", 0.63f, 0.74f);
-            SetRect(Child(Child(status, "Start Button"), "Play"), new Vector2(0.38f, 0.46f), new Vector2(0.62f, 0.92f));
             var retreat = Child(status, "Retreat Button");
             BandButton(retreat, "bar_retreat", 0.75f, 0.86f);
             SetRect(Child(retreat, "Stroke 1"), new Vector2(0.45f, 0.44f), new Vector2(0.55f, 0.94f));

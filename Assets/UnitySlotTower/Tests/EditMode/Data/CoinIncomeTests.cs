@@ -19,7 +19,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         private static double ExpectedCoins(EnemyDefinition enemy) =>
             enemy.CoinRate * (enemy.CoinMin + enemy.CoinMax) / 2.0;
 
-        /// <summary>その戦闘の全ウェーブの敵をすべて倒し、報酬まで受け取ったときのコインの期待値。</summary>
+        /// <summary>その戦闘の敵をすべて倒し、報酬まで受け取ったときのコインの期待値。</summary>
         private static double ExpectedCoinsPerEncounter(IReadOnlyDictionary<string, string> files, Encounter encounter)
         {
             var enemies = EnemyTable.Load(Parse(files, EnemyTable.FileName));
@@ -28,12 +28,9 @@ namespace UnitySlotTower.Tests.EditMode.Data
             var waves = Parse(files, WaveSchedule.FileName);
 
             double total = encounter.RewardCoins;
-            for (var wave = 1; wave <= WaveSchedule.WavesPerEncounter; wave++)
+            foreach (var spawn in WaveSchedule.Load(waves, encounter.Id, map, enemies).Spawns)
             {
-                foreach (var spawn in WaveSchedule.Load(waves, encounter.Id, wave, map, enemies).Spawns)
-                {
-                    total += ExpectedCoins(spawn.Enemy);
-                }
+                total += ExpectedCoins(spawn.Enemy);
             }
 
             return total;

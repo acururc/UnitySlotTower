@@ -14,7 +14,7 @@ namespace UnitySlotTower.Core.Battle
             IsBoss = isBoss;
         }
 
-        /// <summary>そのウェーブの戦闘開始からの秒数。</summary>
+        /// <summary>戦闘開始（開始の演出の後）からの秒数。</summary>
         public double Time { get; }
 
         public EnemyDefinition Enemy { get; }
@@ -23,29 +23,21 @@ namespace UnitySlotTower.Core.Battle
     }
 
     /// <summary>
-    /// 1 ウェーブ分の出現予定（FR-010、plan 16.6）。戦闘マス（encounters.csv の id）ごとに <see cref="WavesPerEncounter"/> ウェーブで、
-    /// 同じマップで続けて戦う。
+    /// 1つの戦闘マス（encounters.csv の id）の出現予定（FR-010、plan 17.2）。戦闘マスは1ウェーブで終わる（D-78）。
     /// </summary>
     public sealed class WaveSchedule
     {
         public const string FileName = "waves.csv";
 
-        /// <summary>1つの戦闘マスのウェーブ数。</summary>
-        public const int WavesPerEncounter = 2;
-
         private readonly List<WaveSpawn> _spawns = new List<WaveSpawn>();
 
-        private WaveSchedule(string encounterId, int wave)
+        private WaveSchedule(string encounterId)
         {
             EncounterId = encounterId;
-            Wave = wave;
         }
 
         /// <summary>encounters.csv の id。</summary>
         public string EncounterId { get; }
-
-        /// <summary>戦闘マス内のウェーブ番号（1 から）。</summary>
-        public int Wave { get; }
 
         /// <summary>出現時刻の早い順（同時刻は CSV の行順）。</summary>
         public IReadOnlyList<WaveSpawn> Spawns => _spawns;
@@ -54,12 +46,12 @@ namespace UnitySlotTower.Core.Battle
         /// 不正な行（未知の敵・マップにない経路・出現口の食い違い・空中フラグの食い違い）は
         /// ファイル名・行・列つきの <see cref="CsvFormatException"/> にする。
         /// </summary>
-        public static WaveSchedule Load(CsvTable table, string encounterId, int wave, BattleMap map, EnemyTable enemies)
+        public static WaveSchedule Load(CsvTable table, string encounterId, BattleMap map, EnemyTable enemies)
         {
-            var schedule = new WaveSchedule(encounterId, wave);
+            var schedule = new WaveSchedule(encounterId);
             foreach (var row in table.Rows)
             {
-                if (row.Get("encounter_id") != encounterId || row.GetInt("wave") != wave)
+                if (row.Get("encounter_id") != encounterId)
                 {
                     continue;
                 }
