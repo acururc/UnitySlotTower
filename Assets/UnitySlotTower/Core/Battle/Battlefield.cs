@@ -92,6 +92,9 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>ゴールに着いた敵の数。</summary>
         public int ArrivedCount { get; private set; }
 
+        /// <summary>残りの敵の数（FR-009）: まだ出ていない出現予定とフィールドにいる敵の合計。撃破でもゴールでも1減る。</summary>
+        public int RemainingEnemies => _wave.Spawns.Count - _nextSpawn + _enemies.Count;
+
         /// <summary>出現予定の敵がすべて出て、フィールドに敵が残っていない（ゲームオーバーでない）。</summary>
         public bool IsCleared => !IsGameOver && _nextSpawn >= _wave.Spawns.Count && _enemies.Count == 0;
 

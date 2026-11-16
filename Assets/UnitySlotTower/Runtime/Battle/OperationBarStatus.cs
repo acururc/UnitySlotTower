@@ -8,8 +8,8 @@ using UnitySlotTower.Core.Ui;
 namespace UnitySlotTower.Battle
 {
     /// <summary>
-    /// 操作バーの状態表示とボタン（T308・T349、plan 16.8・17.2）: ライフ・所持金、
-    /// 撤退（味方を選んでいるときだけ出す）・一時停止（一時停止中は色を変える）、
+    /// 操作バーの状態表示とボタン（T308・T349・T365、plan 16.8・17.2・17.5）: ライフ・所持金・残りの敵の数、
+    /// 撤退（味方を選んでいるときだけ出す）・一時停止（一時停止中は色を変える）・倍速（×1・×2・×3）、
     /// この戦闘のバーの攻撃力倍率とコインの所持金倍率（×1.2 など。倍率なしのときは薄く ×1.0）。
     /// </summary>
     public sealed class OperationBarStatus : MonoBehaviour
@@ -30,6 +30,11 @@ namespace UnitySlotTower.Battle
         [SerializeField] private CanvasGroup moneyRateGroup;
         [SerializeField] private TMP_Text moneyRateText;
         [SerializeField, Range(0f, 1f)] private float inactiveRateAlpha = 0.3f;
+        [Tooltip("残りの敵の数（FR-009）。")]
+        [SerializeField] private TMP_Text remainingText;
+        [Tooltip("倍速のボタン（FR-011）と倍率の数字（×2）。")]
+        [SerializeField] private Button speedButton;
+        [SerializeField] private TMP_Text speedText;
 
         private Color _pauseNormalColor;
         private int _shownLife = -1;
@@ -37,6 +42,8 @@ namespace UnitySlotTower.Battle
         private bool _shownPaused;
         private int _shownAttackRate = -1;
         private int _shownMoneyRate = -1;
+        private int _shownRemaining = -1;
+        private int _shownSpeed = -1;
 
         private void Awake()
         {
@@ -47,12 +54,14 @@ namespace UnitySlotTower.Battle
         {
             retreatButton.onClick.AddListener(placementInput.RetreatSelected);
             pauseButton.onClick.AddListener(battle.TogglePause);
+            speedButton.onClick.AddListener(battle.CycleBattleSpeed);
         }
 
         private void OnDisable()
         {
             retreatButton.onClick.RemoveListener(placementInput.RetreatSelected);
             pauseButton.onClick.RemoveListener(battle.TogglePause);
+            speedButton.onClick.RemoveListener(battle.CycleBattleSpeed);
         }
 
         private void LateUpdate()
@@ -65,6 +74,8 @@ namespace UnitySlotTower.Battle
 
             SetNumber(lifeText, run.Field.Life, ref _shownLife);
             SetNumber(moneyText, run.Wallet.Coins, ref _shownMoney, NumericText.YenFormat);
+            SetNumber(remainingText, run.RemainingEnemies, ref _shownRemaining);
+            SetNumber(speedText, battle.BattleSpeed, ref _shownSpeed, "×{0}");
             var boosts = run.Field.Boosts;
             SetRate(attackRateGroup, attackRateText, boosts?.AttackRate ?? 1d, ref _shownAttackRate);
             SetRate(moneyRateGroup, moneyRateText, boosts?.MoneyRate ?? 1d, ref _shownMoneyRate);

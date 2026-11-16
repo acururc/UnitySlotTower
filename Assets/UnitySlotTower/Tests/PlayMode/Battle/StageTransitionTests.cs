@@ -99,6 +99,34 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                 Is.EqualTo((WavePhase.Fighting, false, false, false)), "開始の演出の後に戦闘が始まらないか、演出が消えない");
         }
 
+        [UnityTest]
+        [Description("AC-015, D-84: 選んだ速さは次の戦闘マスに引き継ぎ、戦闘の外（ルート・開始の演出）では 1倍")]
+        public IEnumerator Battle_Speed_Carries_Over_To_The_Next_Node()
+        {
+            yield return RouteTestUtil.WaitForIntro(_battle);
+            _battle.CycleBattleSpeed();
+            _battle.CycleBattleSpeed();
+            yield return null;
+            Assert.That((_battle.BattleSpeed, Time.timeScale), Is.EqualTo((3, 3f)), "3倍にならない");
+
+            // 敵が歩き切るまで速める。マスを終えると BattleController が 1 に戻す。
+            Time.timeScale = 20f;
+            var limit = Time.realtimeSinceStartup + 30f;
+            while (_battle.Floor == 1 && _battle.Run.Phase != WavePhase.GameOver &&
+                   Time.realtimeSinceStartup < limit)
+            {
+                RouteTestUtil.Step();
+                yield return null;
+            }
+
+            var outside = Time.timeScale;
+            yield return RouteTestUtil.WaitForIntro(_battle);
+            yield return null;
+
+            Assert.That((outside, _battle.Run.Phase, _battle.BattleSpeed, Time.timeScale),
+                Is.EqualTo((1f, WavePhase.Fighting, 3, 3f)));
+        }
+
         private int TileRoots()
         {
             var count = 0;

@@ -6,7 +6,7 @@ using UnitySlotTower.Core.Battle;
 namespace UnitySlotTower.Battle
 {
     /// <summary>
-    /// 味方と敵のグレーボックス表示（T209、plan 11章）。味方は種類ごとの色と形・向きの印・攻撃範囲、
+    /// 味方と敵のグレーボックス表示（T209、plan 11章）。味方は種類ごとの色と形・向きの印（攻撃範囲は選んだ味方だけ UnitPlacementView が出す: D-82）、
     /// 敵は種類ごとの形（近距離は箱、遠距離は円柱、空中は浮いた球と地面の影。ブロック消費が大きいほど大きい）、
     /// どちらにもカメラを向く HP ゲージを付ける。M5 で素材に差し替える。
     /// </summary>
@@ -41,8 +41,6 @@ namespace UnitySlotTower.Battle
         };
         [SerializeField] private Color unknownUnitColor = new Color(0.8f, 0.8f, 0.8f);
         [SerializeField] private Color noseColor = new Color(0.15f, 0.15f, 0.18f);
-        [Tooltip("攻撃範囲の印の明るさ（味方の色にかける）。")]
-        [SerializeField, Range(0f, 1f)] private float rangeBrightness = 0.8f;
 
         [Header("Enemies")]
         [SerializeField] private Color meleeEnemyColor = new Color(0.55f, 0.12f, 0.15f);
@@ -70,18 +68,13 @@ namespace UnitySlotTower.Battle
         private readonly Dictionary<BattleEnemy, Actor> _enemies = new Dictionary<BattleEnemy, Actor>();
         private readonly List<BattleUnit> _goneUnits = new List<BattleUnit>();
         private readonly List<BattleEnemy> _goneEnemies = new List<BattleEnemy>();
-        private readonly Dictionary<GridPoint, Color> _rangeCells = new Dictionary<GridPoint, Color>();
-        private readonly List<Transform> _rangeMarkers = new List<Transform>();
         private MaterialPropertyBlock _block;
         private Transform _unitRoot;
         private Transform _enemyRoot;
-        private Transform _rangeRoot;
-        private bool _rangesDirty;
 
         private void Awake()
         {
             _block = new MaterialPropertyBlock();
-            _rangeRoot = CreateGroup("Unit Ranges");
             _unitRoot = CreateGroup("Units");
             _enemyRoot = CreateGroup("Enemies");
         }
@@ -97,11 +90,6 @@ namespace UnitySlotTower.Battle
             var frame = Time.frameCount;
             SyncUnits(field.Units, frame);
             SyncEnemies(field.Enemies, frame);
-            if (_rangesDirty)
-            {
-                _rangesDirty = false;
-                RebuildRanges();
-            }
         }
 
         private void SyncUnits(IReadOnlyList<BattleUnit> units, int frame)
@@ -118,7 +106,6 @@ namespace UnitySlotTower.Battle
                 {
                     actor = CreateUnit(unit);
                     _units.Add(unit, actor);
-                    _rangesDirty = true;
                 }
 
                 actor.Seen = frame;
@@ -138,7 +125,6 @@ namespace UnitySlotTower.Battle
             {
                 Destroy(_units[unit].Root.gameObject);
                 _units.Remove(unit);
-                _rangesDirty = true;
             }
         }
 
@@ -278,52 +264,6 @@ namespace UnitySlotTower.Battle
             var width = gaugeSize.x * ratio;
             actor.Fill.localScale = new Vector3(width, gaugeSize.y, 1f);
             actor.Fill.localPosition = new Vector3((width - gaugeSize.x) * 0.5f, 0f, -0.01f);
-        }
-
-        /// <summary>配置中の味方の攻撃範囲のマスに印を置く。重なるマスは後から置いた味方の色にする。</summary>
-        private void RebuildRanges()
-        {
-            _rangeCells.Clear();
-            var units = battle.Field.Units;
-            for (var i = 0; i < units.Count; i++)
-            {
-                if (!_units.ContainsKey(units[i]))
-                {
-                    continue;
-                }
-
-                var color = LookOf(units[i].Definition.Id).color * rangeBrightness;
-                color.a = 1f;
-                foreach (var cell in units[i].RangeCells)
-                {
-                    if (fieldView.Map.Contains(cell))
-                    {
-                        _rangeCells[cell] = color;
-                    }
-                }
-            }
-
-            var count = 0;
-            foreach (var pair in _rangeCells)
-            {
-                if (count == _rangeMarkers.Count)
-                {
-                    var created = CreatePrimitive(PrimitiveType.Cube, "Range", _rangeRoot, Color.white);
-                    // 経路の線（上面 +0.03）より低く、マスの色が周りに見える大きさにする。
-                    created.localScale = new Vector3(0.5f, 0.01f, 0.5f);
-                    _rangeMarkers.Add(created);
-                }
-
-                var marker = _rangeMarkers[count++];
-                marker.position = fieldView.CellTopToWorld(pair.Key) + Vector3.up * 0.01f;
-                SetColor(marker.GetComponent<Renderer>(), pair.Value);
-                marker.gameObject.SetActive(true);
-            }
-
-            for (var i = count; i < _rangeMarkers.Count; i++)
-            {
-                _rangeMarkers[i].gameObject.SetActive(false);
-            }
         }
 
         private UnitLook LookOf(string id)

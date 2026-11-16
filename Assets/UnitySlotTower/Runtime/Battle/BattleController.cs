@@ -40,6 +40,7 @@ namespace UnitySlotTower.Battle
         private IRandom _random;
         private bool _completionReported;
         private bool _slotLocked;
+        private float _appliedTimeScale = 1f;
 
         /// <summary><see cref="Initialize"/> で読んだゲーム設定（RunState を作るのに使う）。</summary>
         public GameConfig Config { get; private set; }
@@ -139,16 +140,49 @@ namespace UnitySlotTower.Battle
             }
 
             IsPaused = paused;
-            Time.timeScale = paused ? 0f : 1f;
             if (_clock != null)
             {
                 _clock.IsPaused = paused;
             }
 
+            ApplyTimeScale();
             UpdateSlotLock();
         }
 
         public void TogglePause() => SetPaused(!IsPaused);
+
+        /// <summary>倍速の最大（D-84: 1・2・3倍）。</summary>
+        public const int MaxBattleSpeed = 3;
+
+        /// <summary>
+        /// 戦闘の速さ（FR-011、D-84）。1 から <see cref="MaxBattleSpeed"/>。Game シーン（ゲーム1回分）の間は戦闘マスをまたいで引き継ぎ、
+        /// 新しいゲーム（シーンの読み込み）で 1 に戻る。
+        /// </summary>
+        public int BattleSpeed { get; private set; } = 1;
+
+        /// <summary>倍速のボタン: 1→2→3→1倍と変える。一時停止中・ゲーム終了後は受け付けない。</summary>
+        public void CycleBattleSpeed()
+        {
+            if (IsPaused || IsFinished)
+            {
+                return;
+            }
+
+            BattleSpeed = BattleSpeed % MaxBattleSpeed + 1;
+            ApplyTimeScale();
+        }
+
+        // Time.timeScale を書くのはここだけ（plan 17.5）。一時停止中は 0、戦闘中は倍率、それ以外（開始の演出・ルートなど）は 1。
+        // 決まる値が変わったときだけ書く（テストが早送りに使う timeScale を毎フレーム上書きしない）。
+        private void ApplyTimeScale()
+        {
+            var scale = IsPaused ? 0f : Run != null && Run.Phase == WavePhase.Fighting ? BattleSpeed : 1f;
+            if (scale != _appliedTimeScale)
+            {
+                _appliedTimeScale = scale;
+                Time.timeScale = scale;
+            }
+        }
 
         /// <summary>
         /// 文字なし説明（T403）を見せているあいだ true。戦闘の時間だけを止め、操作とスロット（Time.timeScale）は止めない。
@@ -192,8 +226,8 @@ namespace UnitySlotTower.Battle
 
         private void OnDestroy()
         {
-            // シーンを離れても時間が止まったままにならないようにする。
-            if (IsPaused)
+            // シーンを離れても時間が止まったまま・速いままにならないようにする。
+            if (_appliedTimeScale != 1f)
             {
                 Time.timeScale = 1f;
             }
@@ -251,6 +285,8 @@ namespace UnitySlotTower.Battle
             {
                 UpdateSlotLock();
             }
+
+            ApplyTimeScale();
         }
 
         private static CsvTable Parse(string fileName, TextAsset asset)

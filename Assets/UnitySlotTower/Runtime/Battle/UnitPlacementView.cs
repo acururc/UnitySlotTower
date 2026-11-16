@@ -6,7 +6,7 @@ namespace UnitySlotTower.Battle
 {
     /// <summary>
     /// 配置操作の仮表示（T208）: カーソル（置ければ緑・置けなければ赤）、向きの矢印と攻撃範囲の見本。
-    /// 撤退の対象に選んだ配置中の味方には枠を出す（T308）。配置済みの味方と敵は BattleActorsView（T209）が表示する。
+    /// 撤退の対象に選んだ配置中の味方には枠とその味方の攻撃範囲を出す（T308、D-82）。配置済みの味方と敵は BattleActorsView（T209）が表示する。
     /// </summary>
     public sealed class UnitPlacementView : MonoBehaviour
     {
@@ -51,8 +51,8 @@ namespace UnitySlotTower.Battle
                 return;
             }
 
-            ShowPlacement(deployment);
             var selected = placementInput.SelectedUnit;
+            ShowPlacement(deployment, selected);
             _selectedMarker.gameObject.SetActive(selected != null);
             if (selected != null)
             {
@@ -60,7 +60,7 @@ namespace UnitySlotTower.Battle
             }
         }
 
-        private void ShowPlacement(UnitDeployment deployment)
+        private void ShowPlacement(UnitDeployment deployment, BattleUnit selected)
         {
             var active = deployment.Phase != DeployPhase.Idle;
             _cursor.gameObject.SetActive(active);
@@ -89,6 +89,17 @@ namespace UnitySlotTower.Battle
                         {
                             RangeMarker(rangeCount++).position = fieldView.CellTopToWorld(cell) + Vector3.up * 0.02f;
                         }
+                    }
+                }
+            }
+            else if (selected != null)
+            {
+                // 配置した後の範囲は選んだ味方の分だけ出す（D-82）。
+                foreach (var cell in selected.RangeCells)
+                {
+                    if (fieldView.Map.Contains(cell))
+                    {
+                        RangeMarker(rangeCount++).position = fieldView.CellTopToWorld(cell) + Vector3.up * 0.02f;
                     }
                 }
             }

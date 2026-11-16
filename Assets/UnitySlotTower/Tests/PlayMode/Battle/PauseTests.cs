@@ -123,6 +123,78 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                 Is.EqualTo(((DeployPhase.Idle, false), true, false)));
         }
 
+        [UnityTest]
+        [Description("AC-015: 倍速のボタンで 1→2→3→1倍と変わり、Time.timeScale と数字（×2）も変わる")]
+        public IEnumerator Speed_Button_Cycles_One_Two_Three_One()
+        {
+            var shown = new List<(int, float, string)>();
+            for (var i = 0; i < 3; i++)
+            {
+                yield return PressSpeed();
+                shown.Add((_battle.BattleSpeed, Time.timeScale, SpeedText()));
+            }
+
+            Assert.That(shown, Is.EqualTo(new[] { (2, 2f, "×2"), (3, 3f, "×3"), (1, 1f, "×1") }));
+        }
+
+        [UnityTest]
+        [Description("AC-015: 2倍では戦闘の時間（敵の移動・召喚の待ち時間・スキルの時間はこの時計で進む）が実時間あたり約2倍進む")]
+        public IEnumerator Double_Speed_Advances_Battle_Time_Twice_As_Fast()
+        {
+            var tick = _battle.Field.Tick;
+            yield return new WaitForSecondsRealtime(1f);
+            var normal = _battle.Field.Tick - tick;
+            yield return PressSpeed();
+            tick = _battle.Field.Tick;
+            yield return new WaitForSecondsRealtime(1f);
+            var fast = _battle.Field.Tick - tick;
+
+            Assert.That((double)fast / normal, Is.InRange(1.6d, 2.4d), $"1倍 {normal}・2倍 {fast} ステップ");
+        }
+
+        [UnityTest]
+        [Description("AC-015: 3倍ではスロットのリールが止まるまでの時間も短くなる（自動停止は1倍で約1.8秒）")]
+        public IEnumerator Triple_Speed_Shortens_The_Reel_Spin()
+        {
+            yield return PressSpeed();
+            yield return PressSpeed();
+            var start = Time.realtimeSinceStartup;
+            yield return Tap(Key.Space);
+            Assert.That(_cabinet.IsSpinning, Is.True, "レバーで回らない");
+            while (_cabinet.IsSpinning && Time.realtimeSinceStartup - start < 5f)
+            {
+                yield return null;
+            }
+
+            Assert.That(Time.realtimeSinceStartup - start, Is.LessThan(1.2f));
+        }
+
+        [UnityTest]
+        [Description("AC-015, D-17: 一時停止中は時間が止まり倍速を変えられず、再開すると前の速さに戻る")]
+        public IEnumerator Resuming_From_Pause_Returns_To_The_Chosen_Speed()
+        {
+            yield return PressSpeed();
+            yield return PressSpeed();
+            yield return Tap(Key.P);
+            var paused = Time.timeScale;
+            yield return PressSpeed();
+            var speedWhilePaused = _battle.BattleSpeed;
+            yield return Tap(Key.P);
+
+            Assert.That((paused, speedWhilePaused, _battle.BattleSpeed, Time.timeScale), Is.EqualTo((0f, 3, 3, 3f)));
+        }
+
+        private IEnumerator PressSpeed()
+        {
+            Object.FindAnyObjectByType<OperationBarStatus>().transform.Find("Speed Button")
+                .GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
+            yield return null;
+        }
+
+        private static string SpeedText() =>
+            Object.FindAnyObjectByType<OperationBarStatus>().transform.Find("Speed Button/Speed")
+                .GetComponent<TMPro.TMP_Text>().text;
+
         private IEnumerator Tap(Key key)
         {
             InputSystem.QueueStateEvent(_keyboard, new KeyboardState(key));

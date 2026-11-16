@@ -215,6 +215,50 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
+        [Description("AC-025: 向きを選ぶ間は範囲が出て、置いた後は出ない。置いた味方をクリックするとその範囲だけが出て、もう一度押すと消える")]
+        public IEnumerator Range_Shows_Only_While_Facing_Or_For_The_Clicked_Unit()
+        {
+            yield return Tap(Key.Digit1);
+            var target = FirstPlaceableCell();
+            yield return MoveCursorTo(target);
+            yield return Tap(Key.Enter);
+            var whileFacing = ShownRangeCells();
+            yield return Tap(Key.Enter);
+            var placed = _battle.Field.Units[0];
+            var expected = 0;
+            foreach (var cell in placed.RangeCells)
+            {
+                expected += _fieldView.Map.Contains(cell) ? 1 : 0;
+            }
+
+            var afterPlacing = ShownRangeCells();
+            yield return MouseAt(CellScreen(target), false);
+            yield return MouseAt(CellScreen(target), true);
+            yield return MouseAt(CellScreen(target), false);
+            var selected = ShownRangeCells();
+            yield return MouseAt(CellScreen(target), true);
+            yield return MouseAt(CellScreen(target), false);
+
+            Assert.That((whileFacing > 0, afterPlacing, selected, ShownRangeCells(), _input.SelectedUnit),
+                Is.EqualTo((true, 0, expected, 0, (BattleUnit)null)));
+        }
+
+        // 盤面に出ている範囲の印の数（UnitPlacementView の「Range Preview」。BattleActorsView はもう範囲を出さない）。
+        private static int ShownRangeCells()
+        {
+            var count = 0;
+            foreach (var marker in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
+            {
+                if (marker.name == "Range Preview")
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        [UnityTest]
         [Description("FR-019, plan 17.2: 準備フェーズがないので操作バーに ▶ とウェーブ n/2 はない")]
         public IEnumerator Bar_Has_No_Start_Button_Or_Wave_Count()
         {

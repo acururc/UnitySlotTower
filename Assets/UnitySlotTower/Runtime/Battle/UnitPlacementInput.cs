@@ -298,11 +298,12 @@ namespace UnitySlotTower.Battle
                 SelectedUnit = null;
             }
 
-            // 配置操作中でないときにフィールドをクリックしたら、そのマスの味方を選ぶ（居なければ選びをやめる）。
+            // 配置操作中でないときにフィールドをクリックしたら、そのマスの味方を選ぶ（居ない所か、選んでいる味方をもう一度押したら選びをやめる。D-82）。
             if (_press.WasPressedThisFrame() && deployment.Phase == DeployPhase.Idle
                 && IsFieldPress(pointer))
             {
-                SelectedUnit = TryGetCell(pointer, out var clickedCell) ? UnitAt(clickedCell) : null;
+                var clicked = TryGetCell(pointer, out var clickedCell) ? UnitAt(clickedCell) : null;
+                SelectedUnit = clicked == SelectedUnit ? null : clicked;
             }
 
             // キーボードで動かしたカーソル・向きを、止まっているマウスが上書きしないよう、動いたときだけ追う。

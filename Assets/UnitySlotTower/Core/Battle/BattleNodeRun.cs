@@ -79,6 +79,11 @@ namespace UnitySlotTower.Core.Battle
         public UnitUpgrades Upgrades => State.Upgrades;
         public UnitStock Stock => State.Stock;
 
+        /// <summary>
+        /// 残りの敵の数（FR-009、AC-017）: まだ出ていない敵と、フィールドにいる（倒していない・ゴールしていない）敵の合計。
+        /// </summary>
+        public int RemainingEnemies => Field.RemainingEnemies;
+
         public BattleMap Map { get; }
         public Battlefield Field { get; }
         public UnitSummoner Summoner { get; }

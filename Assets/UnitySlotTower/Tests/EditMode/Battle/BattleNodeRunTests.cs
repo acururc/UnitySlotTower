@@ -645,5 +645,53 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
             Assert.That(run.TryActivateSkill(Skills.For(SlotSymbol.Yellow7)), Is.EqualTo(SkillResult.NotInBattle));
         }
+
+        // 0 秒に1体、5 秒に2体の fodder（計3体）。
+        private const string ThreeFodders = "e,0,fodder,S1,g,0\ne,5,fodder,S1,g,0\ne,5,fodder,S1,g,0\n";
+
+        [Test]
+        [Description("AC-017: 残りの敵の数はウェーブの敵の総数から始まる（まだ出ていない敵も数える）")]
+        public void Remaining_Enemies_Start_At_The_Wave_Total()
+        {
+            var run = Create(waveRows: ThreeFodders);
+
+            Assert.That(run.RemainingEnemies, Is.EqualTo(3));
+        }
+
+        [Test]
+        [Description("AC-017: 撃破で残りの敵の数が1減る")]
+        public void Defeating_An_Enemy_Reduces_The_Remaining_Count()
+        {
+            // 0 秒の fodder は約 0.5 秒で剣士に倒される。残りの2体は 5 秒まで出ない。
+            var run = Create(waveRows: ThreeFodders);
+            Place(run, "sword", 1, 0);
+
+            run.Advance(IntroSteps + 120);
+
+            Assert.That((run.Field.Enemies.Count, run.RemainingEnemies), Is.EqualTo((0, 2)));
+        }
+
+        [Test]
+        [Description("AC-017: ゴールでも残りの敵の数が1減る")]
+        public void An_Enemy_Reaching_The_Goal_Reduces_The_Remaining_Count()
+        {
+            // 0 秒の fodder は約 3 秒でゴールに着く。
+            var run = Create(waveRows: ThreeFodders, life: 10);
+
+            run.Advance(IntroSteps + 240);
+
+            Assert.That((_state.Life, run.RemainingEnemies), Is.EqualTo((9, 2)));
+        }
+
+        [Test]
+        [Description("AC-017: 戦闘マスを終えると残りの敵の数は 0")]
+        public void Remaining_Enemies_Reach_Zero_When_The_Node_Ends()
+        {
+            var run = Create(waveRows: ThreeFodders);
+
+            PlayNode(run);
+
+            Assert.That((run.Phase, run.RemainingEnemies), Is.EqualTo((WavePhase.Completed, 0)));
+        }
     }
 }
