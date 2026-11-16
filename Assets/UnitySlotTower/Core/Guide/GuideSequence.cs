@@ -33,8 +33,6 @@ namespace UnitySlotTower.Core.Guide
         Upgrade,
         SelectUnit,
         Retreat,
-        /// <summary>ルート選びでレバーを引く。</summary>
-        RouteLever,
         /// <summary>回っているリールのうち行き先のあるものを押す。</summary>
         RoutePick,
         /// <summary>足止め: 止めている味方と敵を指し、職ごとに止められる数を見せる（D-91）。押すと閉じる。</summary>
@@ -52,8 +50,6 @@ namespace UnitySlotTower.Core.Guide
         public bool OnScreen;
         /// <summary>ルート画面で行き先を選んでいる。</summary>
         public bool ChoosingRoute;
-        /// <summary>ルート選びのリールが回っている。</summary>
-        public bool RouteSpinning;
         /// <summary>戦闘マスの開始の演出中（plan 17.2）。説明は出さない。</summary>
         public bool Intro;
         /// <summary>このプレイで何番目の戦闘マスか（1 から）。</summary>
@@ -267,8 +263,7 @@ namespace UnitySlotTower.Core.Guide
                 case GuideTopic.Retreat:
                     return o.UnitSelected ? GuideHint.Retreat : GuideHint.SelectUnit;
                 case GuideTopic.Route:
-                    return !_routeNodesSeen ? GuideHint.RouteNodes
-                        : o.RouteSpinning ? GuideHint.RoutePick : GuideHint.RouteLever;
+                    return !_routeNodesSeen ? GuideHint.RouteNodes : GuideHint.RoutePick;
                 case GuideTopic.Block:
                     return GuideHint.Block;
                 default:

@@ -6,7 +6,7 @@ Unity project at repository root (created 2026-10-26). This is an index of confi
 | --- | --- |
 | Name | UnitySlotTower (folder, productName in `ProjectSettings/ProjectSettings.asset`); official title unconfirmed |
 | Repository | https://github.com/acururc/UnitySlotTower.git (`main`) |
-| Gameplay / targets | Portrait PC slot × tower-defense game (battle top 60%, slot cabinet bottom 40%; Slay the Spire-style route of 8 floors with 2-wave battle nodes, shop and rest; coins for the slot and money for units; difficulty = slot setting 1–6; mouse only, text-free UI with a hidden Japanese text mode). Requirements: `specs/001-slot-tower-defense/spec.md` (approved 2026-11-15), design `plan.md`, progress `tasks.md`; current state in `HANDOFF.md` |
+| Gameplay / targets | Portrait PC slot × tower-defense game (battle top 50%, unit bar and slot cabinet bottom 50%; Slay the Spire-style 3-column route of 8 floors chosen with the slot reels, single-wave battle nodes with enemy groups, shop and rest; coins (2 per spin) for the slot and yen for units; battle speed ×1–×3; difficulty = slot setting 1–6; mouse only, text-free UI with a hidden Japanese text mode). Requirements: `specs/001-slot-tower-defense/spec.md` (approved 2026-11-16 incl. D-77〜D-91), design `plan.md`, progress `tasks.md`; current state in `HANDOFF.md` |
 | Unity | 6000.6.7f1 — `ProjectSettings/ProjectVersion.txt`; created from the bundled `com.unity.template.urp-blank-17.2.6` template |
 | Rendering | URP 17.6.0 (3D) — package files; `Assets/Settings/PC_RPAsset.asset` / `Mobile_RPAsset.asset` |
 | Input | Input System 1.20.1, `activeInputHandler: 1` (new only); `Assets/InputSystem_Actions.inputactions` |

@@ -178,16 +178,14 @@ namespace UnitySlotTower.Flow
                 }
             }
 
-            var choosingRoute = runController != null && runController.IsChoosingRoute;
             return new GuideObservation
             {
                 Paused = battle.IsPaused,
                 Finished = battle.IsFinished,
                 // ルートの移動のアニメ中（D-90）も画面中として扱い、戦闘の題目を始めない。
                 OnScreen = runController != null && runController.OpenScreen != null || routeScreen != null && routeScreen.IsMoving,
-                ChoosingRoute = choosingRoute,
-                // ルート選びのリールは入った時点で自動で回る（D-90）ので、レバーは指さずに行き先のリールを指す。
-                RouteSpinning = choosingRoute,
+                // ルート選びのリールは入った時点で自動で回る（D-90）ので、説明はレバーを指さずに行き先のリールを指す。
+                ChoosingRoute = runController != null && runController.IsChoosingRoute,
                 Intro = run.Phase == WavePhase.Intro,
                 BattleNode = battle.NodeCount,
                 Deploy = run.Deployment.Phase,
@@ -270,7 +268,6 @@ namespace UnitySlotTower.Flow
                     break;
                 }
                 case GuideHint.Lever:
-                case GuideHint.RouteLever:
                     TapTarget(UiRect(slotCabinet.LeverRect), t, dimmed);
                     break;
                 case GuideHint.Spinning:

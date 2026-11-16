@@ -11,7 +11,7 @@ namespace UnitySlotTower.Core.Battle
     /// </summary>
     public sealed class Battlefield
     {
-        private WaveSchedule _wave;
+        private readonly WaveSchedule _wave;
         private readonly UnitRanges _ranges;
         private readonly IRandom _random;
         private readonly List<BattleEnemy> _enemies = new List<BattleEnemy>();
@@ -97,21 +97,6 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>出現予定の敵がすべて出て、フィールドに敵が残っていない（ゲームオーバーでない）。</summary>
         public bool IsCleared => !IsGameOver && _nextSpawn >= _wave.Spawns.Count && _enemies.Count == 0;
-
-        /// <summary>
-        /// 同じステージの次のウェーブに入る（FR-010）。味方とその HP・ライフ・撃破ドロップの合計はそのままで、出現予定と経過ステップだけを入れ替える。
-        /// </summary>
-        public void BeginWave(WaveSchedule wave)
-        {
-            if (!IsCleared)
-            {
-                throw new InvalidOperationException("いまのウェーブが終わっていない");
-            }
-
-            _wave = wave;
-            _nextSpawn = 0;
-            Tick = 0;
-        }
 
         /// <summary>配置できるマスかは呼び出し側（<see cref="UnitPlacement"/>、T208）で判定する。</summary>
         /// <param name="upgrade">その種類のいまの強化段階（FR-026）。null なら段階1。</param>

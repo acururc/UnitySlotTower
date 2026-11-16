@@ -141,7 +141,6 @@ namespace UnitySlotTower.Tests.EditMode.Guide
             var o = Ready();
             var guide = AfterSlot(ref o);
             o.ChoosingRoute = true;
-            o.RouteSpinning = true;
 
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RouteNodes), "まずマスの中身の絵");
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RouteNodes), "押すまで残る");
@@ -151,7 +150,6 @@ namespace UnitySlotTower.Tests.EditMode.Guide
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RoutePick));
 
             o.ChoosingRoute = false;
-            o.RouteSpinning = false;
             guide.Update(o);
             Assert.That(guide.IsDone(GuideTopic.Route), Is.True);
 
@@ -168,7 +166,6 @@ namespace UnitySlotTower.Tests.EditMode.Guide
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Upgrade));
 
             o.ChoosingRoute = true;
-            o.RouteSpinning = true;
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RouteNodes), "ルートの説明に切り替える");
             Assert.That(guide.IsDone(GuideTopic.Upgrade), Is.False);
         }
