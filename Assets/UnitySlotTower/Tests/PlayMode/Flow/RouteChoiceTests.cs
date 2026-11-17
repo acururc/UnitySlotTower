@@ -24,7 +24,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             "first,0,melee,S1,first_g1,0\nfirst,3,melee,S1,first_g1,0\n" +
             "battle_a,0,melee,S1,battle_a_g1,0\nbattle_a,3,melee,S1,battle_a_g1,0\n" +
             "battle_b,0,melee,S1,battle_b_g1,0\nbattle_b,3,melee,S1,battle_b_g1,0\n" +
-            "battle_c,0,melee,S1,battle_c_g1,0\nbattle_c,3,melee,S1,battle_c_g1,0\n" +
+            "battle_c,0,melee,S1,battle_c_g1,0\nbattle_d,0,melee,S1,battle_d_g1,0\nbattle_e,0,melee,S1,battle_e_g1,0\nbattle_c,3,melee,S1,battle_c_g1,0\nbattle_d,3,melee,S1,battle_d_g1,0\nbattle_e,3,melee,S1,battle_e_g1,0\n" +
             "elite_a,0,melee,S1,elite_a_g1,0\nelite_a,3,melee,S1,elite_a_g1,0\n" +
             "boss_a,0,melee,S1,boss_a_g1,0\nboss_a,3,melee,S1,boss_a_g1,0\n";
 

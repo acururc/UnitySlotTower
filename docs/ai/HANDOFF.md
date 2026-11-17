@@ -2,7 +2,8 @@
 
 ## 現在の作業
 
-更新: 2026-11-17 Asia/Tokyo / 状態: **M3W（spec D-92〜D-100、2026-11-17 承認 sha256 `63c282f45687`、plan 18章、tasks T380〜T399）実装中。T380・T381 完了。** 次は T382（2方向・本拠地2つのマップ、plan 18.3）。T383 は戦闘画面の UI の試作で、撮影をユーザーに見せて方向を確かめてから T384 以降に広げる。
+更新: 2026-11-18 Asia/Tokyo / 状態: **M3W（spec D-92〜D-100、2026-11-17 承認 sha256 `63c282f45687`、plan 18章、tasks T380〜T399）実装中。T380〜T382 完了。** 次は T383（戦闘画面の UI の試作）。T383 は戦闘画面の UI の試作で、撮影をユーザーに見せて方向を確かめてから T384 以降に広げる。
+- T382（Claude の仮置き、plan 18.3 に記録）: `battle_d`（2出口→1本拠地）・`battle_e`（2出口・2本拠地）。Core の変更なし（どの本拠地でも `LifeDamage` が同じライフから減る）。新マップの CSV は Game シーンの `BattleFieldView.mapTables` に登録が要る（メニュー `Tools/UnitySlotTower/Setup/Assign Stage Maps`、Game シーンを開いてから）。PlayMode の短い wavesTable の差し込みにも新マップの行を足してある。Codex の初版はマップが短すぎたので Claude が描き直した（委任時は既存マップと同程度の道の長さを指定する）。検証: EditMode 630/630、PlayMode 76 件で 75 成功＋撮影1件スキップ、ハーネス 8/8、画像 `Artifacts/Automation/Editor/t382/`。
 - T380: `BattleController.BeginNode` で `BattleSpeed = 1`。配置中は `BattleController.IsPlacing`（戦闘中かつ `UnitDeployment.Phase` が Idle 以外）で、`ApplyTimeScale` が「一時停止 0 → 配置中 `GameConfig.PlacementTimeScale`（`game_config.csv` の `placement_time_scale`、仮 0.1、検証器は 0.01〜1）→ 戦闘中は倍率 → 1」。plan 18.1 の「UnitPlacementView が知らせる」は Deployment の段階から読む形に書き換えた。テスト: `GameConfigTests.Placement_Time_Scale_Is_Read`・`TableValidationTests.Placement_Time_Scale_Outside_Zero_To_One_Fails`・`PauseTests` の AC-055 2件、`StageTransitionTests.Next_Node_Starts_At_Normal_Speed`（旧 Carries_Over を書き直し）。検証: EditMode 587/587、PlayMode 74 件で 73 成功＋撮影1件スキップ、ハーネス 8/8。
 - T381（Claude の仮置き、plan 18.2 に記録）: 弓 atk 240・間隔 0.9、強化倍率 1.05〜1.20。重装 `heavy` HP2200・def180・`ranged_damage_rate` 0.4、block_cost 2。`Damage.Calculate(atk, def, role, rate)` は遠距離職だけ倍率を掛ける。検証器は first に heavy があるとエラー。見た目は `BattleActorsView` が rate<1 の敵に盾を付ける（画像未確認）。均衡は `ArcherBalanceTests`（固定配置の弓2体）。検証: EditMode 622/622、PlayMode 74 件で 73 成功＋撮影1件スキップ、ハーネス 8/8。実装は Codex に委任（`codex exec -s workspace-write`、Unity 操作は Claude）。Codex は HANDOFF を丸ごと書き換えたので、委任時は HANDOFF・tasks を触らせない。
 - M3W の参考: ユーザーの観察メモ `Artifacts/sankou/ui-reference/Claude向け演出観察メモ.md`（アークナイツの動画の観察、画像あり、Git 外）と Claude の追加観察 `Claude追加観察.md`。元動画は `Artifacts/sankou/*.mp4`（コマの抜き出しは ffmpeg、フォントは `fontfile=C\\:/Windows/Fonts/arial.ttf` を明示）。
@@ -18,7 +19,7 @@
 - T355 の記録: [`playtest-t355.md`](../../specs/001-slot-tower-defense/playtest-t355.md)。T355 は完了扱い（設定6はユーザーが不要と判断）。文字あり版の確認は T375（文字なし版ではロゴ右下の隅の見えないボタンで切り替え）。
 - 承認の範囲: spec 全体（D-01〜D-91、FR-001〜FR-064、AC-001〜AC-051、D-77〜D-91 の Claude 提案を含む）。plan 17章の数値（円は約8倍、bet 2、両替 10、1戦闘12回以上、intro 2秒など）は Claude の仮置きで承認の対象外。T368 の 5:5 はユーザー決定。
 - T365 の Claude の仮置き: 残りの敵数（上の段の右、敵の顔）と倍速ボタン（下の段の左「×1」）の位置と絵、一時停止中は倍速を変えられない。倍速は `BattleController.BattleSpeed`（plan 17.5 を書き換え済み）。`Time.timeScale` は `BattleController.ApplyTimeScale` だけが書く。文字あり版のラベル（「残りの敵」「速さ」）は T370 で追加。
-- 次の一手: T382 から順に（plan 18.8 の順序）。Core の修正は `tdd`、終わるごとに `unity-verify`。
+- 次の一手: T383 から順に（plan 18.8 の順序）。Core の修正は `tdd`、終わるごとに `unity-verify`。
 - 対象: [`spec.md`](../../specs/001-slot-tower-defense/spec.md)、[`plan.md`](../../specs/001-slot-tower-defense/plan.md)、[`tasks.md`](../../specs/001-slot-tower-defense/tasks.md)。
 - T357 のカメラ 55° はユーザー確定（D-87 で寄せるのは距離・余白）。
 - ブランチ: `feature/001-t402-result`（main に直接コミットしない）。直下の未追跡ファイル（デザイナー制作依頼書 pptx・メモ txt・スクリーンショット png）と `ProjectSettings/URPProjectSettings.asset` の1行（Unity が自動で追加）はコミットしない。

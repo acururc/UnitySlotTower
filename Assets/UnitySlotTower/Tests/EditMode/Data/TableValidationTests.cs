@@ -13,6 +13,8 @@ namespace UnitySlotTower.Tests.EditMode.Data
         [TestCase("battle_a")]
         [TestCase("battle_b")]
         [TestCase("battle_c")]
+        [TestCase("battle_d")]
+        [TestCase("battle_e")]
         [TestCase("elite_a")]
         [TestCase("boss_a")]
         public void Later_Battles_Mix_Heavy_Into_Ground_Groups(string encounter)

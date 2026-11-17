@@ -12679,6 +12679,7 @@ MonoBehaviour:
   airEnemyColor: {r: 0.35, g: 0.2, b: 0.6, a: 1}
   shadowColor: {r: 0.1, g: 0.1, b: 0.12, a: 1}
   enemySize: 0.5
+  shieldColor: {r: 0.62, g: 0.66, b: 0.72, a: 1}
   gaugeSize: {x: 0.8, y: 0.1}
   gaugeBackColor: {r: 0.08, g: 0.08, b: 0.08, a: 1}
   unitGaugeColor: {r: 0.3, g: 0.9, b: 0.4, a: 1}
@@ -83577,6 +83578,8 @@ MonoBehaviour:
   - {fileID: 4900000, guid: 47b66a35c3c214c429544b5d1e4baa81, type: 3}
   - {fileID: 4900000, guid: c40bebfdb222bd34ebe51ea6ae1ceba6, type: 3}
   - {fileID: 4900000, guid: dbdc5ac54b67d7e40b2b42cd10d54831, type: 3}
+  - {fileID: 4900000, guid: ab2a5495d4f9c804fb77065ecef8fdef, type: 3}
+  - {fileID: 4900000, guid: dae4e821cc77fef41ba8b6f4d99c4a14, type: 3}
   - {fileID: 4900000, guid: 00ea076e2d545854fb4630d714adc2fc, type: 3}
   - {fileID: 4900000, guid: 44a9b43f958575b4781ec0b4f88ffd02, type: 3}
   - {fileID: 4900000, guid: 275be3b68aff56249903dbf84fd9b901, type: 3}

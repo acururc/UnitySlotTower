@@ -144,7 +144,8 @@ Core のタスク（T340〜T347）は `tdd` で red→green、完了条件は Ed
 - [x] T380 (FR-011, FR-074) 倍速を戦闘ごとに1倍、配置中のスロー（`placement_time_scale`、`ApplyTimeScale` の1か所） — 検証: PlayMode（AC-015 の書き直し、AC-055: 配置中・一時停止・やめる・倍速3）、EditMode（設定の読み込み）
 - [x] T381 (FR-075, FR-030) 重装（`ranged_damage_rate`、Core を TDD）と弓の弱体化、群れに重装を混ぜる、最初の戦闘には出さない（検証器） — 検証: EditMode（AC-056 のダメージ・検証器・弓2体と群れのシミュレーション・空中の群れ）
   - 2026-11-17: EditMode 587→622（全件成功、追加は ArcherBalanceTests・DamageTests・EnemyTableTests・TableValidationTests）、PlayMode 74 件で 73 成功＋撮影1件スキップ、ハーネス 8/8。重装の盾（`BattleActorsView`）の画像は未確認（T383 の撮影で見る）。
-- [ ] T382 (FR-076) 2方向のマップ `battle_d`・本拠地2つのマップ `battle_e`、どちらの本拠地でも同じライフが減る — 検証: EditMode（AC-057 のデータとライフ）、PlayMode `Camera_Fits_Every_Map`、新マップの Editor 画像
+- [x] T382 (FR-076) 2方向のマップ `battle_d`・本拠地2つのマップ `battle_e`、どちらの本拠地でも同じライフが減る — 検証: EditMode（AC-057 のデータとライフ）、PlayMode `Camera_Fits_Every_Map`、新マップの Editor 画像
+  - 2026-11-18: EditMode 622→630（全件成功、BattleMapTests・TableValidationTests に追加）、PlayMode 74→76 件で 75 成功＋撮影1件スキップ（`Camera_Fits_Every_Map` に2マップ追加）、ハーネス 8/8。画像 `Artifacts/Automation/Editor/t382/`（全出口・本拠地・道が画面内）。Game シーンの `mapTables` はメニュー `Assign Stage Maps` で登録。
 - [ ] T383 (FR-070, FR-071) 戦闘画面の UI の試作（共通の土台 `UiStyle`、上端の帯、隅のボタン、札の4状態、体力バー、スキルの印、空中の敵が隠れない）。両方の版の撮影をユーザーに見せて方向を確かめる — 検証: Editor 画像（ユーザー確認）
 - [ ] T384 (FR-070) 戦闘画面の UI の仕上げ（試作への指摘の反映、キャラの詳細の板と撤退・強化の移動）と壊れたテストの直し — 検証: EditMode・PlayMode 全件（件数の増減を記録）、Editor 画像
 - [ ] T385 (FR-072) 文字なし版の説明: ブロック数の盾、足止めのアニメ、スキルの絵と一時停止中のアニメ、キャラの詳細 — 検証: PlayMode（AC-053）、Editor 画像

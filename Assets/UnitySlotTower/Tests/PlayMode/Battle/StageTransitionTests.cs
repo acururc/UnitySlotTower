@@ -17,7 +17,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             "encounter_id,time,enemy_id,spawn,path_id,is_boss\n" +
             "first,0,melee,S1,first_g1,0\n" +
             "first,3,melee,S1,first_g1,0\n" +
-            "battle_a,0,melee,S1,battle_a_g1,0\nbattle_b,0,melee,S1,battle_b_g1,0\nbattle_c,0,melee,S1,battle_c_g1,0\n" +
+            "battle_a,0,melee,S1,battle_a_g1,0\nbattle_b,0,melee,S1,battle_b_g1,0\nbattle_c,0,melee,S1,battle_c_g1,0\nbattle_d,0,melee,S1,battle_d_g1,0\nbattle_e,0,melee,S1,battle_e_g1,0\n" +
             "elite_a,0,melee,S1,elite_a_g1,0\n";
 
         private bool _runInBackground;

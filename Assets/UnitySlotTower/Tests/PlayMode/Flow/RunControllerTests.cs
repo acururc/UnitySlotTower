@@ -22,10 +22,12 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             "battle_a,0,melee,S1,battle_a_g1,0\nbattle_a,3,melee,S1,battle_a_g1,0\n" +
             "battle_b,0,melee,S1,battle_b_g1,0\nbattle_b,3,melee,S1,battle_b_g1,0\n" +
             "battle_c,0,melee,S1,battle_c_g1,0\nbattle_c,3,melee,S1,battle_c_g1,0\n" +
+            "battle_d,0,melee,S1,battle_d_g1,0\nbattle_d,3,melee,S1,battle_d_g1,0\n" +
+            "battle_e,0,melee,S1,battle_e_g1,0\nbattle_e,3,melee,S1,battle_e_g1,0\n" +
             "elite_a,0,melee,S1,elite_a_g1,0\nelite_a,3,melee,S1,elite_a_g1,0\n" +
             "boss_a,0,melee,S1,boss_a_g1,0\nboss_a,3,melee,S1,boss_a_g1,0\n";
 
-        private static readonly string[] MapIds = { "first", "battle_a", "battle_b", "battle_c", "elite_a", "boss_a" };
+        private static readonly string[] MapIds = { "first", "battle_a", "battle_b", "battle_c", "battle_d", "battle_e", "elite_a", "boss_a" };
 
         private bool _runInBackground;
         private RunController _run;
