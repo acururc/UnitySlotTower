@@ -123,6 +123,66 @@ namespace UnitySlotTower.Editor.Automation
             Debug.Log($"[BattlePreview] card states coins={battle.Wallet.Coins} selected={battle.Field.Units[0].Definition.Id}");
         }
 
+        private static int _helpSlot;
+
+        /// <summary>
+        /// スキルの説明を撮る下ごしらえ（T385）。一時停止して、札の順に1つずつ（実行するたびに次の職）ゲージを押したときと同じ説明を開く。
+        /// </summary>
+        [MenuItem("Tools/UnitySlotTower/Automation/Stage Skill Help (T385)")]
+        private static void StageSkillHelp()
+        {
+            var battle = Object.FindAnyObjectByType<BattleController>();
+            if (!EditorApplication.isPlaying || battle == null || battle.Run == null)
+            {
+                Debug.LogError("[BattlePreview] Play 中の戦闘で実行する。");
+                return;
+            }
+
+            battle.SetPaused(true);
+            var slot = _helpSlot++ % 4;
+            var icon = GameObject.Find($"Unit Icon {slot + 1}")?.GetComponent<UnitBarIcon>();
+            typeof(UnitBarIcon).GetMethod("ActivateSkill", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                ?.Invoke(icon, null);
+            Debug.Log($"[BattlePreview] skill help slot={slot + 1} open={Object.FindAnyObjectByType<SkillHelpPanel>()?.IsOpen}");
+        }
+
+        /// <summary>向きを選んでいる所（ブロック数の印）を撮る下ごしらえ（T385）。一時停止を解き、最初の職を選んで置けるマスで向き選びにする。</summary>
+        [MenuItem("Tools/UnitySlotTower/Automation/Stage Facing Badge (T385)")]
+        private static void StageFacingBadge()
+        {
+            var battle = Object.FindAnyObjectByType<BattleController>();
+            if (!EditorApplication.isPlaying || battle == null || battle.Run == null)
+            {
+                Debug.LogError("[BattlePreview] Play 中の戦闘で実行する。");
+                return;
+            }
+
+            Object.FindAnyObjectByType<SkillHelpPanel>()?.Close();
+            battle.SetPaused(false);
+            battle.Summoner.Advance(100000);
+            battle.Wallet.Add(2000);
+            var map = battle.Run.Map;
+            if (battle.Deployment.Select(battle.Units.All[0].Id) != SummonResult.Summoned)
+            {
+                Debug.LogError("[BattlePreview] 最初の職を選べない。");
+                return;
+            }
+
+            for (var y = 0; y < map.Height; y++)
+            {
+                for (var x = 0; x < map.Width; x++)
+                {
+                    var cell = new GridPoint(x, y);
+                    if (battle.Deployment.CanPlace(cell))
+                    {
+                        battle.Deployment.SetCursor(cell);
+                        Debug.Log($"[BattlePreview] facing badge chosen={battle.Deployment.ChooseCell()} cell={x},{y}");
+                        return;
+                    }
+                }
+            }
+        }
+
         [MenuItem("Tools/UnitySlotTower/Automation/Toggle Text Mode (T383)")]
         private static void ToggleTextMode() => GameSession.SetTextMode(!GameSession.TextMode);
 

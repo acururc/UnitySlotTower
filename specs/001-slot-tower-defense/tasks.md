@@ -150,7 +150,8 @@ Core のタスク（T340〜T347）は `tdd` で red→green、完了条件は Ed
   - 2026-11-18（試作、ユーザー確認待ち）: 撮影 `Artifacts/Automation/Editor/t383/t383-d-notext.png`・`t383-d-text.png`（1440×1920）。EditMode 630→634（全件成功、PortraitLayoutTests に追加）、PlayMode 76 件で 75 成功＋失敗1（`TextModeTests.Every_Screen_Shows_Japanese_Text_Large_Inside_And_Apart`: 帯の名前が上端から約4 px はみ出し、名前と数字が 3〜9 px 重なる。T384 で直す）、ハーネス 8/8。未着手: 札の職の絵、置ける・無料ストックの状態の撮影、強化の移動（T384）。
 - [x] T384 (FR-070) 戦闘画面の UI の仕上げ（試作への指摘の反映、キャラの詳細の板と撤退・強化の移動）と壊れたテストの直し — 検証: EditMode・PlayMode 全件（件数の増減を記録）、Editor 画像
   - 2026-11-18: ユーザーが T383 の方向を承認（「この方向でOK」）。強化は札のまま（ユーザー回答「札だけ」）、撤退は選んだ味方の詳細の板へ（plan 18.4）。EditMode 634→635（全件成功、`UnitSummonerTests.Refund_Preview_Matches_Retreat_Without_Changing_Anything`）、PlayMode 76 件で 75 成功＋撮影1件スキップ（`TextModeTests` の読みやすさも成功。撤退ボタンを探す2テストを詳細の板に合わせて直し、板が出ることの確認を追加）、ハーネス 8/8。画像 `Artifacts/Automation/Editor/t384/t384f-notext.png`・`t384f-text.png`（札の4状態は `t384d-*`）。撮影の下ごしらえで札が全部暗く写る回があった（原因未特定、ゲームの不具合かは未確認）。
-- [ ] T385 (FR-072) 文字なし版の説明: ブロック数の盾、足止めのアニメ、スキルの絵と一時停止中のアニメ、キャラの詳細 — 検証: PlayMode（AC-053）、Editor 画像
+- [x] T385 (FR-072) 文字なし版の説明: ブロック数の盾、足止めのアニメ、スキルの絵と一時停止中のアニメ、キャラの詳細 — 検証: PlayMode（AC-053）、Editor 画像
+  - 2026-11-18（Claude の仮置き、plan 18.5 に記録）: EditMode 635/635、PlayMode 76→77 件で 76 成功＋撮影1件スキップ（`Block_Count_And_Skill_Art_Show_On_Cards_Facing_And_Detail` を追加、一時停止中のゲージのテストに説明が開いて閉じる確認を追加）、ハーネス 8/8。画像 `Artifacts/Automation/Editor/t385/`（`t385-detail.png` 札と詳細、`t385b-facing.png` 向き選び、`t385c-*` スキルの説明と足止めの道）。未確認: 文字あり版の撮影（読みやすさのテストは成功）、タンクの説明の「スキル中は全部止まる」瞬間の画像、ゲーム中の流れで出る足止めの説明（撮影はリフレクションで板を作った）。
 - [ ] T386 (FR-073) ルートの線の3種類と行けないマスを暗く — 検証: PlayMode（線の状態）、Editor 画像（AC-054）
 - [ ] T387 (FR-070) ほかの画面（タイトル・難易度・ルート・ショップ・回復・説明・リザルト）を同じ土台に — 検証: 全画面の撮影（両方の版）、PlayMode 全件
 - [ ] T388 (FR-077) 戦闘の演出: 開始、出口の印と出現の光、本拠地への到達、勝利の帯、攻撃の光の長さ — 検証: PlayMode（AC-058）、各演出の Editor 画像

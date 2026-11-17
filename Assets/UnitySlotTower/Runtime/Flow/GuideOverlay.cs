@@ -397,7 +397,7 @@ namespace UnitySlotTower.Flow
             _blocker.SetSiblingIndex(0);
 
             // 足止め: 操作バーの並びのうちバッファー以外の職（タンク・剣士・弓兵）。
-            var units = new System.Collections.Generic.List<(Image body, int block)>();
+            var units = new System.Collections.Generic.List<(RectTransform art, Color color, int block)>();
             TMPro.TMP_FontAsset font = null;
             var all = battle.Units.All;
             for (var slot = 0; slot < all.Count && slot < unitIcons.Length; slot++)
@@ -411,12 +411,12 @@ namespace UnitySlotTower.Flow
                 font = font != null ? font : icon.CooldownText.font;
                 if (all[slot].Role != UnitRole.Buff)
                 {
-                    units.Add((icon.Body, all[slot].Block));
+                    units.Add((icon.JobArt, icon.JobColor, all[slot].Block));
                 }
             }
 
             _blockPanel = GuidePictures.BlockPanel(root, units, font, box);
-            _blockPanel.sizeDelta = new Vector2(GuidePictures.BlockColumnWidth * units.Count, GuidePictures.BlockPanelHeight);
+            _blockPanel.sizeDelta = new Vector2(GuidePictures.BlockPanelWidth, GuidePictures.BlockRowHeight * units.Count);
             for (var i = 0; i < _blockArrows.Length; i++)
             {
                 _blockArrows[i] = GuidePictures.PointerArrow(root);

@@ -64,6 +64,8 @@ namespace UnitySlotTower.Editor.Setup
 
             // 撤退は選んだ味方の詳細の板へ（T384）。
             UnitDetailSetup.Build(root, (RectTransform)status.transform, bar, _font);
+            // 文字なし版の説明の部品（T385）。
+            SkillHelpSetup.Build(root, bar);
 
             RestyleActors();
             // UiPanel は CanvasRenderer がないと描かれない（RequireComponent を足す前に作ったものを補う）。
@@ -371,7 +373,8 @@ namespace UnitySlotTower.Editor.Setup
 
             if (gauge != null)
             {
-                Px(gauge, left + 306f, 20f, left + 337f, 218f);
+                // 上の 160〜218 px はスキルの絵（T385、SkillHelpSetup）。
+                Px(gauge, left + 306f, 20f, left + 337f, 156f);
             }
 
             var barIcon = icon.GetComponent<UnitBarIcon>();

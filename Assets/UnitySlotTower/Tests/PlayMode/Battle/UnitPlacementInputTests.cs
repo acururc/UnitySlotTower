@@ -332,23 +332,64 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        [Description("AC-011: 一時停止中は満タンのゲージをクリックしても発動しない")]
+        [Description("AC-011・AC-053: 一時停止中は満タンのゲージをクリックしても発動せず、そのスキルの説明が出て、一時停止を解くと閉じる")]
         public IEnumerator Clicking_A_Full_Skill_Gauge_While_Paused_Does_Nothing()
         {
             var tank = default(BattleUnit);
             yield return PlaceTank(placed => tank = placed);
             var color = FillGaugeOf("tank");
+            var help = Object.FindAnyObjectByType<SkillHelpPanel>();
+            var opened = (false, default(Core.Slot.SlotSymbol?));
             _battle.SetPaused(true);
             try
             {
                 yield return Click(GameObject.Find("Skill Gauge 1").transform);
+                opened = (help.IsOpen, help.Shown);
             }
             finally
             {
                 _battle.SetPaused(false);
             }
 
+            yield return null;
             Assert.That((_battle.Run.State.Gauges.IsFull(color), tank.SkillStepsLeft), Is.EqualTo((true, 0)));
+            Assert.That(opened, Is.EqualTo((true, (Core.Slot.SlotSymbol?)color)), "一時停止中に押すとそのスキルの説明が出る");
+            Assert.That(help.IsOpen, Is.False, "一時停止を解くと説明が閉じる");
+        }
+
+        [UnityTest]
+        [Description("AC-053: 札と向き選びと詳細の板にブロック数（止めない職は ×）、ゲージと詳細の板にスキルの絵が出る")]
+        public IEnumerator Block_Count_And_Skill_Art_Show_On_Cards_Facing_And_Detail()
+        {
+            var tankBlock = _battle.Units.Get("tank").Block.ToString();
+            Assert.That((Text(GameObject.Find("Card Frame 1").transform, "Block/Value"),
+                    Text(GameObject.Find("Card Frame 3").transform, "Block/Value")),
+                Is.EqualTo((tankBlock, "×")), "札のブロック数（弓は止めないので ×）");
+            for (var slot = 1; slot <= 4; slot++)
+            {
+                Assert.That(GameObject.Find($"Skill Gauge {slot}").transform.Find("Skill Art/Skill Art"), Is.Not.Null,
+                    $"ゲージ {slot} にスキルの絵がない");
+            }
+
+            var badge = Object.FindAnyObjectByType<PlacementBlockBadge>();
+            yield return Tap(Key.Digit1);
+            var target = FirstPlaceableCell();
+            yield return MoveCursorTo(target);
+            Assert.That(badge.IsShown, Is.False, "マスを選んでいる間は出さない");
+            yield return Tap(Key.Enter);
+            yield return null;
+            Assert.That((badge.IsShown, badge.Value), Is.EqualTo((true, tankBlock)), "向きを選ぶ間にブロック数が出る");
+            yield return Tap(Key.Enter);
+            yield return null;
+            Assert.That(badge.IsShown, Is.False, "置いたら消える");
+
+            yield return MouseAt(CellScreen(target), false);
+            yield return MouseAt(CellScreen(target), true);
+            yield return MouseAt(CellScreen(target), false);
+            yield return null;
+            var detail = Object.FindAnyObjectByType<UnitDetailPanel>();
+            Assert.That((detail.IsShown, detail.ShownSkillArt != null, Text(detail.transform, "Content/Block/Icon/Value")),
+                Is.EqualTo((true, true, tankBlock)), "配置済みの味方を押すと詳細にブロック数とスキルの絵が出る");
         }
 
         [UnityTest]

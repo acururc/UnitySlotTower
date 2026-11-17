@@ -436,8 +436,9 @@ namespace UnitySlotTower.Editor.Setup
             var card = Child(bar, $"Card Frame {slot + 1}");
             // 札の枠は 220 px（操作バーの 10〜230 px）。
             SetRect(Child(card, "Block"), new Vector2(158f / 347f, (160f - 10f) / 220f), new Vector2(262f / 347f, (218f - 10f) / 220f));
+            // ゲージの上はスキルの絵（T385）。
             SetRect(Child(bar, $"Skill Gauge {slot + 1}"), new Vector2((left + 310f) / width, 20f / barHeight),
-                new Vector2((left + 340f) / width, iconTop / barHeight));
+                new Vector2((left + 340f) / width, 156f / barHeight));
         }
 
         // 帯（T383、Top Band の子）: ライフ・残りの敵・所持金（左）、倍率（中、BuildRates）、撤退・倍速・一時停止（右）。名前は数字の上。

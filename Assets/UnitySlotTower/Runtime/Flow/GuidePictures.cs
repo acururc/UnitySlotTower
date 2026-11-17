@@ -24,33 +24,30 @@ namespace UnitySlotTower.Flow
         public static readonly string[] RouteKinds =
             { RouteNodeKinds.Battle, RouteNodeKinds.Elite, RouteNodeKinds.Shop, RouteNodeKinds.Rest, RouteNodeKinds.Boss };
 
-        public const float BlockColumnWidth = 190f;
-        public const float BlockPanelHeight = 300f;
+        public const float BlockPanelWidth = 760f;
+        public const float BlockRowHeight = 130f;
         public const float RouteRowHeight = 150f;
         public const float RoutePanelWidth = 720f;
 
-        /// <summary>職の絵と止められる数（0 は ×）を横に並べた板。</summary>
-        public static RectTransform BlockPanel(RectTransform parent, IReadOnlyList<(Image body, int block)> units, TMP_FontAsset font,
-            Sprite box)
+        /// <summary>職ごとの1本の道のアニメ（T385）: 止められる数だけ敵が止まり、残り1体が通り抜けて本拠地が赤く光る。左端に数（0 は ×）。</summary>
+        public static RectTransform BlockPanel(RectTransform parent, IReadOnlyList<(RectTransform art, Color color, int block)> units,
+            TMP_FontAsset font, Sprite box)
         {
             var panel = Panel("Block Panel", parent, box);
             for (var i = 0; i < units.Count; i++)
             {
-                var x0 = (float)i / units.Count;
-                var x1 = (float)(i + 1) / units.Count;
-                var column = RouteNodeIcons.CreateRect($"Unit {i + 1}", panel, new Vector2(x0, 0f), new Vector2(x1, 1f));
-                var source = units[i].body;
-                var body = RouteNodeIcons.CreateImage("Body", column, new Vector2(0.15f, 0.42f), new Vector2(0.85f, 0.92f),
-                    source.color, source.sprite);
-                body.preserveAspect = true;
-                body.type = Image.Type.Simple;
-
+                var y1 = 1f - (float)i / units.Count;
+                var y0 = 1f - (float)(i + 1) / units.Count;
+                var row = RouteNodeIcons.CreateRect($"Unit {i + 1}", panel, new Vector2(0.03f, y0 + 0.02f),
+                    new Vector2(0.97f, y1 - 0.08f));
+                DemoLane.Block(RouteNodeIcons.CreateRect("Lane", row, new Vector2(0.12f, 0f), Vector2.one), units[i].art,
+                    units[i].color, units[i].block);
                 var block = units[i].block;
-                var number = RouteNodeIcons.CreateRect("Block", column, new Vector2(0f, 0.04f), new Vector2(1f, 0.4f))
+                var number = RouteNodeIcons.CreateRect("Block", row, new Vector2(0f, 0.1f), new Vector2(0.1f, 0.9f))
                     .gameObject.AddComponent<TextMeshProUGUI>();
                 number.font = font;
                 number.text = block > 0 ? block.ToString() : "×";
-                number.fontSize = 72f;
+                number.fontSize = 60f;
                 number.enableAutoSizing = false;
                 number.alignment = TextAlignmentOptions.Center;
                 number.color = block > 0 ? Color.white : new Color(1f, 0.45f, 0.4f);

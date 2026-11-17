@@ -57,6 +57,10 @@ namespace UnitySlotTower.Battle
         [Tooltip("満タンのとき背景をこの色との間で点滅させる。")]
         [SerializeField] private Color fullGlowColor = new Color(1f, 0.95f, 0.55f);
         [SerializeField] private float glowSpeed = 6f;
+        [Tooltip("ゲージの上のスキルの効果の絵を置く矩形（T385）。絵は実行時に作る。")]
+        [SerializeField] private RectTransform skillArt;
+        [Tooltip("一時停止中にゲージを押すと出すスキルの説明（T385）。")]
+        [SerializeField] private SkillHelpPanel skillHelp;
 
         private Color _bodyColor;
         private Color _skillBackgroundColor;
@@ -142,13 +146,33 @@ namespace UnitySlotTower.Battle
         }
 
         // 拒否（満タンでない・配置0人・一時停止中）なら何も起きない（AC-023・AC-011）。
+        // 一時停止中はスキルの説明を出す（T385、AC-053。発動はしない）。
         private void ActivateSkill()
         {
-            if (_hasSkill)
+            if (!_hasSkill)
             {
-                battle.TryActivateSkill(_skillColor);
+                return;
             }
+
+            if (battle.IsPaused && skillHelp != null)
+            {
+                skillHelp.Open(_skillColor, battle.Units.All[slot].Id, JobArt, JobColor, gaugeColors[(int)_skillColor], Knob);
+                return;
+            }
+
+            battle.TryActivateSkill(_skillColor);
         }
+
+        /// <summary>札の職の絵（T384 の Job Art）。なければ null。</summary>
+        public RectTransform JobArt => body.transform.Find("Job Art") as RectTransform;
+
+        /// <summary>units.csv の並びで 0 始まりの位置。</summary>
+        public int Slot => slot;
+
+        /// <summary>札の職の色（暗くする前の本体の色）。</summary>
+        public Color JobColor => _bodyColor;
+
+        private Sprite Knob => gaugeDots != null && gaugeDots.Length > 0 ? gaugeDots[0].sprite : null;
 
         public void OnPointerDown(PointerEventData eventData)
         {
@@ -206,7 +230,7 @@ namespace UnitySlotTower.Battle
             if (blockText != null && unit.Block != _shownBlock)
             {
                 _shownBlock = unit.Block;
-                blockText.SetText("{0}", unit.Block);
+                BlockText.Show(blockText, unit.Block);
             }
 
             // 無料ストックがあれば待ち時間中でも出せる（D-79）。
@@ -275,6 +299,11 @@ namespace UnitySlotTower.Battle
                 {
                     skillButton.gameObject.SetActive(false);
                     return;
+                }
+
+                if (skillArt != null)
+                {
+                    SkillPictures.Create(skillArt, _skillColor, gaugeColors[(int)_skillColor], Knob);
                 }
             }
 
