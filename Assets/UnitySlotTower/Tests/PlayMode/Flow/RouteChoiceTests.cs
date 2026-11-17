@@ -84,6 +84,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That((_run.IsChoosingRoute, _screen.IsOpen, _cabinet.IsChoosingRoute, _battle.IsInputBlocked),
                 Is.EqualTo((true, true, true, true)), "戦闘マスの後にルート画面が開かない／戦闘の操作を止めない");
             Assert.That(_screen.NodeViewCount, Is.EqualTo(state.Route.All.Count), "マップに全マスが並ばない");
+            AssertRouteLooks(state, _run.Visited);
             // 入った時点でリールが回っている（FR-064）。
             yield return RouteTestUtil.WaitForRouteSpin(_cabinet);
             Assert.That(_cabinet.IsSpinning, Is.True, "ルート画面に入ってもリールが回っていない");
@@ -98,6 +99,53 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 {
                     Assert.That(_screen.IsHighlighted(next), Is.True, $"リール {reel} の行き先が光らない");
                 }
+            }
+        }
+
+        // T386 (FR-073, AC-054): 今のマスからの線だけが Next、通ってきた道は Path、ほかは Faint。今からたどれない上の階のマスは暗い。
+        private void AssertRouteLooks(RunState state, System.Collections.Generic.IReadOnlyList<RouteNode> visited)
+        {
+            var current = state.Current;
+            var reachable = new System.Collections.Generic.HashSet<RouteNode>();
+            var walk = new System.Collections.Generic.Stack<RouteNode>();
+            walk.Push(current);
+            while (walk.Count > 0)
+            {
+                foreach (var next in walk.Pop().Next)
+                {
+                    if (reachable.Add(next))
+                    {
+                        walk.Push(next);
+                    }
+                }
+            }
+
+            foreach (var node in state.Route.All)
+            {
+                foreach (var next in node.Next)
+                {
+                    var step = false;
+                    for (var i = 0; i + 1 < visited.Count; i++)
+                    {
+                        step |= visited[i] == node && visited[i + 1] == next;
+                    }
+
+                    var expected = node == current ? RouteScreen.LineLook.Next
+                        : step ? RouteScreen.LineLook.Path
+                        : RouteScreen.LineLook.Faint;
+                    Assert.That(_screen.LookOf(node, next), Is.EqualTo(expected),
+                        $"線 {node.Floor}-{node.Column}→{next.Floor}-{next.Column} の見た目が合わない");
+                }
+
+                var dark = node.Floor > current.Floor && !reachable.Contains(node);
+                Assert.That(_screen.IsUnreachable(node), Is.EqualTo(dark), $"マス {node.Floor}-{node.Column} の暗さが合わない");
+                var visitedMark = false;
+                for (var i = 0; i < visited.Count; i++)
+                {
+                    visitedMark |= node != current && visited[i] == node;
+                }
+
+                Assert.That(_screen.HasVisitedMark(node), Is.EqualTo(visitedMark), $"マス {node.Floor}-{node.Column} の通った印が合わない");
             }
         }
 
@@ -193,6 +241,23 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 Assert.That((_screen.IsOpen, _run.OpenScreen != null && _run.OpenScreen.Kind == target.Kind),
                     Is.EqualTo((false, true)), "戦闘以外のマスでその画面が開かない");
             }
+
+            // T386 (AC-054): 2階から見たルート。通ってきた線は Path、端の列からは反対の端の上の階に行けない。
+            _screen.Show(state, _run.Visited);
+            AssertRouteLooks(state, _run.Visited);
+            Assert.That(_screen.LookOf(current, target), Is.EqualTo(RouteScreen.LineLook.Path), "通ってきた線が細い線にならない");
+            if (target.Column != 1)
+            {
+                foreach (var far in state.Route.NodesOn(target.Floor + 1))
+                {
+                    if (far.Column == 2 - target.Column)
+                    {
+                        Assert.That(_screen.IsUnreachable(far), Is.True, "端の列から反対の端の上のマスが暗くならない");
+                    }
+                }
+            }
+
+            _screen.Hide();
         }
 
         [UnityTest]

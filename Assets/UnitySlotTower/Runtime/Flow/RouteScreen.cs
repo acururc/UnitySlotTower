@@ -50,6 +50,16 @@ namespace UnitySlotTower.Flow
         [SerializeField] private Color nextLineColor = Color.white;
         [SerializeField, Range(0f, 1f)] private float nodeFill = 0.6f;
         [SerializeField] private float lineWidth = 6f;
+        [Tooltip("今のマスから行ける線の太さ（lineWidth の倍率、FR-073）。")]
+        [SerializeField] private float nextLineWidthRate = 1.8f;
+        [Tooltip("通ってきた道の線の太さ（lineWidth の倍率、FR-073）。")]
+        [SerializeField] private float pathLineWidthRate = 0.6f;
+        [Tooltip("それ以外の線の不透明度（FR-073）。")]
+        [SerializeField, Range(0f, 1f)] private float faintLineAlpha = 0.15f;
+        [Tooltip("今から行けないマスの不透明度（FR-073）。")]
+        [SerializeField, Range(0f, 1f)] private float unreachableNodeAlpha = 0.22f;
+        [Tooltip("通ったマスの小さな印の大きさ（マスに対する割合）。")]
+        [SerializeField, Range(0f, 1f)] private float visitedMarkSize = 0.32f;
         [SerializeField, Range(0f, 1f)] private float emptyDotAlpha = 0.2f;
 
         [Header("Move (FR-064)")]
@@ -65,10 +75,25 @@ namespace UnitySlotTower.Flow
             public RectTransform Root;
             public CanvasGroup Group;
             public RectTransform Ring;
+            public GameObject VisitedMark;
+        }
+
+        /// <summary>ルートの線の見た目（FR-073）。</summary>
+        public enum LineLook
+        {
+            /// <summary>今のマスから行ける線（太く明るい）。</summary>
+            Next,
+            /// <summary>通ってきた道（細い）。</summary>
+            Path,
+            /// <summary>それ以外（薄い）。</summary>
+            Faint,
         }
 
         private readonly Dictionary<RouteNode, NodeView> _nodes = new Dictionary<RouteNode, NodeView>();
         private readonly List<(RouteNode From, RouteNode To, Image Line)> _lines = new List<(RouteNode, RouteNode, Image)>();
+        private readonly Dictionary<(RouteNode, RouteNode), LineLook> _lineLooks = new Dictionary<(RouteNode, RouteNode), LineLook>();
+        private readonly HashSet<RouteNode> _reachable = new HashSet<RouteNode>();
+        private readonly Stack<RouteNode> _walk = new Stack<RouteNode>();
         private readonly List<RectTransform> _pulsing = new List<RectTransform>();
         private readonly int[] _shownGauges = new int[ColorCount];
         private RouteMap _builtFor;
@@ -197,9 +222,7 @@ namespace UnitySlotTower.Flow
             {
                 if (lineFrom == from)
                 {
-                    var chosen = lineTo == to;
-                    line.color = chosen ? pathColor : lineColor;
-                    line.rectTransform.sizeDelta = new Vector2(line.rectTransform.sizeDelta.x, chosen ? lineWidth * 1.6f : lineWidth);
+                    SetLine(lineFrom, lineTo, line, lineTo == to ? LineLook.Next : LineLook.Faint);
                 }
             }
 
@@ -246,6 +269,16 @@ namespace UnitySlotTower.Flow
         /// <summary>そのマスが行き先として光っているか（テスト用）。</summary>
         public bool IsHighlighted(RouteNode node) => _nodes.TryGetValue(node, out var view) && _pulsing.Contains(view.Ring);
 
+        /// <summary>from から to への線の見た目（テスト用、FR-073）。線がなければ null。</summary>
+        public LineLook? LookOf(RouteNode from, RouteNode to) => _lineLooks.TryGetValue((from, to), out var look) ? look : null;
+
+        /// <summary>今から行けないマスとして暗くしているか（テスト用、FR-073）。</summary>
+        public bool IsUnreachable(RouteNode node) => _nodes.ContainsKey(node) && _state?.Current != null
+            && node.Floor > _state.Current.Floor && !_reachable.Contains(node);
+
+        /// <summary>通ったマスの印を出しているか（テスト用）。</summary>
+        public bool HasVisitedMark(RouteNode node) => _nodes.TryGetValue(node, out var view) && view.VisitedMark.activeSelf;
+
         private void Update()
         {
             if (!IsOpen || _state == null)
@@ -283,6 +316,7 @@ namespace UnitySlotTower.Flow
 
             _nodes.Clear();
             _lines.Clear();
+            _lineLooks.Clear();
             _builtFor = route;
 
             var size = mapArea.rect.size;
@@ -316,11 +350,16 @@ namespace UnitySlotTower.Flow
                 var ring = RouteNodeIcons.CreateImage("Ring", root, new Vector2(-0.18f, -0.18f), new Vector2(1.18f, 1.18f),
                     ringColor, knobSprite).rectTransform;
                 RouteNodeIcons.Create(root, node.Kind, knobSprite, boxSprite);
+                // 通ったマスの小さな印（右下、通ってきた道の色）。
+                var mark = RouteNodeIcons.CreateImage("Visited Mark", root, new Vector2(1f - visitedMarkSize, 0f),
+                    new Vector2(1f, visitedMarkSize), pathColor, knobSprite).gameObject;
+                mark.SetActive(false);
                 _nodes[node] = new NodeView
                 {
                     Root = root,
                     Group = root.gameObject.AddComponent<CanvasGroup>(),
                     Ring = ring,
+                    VisitedMark = mark,
                 };
             }
 
@@ -340,6 +379,7 @@ namespace UnitySlotTower.Flow
         {
             var current = _state.Current;
             _pulsing.Clear();
+            CollectReachable(current);
             foreach (var pair in _nodes)
             {
                 var node = pair.Key;
@@ -347,11 +387,14 @@ namespace UnitySlotTower.Flow
                 var isNext = current != null && Contains(current.Next, node);
                 var isCurrent = node == current;
                 var wasVisited = Contains(visited, node);
+                // 今から行けないマス（今の階より上で、今のマスからたどれない）は暗くする（FR-073）。
                 view.Group.alpha = isCurrent || isNext ? 1f
                     : wasVisited ? 0.55f
                     : current != null && node.Floor <= current.Floor ? 0.2f
+                    : current != null && !_reachable.Contains(node) ? unreachableNodeAlpha
                     : 0.8f;
                 view.Ring.gameObject.SetActive(isCurrent || isNext);
+                view.VisitedMark.SetActive(wasVisited && !isCurrent);
                 view.Ring.localScale = Vector3.one;
                 view.Root.localScale = isCurrent ? new Vector3(1.15f, 1.15f, 1f) : Vector3.one;
                 if (isNext)
@@ -362,9 +405,9 @@ namespace UnitySlotTower.Flow
 
             foreach (var (from, to, line) in _lines)
             {
-                var onPath = IsStep(visited, from, to);
-                line.color = onPath ? pathColor : from == current ? nextLineColor : lineColor;
-                line.rectTransform.sizeDelta = new Vector2(line.rectTransform.sizeDelta.x, onPath ? lineWidth * 1.6f : lineWidth);
+                SetLine(from, to, line, current != null && from == current ? LineLook.Next
+                    : IsStep(visited, from, to) ? LineLook.Path
+                    : LineLook.Faint);
             }
 
             for (var reel = 0; reel < arrowButtons.Length; reel++)
@@ -397,6 +440,41 @@ namespace UnitySlotTower.Flow
                 if (target != null)
                 {
                     RouteNodeIcons.Create(frame, target.Kind, knobSprite, boxSprite);
+                }
+            }
+        }
+
+        private void SetLine(RouteNode from, RouteNode to, Image line, LineLook look)
+        {
+            _lineLooks[(from, to)] = look;
+            var faint = lineColor;
+            faint.a = faintLineAlpha;
+            line.color = look == LineLook.Next ? nextLineColor : look == LineLook.Path ? pathColor : faint;
+            var width = look == LineLook.Next ? lineWidth * nextLineWidthRate
+                : look == LineLook.Path ? lineWidth * pathLineWidthRate
+                : lineWidth;
+            line.rectTransform.sizeDelta = new Vector2(line.rectTransform.sizeDelta.x, width);
+        }
+
+        // 今のマスから線をたどって行けるマス（今のマスは含まない）。今のマスがなければ空。
+        private void CollectReachable(RouteNode current)
+        {
+            _reachable.Clear();
+            if (current == null)
+            {
+                return;
+            }
+
+            _walk.Clear();
+            _walk.Push(current);
+            while (_walk.Count > 0)
+            {
+                foreach (var next in _walk.Pop().Next)
+                {
+                    if (_reachable.Add(next))
+                    {
+                        _walk.Push(next);
+                    }
                 }
             }
         }
