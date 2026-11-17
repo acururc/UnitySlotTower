@@ -171,6 +171,9 @@ namespace UnitySlotTower.Core.Battle
             }
         }
 
+        /// <summary>その味方を撤退させたときに戻る額（T384、詳細の板）。</summary>
+        public int RetreatRefund(BattleUnit unit, bool fullRefund = false) => _summoner.RefundFor(unit.Definition.Id, fullRefund);
+
         /// <summary>
         /// その種類を1段階強化する（FR-026。戦闘中いつでも、配置操作の途中でもよい）。配置中の同種の全個体にすぐ反映し、
         /// 以後に置く個体もこの段階で置く。拒否したときは何も変えない。

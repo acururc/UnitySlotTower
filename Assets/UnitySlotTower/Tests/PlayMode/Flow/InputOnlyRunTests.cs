@@ -171,9 +171,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return MouseAt(cell, false);
             Assert.That(Object.FindAnyObjectByType<UnitPlacementInput>().SelectedUnit, Is.Not.Null,
                 "味方をクリックで選べない（当たった UI: " + HitsAt(cell) + "）");
-            yield return Click(bar.Find("Retreat Button"));
+            yield return Click(RetreatButton());
             Assert.That(_battle.Field.Units.Count, Is.EqualTo(0),
-                "撤退アイコンで撤退できない（当たった UI: " + HitsAt(ScreenOf(bar.Find("Retreat Button"))) + "）");
+                "撤退アイコンで撤退できない（当たった UI: " + HitsAt(ScreenOf(RetreatButton())) + "）");
 
             // 戦闘マスを終えてルート選びに進む（1ウェーブ: D-78）。
             yield return WaitForRouteChoice();
@@ -455,5 +455,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 .GetField("wavesTable", BindingFlags.Instance | BindingFlags.NonPublic)
                 .SetValue(battle, new TextAsset(_waves));
         }
+
+        // 撤退ボタンは T384 から選んだ味方の詳細の板の中。
+        private static Transform RetreatButton() =>
+            Object.FindAnyObjectByType<UnitDetailPanel>().transform.Find("Content/Retreat Button");
     }
 }

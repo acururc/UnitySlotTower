@@ -23,6 +23,9 @@ bar_speed,速さ
 battle_start,戦闘開始
 bar_pause,一時停止
 bar_retreat,撤退
+detail_hp,体力
+detail_atk,攻撃力
+detail_block,ブロック
 bar_skill,スキル
 bar_attack_rate,攻撃力
 bar_money_rate,獲得金

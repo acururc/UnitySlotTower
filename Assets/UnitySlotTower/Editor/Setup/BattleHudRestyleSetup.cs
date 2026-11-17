@@ -56,10 +56,14 @@ namespace UnitySlotTower.Editor.Setup
             }
 
             BuildBand(root, (RectTransform)status.transform, rates);
+            var looks = UnitLooks.Read();
             for (var i = 0; i < 4; i++)
             {
-                BuildCard(bar, i);
+                BuildCard(bar, i, i < looks.Count ? looks[i] : default);
             }
+
+            // 撤退は選んだ味方の詳細の板へ（T384）。
+            UnitDetailSetup.Build(root, (RectTransform)status.transform, bar, _font);
 
             RestyleActors();
             // UiPanel は CanvasRenderer がないと描かれない（RequireComponent を足す前に作ったものを補う）。
@@ -109,7 +113,6 @@ namespace UnitySlotTower.Editor.Setup
             IconValue(status, "Enemy Icon", "Remaining", 192f, 330f);
             IconValue(status, "Coin Icon", "Coins", 350f, 600f);
 
-            CornerButton(status, "Retreat Button", 1052f, 1172f);
             CornerButton(status, "Speed Button", 1188f, 1306f);
             CornerButton(status, "Pause Button", 1318f, 1428f);
         }
@@ -189,7 +192,7 @@ namespace UnitySlotTower.Editor.Setup
 
         // --- 札 ---
 
-        private static void BuildCard(RectTransform bar, int slot)
+        private static void BuildCard(RectTransform bar, int slot, UnitLooks.Look look)
         {
             var left = CardLeft + slot * CardStep;
             var icon = bar.Find($"Unit Icon {slot + 1}") as RectTransform;
@@ -219,6 +222,12 @@ namespace UnitySlotTower.Editor.Setup
             {
                 body.sprite = null;
             }
+
+            // 職の絵（T384）: 盤上の駒と同じ形の影絵。値段の下地より上に置き、待ち時間の覆いより後ろに描く。
+            var jobArt = icon.Find("Job Art") as RectTransform ?? CreateRect("Job Art", icon);
+            Anchor(jobArt, new Vector2(0.08f, 0.32f), new Vector2(0.92f, 0.98f));
+            jobArt.SetAsFirstSibling();
+            UnitLooks.BuildShape(jobArt, look);
 
             var cooldown = icon.Find("Cooldown Gauge")?.GetComponent<Image>();
             if (cooldown != null)
@@ -253,16 +262,25 @@ namespace UnitySlotTower.Editor.Setup
             if (stock != null)
             {
                 Anchor(stock, new Vector2(0.5f, 0.72f), new Vector2(1.04f, 1.04f));
-                var badge = stock.Find("Badge") as RectTransform;
+                // 下地は数字の手前の兄弟（子にすると数字の上に描かれて隠す: T384）。
+                var badge = (stock.Find("Badge") ?? icon.Find("Stock Badge")) as RectTransform;
                 if (badge == null)
                 {
-                    badge = CreateRect("Badge", stock);
+                    badge = CreateRect("Stock Badge", icon);
                     var badgePanel = badge.gameObject.AddComponent<UiPanel>();
                     badgePanel.raycastTarget = false;
-                    badge.SetAsFirstSibling();
                 }
 
-                Anchor(badge, Vector2.zero, Vector2.one);
+                badge.name = "Stock Badge";
+                badge.SetParent(icon, false);
+                if (badge.GetSiblingIndex() > stock.GetSiblingIndex())
+                {
+                    badge.SetSiblingIndex(stock.GetSiblingIndex());
+                }
+                badge.anchorMin = stock.anchorMin;
+                badge.anchorMax = stock.anchorMax;
+                badge.offsetMin = badge.offsetMax = Vector2.zero;
+                badge.gameObject.SetActive(stock.gameObject.activeSelf);
                 var panel = badge.GetComponent<UiPanel>();
                 panel.color = UiStyle.Ready;
                 Number(stock.GetComponent<TMP_Text>(), 40f, TextAlignmentOptions.Center);
@@ -323,6 +341,32 @@ namespace UnitySlotTower.Editor.Setup
             if (upgrade != null)
             {
                 Px(upgrade, left + 192f, 36f, left + 300f, 150f);
+                // T384: 矢印（上向き）と値段が重ならないように、上の段に矢印と値段、下の段に強化段階の点。
+                var arrow = upgrade.Find("Arrow") as RectTransform;
+                if (arrow != null)
+                {
+                    arrow.anchorMin = arrow.anchorMax = new Vector2(0.17f, 0.66f);
+                    arrow.pivot = new Vector2(0.5f, 0.5f);
+                    arrow.sizeDelta = new Vector2(30f, 28f);
+                    arrow.anchoredPosition = Vector2.zero;
+                }
+
+                var upgradeCost = upgrade.Find("Cost") as RectTransform;
+                if (upgradeCost != null)
+                {
+                    Anchor(upgradeCost, new Vector2(0.33f, 0.4f), new Vector2(0.98f, 0.94f));
+                    Number(upgradeCost.GetComponent<TMP_Text>(), 34f, TextAlignmentOptions.Right);
+                }
+
+                for (var level = 0; level < 5; level++)
+                {
+                    var pip = upgrade.Find($"Level {level + 1}") as RectTransform;
+                    if (pip != null)
+                    {
+                        var x = 0.08f + level * 0.18f;
+                        Anchor(pip, new Vector2(x, 0.1f), new Vector2(x + 0.13f, 0.26f));
+                    }
+                }
             }
 
             if (gauge != null)
@@ -336,6 +380,7 @@ namespace UnitySlotTower.Editor.Setup
                 var serialized = new SerializedObject(barIcon);
                 SetObject(serialized, "blockText", blockText);
                 SetObject(serialized, "stateFrame", strip.GetComponent<Image>());
+                SetObject(serialized, "stockBadge", icon.Find("Stock Badge")?.gameObject);
                 serialized.ApplyModifiedPropertiesWithoutUndo();
             }
         }

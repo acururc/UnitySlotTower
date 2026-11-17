@@ -82,7 +82,7 @@ namespace UnitySlotTower.Tests.EditMode.Ui
                 Need("slot_" + symbol);
             }
 
-            foreach (var id in new[] { "slot_miss", "shop_stock", "shop_gauge", "shop_upgrade" })
+            foreach (var id in new[] { "slot_miss", "shop_stock", "shop_gauge", "shop_upgrade", "detail_hp", "detail_atk", "detail_block" })
             {
                 Need(id);
             }

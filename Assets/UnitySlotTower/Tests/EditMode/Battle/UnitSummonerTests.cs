@@ -194,5 +194,18 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
             Assert.That((summoner.Retreat("tank", fullRefund: true), _wallet.Coins), Is.EqualTo((15, 30)));
         }
+
+        [Test]
+        [Description("T384: 詳細の板に出す撤退の返還額は、実際の撤退と同じで、財布も配置数も変えない")]
+        public void Refund_Preview_Matches_Retreat_Without_Changing_Anything()
+        {
+            var summoner = Create(30);
+            summoner.TrySummon("tank");
+
+            var preview = (summoner.RefundFor("tank"), summoner.RefundFor("tank", fullRefund: true), _wallet.Coins, summoner.DeployedCount);
+
+            Assert.That(preview, Is.EqualTo((7, 15, 15, 1)));
+            Assert.That(summoner.Retreat("tank"), Is.EqualTo(preview.Item1));
+        }
     }
 }

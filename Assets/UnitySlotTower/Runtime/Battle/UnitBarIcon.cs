@@ -29,6 +29,8 @@ namespace UnitySlotTower.Battle
         [SerializeField] private Graphic stateFrame;
         [Tooltip("無料ストックの個数（×n）。ストックがないときは隠す。")]
         [SerializeField] private TMP_Text stockText;
+        [Tooltip("無料ストックの数の下地（T384、数字の手前の兄弟）。数字と一緒に出し入れする。")]
+        [SerializeField] private GameObject stockBadge;
         [Tooltip("旧シーン互換用。カードの状態色は UiStyle を使用する。")]
         [SerializeField] private Color unavailableTint = UiStyle.DisabledTint;
         [Tooltip("召喚できないときに押したら本体をこの色で光らせる（T355）。")]
@@ -188,6 +190,10 @@ namespace UnitySlotTower.Battle
             {
                 _shownStock = stock;
                 stockText.gameObject.SetActive(stock > 0);
+                if (stockBadge != null)
+                {
+                    stockBadge.SetActive(stock > 0);
+                }
                 stockText.SetText("×{0}", stock);
             }
 

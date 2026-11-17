@@ -373,10 +373,13 @@ namespace UnitySlotTower.Editor.Setup
         private static float BandHeight => (float)(PortraitLayout.BattleHeightRatio * PortraitLayout.TopBandRatio) * 1920f;
 
         // 帯の中の段（帯の割合）。上が名前、下が数字・ボタンの絵。
-        private const float NameBottom = 0.56f;
-        private const float NameTop = 0.98f;
-        private const float ValueBottom = 0.04f;
-        private const float ValueTop = 0.56f;
+        // T384: 名前が画面の上端からはみ出さず、数字と重ならないように間を空け、数字の字を小さくする（BandValueFont）。
+        // 名前の字は文字の箱が約52 px（36 の字）あるので、中心を帯の上端から約28 px 下に置く。
+        private const float NameBottom = 0.46f;
+        private const float NameTop = 0.96f;
+        private const float ValueBottom = 0f;
+        private const float ValueTop = 0.38f;
+        private const float BandValueFont = 32f;
 
         private const float BandFont = 36f;
         private const float ButtonFont = 36f;
@@ -418,14 +421,16 @@ namespace UnitySlotTower.Editor.Setup
 
             var upgrade = Child(bar, $"Upgrade Icon {slot + 1}");
             SetRect(upgrade, new Vector2((left + 158f) / width, iconBottom / barHeight), new Vector2((left + 304f) / width, 152f / barHeight));
-            SetLabel(Child(upgrade, "Text Label bar_upgrade"), Vector2.zero, new Vector2(0.6f, 1f), Vector2.zero, Vector2.zero,
+            // T384: 左に「強化」とその下に段階の点、右の上に矢印、右の下に値段（重ならないように）。
+            // 上の段に「強化」と値段を横に並べ、下の段に矢印と段階の点（上下に積むと重なる: T384）。
+            SetLabel(Child(upgrade, "Text Label bar_upgrade"), new Vector2(0f, 0.36f), new Vector2(0.58f, 1f), Vector2.zero, Vector2.zero,
                 ButtonFont);
-            SetRect(Child(upgrade, "Arrow"), new Vector2(0.6f, 0.3f), new Vector2(0.7f, 0.7f));
-            SetRect(Child(upgrade, "Cost"), new Vector2(0.71f, 0.4f), new Vector2(0.98f, 0.98f));
+            SetRect(Child(upgrade, "Cost"), new Vector2(0.6f, 0.36f), new Vector2(1f, 1f));
+            SetRect(Child(upgrade, "Arrow"), new Vector2(0.04f, 0.02f), new Vector2(0.14f, 0.32f));
             for (var level = 0; level < 5; level++)
             {
-                var x = 0.72f + level * 0.054f;
-                SetRect(Child(upgrade, $"Level {level + 1}"), new Vector2(x, 0.1f), new Vector2(x + 0.044f, 0.3f));
+                var x = 0.2f + level * 0.16f;
+                SetRect(Child(upgrade, $"Level {level + 1}"), new Vector2(x, 0.06f), new Vector2(x + 0.12f, 0.26f));
             }
 
             var card = Child(bar, $"Card Frame {slot + 1}");
@@ -445,13 +450,23 @@ namespace UnitySlotTower.Editor.Setup
             NamedIcon(Child(status, "Enemy Icon"), Child(status, "Remaining"), "bar_remaining", 0.142f, 0.265f, bandHeight);
             NamedIcon(Child(status, "Coin Icon"), Child(status, "Coins"), "money", 0.277f, 0.405f, bandHeight);
 
-            var retreat = Child(status, "Retreat Button");
-            BandButton(retreat, "bar_retreat", 0.63f, 0.74f);
-            SetRect(Child(retreat, "Stroke 1"), new Vector2(0.45f, 0.5f), new Vector2(0.55f, 0.94f));
-            SetRect(Child(retreat, "Stroke 2"), new Vector2(0.45f, 0.5f), new Vector2(0.55f, 0.94f));
+            // 撤退は T384 から選んだ味方の詳細の板（UnitDetailSetup、両方の版で同じ配置）。
             var speed = Child(status, "Speed Button");
-            BandButton(speed, "bar_speed", 0.75f, 0.86f);
-            SetRect(Child(speed, "Speed"), new Vector2(0.08f, 0.46f), new Vector2(0.92f, 0.98f));
+            // 速さ: 名前を左、倍率を右に並べる（上下に積むと帯の高さに収まらない: T384）。
+            SetRect(speed, new Vector2(0.75f, 0.04f), new Vector2(0.86f, 0.96f));
+            SetLabel(Child(speed, "Text Label bar_speed"), Vector2.zero, new Vector2(0.52f, 1f), Vector2.zero, Vector2.zero, ButtonFont);
+            Set(Child(speed, "Speed").gameObject, TextModeLayout.Parts.Rect | TextModeLayout.Parts.Font, s =>
+            {
+                s.anchorMin = new Vector2(0.54f, 0f);
+                s.anchorMax = Vector2.one;
+                s.offsetMin = Vector2.zero;
+                s.offsetMax = Vector2.zero;
+                s.autoSize = true;
+                s.fontSizeMax = 40f;
+                s.fontSizeMin = 20f;
+                s.fontSize = 40f;
+                return s;
+            });
             var pause = Child(status, "Pause Button");
             BandButton(pause, "bar_pause", 0.87f, 0.99f);
             SetRect(Child(pause, "Bar Left"), new Vector2(0.38f, 0.5f), new Vector2(0.46f, 0.94f));
@@ -466,10 +481,12 @@ namespace UnitySlotTower.Editor.Setup
             var bandHeight = BandHeight;
             var attack = Child(rates, "Attack Rate");
             SetRect(attack, new Vector2(0f, ValueBottom), new Vector2(0.49f, ValueTop));
+            ValueFont(Child(attack, "Value"));
             SetLabel(Child(attack, "Text Label bar_attack_rate"), new Vector2(0f, 1f), Vector2.one,
                 new Vector2(0f, (NameBottom - ValueTop) * bandHeight), new Vector2(0f, (NameTop - ValueTop) * bandHeight), BandFont);
             var money = Child(rates, "Money Rate");
             SetRect(money, new Vector2(0.51f, ValueBottom), new Vector2(1f, ValueTop));
+            ValueFont(Child(money, "Value"));
             SetLabel(Child(money, "Text Label bar_money_rate"), new Vector2(0f, 1f), Vector2.one,
                 new Vector2(0f, (NameBottom - ValueTop) * bandHeight), new Vector2(0f, (NameTop - ValueTop) * bandHeight), BandFont);
         }
@@ -502,10 +519,33 @@ namespace UnitySlotTower.Editor.Setup
             const float iconBottom = 0.10f;
             const float iconTop = 0.48f;
             SetRect(icon, new Vector2(left, iconBottom), new Vector2(left + iconWidth, iconTop));
-            SetRect(value, new Vector2(left + iconWidth + 0.002f, ValueBottom), new Vector2(right, ValueTop));
+            // 位置と字の大きさは1回の Set で置く（Set は部品の項目を置き換えるため、分けると後の方だけが残る）。
+            var min = new Vector2(left + iconWidth + 0.002f, ValueBottom);
+            var max = new Vector2(right, ValueTop);
+            Set(value.gameObject, TextModeLayout.Parts.Rect | TextModeLayout.Parts.Font, s =>
+            {
+                s.anchorMin = min;
+                s.anchorMax = max;
+                s.offsetMin = Vector2.zero;
+                s.offsetMax = Vector2.zero;
+                return ValueFontState(s);
+            });
             SetLabel(Child(icon, "Text Label " + id), new Vector2(0f, 1f), new Vector2(0f, 1f),
                 new Vector2(0f, (NameBottom - iconTop) * bandHeight), new Vector2((right - left) * 1440f, (NameTop - iconTop) * bandHeight),
                 BandFont);
+        }
+
+        // 帯の数字の字の大きさ（文字あり版。文字なし版は BattleHudRestyleSetup の 54）。
+        private static void ValueFont(RectTransform value) =>
+            Set(value.gameObject, TextModeLayout.Parts.Font, ValueFontState);
+
+        private static TextModeLayout.State ValueFontState(TextModeLayout.State s)
+        {
+            s.autoSize = true;
+            s.fontSizeMax = BandValueFont;
+            s.fontSizeMin = BandValueFont * 0.5f;
+            s.fontSize = BandValueFont;
+            return s;
         }
 
         // 帯のボタン: 帯の高さいっぱい、下に名前、絵は上に寄せる（絵は呼び出し側）。

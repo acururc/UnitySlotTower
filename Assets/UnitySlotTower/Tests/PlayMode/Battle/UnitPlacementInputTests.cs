@@ -195,7 +195,6 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         [UnityTest]
         public IEnumerator Mouse_Upgrades_Selects_And_Retreats_A_Unit_From_The_Bar()
         {
-            var bar = Object.FindAnyObjectByType<OperationBarStatus>();
             yield return Tap(Key.Digit1);
             var target = FirstPlaceableCell();
             yield return MoveCursorTo(target);
@@ -205,10 +204,12 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return MouseAt(CellScreen(target), true);
             yield return MouseAt(CellScreen(target), false);
             Assert.That(_input.SelectedUnit, Is.SameAs(_battle.Field.Units[0]), "味方をクリックで選ぶ");
+            yield return null;
+            Assert.That(Object.FindAnyObjectByType<UnitDetailPanel>().IsShown, Is.True, "選んだ味方の詳細の板が出る（T384）");
 
-            yield return Click(bar.transform.Find("Retreat Button"));
-            Assert.That((_battle.Field.Units.Count, bar.transform.Find("Retreat Button").gameObject.activeSelf),
-                Is.EqualTo((0, false)), "撤退アイコンで撤退し、選びがなくなるとアイコンを隠す");
+            yield return Click(RetreatButton());
+            Assert.That((_battle.Field.Units.Count, RetreatButton().gameObject.activeInHierarchy),
+                Is.EqualTo((0, false)), "撤退ボタン（詳細の板）で撤退し、選びがなくなると板ごと隠す");
 
             yield return Click(GameObject.Find("Upgrade Icon 2").transform);
             Assert.That(_battle.Upgrades.Level("sword"), Is.EqualTo(2), "強化アイコンで強化する");
@@ -286,7 +287,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return MouseAt(CellScreen(target), false);
 
             _battle.FullRefundRetreat = true;
-            yield return Click(bar.transform.Find("Retreat Button"));
+            yield return Click(RetreatButton());
             _battle.FullRefundRetreat = false;
 
             Assert.That((_battle.Field.Units.Count, _battle.Wallet.Coins - afterSummon), Is.EqualTo((0, placed.Definition.Cost)));
@@ -457,5 +458,9 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return null;
             yield return null;
         }
+
+        // 撤退ボタンは T384 から選んだ味方の詳細の板の中。
+        private static Transform RetreatButton() =>
+            Object.FindAnyObjectByType<UnitDetailPanel>().transform.Find("Content/Retreat Button");
     }
 }

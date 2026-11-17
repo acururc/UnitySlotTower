@@ -9,7 +9,7 @@ namespace UnitySlotTower.Battle
 {
     /// <summary>
     /// 操作バーの状態表示とボタン（T308・T349・T365、plan 16.8・17.2・17.5）: ライフ・所持金・残りの敵の数、
-    /// 撤退（味方を選んでいるときだけ出す）・一時停止（一時停止中は色を変える）・倍速（×1・×2・×3）、
+    /// 撤退（T384 から選んだ味方の詳細の板 UnitDetailPanel の中。出し入れは板がする）・一時停止（一時停止中は色を変える）・倍速（×1・×2・×3）、
     /// この戦闘のバーの攻撃力倍率とコインの所持金倍率（×1.2 など。倍率なしのときは薄く ×1.0）。
     /// </summary>
     public sealed class OperationBarStatus : MonoBehaviour
@@ -86,7 +86,6 @@ namespace UnitySlotTower.Battle
             SetRate(attackRateGroup, attackRateText, boosts?.AttackRate ?? 1d, ref _shownAttackRate);
             SetRate(moneyRateGroup, moneyRateText, boosts?.MoneyRate ?? 1d, ref _shownMoneyRate);
 
-            SetActive(retreatButton, placementInput.SelectedUnit != null);
             if (battle.IsPaused != _shownPaused)
             {
                 _shownPaused = battle.IsPaused;
@@ -106,14 +105,6 @@ namespace UnitySlotTower.Battle
             shownTenths = tenths;
             group.alpha = tenths > 10 ? 1f : inactiveRateAlpha;
             text.SetText("×{0:1}", tenths / 10f);
-        }
-
-        private static void SetActive(Button button, bool active)
-        {
-            if (button.gameObject.activeSelf != active)
-            {
-                button.gameObject.SetActive(active);
-            }
         }
 
         private static void SetNumber(TMP_Text text, int value, ref int shown, string format = "{0}")

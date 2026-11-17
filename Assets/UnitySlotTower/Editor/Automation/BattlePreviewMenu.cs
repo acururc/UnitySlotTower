@@ -78,6 +78,51 @@ namespace UnitySlotTower.Editor.Automation
             Debug.Log($"[BattlePreview] placed={placed} coins={battle.Wallet.Coins}");
         }
 
+        /// <summary>
+        /// 札の4状態と詳細の板を撮るための下ごしらえ（T384）。Stage Battle Preview の後に実行する。待ち時間を消し、
+        /// 2番目の職を1体下げ、3番目の職をもう1体置いて待ち時間にし、4番目の職に無料ストックを1つ足し、所持金を ¥110 にして、最初の味方を選ぶ。
+        /// 札は「1番目: 所持金不足、2番目: 置ける、3番目: 待ち時間、4番目: 無料ストック」になる（units.csv の値段による）。
+        /// </summary>
+        [MenuItem("Tools/UnitySlotTower/Automation/Stage Card States (T384)")]
+        private static void StageCardStates()
+        {
+            var battle = Object.FindAnyObjectByType<BattleController>();
+            if (!EditorApplication.isPlaying || battle == null || battle.Run == null || battle.Field.Units.Count == 0)
+            {
+                Debug.LogError("[BattlePreview] Play 中に Stage Battle Preview (T383) の後で実行する。");
+                return;
+            }
+
+            var units = battle.Units.All;
+            battle.Summoner.Advance(100000);
+            battle.Wallet.Add(2000);
+            // 配置上限で札が暗くならないよう、2番目の職の味方を1体下げてから3番目の職をもう1体置く。
+            foreach (var placed in battle.Field.Units)
+            {
+                if (units.Count > 1 && placed.Definition.Id == units[1].Id)
+                {
+                    battle.Deployment.Retreat(placed);
+                    break;
+                }
+            }
+
+            if (units.Count > 2 && battle.Deployment.Select(units[2].Id) == SummonResult.Summoned && !TryPlace(battle, battle.Run.Map))
+            {
+                battle.Deployment.Cancel();
+            }
+
+            if (units.Count > 3)
+            {
+                battle.Run.State.Stock.Add(units[3].Id, 1);
+            }
+
+            battle.Wallet.TrySpend(Mathf.Max(0, battle.Wallet.Coins - 110));
+            var input = Object.FindAnyObjectByType<UnitPlacementInput>();
+            typeof(UnitPlacementInput).GetProperty(nameof(UnitPlacementInput.SelectedUnit))
+                .SetValue(input, battle.Field.Units[0]);
+            Debug.Log($"[BattlePreview] card states coins={battle.Wallet.Coins} selected={battle.Field.Units[0].Definition.Id}");
+        }
+
         [MenuItem("Tools/UnitySlotTower/Automation/Toggle Text Mode (T383)")]
         private static void ToggleTextMode() => GameSession.SetTextMode(!GameSession.TextMode);
 

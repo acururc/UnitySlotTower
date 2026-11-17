@@ -146,9 +146,10 @@ Core のタスク（T340〜T347）は `tdd` で red→green、完了条件は Ed
   - 2026-11-17: EditMode 587→622（全件成功、追加は ArcherBalanceTests・DamageTests・EnemyTableTests・TableValidationTests）、PlayMode 74 件で 73 成功＋撮影1件スキップ、ハーネス 8/8。重装の盾（`BattleActorsView`）の画像は未確認（T383 の撮影で見る）。
 - [x] T382 (FR-076) 2方向のマップ `battle_d`・本拠地2つのマップ `battle_e`、どちらの本拠地でも同じライフが減る — 検証: EditMode（AC-057 のデータとライフ）、PlayMode `Camera_Fits_Every_Map`、新マップの Editor 画像
   - 2026-11-18: EditMode 622→630（全件成功、BattleMapTests・TableValidationTests に追加）、PlayMode 74→76 件で 75 成功＋撮影1件スキップ（`Camera_Fits_Every_Map` に2マップ追加）、ハーネス 8/8。画像 `Artifacts/Automation/Editor/t382/`（全出口・本拠地・道が画面内）。Game シーンの `mapTables` はメニュー `Assign Stage Maps` で登録。
-- [ ] T383 (FR-070, FR-071) 戦闘画面の UI の試作（共通の土台 `UiStyle`、上端の帯、隅のボタン、札の4状態、体力バー、スキルの印、空中の敵が隠れない）。両方の版の撮影をユーザーに見せて方向を確かめる — 検証: Editor 画像（ユーザー確認）
+- [x] T383 (FR-070, FR-071) 戦闘画面の UI の試作（共通の土台 `UiStyle`、上端の帯、隅のボタン、札の4状態、体力バー、スキルの印、空中の敵が隠れない）。両方の版の撮影をユーザーに見せて方向を確かめる — 検証: Editor 画像（ユーザー確認）
   - 2026-11-18（試作、ユーザー確認待ち）: 撮影 `Artifacts/Automation/Editor/t383/t383-d-notext.png`・`t383-d-text.png`（1440×1920）。EditMode 630→634（全件成功、PortraitLayoutTests に追加）、PlayMode 76 件で 75 成功＋失敗1（`TextModeTests.Every_Screen_Shows_Japanese_Text_Large_Inside_And_Apart`: 帯の名前が上端から約4 px はみ出し、名前と数字が 3〜9 px 重なる。T384 で直す）、ハーネス 8/8。未着手: 札の職の絵、置ける・無料ストックの状態の撮影、強化の移動（T384）。
-- [ ] T384 (FR-070) 戦闘画面の UI の仕上げ（試作への指摘の反映、キャラの詳細の板と撤退・強化の移動）と壊れたテストの直し — 検証: EditMode・PlayMode 全件（件数の増減を記録）、Editor 画像
+- [x] T384 (FR-070) 戦闘画面の UI の仕上げ（試作への指摘の反映、キャラの詳細の板と撤退・強化の移動）と壊れたテストの直し — 検証: EditMode・PlayMode 全件（件数の増減を記録）、Editor 画像
+  - 2026-11-18: ユーザーが T383 の方向を承認（「この方向でOK」）。強化は札のまま（ユーザー回答「札だけ」）、撤退は選んだ味方の詳細の板へ（plan 18.4）。EditMode 634→635（全件成功、`UnitSummonerTests.Refund_Preview_Matches_Retreat_Without_Changing_Anything`）、PlayMode 76 件で 75 成功＋撮影1件スキップ（`TextModeTests` の読みやすさも成功。撤退ボタンを探す2テストを詳細の板に合わせて直し、板が出ることの確認を追加）、ハーネス 8/8。画像 `Artifacts/Automation/Editor/t384/t384f-notext.png`・`t384f-text.png`（札の4状態は `t384d-*`）。撮影の下ごしらえで札が全部暗く写る回があった（原因未特定、ゲームの不具合かは未確認）。
 - [ ] T385 (FR-072) 文字なし版の説明: ブロック数の盾、足止めのアニメ、スキルの絵と一時停止中のアニメ、キャラの詳細 — 検証: PlayMode（AC-053）、Editor 画像
 - [ ] T386 (FR-073) ルートの線の3種類と行けないマスを暗く — 検証: PlayMode（線の状態）、Editor 画像（AC-054）
 - [ ] T387 (FR-070) ほかの画面（タイトル・難易度・ルート・ショップ・回復・説明・リザルト）を同じ土台に — 検証: 全画面の撮影（両方の版）、PlayMode 全件

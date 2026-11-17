@@ -96,11 +96,17 @@ namespace UnitySlotTower.Core.Battle
         /// </summary>
         public int Retreat(string unitId, bool fullRefund = false)
         {
-            var cost = _units.Get(unitId).Cost;
-            var refund = fullRefund ? cost : (int)Math.Floor(cost * _refundRate);
+            var refund = RefundFor(unitId, fullRefund);
             _wallet.Add(refund);
             DeployedCount--;
             return refund;
+        }
+
+        /// <summary>撤退したときに戻る額（Retreat と同じ計算。何も変えない）。詳細の板に出す（T384）。</summary>
+        public int RefundFor(string unitId, bool fullRefund = false)
+        {
+            var cost = _units.Get(unitId).Cost;
+            return fullRefund ? cost : (int)Math.Floor(cost * _refundRate);
         }
 
         /// <summary>倒された味方の分の配置枠を空ける（返還はない）。</summary>
