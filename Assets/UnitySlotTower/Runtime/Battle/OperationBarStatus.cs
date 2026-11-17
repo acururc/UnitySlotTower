@@ -44,6 +44,13 @@ namespace UnitySlotTower.Battle
         private int _shownMoneyRate = -1;
         private int _shownRemaining = -1;
         private int _shownSpeed = -1;
+        private Graphic[] _lifeGraphics;
+        private Color[] _lifeColors;
+        private Vector3 _lifeScale;
+        private bool _lifeFlashing;
+
+        public bool IsLifeFlashing => _lifeFlashing;
+        public float LifeNumberScale => lifeText.transform.localScale.x / _lifeScale.x;
 
         /// <summary>バーの攻撃力倍率の表示（揃った時の演出の行き先: T366）。</summary>
         public RectTransform AttackRateRect => (RectTransform)attackRateGroup.transform;
@@ -54,6 +61,13 @@ namespace UnitySlotTower.Battle
         private void Awake()
         {
             _pauseNormalColor = pauseBackground.color;
+            _lifeScale = lifeText.transform.localScale;
+            var icon = lifeText.transform.parent.Find("Life Icon");
+            var graphics = icon != null ? icon.GetComponentsInChildren<Graphic>(true) : System.Array.Empty<Graphic>();
+            _lifeGraphics = new Graphic[graphics.Length + 1];
+            System.Array.Copy(graphics, _lifeGraphics, graphics.Length);
+            _lifeGraphics[graphics.Length] = lifeText;
+            _lifeColors = new Color[_lifeGraphics.Length];
         }
 
         private void OnEnable()
@@ -65,6 +79,7 @@ namespace UnitySlotTower.Battle
 
         private void OnDisable()
         {
+            RestoreLife();
             retreatButton.onClick.RemoveListener(placementInput.RetreatSelected);
             pauseButton.onClick.RemoveListener(battle.TogglePause);
             speedButton.onClick.RemoveListener(battle.CycleBattleSpeed);
@@ -79,6 +94,7 @@ namespace UnitySlotTower.Battle
             }
 
             SetNumber(lifeText, run.Field.Life, ref _shownLife);
+            UpdateLifeFlash();
             SetNumber(moneyText, run.Wallet.Coins, ref _shownMoney, NumericText.YenFormat);
             SetNumber(remainingText, run.RemainingEnemies, ref _shownRemaining);
             SetNumber(speedText, battle.BattleSpeed, ref _shownSpeed, "×{0}");
@@ -91,6 +107,33 @@ namespace UnitySlotTower.Battle
                 _shownPaused = battle.IsPaused;
                 pauseBackground.color = _shownPaused ? pausedColor : _pauseNormalColor;
             }
+        }
+
+        private void UpdateLifeFlash()
+        {
+            var left = battle.BaseFlashUntil - Time.unscaledTime;
+            if (left <= 0f)
+            {
+                RestoreLife();
+                return;
+            }
+            if (!_lifeFlashing)
+            {
+                for (var i = 0; i < _lifeGraphics.Length; i++) _lifeColors[i] = _lifeGraphics[i].color;
+                _lifeFlashing = true;
+            }
+            for (var i = 0; i < _lifeGraphics.Length; i++) _lifeGraphics[i].color = UnitySlotTower.Ui.UiStyle.Danger;
+            var progress = 1f - Mathf.Clamp01(left / BattlePresentationTiming.BaseFlash);
+            // 最初の半分で punch し、残りの赤い表示の間は通常の大きさに戻す。
+            lifeText.transform.localScale = _lifeScale * (1f + 0.3f * Mathf.Sin(Mathf.PI * Mathf.Clamp01(progress * 2f)));
+        }
+
+        private void RestoreLife()
+        {
+            if (!_lifeFlashing) return;
+            _lifeFlashing = false;
+            for (var i = 0; i < _lifeGraphics.Length; i++) _lifeGraphics[i].color = _lifeColors[i];
+            lifeText.transform.localScale = _lifeScale;
         }
 
         // 倍率を小数1桁で出す（×1.2）。表示が変わるときだけ書き換える。

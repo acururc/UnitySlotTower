@@ -169,6 +169,10 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>HP0 で味方が消えたとき（FR-024）。撤退では呼ばれない。</summary>
         public event Action<BattleUnit> UnitFell;
 
+        /// <summary>表示用の通知。複数ステップを一度に進めても出現・到達を取りこぼさない。</summary>
+        public event Action<GridPoint> EnemySpawned;
+        public event Action<GridPoint> BaseReached;
+
         /// <summary>撤退（FR-025）。その味方がブロックしていた敵は再び進む。フィールドに居ない味方なら何もせず false。</summary>
         public bool RemoveUnit(BattleUnit unit)
         {
@@ -219,6 +223,7 @@ namespace UnitySlotTower.Core.Battle
                 {
                     AreaCooldownSteps = StepsOf(spawn.Enemy.AreaInterval),
                 });
+                EnemySpawned?.Invoke(spawn.Path.Cells[0]);
             }
         }
 
@@ -251,6 +256,8 @@ namespace UnitySlotTower.Core.Battle
                 if (_enemies[i].ReachedGoal)
                 {
                     Life = Math.Max(Life - _enemies[i].Definition.LifeDamage, 0);
+                    var cells = _enemies[i].Path.Cells;
+                    BaseReached?.Invoke(cells[cells.Count - 1]);
                     _enemies.RemoveAt(i);
                     ArrivedCount++;
                 }

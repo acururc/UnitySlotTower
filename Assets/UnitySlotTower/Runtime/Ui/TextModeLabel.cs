@@ -36,6 +36,14 @@ namespace UnitySlotTower.Ui
         /// <summary>いま文字が描かれるか（文字あり版で、文言がある）。</summary>
         public bool IsShown => text != null && text.enabled;
 
+        /// <summary>コードで作る演出のラベル。文字なし版の非表示と文字監査も既存ラベルと同じ扱いにする。</summary>
+        public void SetLiteral(TMP_Text target, string value)
+        {
+            text = target;
+            SetResolved(value);
+            Apply(GameSession.TextMode);
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetOnPlay() => Cache.Clear();
 

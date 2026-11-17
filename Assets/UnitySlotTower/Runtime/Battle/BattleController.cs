@@ -41,6 +41,12 @@ namespace UnitySlotTower.Battle
         private bool _completionReported;
         private bool _slotLocked;
         private float _appliedTimeScale = 1f;
+        private bool _destroying;
+        private float _victoryLeft;
+
+        public bool IsShowingVictory => _victoryLeft > 0f;
+        public string NodeKind { get; private set; }
+        public float BaseFlashUntil { get; private set; }
 
         /// <summary><see cref="Initialize"/> で読んだゲーム設定（RunState を作るのに使う）。</summary>
         public GameConfig Config { get; private set; }
@@ -120,13 +126,14 @@ namespace UnitySlotTower.Battle
 
 
         /// <summary>クリア（ボスマスを終えた）かゲームオーバーで、ゲームが終わったか（リザルトを出す: T402）。</summary>
-        public bool IsFinished => Run != null && (Run.IsRunCleared || Run.Phase == WavePhase.GameOver);
+        public bool IsFinished => Run != null && !IsShowingVictory &&
+            (Run.Phase == WavePhase.GameOver || (Run.IsRunCleared && _completionReported));
 
         /// <summary>
         /// 戦闘側の操作（配置・撤退・強化・スキル）を受け付けないか。一時停止中・ゲーム終了後・開始の演出中（AC-016）・
         /// 戦闘マスの終了後（ルート画面: T350b）。
         /// </summary>
-        public bool IsInputBlocked => IsPaused || IsFinished || IsInIntro || (Run != null && Run.Phase == WavePhase.Completed);
+        public bool IsInputBlocked => IsPaused || IsShowingVictory || IsFinished || IsInIntro || (Run != null && Run.Phase == WavePhase.Completed);
 
         /// <summary>開始の演出中（FR-019）。時間は進まず、操作とスロットを受け付けない。</summary>
         public bool IsInIntro => Run != null && Run.Phase == WavePhase.Intro;
@@ -134,7 +141,7 @@ namespace UnitySlotTower.Battle
         /// <summary>一時停止を切り替える。スロットのリールやウェイトも止めるため Time.timeScale を 0 にする。ゲーム終了後は何もしない。</summary>
         public void SetPaused(bool paused)
         {
-            if (IsFinished)
+            if (IsFinished || IsShowingVictory)
             {
                 return;
             }
@@ -162,7 +169,7 @@ namespace UnitySlotTower.Battle
         /// <summary>倍速のボタン: 1→2→3→1倍と変える。一時停止中・ゲーム終了後は受け付けない。</summary>
         public void CycleBattleSpeed()
         {
-            if (IsPaused || IsFinished)
+            if (IsPaused || IsFinished || IsShowingVictory)
             {
                 return;
             }
@@ -177,12 +184,12 @@ namespace UnitySlotTower.Battle
         /// </summary>
         public bool IsPlacing => Run != null && Run.Phase == WavePhase.Fighting && Run.Deployment.Phase != DeployPhase.Idle;
 
-        // Time.timeScale を書くのはここだけ（plan 17.5・18.1）。一時停止中は 0、配置中は placement_time_scale、戦闘中は倍率、
+        // Time.timeScale を書くのはここだけ（plan 17.5・18.1・18.7）。一時停止中・勝利の帯は 0、配置中は placement_time_scale、戦闘中は倍率、
         // それ以外（開始の演出・ルートなど）は 1。
         // 決まる値が変わったときだけ書く（テストが早送りに使う timeScale を毎フレーム上書きしない）。
         private void ApplyTimeScale()
         {
-            var scale = IsPaused ? 0f
+            var scale = _destroying ? 1f : IsPaused || IsShowingVictory ? 0f
                 : IsPlacing ? (float)Config.PlacementTimeScale
                 : Run != null && Run.Phase == WavePhase.Fighting ? BattleSpeed
                 : 1f;
@@ -226,20 +233,22 @@ namespace UnitySlotTower.Battle
 
         private void UpdateSlotLock()
         {
-            _slotLocked = IsPaused || IsFinished || IsInIntro;
+            // Completed のルート選びではリールの停止入力が必要。
+            _slotLocked = IsSlotInputBlocked;
             if (slotCabinet != null)
             {
                 slotCabinet.InputLocked = _slotLocked;
             }
         }
 
+        private bool IsSlotInputBlocked => IsPaused || IsFinished || IsInIntro || IsShowingVictory;
+
         private void OnDestroy()
         {
             // シーンを離れても時間が止まったまま・速いままにならないようにする。
-            if (_appliedTimeScale != 1f)
-            {
-                Time.timeScale = 1f;
-            }
+            _destroying = true;
+            ApplyTimeScale();
+            if (Field != null) Field.BaseReached -= OnBaseReached;
 
             if (IsInitialized && slotCabinet != null)
             {
@@ -263,14 +272,20 @@ namespace UnitySlotTower.Battle
             var encounter = state.PickEncounter(_encounters, kind, node.Floor, _random);
             slotCabinet.SetFixedSpins(encounter.FixedSpins);
             var map = fieldView.LoadMap(encounter.MapId);
+            if (Field != null) Field.BaseReached -= OnBaseReached;
+            NodeKind = node.Kind;
             Floor = node.Floor;
             Run = new BattleNodeRun(Config, Units, Ranges, state, encounter, map,
                 WaveSchedule.Load(_waves, encounter.Id, map, _enemies), _random);
             NodeCount++;
+            Field.BaseReached += OnBaseReached;
+            BaseFlashUntil = 0f;
+            _victoryLeft = 0f;
             BattleSpeed = 1;
             _completionReported = false;
             UpdateSlotLock();
             fieldView.Show(map);
+            fieldView.Observe(Field);
             NodeBegan?.Invoke();
         }
 
@@ -284,20 +299,33 @@ namespace UnitySlotTower.Battle
                 return;
             }
 
-            Run.Advance(_clock.Advance(IsHeldByGuide ? 0d : Time.deltaTime));
-            if (Run.Phase == WavePhase.Completed && !Run.IsRunCleared && !_completionReported)
+            if (IsShowingVictory)
             {
-                _completionReported = true;
-                NodeCompleted?.Invoke();
+                _victoryLeft = Mathf.Max(0f, _victoryLeft - Time.unscaledDeltaTime);
+                if (!IsShowingVictory)
+                {
+                    _completionReported = true;
+                    ApplyTimeScale();
+                    if (!Run.IsRunCleared) NodeCompleted?.Invoke();
+                }
+            }
+            else
+            {
+                Run.Advance(_clock.Advance(IsHeldByGuide ? 0d : Time.deltaTime));
+                if (Run.Phase == WavePhase.Completed && !_completionReported)
+                    _victoryLeft = BattlePresentationTiming.VictoryBand;
             }
 
-            if (_slotLocked != (IsPaused || IsFinished || IsInIntro))
+            if (_slotLocked != IsSlotInputBlocked)
             {
                 UpdateSlotLock();
             }
 
             ApplyTimeScale();
         }
+
+        private void OnBaseReached(GridPoint cell) =>
+            BaseFlashUntil = Time.unscaledTime + BattlePresentationTiming.BaseFlash;
 
         private static CsvTable Parse(string fileName, TextAsset asset)
         {

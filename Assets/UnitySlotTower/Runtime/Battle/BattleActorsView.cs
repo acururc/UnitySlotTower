@@ -69,6 +69,10 @@ namespace UnitySlotTower.Battle
             public bool SkillReady;
             public int Hp = -1;
             public int Seen;
+            public Renderer Body;
+            public Color BodyColor;
+            public float HitUntil;
+            public bool IsHit;
         }
 
         private readonly Dictionary<BattleUnit, Actor> _units = new Dictionary<BattleUnit, Actor>();
@@ -190,7 +194,7 @@ namespace UnitySlotTower.Battle
             nose.localScale = new Vector3(0.15f, 0.15f, 0.3f);
             nose.localPosition = new Vector3(0f, height * 0.5f, look.size.z * 0.5f + 0.1f);
 
-            var actor = CreateActor(root, 0f, unitGaugeColor);
+            var actor = CreateActor(root, 0f, unitGaugeColor, body, look.color);
             actor.HeadHeight = height;
             actor.SkillMark = CreatePrimitive(PrimitiveType.Quad, "Skill Ready", root, UiStyle.Ready);
             actor.SkillMark.localScale = new Vector3(0.22f, 0.22f, 1f);
@@ -234,7 +238,7 @@ namespace UnitySlotTower.Battle
                 var shadow = CreatePrimitive(PrimitiveType.Cylinder, "Shadow", root, shadowColor);
                 shadow.localScale = new Vector3(size * 0.9f, 0.005f, size * 0.9f);
                 shadow.localPosition = Vector3.down * (lift.magnitude - 0.01f);
-                return CreateActor(root, -size * 0.5f, enemyGaugeColor);
+                return CreateActor(root, -size * 0.5f, enemyGaugeColor, body, color);
             }
 
             var height = BodyHeight(shape, scale.y);
@@ -246,11 +250,11 @@ namespace UnitySlotTower.Battle
                 shield.localScale = new Vector3(size * 1.2f, height * 0.95f, size * 0.18f);
                 shield.localPosition = new Vector3(0, height * 0.5f, -size * 0.6f);
             }
-            return CreateActor(root, 0f, enemyGaugeColor);
+            return CreateActor(root, 0f, enemyGaugeColor, body, color);
         }
 
         /// <summary>体の下端のすぐ下に HP ゲージを付ける。空中の敵は浮いた体を基準にする。</summary>
-        private Actor CreateActor(Transform root, float bottom, Color fillColor)
+        private Actor CreateActor(Transform root, float bottom, Color fillColor, Transform body, Color bodyColor)
         {
             var gauge = new GameObject("HP Gauge").transform;
             gauge.SetParent(root, false);
@@ -263,7 +267,8 @@ namespace UnitySlotTower.Battle
             fill.localScale = new Vector3(gaugeSize.x, gaugeSize.y, 1f);
             // Quad の表は -z 側。カメラの向きに揃えたとき背景より手前に出す。
             fill.localPosition = new Vector3(0f, 0f, -0.01f);
-            return new Actor { Root = root, Gauge = gauge, Fill = fill, BodyBottom = bottom };
+            return new Actor { Root = root, Gauge = gauge, Fill = fill, BodyBottom = bottom,
+                Body = body.GetComponent<Renderer>(), BodyColor = bodyColor };
         }
 
         private void UpdateSkillMark(Actor actor, string unitId)
@@ -287,6 +292,16 @@ namespace UnitySlotTower.Battle
 
         private void UpdateGauge(Actor actor, int hp, int maxHp)
         {
+            // HP の減少を短い命中の光で返す。ゲージの値が変わらないフレームでも元の色へ戻す。
+            if (actor.Hp >= 0 && hp < actor.Hp)
+                actor.HitUntil = Time.unscaledTime + BattlePresentationTiming.HitFlash;
+            var hit = Time.unscaledTime < actor.HitUntil;
+            if (hit != actor.IsHit)
+            {
+                actor.IsHit = hit;
+                SetColor(actor.Body, hit ? Color.white : actor.BodyColor);
+            }
+
             // カメラと同じ向きにして、常に正面から見えるようにする。
             if (battleCamera != null)
             {

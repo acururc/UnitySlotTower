@@ -15,6 +15,12 @@ namespace UnitySlotTower.Tests.PlayMode
     /// </summary>
     internal static class RouteTestUtil
     {
+        public static System.Collections.IEnumerator WaitForVictory(UnitySlotTower.Battle.BattleController battle)
+        {
+            var limit = Time.realtimeSinceStartup + UnitySlotTower.Battle.BattlePresentationTiming.VictoryBand + 3f;
+            while (battle.IsShowingVictory && Time.realtimeSinceStartup < limit) yield return null;
+            Assert.That(battle.IsShowingVictory, Is.False, "勝利の帯が終わらない");
+        }
         /// <summary>
         /// 戦闘マスの開始の演出（FR-019、既定 2 秒の実時間）が終わるまで待つ。演出中は配置などの操作を受け付けないので、
         /// 戦闘マスに入った直後に操作するテストはこれを挟む。
@@ -36,7 +42,8 @@ namespace UnitySlotTower.Tests.PlayMode
         /// </summary>
         public static System.Collections.IEnumerator WaitForRouteSpin(SlotCabinet cabinet)
         {
-            var limit = Time.realtimeSinceStartup + 5f;
+            // 戦闘終了から呼ばれても、勝利の帯と最後の回転の停止を待てるようにする。
+            var limit = Time.realtimeSinceStartup + 5f + UnitySlotTower.Battle.BattlePresentationTiming.VictoryBand;
             while (!cabinet.IsRouteSpinning && Time.realtimeSinceStartup < limit)
             {
                 yield return null;

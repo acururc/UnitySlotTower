@@ -1,12 +1,17 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using UnitySlotTower.Core.Battle;
+using UnitySlotTower.Core.Run;
+using UnitySlotTower.Flow;
+using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Battle
 {
     /// <summary>
     /// 戦闘マスの開始の演出（FR-019、plan 17.2、T361）。演出のあいだ、敵の出口から各経路を光の粒が走り、
-    /// 戦闘フィールドの中央に大きな ▶ が開いて消える。進み具合は <see cref="BattleNodeRun.IntroProgress"/>（戦闘の時計）に合わせるので、
+    /// 暗い背景から盤面を見せた後、中央のマスの種類の絵が消える。進み具合は <see cref="BattleNodeRun.IntroProgress"/>（戦闘の時計）に合わせるので、
     /// 一時停止中は止まる。操作は受け付けない（拒否は <see cref="BattleController.IsInputBlocked"/>）。
     /// </summary>
     public sealed class BattleIntroView : MonoBehaviour
@@ -17,9 +22,9 @@ namespace UnitySlotTower.Battle
         [SerializeField] private BattleFieldView fieldView;
         [SerializeField] private Camera battleCamera;
         [SerializeField] private Material primitiveMaterial;
-        [Tooltip("中央の ▶ のまとまり（透明度で出し入れする）。")]
+        [Tooltip("中央のアイコンの入れ物（透明度で出し入れする）。")]
         [SerializeField] private CanvasGroup playGroup;
-        [Tooltip("開く動きで拡大する ▶ の本体。")]
+        [Tooltip("既存の開始マーク。実行時にマスの種類の絵へ差し替える。")]
         [SerializeField] private RectTransform playMark;
         [Tooltip("経路の線（黄・水色）に紛れないよう白に近い色。")]
         [SerializeField] private Color groundLightColor = new Color(1f, 1f, 0.85f);
@@ -31,9 +36,9 @@ namespace UnitySlotTower.Battle
         [SerializeField] private float lightSize = 0.7f;
         [Tooltip("光が経路の端まで走り切るのは演出のこの割合の時点。")]
         [SerializeField, Range(0.1f, 1f)] private float runPortion = 0.85f;
-        [Tooltip("▶ が開き切るのは演出のこの割合の時点。")]
+        [Tooltip("暗い背景が消え始めるのは演出のこの割合の時点。")]
         [SerializeField, Range(0.05f, 1f)] private float openPortion = 0.3f;
-        [Tooltip("▶ が消え始めるのは演出のこの割合の時点。")]
+        [Tooltip("アイコンが消え始めるのは演出のこの割合の時点。")]
         [SerializeField, Range(0f, 1f)] private float fadeFrom = 0.75f;
         [SerializeField] private float groundLightHeight = 0.25f;
 
@@ -43,6 +48,19 @@ namespace UnitySlotTower.Battle
         private Transform _root;
         private BattleNodeRun _shownRun;
         private bool _shown;
+        private RectTransform _boardOverlay;
+        private Image _dark;
+        private RectTransform _nodeIcon;
+        private TMP_Text _nodeName;
+        private RectTransform _victory;
+        private TMP_Text _victoryName;
+        private Sprite _knob;
+
+        public float BackgroundAlpha => _dark.gameObject.activeSelf ? _dark.color.a : 0f;
+        public float IconAlpha => _shown ? playGroup.alpha : 0f;
+        public bool IsVictoryBandVisible => _victory.gameObject.activeSelf;
+        public bool IsNodeNameVisible => _nodeName.isActiveAndEnabled;
+        public bool IsVictoryNameVisible => _victoryName.isActiveAndEnabled;
 
         /// <summary>いま開始の演出を見せているか。</summary>
         public bool IsShowing => _shown;
@@ -52,11 +70,19 @@ namespace UnitySlotTower.Battle
             _block = new MaterialPropertyBlock();
             _root = new GameObject("Intro Lights").transform;
             _root.SetParent(fieldView.transform, false);
+            BuildPresentation();
             SetPlayVisible(false);
         }
 
         private void LateUpdate()
         {
+            if (_victory.gameObject.activeSelf != battle.IsShowingVictory)
+            {
+                FitOverlay();
+                _victory.gameObject.SetActive(battle.IsShowingVictory);
+            }
+            _victoryName.gameObject.SetActive(GameSession.TextMode);
+            _nodeName.gameObject.SetActive(GameSession.TextMode);
             var run = battle.Run;
             if (run == null || run.Phase != WavePhase.Intro)
             {
@@ -83,9 +109,21 @@ namespace UnitySlotTower.Battle
             _shownRun = run;
             _shown = true;
             EnsureLights(run.Map.Paths.Count * lightsPerPath);
+            FitOverlay();
+            _dark.gameObject.SetActive(true);
+            if (_nodeIcon != null) Destroy(_nodeIcon.gameObject);
+            _nodeIcon = RouteNodeIcons.CreateRect("Node Type", playMark, Vector2.zero, Vector2.one);
+            RouteNodeIcons.Create(_nodeIcon, battle.NodeKind, _knob, null);
+            _nodeName.text = battle.NodeKind switch
+            {
+                RouteNodeKinds.First => "最初の戦闘",
+                RouteNodeKinds.Elite => "強敵",
+                RouteNodeKinds.Boss => "ボス",
+                _ => "戦闘",
+            };
             SetPlayVisible(true);
 
-            // ▶ はマップの中央（カメラに写る位置）に置く。
+            // アイコンはマップの中央（カメラに写る位置）に置く。
             var parent = (RectTransform)playGroup.transform.parent;
             var map = run.Map;
             var center = fieldView.PositionToWorld((map.Width - 1) * 0.5, (map.Height - 1) * 0.5, false);
@@ -108,6 +146,7 @@ namespace UnitySlotTower.Battle
             }
 
             SetPlayVisible(false);
+            _dark.gameObject.SetActive(false);
         }
 
         private void UpdateLights(BattleMap map, float progress)
@@ -153,13 +192,68 @@ namespace UnitySlotTower.Battle
 
         private void UpdatePlay(float progress)
         {
-            var open = Mathf.Clamp01(progress / openPortion);
-            // 少し行き過ぎてから戻る開き方（easeOutBack）。
-            const float overshoot = 1.70158f;
-            var e = open - 1f;
-            var scale = 1f + (overshoot + 1f) * e * e * e + overshoot * e * e;
-            playMark.localScale = Vector3.one * Mathf.Max(0f, scale);
+            // 背景の切り替えが終わってからアイコンを消す。全体の時計は intro_seconds のまま。
+            var color = UiStyle.ScreenFill;
+            color.a = 1f - Mathf.InverseLerp(openPortion, fadeFrom - 0.1f, progress);
+            _dark.color = color;
             playGroup.alpha = progress < fadeFrom ? 1f : Mathf.Clamp01(1f - (progress - fadeFrom) / (1f - fadeFrom));
+        }
+
+        private void BuildPresentation()
+        {
+            var old = playMark.GetComponent<Image>();
+            _knob = old != null ? old.sprite : null;
+            playMark.gameObject.SetActive(false);
+            var host = (RectTransform)playGroup.transform.parent;
+            _boardOverlay = RouteNodeIcons.CreateRect("Board Presentation", host, Vector2.zero, Vector2.one);
+            _boardOverlay.SetSiblingIndex(playGroup.transform.GetSiblingIndex());
+            _dark = RouteNodeIcons.CreateImage("Intro Background", _boardOverlay, Vector2.zero, Vector2.one, UiStyle.ScreenFill, null);
+            _dark.gameObject.SetActive(false);
+            playMark = RouteNodeIcons.CreateRect("Node Mark", (RectTransform)playGroup.transform,
+                new Vector2(0.15f, 0.15f), new Vector2(0.85f, 0.85f));
+            var fontSource = GetComponentInParent<Canvas>().GetComponentInChildren<TMP_Text>(true);
+            var captionSource = GetComponentInParent<Canvas>().GetComponentInChildren<TextModeLabel>(true);
+            var font = captionSource != null && captionSource.Text != null ? captionSource.Text.font
+                : fontSource != null ? fontSource.font : TMP_Settings.defaultFontAsset;
+            _nodeName = Label("Node Name", (RectTransform)playGroup.transform, font,
+                new Vector2(-0.4f, -0.3f), new Vector2(1.4f, 0.08f));
+            _victory = RouteNodeIcons.CreateRect("Victory Band", _boardOverlay, new Vector2(0f, 0.36f), new Vector2(1f, 0.64f));
+            var panel = _victory.gameObject.AddComponent<UiPanel>();
+            panel.color = UiStyle.BandFill;
+            panel.SetBorder(UiStyle.Ready);
+            panel.raycastTarget = false;
+            var iconArea = RouteNodeIcons.CreateRect("Victory Art", _victory, new Vector2(0.4f, 0.32f), new Vector2(0.6f, 0.98f));
+            var icon = RouteNodeIcons.CreateRect("Victory Icon", iconArea, Vector2.zero, Vector2.one);
+            var fit = icon.gameObject.AddComponent<AspectRatioFitter>();
+            fit.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            fit.aspectRatio = 1f;
+            RouteNodeIcons.Create(icon, RouteNodeKinds.Boss, null, null).color = UiStyle.Ready;
+            _victoryName = Label("Victory Name", _victory, font, new Vector2(0.2f, 0.02f), new Vector2(0.8f, 0.32f));
+            _victoryName.text = "戦闘終了";
+            _victory.gameObject.SetActive(false);
+        }
+
+        private static TMP_Text Label(string name, RectTransform parent, TMP_FontAsset font, Vector2 min, Vector2 max)
+        {
+            var label = RouteNodeIcons.CreateRect(name, parent, min, max).gameObject.AddComponent<TextMeshProUGUI>();
+            label.font = font;
+            label.fontSize = 46f;
+            label.alignment = TextAlignmentOptions.Center;
+            label.color = UiStyle.TextColor;
+            label.raycastTarget = false;
+            label.gameObject.AddComponent<TextModeLabel>().SetLiteral(label, "戦闘");
+            return label;
+        }
+
+        private void FitOverlay()
+        {
+            var parent = (RectTransform)_boardOverlay.parent;
+            var pixels = battleCamera.pixelRect;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, pixels.min, null, out var min);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, pixels.max, null, out var max);
+            _boardOverlay.anchorMin = _boardOverlay.anchorMax = parent.pivot;
+            _boardOverlay.anchoredPosition = (min + max) * 0.5f;
+            _boardOverlay.sizeDelta = max - min;
         }
 
         private void SetPlayVisible(bool visible)

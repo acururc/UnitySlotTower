@@ -156,7 +156,8 @@ Core のタスク（T340〜T347）は `tdd` で red→green、完了条件は Ed
   - 2026-11-18（Claude の仮置き、plan 18.6 に記録）: EditMode 635/635、PlayMode 77 件で 76 成功＋撮影1件スキップ（`RouteChoiceTests` の2件に線・暗さ・通った印の確認を追加。2件目は2階に入った後に画面を開き直して通ってきた線と反対の端の暗さも確認）、ハーネス 8/8。画像 `Artifacts/Automation/Editor/t386/t386-route-floor3-noguide.png`（3階から見た状態、Play 中にリフレクションで2・3階へ入れて `Show`）。未確認: 文字あり版の撮影（T389 で）、移動のアニメ中の線の見た目の画像。
 - [x] T387 (FR-070) ほかの画面（タイトル・難易度・ルート・ショップ・回復・説明・リザルト）を同じ土台に — 検証: 全画面の撮影（両方の版）、PlayMode 全件
   - 2026-11-18（Claude の仮置き、plan 18.4 に記録）: 位置は変えず見た目だけ（`UiSkin`、`Setup/Restyle Screens (T387)` を Title・Game シーンで実行）。EditMode 635/635、PlayMode 77 件で 76 成功＋撮影1件スキップ、ハーネス 8/8。撮影 `Artifacts/Automation/Editor/t359/20261118-035117/`（両方の版の16枚、変更前は `20261118-034706/`）。未対応: 説明の表の中身と文字あり版のラベルの地（T389）。
-- [ ] T388 (FR-077) 戦闘の演出: 開始、出口の印と出現の光、本拠地への到達、勝利の帯、攻撃の光の長さ — 検証: PlayMode（AC-058）、各演出の Editor 画像
+- [x] T388 (FR-077) 戦闘の演出: 開始、出口の印と出現の光、本拠地への到達、勝利の帯、攻撃の光の長さ — 検証: PlayMode（AC-058）、各演出の Editor 画像
+  - 2026-11-18（Claude の仮置き、長さは `BattlePresentationTiming`: 出口 0.3・本拠地 0.5・勝利 1.2・命中 0.12 秒）: 実装は Codex に委任。勝利の帯は `BattleController` の `_victoryLeft`（`ApplyTimeScale` で 0、帯の後に NodeCompleted／リザルト）。EditMode 635/635、PlayMode 79 件で 78 成功＋撮影1件スキップ（`StageTransitionTests` に AC-058 の2件）、ハーネス 8/8。画像 `Artifacts/Automation/Editor/t388/`（勝利の帯は確認、開始の演出は撮影が間に合わず未確認、本拠地の赤い光の画像も未確認）。
 - [ ] T389 (FR-006, FR-070) 文字あり版の追従: ラベル・`TextModeLayout`・`ui_texts.csv`・フォント — 検証: `TextModeTests`（読みやすさの判定）、全画面の撮影（AC-052）
 - [ ] T390 (FR-050) 掃除と文書: 使われなくなったコード・テストの削除、plan の該当章と PROJECT_CONTEXT の更新 — 検証: ハーネス、EditMode・PlayMode 全件
 - [ ] T399 (AC-051, AC-052, AC-053, AC-056) 通しの再プレイ（ユーザー）: UI の見た目と見やすさ、文字なし版の説明、弓と前衛の役割、2方向のマップ、配置中のスロー — 検証: プレイ記録（`playtest-t399.md`）

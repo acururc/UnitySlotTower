@@ -189,10 +189,13 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         private static IEnumerator PlayUntilFinished(BattleController battle)
         {
             Time.timeScale = 20f;
-            var limit = Time.realtimeSinceStartup + 90f;
+            var limit = Time.realtimeSinceStartup + 90f + 7 * BattlePresentationTiming.VictoryBand;
             while (!battle.IsFinished && Time.realtimeSinceStartup < limit)
             {
                 RouteTestUtil.Step();
+                // 勝利の帯が時間を 0→1 に戻すので、次の戦闘では早送りを再開する。
+                if (!battle.IsShowingVictory && (battle.IsInIntro || battle.Run.Phase == WavePhase.Fighting))
+                    Time.timeScale = 20f;
                 yield return null;
             }
 

@@ -241,7 +241,7 @@ namespace UnitySlotTower.Battle
             // 殴った直後は味方が少し大きく、敵が白く光る。
             var sinceHit = _time - (_nextHit - _interval);
             var arrived = x <= _stopX + 0.0001f;
-            var flash = arrived && sinceHit >= 0f && sinceHit < 0.12f;
+            var flash = arrived && sinceHit >= 0f && sinceHit < BattlePresentationTiming.HitFlash;
             _ally.localScale = Vector3.one * (flash ? 1.12f : 1f);
             enemy.GetComponent<Image>().color = flash ? Color.white : EnemyColor;
 

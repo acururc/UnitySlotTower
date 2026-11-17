@@ -6,6 +6,8 @@ using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
+using UnitySlotTower.Flow;
+using UnitySlotTower.Slot;
 
 namespace UnitySlotTower.Tests.PlayMode.Battle
 {
@@ -23,11 +25,13 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         private bool _runInBackground;
         private BattleController _battle;
         private BattleFieldView _fieldView;
+        private bool _textMode;
 
         [UnitySetUp]
         public IEnumerator SetUp()
         {
             _runInBackground = Application.runInBackground;
+            _textMode = GameSession.TextMode;
             Application.runInBackground = true;
 
             // sceneLoaded は Awake の後・Start の前に呼ばれるので、BattleController が表を読む前に差し替えられる。
@@ -57,6 +61,88 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         {
             Time.timeScale = 1f;
             Application.runInBackground = _runInBackground;
+            GameSession.SetTextMode(_textMode);
+        }
+
+        [UnityTest]
+        [Description("AC-058: 文字なし版の開始・出現・到達・勝利と次画面への遷移")]
+        public IEnumerator Battle_Presentation_Reveals_Board_Flashes_And_Holds_Victory() => Presentation(false);
+
+        [UnityTest]
+        [Description("AC-058: 文字あり版でも同じ演出を行い、開始の名前と戦闘終了を表示")]
+        public IEnumerator Text_Battle_Presentation_Shows_Names_And_Holds_Victory() => Presentation(true);
+
+        private IEnumerator Presentation(bool textMode)
+        {
+            GameSession.SetTextMode(textMode);
+            var intro = Object.FindAnyObjectByType<BattleIntroView>();
+            var status = Object.FindAnyObjectByType<OperationBarStatus>();
+            var flow = Object.FindAnyObjectByType<RunController>();
+            var cabinet = Object.FindAnyObjectByType<SlotCabinet>();
+            var map = _battle.Run.Map;
+            var path = map.Paths[0];
+            var exit = path.Cells[0];
+            var goal = path.Cells[path.Cells.Count - 1];
+            yield return null;
+            Assert.That((intro.IsShowing, intro.BackgroundAlpha, intro.IconAlpha, intro.IsNodeNameVisible),
+                Is.EqualTo((true, 1f, 1f, textMode)), "暗い背景とマスの絵（文字あり版は名前）が出ない");
+            for (var y = 0; y < map.Height; y++)
+                for (var x = 0; x < map.Width; x++)
+                {
+                    var cell = new GridPoint(x, y);
+                    if (map.TileAt(cell) == MapTile.Spawn)
+                        Assert.That(_fieldView.HasExitMarker(cell), Is.True, $"出口 {x},{y} に枠がない");
+                }
+            Assert.That(_fieldView.IsExitFlashing(exit), Is.False);
+
+            var limit = Time.realtimeSinceStartup + 10f;
+            while (_battle.Run.IntroProgress < 0.65 && Time.realtimeSinceStartup < limit) yield return null;
+            yield return null;
+            Assert.That((intro.BackgroundAlpha, intro.IconAlpha), Is.EqualTo((0f, 1f)),
+                "絵を残して盤面を先に見せない");
+            yield return RouteTestUtil.WaitForIntro(_battle);
+            yield return null;
+            Assert.That((intro.IsShowing, intro.BackgroundAlpha, intro.IconAlpha), Is.EqualTo((false, 0f, 0f)));
+
+            limit = Time.realtimeSinceStartup + 5f;
+            while (!_fieldView.IsExitFlashing(exit) && Time.realtimeSinceStartup < limit) yield return null;
+            Assert.That(_fieldView.IsExitFlashing(exit), Is.True, "出現時に出口が光らない");
+            _battle.SetPaused(true);
+            yield return new WaitForSecondsRealtime(0.35f);
+            Assert.That((_fieldView.HasExitMarker(exit), _fieldView.IsExitFlashing(exit)), Is.EqualTo((true, false)),
+                "光った後に常設の枠が残らない");
+            _battle.SetPaused(false);
+            Time.timeScale = 4f;
+            limit = Time.realtimeSinceStartup + 15f;
+            while (!_fieldView.IsBaseFlashing(goal) && Time.realtimeSinceStartup < limit) yield return null;
+            Assert.That(_fieldView.IsBaseFlashing(goal), Is.True, "到達時に本拠地が光らない");
+            _battle.SetPaused(true);
+            yield return new WaitForSecondsRealtime(0.08f);
+            Assert.That((status.IsLifeFlashing, status.LifeNumberScale > 1f), Is.EqualTo((true, true)),
+                "ライフが赤く光って大きくならない");
+            yield return new WaitForSecondsRealtime(0.5f);
+            Assert.That((_fieldView.IsBaseFlashing(goal), status.IsLifeFlashing, status.LifeNumberScale),
+                Is.EqualTo((false, false, 1f)), "到達の演出が戻らない");
+            _battle.SetPaused(false);
+            Time.timeScale = 4f;
+            limit = Time.realtimeSinceStartup + 15f;
+            while (!_battle.IsShowingVictory && Time.realtimeSinceStartup < limit) yield return null;
+            yield return null;
+            Assert.That((_battle.IsShowingVictory, intro.IsVictoryBandVisible, intro.IsVictoryNameVisible,
+                Time.timeScale, _battle.IsInputBlocked, cabinet.InputLocked, flow.IsChoosingRoute, intro.BackgroundAlpha),
+                Is.EqualTo((true, true, textMode, 0f, true, true, false, 0f)), "盤面を残す勝利の帯で時間と入力が止まらない");
+            var tick = _battle.Field.Tick;
+            var speed = _battle.BattleSpeed;
+            _battle.TogglePause();
+            _battle.CycleBattleSpeed();
+            yield return new WaitForSecondsRealtime(0.6f);
+            Assert.That((_battle.IsShowingVictory, _battle.Field.Tick, _battle.IsPaused, _battle.BattleSpeed),
+                Is.EqualTo((true, tick, false, speed)), "勝利の帯の間に戦闘か操作が進んだ");
+            yield return RouteTestUtil.WaitForVictory(_battle);
+            yield return null;
+            Assert.That((intro.IsVictoryBandVisible, flow.IsChoosingRoute, Time.timeScale, cabinet.InputLocked),
+                Is.EqualTo((false, true, 1f, false)),
+                "勝利の帯の後にルートへ移らない");
         }
 
         [UnityTest]

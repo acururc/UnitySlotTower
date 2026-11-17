@@ -39,6 +39,61 @@ namespace UnitySlotTower.Battle
         private CsvTable _paths;
         private Transform _tilesRoot;
         private Transform _pathsRoot;
+        private Transform _markersRoot;
+        private Battlefield _observed;
+        private sealed class Marker
+        {
+            public Renderer[] Parts;
+            public float Until;
+            public Color Normal;
+        }
+        private readonly System.Collections.Generic.Dictionary<GridPoint, Marker> _exits =
+            new System.Collections.Generic.Dictionary<GridPoint, Marker>();
+        private readonly System.Collections.Generic.Dictionary<GridPoint, Marker> _bases =
+            new System.Collections.Generic.Dictionary<GridPoint, Marker>();
+
+        public bool HasExitMarker(GridPoint cell) => _exits.ContainsKey(cell);
+        public bool IsExitFlashing(GridPoint cell) => _exits.TryGetValue(cell, out var m) && m.Until > Time.unscaledTime;
+        public bool IsBaseFlashing(GridPoint cell) => _bases.TryGetValue(cell, out var m) && m.Until > Time.unscaledTime;
+
+        public void Observe(Battlefield field)
+        {
+            if (_observed != null)
+            {
+                _observed.EnemySpawned -= OnSpawn;
+                _observed.BaseReached -= OnArrival;
+            }
+            _observed = field;
+            if (field != null)
+            {
+                field.EnemySpawned += OnSpawn;
+                field.BaseReached += OnArrival;
+            }
+            foreach (var marker in _exits.Values) marker.Until = 0f;
+            foreach (var marker in _bases.Values) marker.Until = 0f;
+        }
+
+        private void OnDestroy() => Observe(null);
+        private void OnSpawn(GridPoint cell)
+        {
+            if (_exits.TryGetValue(cell, out var marker)) marker.Until = Time.unscaledTime + BattlePresentationTiming.ExitFlash;
+        }
+        private void OnArrival(GridPoint cell)
+        {
+            if (_bases.TryGetValue(cell, out var marker)) marker.Until = Time.unscaledTime + BattlePresentationTiming.BaseFlash;
+        }
+
+        private void LateUpdate()
+        {
+            foreach (var marker in _exits.Values) PaintMarker(marker, Color.white);
+            foreach (var marker in _bases.Values) PaintMarker(marker, UnitySlotTower.Ui.UiStyle.Danger);
+        }
+
+        private void PaintMarker(Marker marker, Color flash)
+        {
+            _block.SetColor(BaseColor, marker.Until > Time.unscaledTime ? flash : marker.Normal);
+            for (var i = 0; i < marker.Parts.Length; i++) marker.Parts[i].SetPropertyBlock(_block);
+        }
 
         public BattleMap Map { get; private set; }
 
@@ -116,9 +171,12 @@ namespace UnitySlotTower.Battle
             {
                 Destroy(_tilesRoot.gameObject);
                 Destroy(_pathsRoot.gameObject);
+                Destroy(_markersRoot.gameObject);
             }
 
             Map = map;
+            _exits.Clear();
+            _bases.Clear();
             BuildTiles();
             BuildPaths();
             FitCamera();
@@ -146,6 +204,8 @@ namespace UnitySlotTower.Battle
         {
             var root = _tilesRoot = new GameObject("Tiles").transform;
             root.SetParent(transform, false);
+            _markersRoot = new GameObject("Exit Markers").transform;
+            _markersRoot.SetParent(transform, false);
             for (var y = 0; y < Map.Height; y++)
             {
                 for (var x = 0; x < Map.Width; x++)
@@ -157,6 +217,9 @@ namespace UnitySlotTower.Battle
                     var cube = CreateCube($"Tile {x},{y} {tile}", root, TileColor(tile), true);
                     cube.localScale = new Vector3(0.94f, height, 0.94f);
                     cube.localPosition = CellToLocal(point) + new Vector3(0f, height * 0.5f - groundHeight, 0f);
+                    if (tile == MapTile.Goal)
+                        _bases.Add(point, new Marker { Parts = new[] { cube.GetComponent<Renderer>() }, Normal = goalColor });
+                    if (tile == MapTile.Spawn) BuildExitMarker(point, _markersRoot);
                 }
             }
         }
@@ -179,6 +242,21 @@ namespace UnitySlotTower.Battle
                     segment.localScale = new Vector3(0.12f, 0.02f, 1.12f);
                 }
             }
+        }
+
+        private void BuildExitMarker(GridPoint point, Transform parent)
+        {
+            var parts = new Renderer[4];
+            for (var i = 0; i < 4; i++)
+            {
+                var edge = CreateCube($"Exit Frame {point.X},{point.Y} {i}", parent, UnitySlotTower.Ui.UiStyle.Danger, false);
+                var horizontal = i < 2;
+                edge.localScale = horizontal ? new Vector3(0.98f, 0.05f, 0.07f) : new Vector3(0.07f, 0.05f, 0.98f);
+                var offset = i % 2 == 0 ? -0.46f : 0.46f;
+                edge.localPosition = CellToLocal(point) + new Vector3(horizontal ? 0f : offset, 0.06f, horizontal ? offset : 0f);
+                parts[i] = edge.GetComponent<Renderer>();
+            }
+            _exits.Add(point, new Marker { Parts = parts, Normal = UnitySlotTower.Ui.UiStyle.Danger });
         }
 
         private float TileHeight(MapTile tile) => tile == MapTile.HighGround ? highGroundHeight : groundHeight;
