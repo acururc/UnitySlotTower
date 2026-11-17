@@ -154,7 +154,8 @@ Core のタスク（T340〜T347）は `tdd` で red→green、完了条件は Ed
   - 2026-11-18（Claude の仮置き、plan 18.5 に記録）: EditMode 635/635、PlayMode 76→77 件で 76 成功＋撮影1件スキップ（`Block_Count_And_Skill_Art_Show_On_Cards_Facing_And_Detail` を追加、一時停止中のゲージのテストに説明が開いて閉じる確認を追加）、ハーネス 8/8。画像 `Artifacts/Automation/Editor/t385/`（`t385-detail.png` 札と詳細、`t385b-facing.png` 向き選び、`t385c-*` スキルの説明と足止めの道）。未確認: 文字あり版の撮影（読みやすさのテストは成功）、タンクの説明の「スキル中は全部止まる」瞬間の画像、ゲーム中の流れで出る足止めの説明（撮影はリフレクションで板を作った）。
 - [x] T386 (FR-073) ルートの線の3種類と行けないマスを暗く — 検証: PlayMode（線の状態）、Editor 画像（AC-054）
   - 2026-11-18（Claude の仮置き、plan 18.6 に記録）: EditMode 635/635、PlayMode 77 件で 76 成功＋撮影1件スキップ（`RouteChoiceTests` の2件に線・暗さ・通った印の確認を追加。2件目は2階に入った後に画面を開き直して通ってきた線と反対の端の暗さも確認）、ハーネス 8/8。画像 `Artifacts/Automation/Editor/t386/t386-route-floor3-noguide.png`（3階から見た状態、Play 中にリフレクションで2・3階へ入れて `Show`）。未確認: 文字あり版の撮影（T389 で）、移動のアニメ中の線の見た目の画像。
-- [ ] T387 (FR-070) ほかの画面（タイトル・難易度・ルート・ショップ・回復・説明・リザルト）を同じ土台に — 検証: 全画面の撮影（両方の版）、PlayMode 全件
+- [x] T387 (FR-070) ほかの画面（タイトル・難易度・ルート・ショップ・回復・説明・リザルト）を同じ土台に — 検証: 全画面の撮影（両方の版）、PlayMode 全件
+  - 2026-11-18（Claude の仮置き、plan 18.4 に記録）: 位置は変えず見た目だけ（`UiSkin`、`Setup/Restyle Screens (T387)` を Title・Game シーンで実行）。EditMode 635/635、PlayMode 77 件で 76 成功＋撮影1件スキップ、ハーネス 8/8。撮影 `Artifacts/Automation/Editor/t359/20261118-035117/`（両方の版の16枚、変更前は `20261118-034706/`）。未対応: 説明の表の中身と文字あり版のラベルの地（T389）。
 - [ ] T388 (FR-077) 戦闘の演出: 開始、出口の印と出現の光、本拠地への到達、勝利の帯、攻撃の光の長さ — 検証: PlayMode（AC-058）、各演出の Editor 画像
 - [ ] T389 (FR-006, FR-070) 文字あり版の追従: ラベル・`TextModeLayout`・`ui_texts.csv`・フォント — 検証: `TextModeTests`（読みやすさの判定）、全画面の撮影（AC-052）
 - [ ] T390 (FR-050) 掃除と文書: 使われなくなったコード・テストの削除、plan の該当章と PROJECT_CONTEXT の更新 — 検証: ハーネス、EditMode・PlayMode 全件

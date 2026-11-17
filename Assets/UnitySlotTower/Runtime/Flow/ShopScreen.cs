@@ -53,7 +53,6 @@ namespace UnitySlotTower.Flow
             new Color(0.95f, 0.75f, 0.05f),
         };
 
-        [SerializeField] private Color cardColor = new Color(0.2f, 0.22f, 0.3f);
         [SerializeField] private Color moneyColor = new Color(0.98f, 0.8f, 0.2f);
         [SerializeField, Range(0f, 1f)] private float disabledAlpha = 0.3f;
 
@@ -178,12 +177,13 @@ namespace UnitySlotTower.Flow
                 var right = (i + 1) / (float)count;
                 var pad = 0.04f / count * 3f;
                 var card = RouteNodeIcons.CreateImage($"Offer {i + 1} {item.Id}", offersArea,
-                    new Vector2(left + pad, 0f), new Vector2(right - pad, 1f), cardColor, boxSprite);
-                card.type = Image.Type.Sliced;
+                    new Vector2(left + pad, 0f), new Vector2(right - pad, 1f), UiStyle.ButtonFill, null);
                 card.raycastTarget = true;
                 var button = card.gameObject.AddComponent<Button>();
                 button.navigation = new Navigation { mode = Navigation.Mode.None };
                 var group = card.gameObject.AddComponent<CanvasGroup>();
+                // 角を切った札の見た目（T387）。押した色の変化は子の Skin に移る。
+                UiSkin.Apply(card, UiStyle.ButtonFill, UiStyle.PanelBorder);
                 var index = i;
                 button.onClick.AddListener(() => Buy(index));
 
