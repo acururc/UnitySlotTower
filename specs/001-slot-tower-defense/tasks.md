@@ -147,6 +147,7 @@ Core のタスク（T340〜T347）は `tdd` で red→green、完了条件は Ed
 - [x] T382 (FR-076) 2方向のマップ `battle_d`・本拠地2つのマップ `battle_e`、どちらの本拠地でも同じライフが減る — 検証: EditMode（AC-057 のデータとライフ）、PlayMode `Camera_Fits_Every_Map`、新マップの Editor 画像
   - 2026-11-18: EditMode 622→630（全件成功、BattleMapTests・TableValidationTests に追加）、PlayMode 74→76 件で 75 成功＋撮影1件スキップ（`Camera_Fits_Every_Map` に2マップ追加）、ハーネス 8/8。画像 `Artifacts/Automation/Editor/t382/`（全出口・本拠地・道が画面内）。Game シーンの `mapTables` はメニュー `Assign Stage Maps` で登録。
 - [ ] T383 (FR-070, FR-071) 戦闘画面の UI の試作（共通の土台 `UiStyle`、上端の帯、隅のボタン、札の4状態、体力バー、スキルの印、空中の敵が隠れない）。両方の版の撮影をユーザーに見せて方向を確かめる — 検証: Editor 画像（ユーザー確認）
+  - 2026-11-18（試作、ユーザー確認待ち）: 撮影 `Artifacts/Automation/Editor/t383/t383-d-notext.png`・`t383-d-text.png`（1440×1920）。EditMode 630→634（全件成功、PortraitLayoutTests に追加）、PlayMode 76 件で 75 成功＋失敗1（`TextModeTests.Every_Screen_Shows_Japanese_Text_Large_Inside_And_Apart`: 帯の名前が上端から約4 px はみ出し、名前と数字が 3〜9 px 重なる。T384 で直す）、ハーネス 8/8。未着手: 札の職の絵、置ける・無料ストックの状態の撮影、強化の移動（T384）。
 - [ ] T384 (FR-070) 戦闘画面の UI の仕上げ（試作への指摘の反映、キャラの詳細の板と撤退・強化の移動）と壊れたテストの直し — 検証: EditMode・PlayMode 全件（件数の増減を記録）、Editor 画像
 - [ ] T385 (FR-072) 文字なし版の説明: ブロック数の盾、足止めのアニメ、スキルの絵と一時停止中のアニメ、キャラの詳細 — 検証: PlayMode（AC-053）、Editor 画像
 - [ ] T386 (FR-073) ルートの線の3種類と行けないマスを暗く — 検証: PlayMode（線の状態）、Editor 画像（AC-054）

@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Core.Ui;
+using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Battle
 {
@@ -24,10 +25,12 @@ namespace UnitySlotTower.Battle
         [SerializeField] private Image cooldownGauge;
         [SerializeField] private Image selectedFrame;
         [SerializeField] private TMP_Text costText;
+        [SerializeField] private TMP_Text blockText;
+        [SerializeField] private Graphic stateFrame;
         [Tooltip("無料ストックの個数（×n）。ストックがないときは隠す。")]
         [SerializeField] private TMP_Text stockText;
-        [Tooltip("召喚できないときに本体の色にかける。")]
-        [SerializeField] private Color unavailableTint = new Color(0.45f, 0.45f, 0.45f);
+        [Tooltip("旧シーン互換用。カードの状態色は UiStyle を使用する。")]
+        [SerializeField] private Color unavailableTint = UiStyle.DisabledTint;
         [Tooltip("召喚できないときに押したら本体をこの色で光らせる（T355）。")]
         [SerializeField] private Color rejectColor = new Color(1f, 0.25f, 0.2f);
         [SerializeField] private float rejectSeconds = 0.35f;
@@ -57,7 +60,11 @@ namespace UnitySlotTower.Battle
         private Color _skillBackgroundColor;
         private int _shownCost = -1;
         private int _shownStock = -1;
-        private bool _shownAvailable = true;
+        private enum CardState { Unknown, Placeable, Money, Cooldown, Blocked }
+        private CardState _shownState;
+        private int _shownBlock = -1;
+        private bool _shownFrameStock;
+        private bool _wasRejecting;
         private int _shownLevel = -1;
         private bool _shownFull;
         private bool _hasSkill;
@@ -66,7 +73,6 @@ namespace UnitySlotTower.Battle
         private int _shownSeconds = -1;
         private float _rejectUntil;
         private bool _rejectMoney;
-        private Color _costColor;
 
         /// <summary>スキルゲージのボタン（説明で指す）。なければ null。</summary>
         public RectTransform SkillButtonRect => skillButton != null ? (RectTransform)skillButton.transform : null;
@@ -86,7 +92,6 @@ namespace UnitySlotTower.Battle
         private void Awake()
         {
             _bodyColor = body.color;
-            _costColor = costText.color;
             if (skillBackground != null)
             {
                 _skillBackgroundColor = skillBackground.color;
@@ -192,6 +197,12 @@ namespace UnitySlotTower.Battle
                 costText.SetText(NumericText.YenFormat, unit.Cost);
             }
 
+            if (blockText != null && unit.Block != _shownBlock)
+            {
+                _shownBlock = unit.Block;
+                blockText.SetText("{0}", unit.Block);
+            }
+
             // 無料ストックがあれば待ち時間中でも出せる（D-79）。
             var remaining = stock > 0 ? 0d : summoner.CooldownRemaining(unit.Id);
             cooldownGauge.fillAmount = unit.Cooldown > 0d ? (float)(remaining / unit.Cooldown) : 0f;
@@ -203,23 +214,41 @@ namespace UnitySlotTower.Battle
                 _cooldownText.SetText("{0}", seconds);
             }
 
-            var available = summoner.Check(unit.Id) == SummonResult.Summoned;
+            var result = summoner.Check(unit.Id);
+            var state = battle.IsInputBlocked ? CardState.Blocked
+                : remaining > 0d ? CardState.Cooldown
+                : result == SummonResult.Summoned ? CardState.Placeable
+                : result == SummonResult.NotEnoughCoins ? CardState.Money : CardState.Blocked;
+            var normal = state == CardState.Placeable ? _bodyColor
+                : _bodyColor * (state == CardState.Cooldown ? UiStyle.CooldownTint : UiStyle.DisabledTint);
+            var costColor = state == CardState.Money ? UiStyle.Danger : UiStyle.TextColor;
+            var hasStock = stock > 0;
+            if (state != _shownState || hasStock != _shownFrameStock)
+            {
+                if (stateFrame != null)
+                {
+                    var frameColor = hasStock ? UiStyle.Ready
+                        : state == CardState.Money || state == CardState.Cooldown ? UiStyle.Danger : UiStyle.PanelBorder;
+                    if (!hasStock && state == CardState.Cooldown) frameColor.a = 0.6f;
+                    stateFrame.color = frameColor;
+                }
+                _shownFrameStock = hasStock;
+            }
             var rejecting = IsShowingReject;
             if (rejecting)
             {
                 // 光りはじめを強く、だんだん元の色へ。
                 var t = (_rejectUntil - Time.unscaledTime) / rejectSeconds;
-                var normal = available ? _bodyColor : _bodyColor * unavailableTint;
                 body.color = Color.Lerp(normal, rejectColor, t);
-                costText.color = _rejectMoney ? Color.Lerp(_costColor, rejectColor, t) : _costColor;
-                _shownAvailable = !available; // 光り終わりに色を戻させる。
+                costText.color = _rejectMoney ? Color.Lerp(costColor, rejectColor, t) : costColor;
             }
-            else if (available != _shownAvailable)
+            else if (state != _shownState || _wasRejecting)
             {
-                _shownAvailable = available;
-                body.color = available ? _bodyColor : _bodyColor * unavailableTint;
-                costText.color = _costColor;
+                body.color = normal;
+                costText.color = costColor;
             }
+            _shownState = state;
+            _wasRejecting = rejecting;
 
             var selected = battle.Deployment.Selected;
             selectedFrame.enabled = selected != null && selected.Id == unit.Id;

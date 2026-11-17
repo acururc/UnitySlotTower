@@ -31,6 +31,9 @@ namespace UnitySlotTower.Core.Layout
         /// <summary>戦闘の高さの割合（上から。基準解像度で 960 px）。</summary>
         public const double BattleHeightRatio = 0.50;
 
+        /// <summary>戦闘の領域の上端の帯（ライフ・所持金などの UI）の割合（T383、基準解像度で 96 px）。戦闘カメラはこの下だけを映す。</summary>
+        public const double TopBandRatio = 0.10;
+
         /// <summary>スロット筐体の上端（下からの割合。基準解像度で 720 px）。ここから戦闘の下端までが操作バー（240 px）。</summary>
         public const float SlotAreaTop = 0.375f;
 
@@ -63,5 +66,12 @@ namespace UnitySlotTower.Core.Layout
         /// <summary>3:4 より横長なら高さ基準（CanvasScaler の match = 1）、縦長なら幅基準。</summary>
         public static bool MatchHeight(int screenWidth, int screenHeight) =>
             (double)screenWidth / Math.Max(1, screenHeight) >= Aspect;
+
+        /// <summary>戦闘カメラの領域（戦闘の領域から上端の帯を除く。下端は同じ）。</summary>
+        public static NormalizedRect BattleView(int screenWidth, int screenHeight)
+        {
+            var battle = Battle(screenWidth, screenHeight);
+            return new NormalizedRect(battle.X, battle.Y, battle.Width, battle.Height * (1 - TopBandRatio));
+        }
     }
 }

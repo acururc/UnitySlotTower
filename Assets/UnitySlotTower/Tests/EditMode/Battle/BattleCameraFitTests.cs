@@ -62,14 +62,14 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("D-87（T368）: 戦闘の領域は 1440×960（上半分）で、横の画角は 6:4 のとき（縦 45°・1440:1152）と同じ")]
+        [Description("T383: 上端の帯を除いた 1440×864 でも横の画角は 6:4 のとき（縦 45°・1440:1152）と同じ")]
         public void Horizontal_View_Keeps_The_Old_Look()
         {
             var pose = BattleCameraFit.Fit(10, 5);
             var tanH = Math.Tan(pose.VerticalFovDegrees * Math.PI / 360) * pose.Aspect;
 
             Assert.That(new[] { pose.Aspect, tanH },
-                Is.EqualTo(new[] { 1440.0 / 960.0, Math.Tan(22.5 * Math.PI / 180) * 1440.0 / 1152.0 }).Within(1e-6));
+                Is.EqualTo(new[] { 1440.0 / 864.0, Math.Tan(22.5 * Math.PI / 180) * 1440.0 / 1152.0 }).Within(1e-6));
         }
 
         [Test]

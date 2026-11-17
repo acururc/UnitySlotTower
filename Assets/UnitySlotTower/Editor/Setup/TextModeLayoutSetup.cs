@@ -369,21 +369,16 @@ namespace UnitySlotTower.Editor.Setup
 
         // --- T359b 戦闘の HUD ---
 
-        // 操作バーの位置（Portrait Root の割合）。バーの子の割合はこれで換算する。
-        private const float BarBottom = PortraitLayout.SlotAreaTop;
-        private const float BarTop = 1f - (float)PortraitLayout.BattleHeightRatio;
-
-        // 文字あり版の状態の帯（Portrait Root の割合）。戦闘フィールドの上の空き（Battle Camera の上端）に重ねる。
-        private const float BandBottom = 1752f / 1920f;
-        private const float BandTop = 1912f / 1920f;
+        // 上端の帯（Top Band、T383 で両方の版に共通。高さは PortraitLayout.TopBandRatio）の高さ（px）。
+        private static float BandHeight => (float)(PortraitLayout.BattleHeightRatio * PortraitLayout.TopBandRatio) * 1920f;
 
         // 帯の中の段（帯の割合）。上が名前、下が数字・ボタンの絵。
         private const float NameBottom = 0.56f;
         private const float NameTop = 0.98f;
         private const float ValueBottom = 0.04f;
-        private const float ValueTop = 0.54f;
+        private const float ValueTop = 0.56f;
 
-        private const float BandFont = 40f;
+        private const float BandFont = 36f;
         private const float ButtonFont = 36f;
         private const float CardFont = 40f;
 
@@ -400,76 +395,75 @@ namespace UnitySlotTower.Editor.Setup
                 BuildUnitCard(bar, i, barHeight);
             }
 
-            BuildStatusBand(bar);
-            BuildRates(bar);
+            var band = Child(root, "Top Band");
+            BuildStatusBand(band);
+            BuildRates(band);
             BuildGuideCaption(root);
         }
 
-        // 札: 横 345px（基準解像度）。上の段の左に味方アイコン（コスト・ストックの数字は中のまま）、右に強化、下の段に職名、右端にスキルゲージ。
+        // 札（T383）: 札の枠（Card Frame）は BattleHudRestyleSetup の位置のまま。文字あり版は味方アイコンを縮めて上に寄せ、
+        // 下の段に職名、右に強化（「強化」の文字つき）とブロック数、右端にスキルゲージ。x は札の左からの px、y は操作バーの下からの px。
         // 職名を下にするのは、説明の文がアイコンのすぐ上に出るため（GuideOverlay.PlaceCaption）。
         private static void BuildUnitCard(RectTransform bar, int slot, float barHeight)
         {
             const float width = 1440f;
-            var left = 8f + slot * 358f;
-            const float nameBottom = 0.03f;
-            const float nameTop = 0.35f;
-            const float iconBottom = 0.38f;
-            const float iconTop = 0.97f;
+            var left = 10f + slot * 357.5f;
+            const float iconBottom = 80f;
+            const float iconTop = 218f;
 
             var icon = Child(bar, $"Unit Icon {slot + 1}");
-            SetRect(icon, new Vector2(left / width, iconBottom), new Vector2((left + 110f) / width, iconTop));
-            // 職名はアイコンの子。アイコンの下の段に札の幅（ゲージの手前まで）で出す。
+            SetRect(icon, new Vector2((left + 12f) / width, iconBottom / barHeight), new Vector2((left + 150f) / width, iconTop / barHeight));
             var name = FindLabel(icon, "unit_");
-            SetLabel(name, Vector2.zero, Vector2.zero,
-                new Vector2(0f, (nameBottom - iconBottom) * barHeight), new Vector2(292f, (nameTop - iconBottom) * barHeight), CardFont);
+            SetLabel(name, Vector2.zero, Vector2.zero, new Vector2(0f, 18f - iconBottom), new Vector2(292f, 74f - iconBottom), CardFont);
 
             var upgrade = Child(bar, $"Upgrade Icon {slot + 1}");
-            SetRect(upgrade, new Vector2((left + 116f) / width, iconBottom), new Vector2((left + 296f) / width, iconTop));
-            SetLabel(Child(upgrade, "Text Label bar_upgrade"), Vector2.zero, new Vector2(0.46f, 1f), Vector2.zero, Vector2.zero,
+            SetRect(upgrade, new Vector2((left + 158f) / width, iconBottom / barHeight), new Vector2((left + 304f) / width, 152f / barHeight));
+            SetLabel(Child(upgrade, "Text Label bar_upgrade"), Vector2.zero, new Vector2(0.6f, 1f), Vector2.zero, Vector2.zero,
                 ButtonFont);
-            SetRect(Child(upgrade, "Arrow"), new Vector2(0.48f, 0.3f), new Vector2(0.62f, 0.7f));
-            SetRect(Child(upgrade, "Cost"), new Vector2(0.64f, 0.4f), new Vector2(0.98f, 0.98f));
+            SetRect(Child(upgrade, "Arrow"), new Vector2(0.6f, 0.3f), new Vector2(0.7f, 0.7f));
+            SetRect(Child(upgrade, "Cost"), new Vector2(0.71f, 0.4f), new Vector2(0.98f, 0.98f));
             for (var level = 0; level < 5; level++)
             {
-                var x = 0.645f + level * 0.068f;
-                SetRect(Child(upgrade, $"Level {level + 1}"), new Vector2(x, 0.1f), new Vector2(x + 0.054f, 0.3f));
+                var x = 0.72f + level * 0.054f;
+                SetRect(Child(upgrade, $"Level {level + 1}"), new Vector2(x, 0.1f), new Vector2(x + 0.044f, 0.3f));
             }
 
-            SetRect(Child(bar, $"Skill Gauge {slot + 1}"), new Vector2((left + 302f) / width, nameBottom),
-                new Vector2((left + 340f) / width, iconTop));
+            var card = Child(bar, $"Card Frame {slot + 1}");
+            // 札の枠は 220 px（操作バーの 10〜230 px）。
+            SetRect(Child(card, "Block"), new Vector2(158f / 347f, (160f - 10f) / 220f), new Vector2(262f / 347f, (218f - 10f) / 220f));
+            SetRect(Child(bar, $"Skill Gauge {slot + 1}"), new Vector2((left + 310f) / width, 20f / barHeight),
+                new Vector2((left + 340f) / width, iconTop / barHeight));
         }
 
-        // 帯: ライフ・所持金・残りの敵（左）、倍率（中、BuildRates）、倍速・撤退・一時停止（右）。▶ とウェーブは T361 で廃止。
-        private static void BuildStatusBand(RectTransform bar)
+        // 帯（T383、Top Band の子）: ライフ・残りの敵・所持金（左）、倍率（中、BuildRates）、撤退・倍速・一時停止（右）。名前は数字の上。
+        private static void BuildStatusBand(RectTransform band)
         {
-            var status = Child(bar, "Status");
-            SetRect(status, new Vector2(0f, BarY(BandBottom)), new Vector2(1f, BarY(BandTop)));
-            var bandHeight = (BandTop - BandBottom) * 1920f;
+            var status = Child(band, "Status");
+            var bandHeight = BandHeight;
 
             NamedIcon(Child(status, "Life Icon"), Child(status, "Life"), "life", 0.012f, 0.13f, bandHeight);
-            NamedIcon(Child(status, "Coin Icon"), Child(status, "Coins"), "money", 0.142f, 0.27f, bandHeight);
-            // T370: 残りの敵（所持金と倍率の間）と倍速（倍率と撤退の間、撤退・一時停止と同じ形）。部品は BattleSpeedSetup（T365）。
-            NamedIcon(Child(status, "Enemy Icon"), Child(status, "Remaining"), "bar_remaining", 0.282f, 0.405f, bandHeight);
-            var speed = Child(status, "Speed Button");
-            BandButton(speed, "bar_speed", 0.63f, 0.74f);
-            SetRect(Child(speed, "Speed"), new Vector2(0.08f, 0.44f), new Vector2(0.92f, 0.96f));
+            NamedIcon(Child(status, "Enemy Icon"), Child(status, "Remaining"), "bar_remaining", 0.142f, 0.265f, bandHeight);
+            NamedIcon(Child(status, "Coin Icon"), Child(status, "Coins"), "money", 0.277f, 0.405f, bandHeight);
 
             var retreat = Child(status, "Retreat Button");
-            BandButton(retreat, "bar_retreat", 0.75f, 0.86f);
-            SetRect(Child(retreat, "Stroke 1"), new Vector2(0.45f, 0.44f), new Vector2(0.55f, 0.94f));
-            SetRect(Child(retreat, "Stroke 2"), new Vector2(0.45f, 0.44f), new Vector2(0.55f, 0.94f));
+            BandButton(retreat, "bar_retreat", 0.63f, 0.74f);
+            SetRect(Child(retreat, "Stroke 1"), new Vector2(0.45f, 0.5f), new Vector2(0.55f, 0.94f));
+            SetRect(Child(retreat, "Stroke 2"), new Vector2(0.45f, 0.5f), new Vector2(0.55f, 0.94f));
+            var speed = Child(status, "Speed Button");
+            BandButton(speed, "bar_speed", 0.75f, 0.86f);
+            SetRect(Child(speed, "Speed"), new Vector2(0.08f, 0.46f), new Vector2(0.92f, 0.98f));
             var pause = Child(status, "Pause Button");
             BandButton(pause, "bar_pause", 0.87f, 0.99f);
-            SetRect(Child(pause, "Bar Left"), new Vector2(0.38f, 0.46f), new Vector2(0.46f, 0.92f));
-            SetRect(Child(pause, "Bar Right"), new Vector2(0.54f, 0.46f), new Vector2(0.62f, 0.92f));
+            SetRect(Child(pause, "Bar Left"), new Vector2(0.38f, 0.5f), new Vector2(0.46f, 0.94f));
+            SetRect(Child(pause, "Bar Right"), new Vector2(0.54f, 0.5f), new Vector2(0.62f, 0.94f));
         }
 
         // 倍率は帯の中央に横並び（左が攻撃力、右が獲得金）。名前は数字の上。
-        private static void BuildRates(RectTransform bar)
+        private static void BuildRates(RectTransform band)
         {
-            var rates = Child(bar, "Rates");
-            SetRect(rates, new Vector2(0.41f, BarY(BandBottom)), new Vector2(0.62f, BarY(BandTop)));
-            var bandHeight = (BandTop - BandBottom) * 1920f;
+            var rates = Child(band, "Rates");
+            SetRect(rates, new Vector2(0.415f, 0f), new Vector2(0.62f, 1f));
+            var bandHeight = BandHeight;
             var attack = Child(rates, "Attack Rate");
             SetRect(attack, new Vector2(0f, ValueBottom), new Vector2(0.49f, ValueTop));
             SetLabel(Child(attack, "Text Label bar_attack_rate"), new Vector2(0f, 1f), Vector2.one,
@@ -518,12 +512,9 @@ namespace UnitySlotTower.Editor.Setup
         private static void BandButton(RectTransform button, string id, float left, float right)
         {
             SetRect(button, new Vector2(left, ValueBottom), new Vector2(right, NameTop));
-            SetLabel(Child(button, "Text Label " + id), Vector2.zero, new Vector2(1f, 0f), new Vector2(0f, 4f), new Vector2(0f, 60f),
+            SetLabel(Child(button, "Text Label " + id), Vector2.zero, new Vector2(1f, 0f), new Vector2(0f, 2f), new Vector2(0f, 46f),
                 ButtonFont);
         }
-
-        // 操作バーの子に、Portrait Root の高さの割合を換算する。
-        private static float BarY(float rootY) => (rootY - BarBottom) / (BarTop - BarBottom);
 
         private static void SetRect(RectTransform target, Vector2 anchorMin, Vector2 anchorMax) =>
             SetRect(target, anchorMin, anchorMax, Vector2.zero, Vector2.zero);

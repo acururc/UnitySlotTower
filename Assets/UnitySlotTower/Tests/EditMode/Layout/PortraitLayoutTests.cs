@@ -8,6 +8,26 @@ namespace UnitySlotTower.Tests.EditMode.Layout
     {
         private static (double, double, double, double) Tuple(NormalizedRect r) => (r.X, r.Y, r.Width, r.Height);
 
+        [TestCase(1440, 1920)]
+        [TestCase(1920, 1080)]
+        [TestCase(1080, 2400)]
+        public void BattleView_Reserves_The_Top_Band(int width, int height)
+        {
+            var battle = PortraitLayout.Battle(width, height);
+            var view = PortraitLayout.BattleView(width, height);
+            var band = battle.Height * PortraitLayout.TopBandRatio;
+            Assert.That(new[] { view.X, view.Y, view.Width, view.Y + view.Height, view.Height + band },
+                Is.EqualTo(new[] { battle.X, battle.Y, battle.Width, battle.Y + battle.Height - band, battle.Height }).Within(1e-9));
+        }
+
+        [Test]
+        public void Reference_BattleView_Leaves_96_Pixels_For_Hud()
+        {
+            var view = PortraitLayout.BattleView(1440, 1920);
+            Assert.That(new[] { view.Height * 1920, (1 - view.Y - view.Height) * 1920 },
+                Is.EqualTo(new[] { 864.0, 96.0 }).Within(1e-9));
+        }
+
         [Test]
         public void Window_Of_960x1280_Uses_Whole_Screen()
         {

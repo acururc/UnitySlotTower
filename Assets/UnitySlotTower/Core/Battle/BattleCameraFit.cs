@@ -1,4 +1,5 @@
 using System;
+using UnitySlotTower.Core.Layout;
 
 namespace UnitySlotTower.Core.Battle
 {
@@ -10,13 +11,15 @@ namespace UnitySlotTower.Core.Battle
     {
         public const double DefaultPitchDegrees = 55;
 
-        /// <summary>戦闘領域の縦横比（1440:960、D-87・T368 で上半分）。</summary>
-        public const double DefaultAspect = 1440.0 / 960.0;
+        /// <summary>戦闘カメラの縦横比。上半分（1440×960）から上端の帯（TopBandRatio）を除いた 1440:864（T383）。</summary>
+        public const double DefaultAspect = PortraitLayout.ReferenceWidth /
+            (PortraitLayout.ReferenceHeight * PortraitLayout.BattleHeightRatio * (1 - PortraitLayout.TopBandRatio));
 
         /// <summary>
-        /// 縦の画角。横の画角を 6:4 のとき（縦 45°・1440:1152）と同じにする値: 2·atan(tan 22.5° × 1.25 ÷ 1.5)。
+        /// 縦の画角。横の画角を 6:4 のとき（縦 45°・1440:1152）と同じにする値:
+        /// 2·atan(tan(22.5°) × 1.25 ÷ 1.5 × (1440/960) ÷ DefaultAspect).
         /// </summary>
-        public const double DefaultVerticalFovDegrees = 38.08709224;
+        public const double DefaultVerticalFovDegrees = 34.5158770189817;
 
         /// <summary>マップの外側に足す余白（マス）。D-87（T368）で 0。</summary>
         public const double DefaultMargin = 0;
