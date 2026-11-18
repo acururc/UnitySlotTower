@@ -20,7 +20,6 @@ namespace UnitySlotTower.Ui
         public const float BorderWidth = 3f;
         public const float CornerCut = 16f;
         public static readonly Color TextColor = Color.white;
-        public static readonly Color DimText = new Color(1f, 1f, 1f, 0.55f);
         public static readonly Color DisabledTint = new Color(0.42f, 0.42f, 0.45f, 1f);
         public static readonly Color CooldownTint = new Color(0.6f, 0.45f, 0.45f, 1f);
     }

@@ -42,7 +42,6 @@ namespace UnitySlotTower.Battle
         // Hit
         private float _interval;
         private float _damage;
-        private bool _ranged;
         private Image _hpFill;
         private RectTransform _shot;
         private float _hp;
@@ -74,7 +73,6 @@ namespace UnitySlotTower.Battle
             var rect = (RectTransform)lane.transform;
             lane._interval = Mathf.Max(0.1f, interval);
             lane._damage = Mathf.Clamp(damage, 0.02f, 1f);
-            lane._ranged = ranged;
             lane._stopX = ranged ? 0.66f : AllyRight + 0.01f;
             var enemy = Enemy(rect, 0);
             lane._enemies.Add(enemy);

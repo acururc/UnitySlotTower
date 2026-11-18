@@ -38,13 +38,6 @@ namespace UnitySlotTower.Ui
             SetVerticesDirty();
         }
 
-        public void SetAccent(Color value, float width)
-        {
-            accentColor = value;
-            accentWidth = Mathf.Max(0f, width);
-            SetVerticesDirty();
-        }
-
         protected override void OnPopulateMesh(VertexHelper vh)
         {
             vh.Clear();
