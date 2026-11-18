@@ -68,15 +68,18 @@ namespace UnitySlotTower.Battle
             // 緑（バッファー）は、強くなる側の味方（近接で攻撃力のいちばん高い職）が殴る絵にする。
             var buffed = skill == SlotSymbol.Green7 ? StrongestMeleeIcon() : null;
             var font = FindFont();
+            var captionSource = GetComponentInParent<Canvas>().GetComponentInChildren<TextModeLabel>(true);
 
             // 上: スキルの絵（大）と職の絵。
             var header = SkillPictures.Rect("Header", board, new Vector2(0.03f, 0.7f), new Vector2(0.97f, 0.96f));
-            SkillPictures.Create(SkillPictures.Rect("Skill", header, new Vector2(0.38f, 0f), new Vector2(0.5f, 1f)), skill, color, knob);
-            var job = SkillPictures.Rect("Job", header, new Vector2(0.52f, 0.05f), new Vector2(0.62f, 0.95f));
+            SkillPictures.Create(SkillPictures.Rect("Skill", header, new Vector2(0.02f, 0f), new Vector2(0.14f, 1f)), skill, color, knob);
+            var job = SkillPictures.Rect("Job", header, new Vector2(0.16f, 0.05f), new Vector2(0.26f, 0.95f));
             if (allyArt != null)
             {
                 Copy(allyArt, SkillPictures.Image("Back", job, Vector2.zero, Vector2.one, allyColor, null).rectTransform);
             }
+
+            Caption(header, "Description", "skill_" + unitId, new Vector2(0.29f, 0f), Vector2.one, font, captionSource);
 
             for (var row = 0; row < 2; row++)
             {
@@ -98,7 +101,11 @@ namespace UnitySlotTower.Battle
                     slash.rectTransform.localEulerAngles = new Vector3(0f, 0f, -40f);
                 }
 
+                Caption(area, "Caption", on ? "skill_help_on" : "skill_help_off",
+                    new Vector2(0.5f, 0.66f), new Vector2(1f, 1f), font, captionSource);
                 var laneArea = SkillPictures.Rect("Lane", area, new Vector2(0.13f, 0.05f), new Vector2(1f, 0.95f));
+                // Leave a band above the road for the caption, clear of enemies and ally numbers.
+                laneArea.anchorMax = new Vector2(1f, 0.6f);
                 if (buffed != null)
                 {
                     BuildBuffLane(laneArea, definition, unit, on, buffed, allyArt, allyColor, color, font);
@@ -209,9 +216,27 @@ namespace UnitySlotTower.Battle
             }
         }
 
+        private static void Caption(RectTransform parent, string name, string id, Vector2 min, Vector2 max,
+            TMP_FontAsset font, TextModeLabel source)
+        {
+            var text = SkillPictures.Rect(name, parent, min, max).gameObject.AddComponent<TextMeshProUGUI>();
+            text.font = font;
+            text.fontSize = 36f;
+            text.enableAutoSizing = false;
+            text.alignment = TextAlignmentOptions.Left;
+            text.color = UiStyle.TextColor;
+            text.raycastTarget = false;
+            var label = text.gameObject.AddComponent<TextModeLabel>();
+            label.CopyTableFrom(source);
+            label.SetIds(id);
+        }
+
         private TMP_FontAsset FindFont()
         {
-            var text = GetComponentInParent<Canvas>().GetComponentInChildren<TMP_Text>(true);
+            var canvas = GetComponentInParent<Canvas>();
+            var caption = canvas.GetComponentInChildren<TextModeLabel>(true);
+            if (caption != null && caption.Text != null) return caption.Text.font;
+            var text = canvas.GetComponentInChildren<TMP_Text>(true);
             return text != null ? text.font : null;
         }
     }

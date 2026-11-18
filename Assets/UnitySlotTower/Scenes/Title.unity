@@ -2322,7 +2322,6 @@ GameObject:
   m_Component:
   - component: {fileID: 668368594}
   - component: {fileID: 668368597}
-  - component: {fileID: 668368596}
   - component: {fileID: 668368595}
   m_Layer: 5
   m_Name: Text Label setting_5
@@ -2366,37 +2365,7 @@ MonoBehaviour:
   table: {fileID: 4900000, guid: 0c030f0cc823f724389655f2aa1f06f9, type: 3}
   id: setting_5
   text: {fileID: 683828387}
-  background: {fileID: 668368596}
---- !u!114 &668368596
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 668368593}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 0.05, g: 0.06, b: 0.1, a: 0.72}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  background: {fileID: 0}
 --- !u!222 &668368597
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -3611,7 +3580,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1172538465}
   - component: {fileID: 1172538468}
-  - component: {fileID: 1172538467}
   - component: {fileID: 1172538466}
   m_Layer: 5
   m_Name: Text Label setting_1
@@ -3655,37 +3623,7 @@ MonoBehaviour:
   table: {fileID: 4900000, guid: 0c030f0cc823f724389655f2aa1f06f9, type: 3}
   id: setting_1
   text: {fileID: 1839081448}
-  background: {fileID: 1172538467}
---- !u!114 &1172538467
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1172538464}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 0.05, g: 0.06, b: 0.1, a: 0.72}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  background: {fileID: 0}
 --- !u!222 &1172538468
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -3779,7 +3717,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1326416708}
   - component: {fileID: 1326416711}
-  - component: {fileID: 1326416710}
   - component: {fileID: 1326416709}
   m_Layer: 5
   m_Name: Text Label title_back
@@ -3823,37 +3760,7 @@ MonoBehaviour:
   table: {fileID: 4900000, guid: 0c030f0cc823f724389655f2aa1f06f9, type: 3}
   id: title_back
   text: {fileID: 1038012614}
-  background: {fileID: 1326416710}
---- !u!114 &1326416710
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1326416707}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 0.05, g: 0.06, b: 0.1, a: 0.72}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  background: {fileID: 0}
 --- !u!222 &1326416711
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -4578,7 +4485,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1600340304}
   - component: {fileID: 1600340307}
-  - component: {fileID: 1600340306}
   - component: {fileID: 1600340305}
   m_Layer: 5
   m_Name: Text Label setting_4
@@ -4622,37 +4528,7 @@ MonoBehaviour:
   table: {fileID: 4900000, guid: 0c030f0cc823f724389655f2aa1f06f9, type: 3}
   id: setting_4
   text: {fileID: 1816511009}
-  background: {fileID: 1600340306}
---- !u!114 &1600340306
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1600340303}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 0.05, g: 0.06, b: 0.1, a: 0.72}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  background: {fileID: 0}
 --- !u!222 &1600340307
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -4808,8 +4684,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1627817522}
   - component: {fileID: 1627817525}
-  - component: {fileID: 1627817524}
   - component: {fileID: 1627817523}
+  - component: {fileID: 1627817526}
   m_Layer: 5
   m_Name: Text Label title_text_mode
   m_TagString: Untagged
@@ -4852,37 +4728,7 @@ MonoBehaviour:
   table: {fileID: 4900000, guid: 0c030f0cc823f724389655f2aa1f06f9, type: 3}
   id: title_text_mode
   text: {fileID: 202904584}
-  background: {fileID: 1627817524}
---- !u!114 &1627817524
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1627817521}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 0.05, g: 0.06, b: 0.1, a: 0.72}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  background: {fileID: 1627817526}
 --- !u!222 &1627817525
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -4891,6 +4737,32 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1627817521}
   m_CullTransparentMesh: 1
+--- !u!114 &1627817526
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1627817521}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a188f8386725c54fa9dcb8aa2aa6d08, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnitySlotTower.Runtime::UnitySlotTower.Ui.UiPanel
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.05, g: 0.06, b: 0.08, a: 0.72}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  corners: 5
+  cut: 16
+  borderWidth: 3
+  borderColor: {r: 1, g: 1, b: 1, a: 0.38}
+  accentColor: {r: 0.9490196, g: 0.7607843, b: 0.1882353, a: 1}
+  accentWidth: 0
 --- !u!1 &1650031880
 GameObject:
   m_ObjectHideFlags: 0
@@ -4901,7 +4773,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1650031881}
   - component: {fileID: 1650031884}
-  - component: {fileID: 1650031883}
   - component: {fileID: 1650031882}
   m_Layer: 5
   m_Name: Text Label setting_6
@@ -4945,37 +4816,7 @@ MonoBehaviour:
   table: {fileID: 4900000, guid: 0c030f0cc823f724389655f2aa1f06f9, type: 3}
   id: setting_6
   text: {fileID: 343538974}
-  background: {fileID: 1650031883}
---- !u!114 &1650031883
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650031880}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 0.05, g: 0.06, b: 0.1, a: 0.72}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  background: {fileID: 0}
 --- !u!222 &1650031884
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -5325,8 +5166,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1757209837}
   - component: {fileID: 1757209840}
-  - component: {fileID: 1757209839}
   - component: {fileID: 1757209838}
+  - component: {fileID: 1757209841}
   m_Layer: 5
   m_Name: Text Label title_difficulty
   m_TagString: Untagged
@@ -5369,37 +5210,7 @@ MonoBehaviour:
   table: {fileID: 4900000, guid: 0c030f0cc823f724389655f2aa1f06f9, type: 3}
   id: title_difficulty
   text: {fileID: 608730185}
-  background: {fileID: 1757209839}
---- !u!114 &1757209839
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1757209836}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 0.05, g: 0.06, b: 0.1, a: 0.72}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  background: {fileID: 1757209841}
 --- !u!222 &1757209840
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -5408,6 +5219,32 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1757209836}
   m_CullTransparentMesh: 1
+--- !u!114 &1757209841
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1757209836}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a188f8386725c54fa9dcb8aa2aa6d08, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnitySlotTower.Runtime::UnitySlotTower.Ui.UiPanel
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.05, g: 0.06, b: 0.08, a: 0.72}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  corners: 5
+  cut: 16
+  borderWidth: 3
+  borderColor: {r: 1, g: 1, b: 1, a: 0.38}
+  accentColor: {r: 0.9490196, g: 0.7607843, b: 0.1882353, a: 1}
+  accentWidth: 0
 --- !u!1 &1780098713
 GameObject:
   m_ObjectHideFlags: 0
@@ -5418,7 +5255,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1780098714}
   - component: {fileID: 1780098717}
-  - component: {fileID: 1780098716}
   - component: {fileID: 1780098715}
   m_Layer: 5
   m_Name: Text Label title_start
@@ -5462,37 +5298,7 @@ MonoBehaviour:
   table: {fileID: 4900000, guid: 0c030f0cc823f724389655f2aa1f06f9, type: 3}
   id: title_start
   text: {fileID: 1621348572}
-  background: {fileID: 1780098716}
---- !u!114 &1780098716
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1780098713}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 0.05, g: 0.06, b: 0.1, a: 0.72}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  background: {fileID: 0}
 --- !u!222 &1780098717
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -5903,7 +5709,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1888164831}
   - component: {fileID: 1888164834}
-  - component: {fileID: 1888164833}
   - component: {fileID: 1888164832}
   m_Layer: 5
   m_Name: Text Label setting_3
@@ -5947,37 +5752,7 @@ MonoBehaviour:
   table: {fileID: 4900000, guid: 0c030f0cc823f724389655f2aa1f06f9, type: 3}
   id: setting_3
   text: {fileID: 1690288496}
-  background: {fileID: 1888164833}
---- !u!114 &1888164833
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1888164830}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 0.05, g: 0.06, b: 0.1, a: 0.72}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  background: {fileID: 0}
 --- !u!222 &1888164834
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -6229,7 +6004,6 @@ GameObject:
   m_Component:
   - component: {fileID: 2008034512}
   - component: {fileID: 2008034515}
-  - component: {fileID: 2008034514}
   - component: {fileID: 2008034513}
   m_Layer: 5
   m_Name: Text Label setting_2
@@ -6273,37 +6047,7 @@ MonoBehaviour:
   table: {fileID: 4900000, guid: 0c030f0cc823f724389655f2aa1f06f9, type: 3}
   id: setting_2
   text: {fileID: 849115884}
-  background: {fileID: 2008034514}
---- !u!114 &2008034514
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2008034511}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 0.05, g: 0.06, b: 0.1, a: 0.72}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  background: {fileID: 0}
 --- !u!222 &2008034515
 CanvasRenderer:
   m_ObjectHideFlags: 0

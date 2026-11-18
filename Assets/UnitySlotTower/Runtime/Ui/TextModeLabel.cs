@@ -33,6 +33,17 @@ namespace UnitySlotTower.Ui
 
         public TMP_Text Text => text;
 
+        public Graphic Background => background;
+
+        /// <summary>シーンのラベルから文言表を借りる。</summary>
+        public void CopyTableFrom(TextModeLabel source)
+        {
+            table = source != null ? source.table : null;
+            text ??= GetComponent<TMP_Text>();
+            Resolve();
+            Apply(GameSession.TextMode);
+        }
+
         /// <summary>いま文字が描かれるか（文字あり版で、文言がある）。</summary>
         public bool IsShown => text != null && text.enabled;
 

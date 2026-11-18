@@ -128,6 +128,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             help.OpenButton.onClick.Invoke();
             yield return null;
             Assert.That(help.IsOpen, Is.True, "文字あり版で開き直せない");
+            var skillPictures = 0;
+            foreach (var rect in help.GetComponentsInChildren<RectTransform>(true))
+                if (rect.name == "Help Skill Picture") skillPictures++;
+            Assert.That(skillPictures, Is.EqualTo(4), "早見表を開き直すとスキルの絵が増えるか、職の絵が足りない");
 
             GameSession.SetTextMode(false);
             yield return null;
@@ -273,6 +277,14 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             battle.SetPaused(true);
             yield return Settle();
             Readable("一時停止", problems);
+            var skillHelp = Object.FindAnyObjectByType<SkillHelpPanel>();
+            GameObject.Find("Skill Gauge 1").GetComponent<Button>().onClick.Invoke();
+            yield return Settle();
+            Assert.That(skillHelp.IsOpen, Is.True, "タンクのスキル説明が開かない");
+            Assert.That(ShownIds(), Does.Contain("skill_tank").And.Contain("skill_help_off").And.Contain("skill_help_on"));
+            Readable("スキルの説明", problems);
+            skillHelp.Close();
+            yield return Settle();
             var help = Object.FindAnyObjectByType<HelpScreen>();
             help.Open();
             yield return Settle();
@@ -305,6 +317,32 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Readable("リザルト", problems);
 
             Assert.That(problems, Is.Empty, "読みにくい文字:\n" + string.Join("\n", problems));
+        }
+
+        [UnityTest]
+        public IEnumerator Visible_Text_Mode_Labels_Use_Styled_Backgrounds_In_Title_And_Battle()
+        {
+            GameSession.SetTextMode(true);
+            yield return SceneManager.LoadSceneAsync(GameSession.TitleScene);
+            yield return Settle();
+            AssertStyledBackgrounds("Title");
+            var battle = default(BattleController);
+            yield return LoadGame(b => battle = b);
+            yield return Settle();
+            AssertStyledBackgrounds("Game");
+        }
+
+        private static void AssertStyledBackgrounds(string screen)
+        {
+            var shown = 0;
+            foreach (var label in Object.FindObjectsByType<TextModeLabel>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            {
+                if (!label.IsShown) continue;
+                shown++;
+                Assert.That(label.Background == null || label.Background is UiPanel, Is.True,
+                    $"{screen}: {label.name} に平らな下地が残っている");
+            }
+            Assert.That(shown, Is.GreaterThan(0), $"{screen}: 表示中のラベルがない");
         }
 
         private static IEnumerator CollectNodeScreen<T>(RunController run, string kind, string screen, List<string> problems)

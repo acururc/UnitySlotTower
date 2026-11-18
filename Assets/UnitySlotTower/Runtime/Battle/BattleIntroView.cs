@@ -114,13 +114,13 @@ namespace UnitySlotTower.Battle
             if (_nodeIcon != null) Destroy(_nodeIcon.gameObject);
             _nodeIcon = RouteNodeIcons.CreateRect("Node Type", playMark, Vector2.zero, Vector2.one);
             RouteNodeIcons.Create(_nodeIcon, battle.NodeKind, _knob, null);
-            _nodeName.text = battle.NodeKind switch
+            _nodeName.GetComponent<TextModeLabel>().SetIds(battle.NodeKind switch
             {
-                RouteNodeKinds.First => "最初の戦闘",
-                RouteNodeKinds.Elite => "強敵",
-                RouteNodeKinds.Boss => "ボス",
-                _ => "戦闘",
-            };
+                RouteNodeKinds.First => "node_first",
+                RouteNodeKinds.Elite => "node_elite",
+                RouteNodeKinds.Boss => "node_boss",
+                _ => "node_battle",
+            });
             SetPlayVisible(true);
 
             // アイコンはマップの中央（カメラに写る位置）に置く。
@@ -216,7 +216,13 @@ namespace UnitySlotTower.Battle
             var font = captionSource != null && captionSource.Text != null ? captionSource.Text.font
                 : fontSource != null ? fontSource.font : TMP_Settings.defaultFontAsset;
             _nodeName = Label("Node Name", (RectTransform)playGroup.transform, font,
-                new Vector2(-0.4f, -0.3f), new Vector2(1.4f, 0.08f));
+                new Vector2(-0.4f, -0.3f), new Vector2(1.4f, 0.08f), captionSource, "node_battle");
+            // 同じ場所にあった T352 の「戦闘開始」はマスの名前に置き換えたので出さない（T389）。
+            foreach (var startLabel in GetComponentsInChildren<TextModeLabel>(true))
+            {
+                if (startLabel.Id == "battle_start") startLabel.SetIds();
+            }
+
             _victory = RouteNodeIcons.CreateRect("Victory Band", _boardOverlay, new Vector2(0f, 0.36f), new Vector2(1f, 0.64f));
             var panel = _victory.gameObject.AddComponent<UiPanel>();
             panel.color = UiStyle.BandFill;
@@ -228,12 +234,11 @@ namespace UnitySlotTower.Battle
             fit.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
             fit.aspectRatio = 1f;
             RouteNodeIcons.Create(icon, RouteNodeKinds.Boss, null, null).color = UiStyle.Ready;
-            _victoryName = Label("Victory Name", _victory, font, new Vector2(0.2f, 0.02f), new Vector2(0.8f, 0.32f));
-            _victoryName.text = "戦闘終了";
+            _victoryName = Label("Victory Name", _victory, font, new Vector2(0.2f, 0.02f), new Vector2(0.8f, 0.32f), captionSource, "battle_end");
             _victory.gameObject.SetActive(false);
         }
 
-        private static TMP_Text Label(string name, RectTransform parent, TMP_FontAsset font, Vector2 min, Vector2 max)
+        private static TMP_Text Label(string name, RectTransform parent, TMP_FontAsset font, Vector2 min, Vector2 max, TextModeLabel source, string id)
         {
             var label = RouteNodeIcons.CreateRect(name, parent, min, max).gameObject.AddComponent<TextMeshProUGUI>();
             label.font = font;
@@ -241,7 +246,9 @@ namespace UnitySlotTower.Battle
             label.alignment = TextAlignmentOptions.Center;
             label.color = UiStyle.TextColor;
             label.raycastTarget = false;
-            label.gameObject.AddComponent<TextModeLabel>().SetLiteral(label, "戦闘");
+            var caption = label.gameObject.AddComponent<TextModeLabel>();
+            caption.CopyTableFrom(source);
+            caption.SetIds(id);
             return label;
         }
 

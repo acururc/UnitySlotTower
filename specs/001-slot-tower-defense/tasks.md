@@ -158,7 +158,8 @@ Core のタスク（T340〜T347）は `tdd` で red→green、完了条件は Ed
   - 2026-11-18（Claude の仮置き、plan 18.4 に記録）: 位置は変えず見た目だけ（`UiSkin`、`Setup/Restyle Screens (T387)` を Title・Game シーンで実行）。EditMode 635/635、PlayMode 77 件で 76 成功＋撮影1件スキップ、ハーネス 8/8。撮影 `Artifacts/Automation/Editor/t359/20261118-035117/`（両方の版の16枚、変更前は `20261118-034706/`）。未対応: 説明の表の中身と文字あり版のラベルの地（T389）。
 - [x] T388 (FR-077) 戦闘の演出: 開始、出口の印と出現の光、本拠地への到達、勝利の帯、攻撃の光の長さ — 検証: PlayMode（AC-058）、各演出の Editor 画像
   - 2026-11-18（Claude の仮置き、長さは `BattlePresentationTiming`: 出口 0.3・本拠地 0.5・勝利 1.2・命中 0.12 秒）: 実装は Codex に委任。勝利の帯は `BattleController` の `_victoryLeft`（`ApplyTimeScale` で 0、帯の後に NodeCompleted／リザルト）。EditMode 635/635、PlayMode 79 件で 78 成功＋撮影1件スキップ（`StageTransitionTests` に AC-058 の2件）、ハーネス 8/8。画像 `Artifacts/Automation/Editor/t388/`（勝利の帯は確認、開始の演出は撮影が間に合わず未確認、本拠地の赤い光の画像も未確認）。
-- [ ] T389 (FR-006, FR-070) 文字あり版の追従: ラベル・`TextModeLayout`・`ui_texts.csv`・フォント — 検証: `TextModeTests`（読みやすさの判定）、全画面の撮影（AC-052）
+- [x] T389 (FR-006, FR-070) 文字あり版の追従: ラベル・`TextModeLayout`・`ui_texts.csv`・フォント — 検証: `TextModeTests`（読みやすさの判定）、全画面の撮影（AC-052）
+  - 2026-11-18（Claude の仮置き、plan 18.4 に記録）: ラベルの地は不透明な地の上なら文字だけ、盤面の上だけ `UiPanel`（`Setup/Restyle Text Mode (T389)` を Title・Game で実行）。早見表の職の札を影絵＋スキルの絵に、ブロック 0 は赤い ×。`battle_end`・`skill_help_off`・`skill_help_on` を表に足しフォントを作り直し、開始の演出のマスの名前が「戦闘開始」に代わる。スキルの説明の板に文字あり版の説明文と段の名前。実装の初版は Codex。EditMode 635/635、PlayMode 79→80 件で 79 成功＋撮影1件スキップ（`Visible_Text_Mode_Labels_Use_Styled_Backgrounds_In_Title_And_Battle` を追加、読みやすさの判定にスキルの説明を追加）、ハーネス 8/8。撮影 `Artifacts/Automation/Editor/t359/20261118-151541/`（変更前 `20261118-035117/`）、`t389/t389-skillhelp-text.png`。未確認: 勝利の帯の文字あり版の画像。
 - [ ] T390 (FR-050) 掃除と文書: 使われなくなったコード・テストの削除、plan の該当章と PROJECT_CONTEXT の更新 — 検証: ハーネス、EditMode・PlayMode 全件
 - [ ] T399 (AC-051, AC-052, AC-053, AC-056) 通しの再プレイ（ユーザー）: UI の見た目と見やすさ、文字なし版の説明、弓と前衛の役割、2方向のマップ、配置中のスロー — 検証: プレイ記録（`playtest-t399.md`）
 

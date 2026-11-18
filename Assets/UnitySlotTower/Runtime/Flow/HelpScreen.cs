@@ -211,9 +211,17 @@ namespace UnitySlotTower.Flow
                     }
                 }
 
+                var jobBody = row.skillMark != null ? row.skillMark.transform.parent.Find("Body") as RectTransform : null;
+                if (hasSkill && jobBody != null && jobBody.Find("Help Skill Picture") == null)
+                {
+                    // 戦闘の札と同じく、職の札の右上にスキルの絵（T389）。
+                    var art = SkillPictures.Rect("Help Skill Picture", jobBody, new Vector2(0.66f, 0.66f), new Vector2(0.98f, 0.98f));
+                    SkillPictures.Create(art, skillColor, SevenColor(skillColor), row.skillDots.Length > 0 ? row.skillDots[0].sprite : null);
+                }
+
                 row.defText.SetText("{0}", level.DefOf(unit));
                 row.intervalText.SetText("{0:1}", (float)unit.AttackInterval);
-                row.blockText.SetText("{0}", unit.Block);
+                BlockText.Show(row.blockText, unit.Block);
                 row.costText.SetText(NumericText.YenFormat, unit.Cost);
                 row.cooldownText.SetText("{0}", (float)Math.Ceiling(unit.Cooldown));
             }

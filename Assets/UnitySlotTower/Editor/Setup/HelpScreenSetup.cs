@@ -8,6 +8,7 @@ using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Flow;
 using UnitySlotTower.Slot;
+using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Editor.Setup
 {
@@ -27,11 +28,13 @@ namespace UnitySlotTower.Editor.Setup
         private const float Square = 1920f / 1440f;
 
         // 表を読みやすくするため、下の戦闘は透かさない（リザルトと同じ）。
-        private static readonly Color PanelColor = new Color(0.05f, 0.05f, 0.08f, 1f);
-        private static readonly Color ButtonColor = new Color(0.3f, 0.3f, 0.34f);
+        private static readonly Color PanelColor = UiStyle.ScreenFill;
+        private static readonly Color ButtonColor = UiStyle.ButtonFill;
         private static readonly Color HelpColor = new Color(0.2f, 0.45f, 0.85f);
         private static readonly Color DimColor = new Color(0.6f, 0.6f, 0.65f);
-        private static readonly Color DarkColor = new Color(0.12f, 0.12f, 0.15f);
+        private static readonly Color DarkColor = UiStyle.SectionFill;
+        // 職の影絵（暗めの色）が沈まないよう、札の地は明るめの灰色（T389）。
+        private static readonly Color JobCardColor = new Color(0.42f, 0.44f, 0.5f, 1f);
 
         private static Sprite _knob;
         private static Sprite _box;
@@ -96,6 +99,7 @@ namespace UnitySlotTower.Editor.Setup
             serialized.FindProperty("panel").objectReferenceValue = panel.gameObject;
             serialized.FindProperty("closeButton").objectReferenceValue = close;
             serialized.ApplyModifiedPropertiesWithoutUndo();
+            RestyleUnits();
 
             // 実行時は一時停止すると「?」が出る。シーンの編集の邪魔にならないよう閉じて保存する。
             open.gameObject.SetActive(false);
@@ -312,6 +316,34 @@ namespace UnitySlotTower.Editor.Setup
                     CreateImage("Coin", parent, Vector2.zero, Vector2.one, SlotSymbolArt.CoinColor, _knob));
                 Stat(row, element, "cooldownText", 0.75f, 1, line, CooldownIcon);
             }
+        }
+
+        // Existing scenes and new setup use the same card art. Layout is left intact.
+        internal static void RestyleUnits()
+        {
+            var looks = UnitLooks.Read();
+            foreach (var help in Object.FindObjectsByType<HelpScreen>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (help.gameObject.scene != UnityEngine.SceneManagement.SceneManager.GetActiveScene()) continue;
+                var serialized = new SerializedObject(help);
+                var panel = serialized.FindProperty("panel").objectReferenceValue as GameObject;
+                if (panel == null) continue;
+                for (var i = 0; i < looks.Count; i++)
+                {
+                    var card = panel.transform.Find($"Unit {i + 1}/Body")?.GetComponent<Image>();
+                    if (card == null) continue;
+                    BuildJobArt(card, looks[i]);
+                }
+            }
+        }
+
+        private static void BuildJobArt(Image card, UnitLooks.Look look)
+        {
+            card.color = JobCardColor;
+            card.sprite = null;
+            var art = card.transform.Find("Job Art") as RectTransform
+                ?? CreateRect("Job Art", card.rectTransform, Vector2.zero, Vector2.one);
+            UnitLooks.BuildShape(art, look);
         }
 
         // 数値1つ: 正方形のアイコン枠（中身は draw で描く）と右の数字。line は下から数えた行。戻り値はアイコンの中身の最初の子。

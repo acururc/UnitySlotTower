@@ -8,6 +8,7 @@ using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Flow;
 using UnitySlotTower.Slot;
+using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Tests.PlayMode.Battle
 {
@@ -131,6 +132,14 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That((_battle.IsShowingVictory, intro.IsVictoryBandVisible, intro.IsVictoryNameVisible,
                 Time.timeScale, _battle.IsInputBlocked, cabinet.InputLocked, flow.IsChoosingRoute, intro.BackgroundAlpha),
                 Is.EqualTo((true, true, textMode, 0f, true, true, false, 0f)), "盤面を残す勝利の帯で時間と入力が止まらない");
+            var captions = intro.GetComponentInParent<Canvas>().GetComponentsInChildren<TextModeLabel>(true);
+            TextModeLabel victoryLabel = null;
+            foreach (var caption in captions)
+                if (caption.Id == "battle_end") victoryLabel = caption;
+            Assert.That(victoryLabel, Is.Not.Null, "勝利の帯が battle_end を使っていない");
+            var table = (TextAsset)typeof(TextModeLabel).GetField("table", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(victoryLabel);
+            Assert.That(TextModeLabel.TryResolve(table, "battle_end", out var expectedVictory), Is.True);
+            Assert.That(victoryLabel.Text.text, Is.EqualTo(expectedVictory), "勝利の帯の文言が表と違う");
             var tick = _battle.Field.Tick;
             var speed = _battle.BattleSpeed;
             _battle.TogglePause();

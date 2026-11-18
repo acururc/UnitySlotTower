@@ -33,8 +33,6 @@ namespace UnitySlotTower.Editor.Setup
         private const string TextModeButtonName = "Text Mode Button";
         public const string RouteLegendName = "Text Mode Legend";
 
-        private static readonly Color BackgroundColor = new Color(0.05f, 0.06f, 0.1f, 0.72f);
-
         private static TMP_FontAsset _font;
         private static TextAsset _table;
         private static UiTexts _texts;
@@ -266,7 +264,7 @@ namespace UnitySlotTower.Editor.Setup
             group.blocksRaycasts = false;
             group.interactable = false;
             var background = legend.gameObject.AddComponent<Image>();
-            background.color = BackgroundColor;
+            UiSkin.Apply(background, UiStyle.SectionFill, UiStyle.PanelBorder);
             background.raycastTarget = false;
 
             const float headerHeight = 70f;
@@ -474,10 +472,8 @@ namespace UnitySlotTower.Editor.Setup
             rect.offsetMin = offsetMin;
             rect.offsetMax = offsetMax;
 
-            var background = rect.gameObject.AddComponent<Image>();
-            background.color = BackgroundColor;
-            background.raycastTarget = false;
-            background.enabled = false;
+            var background = TextModeRestyleSetup.IsInsidePanel(rect)
+                ? null : TextModeRestyleSetup.AddBackground(rect.gameObject);
 
             var text = Rect("Text", rect, Vector2.zero, Vector2.one).gameObject.AddComponent<TextMeshProUGUI>();
             text.rectTransform.offsetMin = new Vector2(4f, 0f);
