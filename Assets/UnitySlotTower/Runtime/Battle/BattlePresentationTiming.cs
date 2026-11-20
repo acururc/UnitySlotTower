@@ -5,6 +5,8 @@ namespace UnitySlotTower.Battle
     {
         public const float ExitFlash = 0.3f;
         public const float BaseFlash = 0.5f;
+        /// <summary>画面の縁の赤い光（FR-078）。通常の時間で進む。</summary>
+        public const float EdgeFlash = 0.45f;
         public const float VictoryBand = 1.2f;
         public const float HitFlash = 0.12f;
     }

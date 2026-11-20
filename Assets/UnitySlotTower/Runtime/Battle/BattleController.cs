@@ -48,6 +48,9 @@ namespace UnitySlotTower.Battle
         public string NodeKind { get; private set; }
         public float BaseFlashUntil { get; private set; }
 
+        /// <summary>本拠地に入られたときの画面の縁の赤い光（FR-078）。Initialize で作る。</summary>
+        public ScreenEdgeFlash EdgeFlash { get; private set; }
+
         /// <summary><see cref="Initialize"/> で読んだゲーム設定（RunState を作るのに使う）。</summary>
         public GameConfig Config { get; private set; }
 
@@ -118,6 +121,7 @@ namespace UnitySlotTower.Battle
             _random = new SeededRandom((ulong)DateTime.UtcNow.Ticks);
             _clock = new SimulationClock { IsPaused = IsPaused };
             slotCabinet.Aligned += OnSlotAligned;
+            EdgeFlash = ScreenEdgeFlash.Create();
             IsInitialized = true;
         }
 
@@ -249,6 +253,7 @@ namespace UnitySlotTower.Battle
             _destroying = true;
             ApplyTimeScale();
             if (Field != null) Field.BaseReached -= OnBaseReached;
+            if (EdgeFlash != null) Destroy(EdgeFlash.gameObject);
 
             if (IsInitialized && slotCabinet != null)
             {
@@ -280,6 +285,7 @@ namespace UnitySlotTower.Battle
             NodeCount++;
             Field.BaseReached += OnBaseReached;
             BaseFlashUntil = 0f;
+            EdgeFlash.Hide();
             _victoryLeft = 0f;
             BattleSpeed = 1;
             _completionReported = false;
@@ -316,6 +322,9 @@ namespace UnitySlotTower.Battle
                     _victoryLeft = BattlePresentationTiming.VictoryBand;
             }
 
+            // 勝利の帯・リザルトの間は時間が止まるので、縁の光を残さない。
+            if (EdgeFlash.IsFlashing && (IsShowingVictory || IsFinished)) EdgeFlash.Hide();
+
             if (_slotLocked != IsSlotInputBlocked)
             {
                 UpdateSlotLock();
@@ -324,8 +333,11 @@ namespace UnitySlotTower.Battle
             ApplyTimeScale();
         }
 
-        private void OnBaseReached(GridPoint cell) =>
+        private void OnBaseReached(GridPoint cell)
+        {
             BaseFlashUntil = Time.unscaledTime + BattlePresentationTiming.BaseFlash;
+            EdgeFlash.Play();
+        }
 
         private static CsvTable Parse(string fileName, TextAsset asset)
         {

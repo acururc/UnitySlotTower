@@ -1,9 +1,12 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Flow;
@@ -73,6 +76,29 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         [Description("AC-058: 文字あり版でも同じ演出を行い、開始の名前と戦闘終了を表示")]
         public IEnumerator Text_Battle_Presentation_Shows_Names_And_Holds_Victory() => Presentation(true);
 
+        // AC-059: 光っている間も操作できる（縁の光はクリックを受けず、画面のどこを押しても下の部品に届く）。
+        private static void AssertEdgeFlashPassesClicks(ScreenEdgeFlash edge)
+        {
+            Assert.That((edge.Graphic.raycastTarget, edge.GetComponentInChildren<GraphicRaycaster>(true) == null),
+                Is.EqualTo((false, true)), "縁の光がクリックを受ける");
+            var events = EventSystem.current;
+            Assert.That(events, Is.Not.Null, "EventSystem がない");
+            var hits = new List<RaycastResult>();
+            var points = new[]
+            {
+                new Vector2(Screen.width * 0.5f, Screen.height * 0.5f),
+                new Vector2(8f, 8f), new Vector2(Screen.width - 8f, 8f),
+                new Vector2(8f, Screen.height - 8f), new Vector2(Screen.width - 8f, Screen.height - 8f),
+            };
+            foreach (var point in points)
+            {
+                hits.Clear();
+                events.RaycastAll(new PointerEventData(events) { position = point }, hits);
+                foreach (var hit in hits)
+                    Assert.That(hit.gameObject.transform.IsChildOf(edge.transform), Is.False, $"{point} で縁の光が押される");
+            }
+        }
+
         private IEnumerator Presentation(bool textMode)
         {
             GameSession.SetTextMode(textMode);
@@ -121,10 +147,19 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return new WaitForSecondsRealtime(0.08f);
             Assert.That((status.IsLifeFlashing, status.LifeNumberScale > 1f), Is.EqualTo((true, true)),
                 "ライフが赤く光って大きくならない");
+            var edge = _battle.EdgeFlash;
+            var edgeAlpha = edge.Alpha;
+            Assert.That((edge.IsFlashing, edgeAlpha > 0f, edgeAlpha <= ScreenEdgeFlash.StartAlpha + 0.001f),
+                Is.EqualTo((true, true, true)), "AC-059: 画面の縁が赤く光らない");
+            AssertEdgeFlashPassesClicks(edge);
             yield return new WaitForSecondsRealtime(0.5f);
             Assert.That((_fieldView.IsBaseFlashing(goal), status.IsLifeFlashing, status.LifeNumberScale),
                 Is.EqualTo((false, false, 1f)), "到達の演出が戻らない");
+            Assert.That(edge.Alpha, Is.EqualTo(edgeAlpha), "一時停止中に縁の光が進む");
             _battle.SetPaused(false);
+            limit = Time.realtimeSinceStartup + 5f;
+            while (edge.IsFlashing && Time.realtimeSinceStartup < limit) yield return null;
+            Assert.That((edge.IsFlashing, edge.Graphic.enabled), Is.EqualTo((false, false)), "縁の光が消えない");
             Time.timeScale = 4f;
             limit = Time.realtimeSinceStartup + 15f;
             while (!_battle.IsShowingVictory && Time.realtimeSinceStartup < limit) yield return null;

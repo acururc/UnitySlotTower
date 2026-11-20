@@ -165,7 +165,7 @@ Core のタスク（T340〜T347）は `tdd` で red→green、完了条件は Ed
 
 ## M3X 通しプレイ T399 を受けた仕様変更（2026-11-20、spec D-101〜D-108、plan 19章。見た目の作り直しより先に行う）
 - [x] T420 (FR-084, FR-085) データ: 配置中のスロー 0.2、`encounters.csv` の weight と重み付きの選び方（Core を TDD）、検証器 — 検証: EditMode（AC-065 の割合・検証器）、PlayMode（AC-066、AC-055 のテストを直す） — 2026-11-21 完了（Codex 委任）。battle_d・e の重みは 26（20 だと直前のマップを避ける決まりで一本道が約 39％、plan 19.1 を修正）。検証: EditMode 643/643、PlayMode 80 件で 79 成功＋撮影1件スキップ、ハーネス 8/8。
-- [ ] T421 (FR-078) 本拠地に入られたときの画面の縁の赤い光 — 検証: PlayMode（AC-059: 光る・操作できる）、Editor 画像
+- [x] T421 (FR-078) 本拠地に入られたときの画面の縁の赤い光 — 検証: PlayMode（AC-059: 光る・操作できる）、Editor 画像 — 2026-11-21 完了。`Runtime/Battle/ScreenEdgeFlash`（BattleController が Initialize で作る一番上の Overlay Canvas、sortingOrder 10、縁だけのスプライトを実行時に作る、GraphicRaycaster なし）。勝利の帯・リザルトの間は消す。テストは `StageTransitionTests` の到達演出（両方の版、クリックが届く・一時停止中は止まる・消える）。検証: EditMode 643/643、PlayMode 80 件で 79 成功＋撮影1件スキップ、ハーネス 8/8、画像 `Artifacts/Automation/Editor/t421/t421-edge-flash-1.png`（文字なし版のみ）。
 - [ ] T422 (FR-079) 敵の通り道: 常に出すのをやめ、開始の演出で全部・群れの出始めにその道を流れる矢印で一時的に、空中は高さと影で見分ける — 検証: PlayMode（AC-060）、Editor 画像（地上と空中の道）
 - [ ] T423 (FR-080) 一時停止中の「?」とタイトルへ戻るを上端の帯へ、確認の板 — 検証: PlayMode（AC-061: ✔ でタイトル・× で戻る・timeScale）、両方の版の Editor 画像
 - [ ] T424 (FR-081) 早見表をスロットと味方のページに分ける（タブと矢印） — 検証: PlayMode（AC-062、文字あり版の読みやすさ）、Editor 画像（両ページ・両方の版）
