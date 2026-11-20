@@ -2,7 +2,8 @@
 
 ## 現在の作業
 
-更新: 2026-11-18 Asia/Tokyo / 状態: **M3W（spec D-92〜D-100、2026-11-17 承認 sha256 `63c282f45687`、plan 18章、tasks T380〜T399）実装中。T380〜T390 完了。** 次: T399（ユーザーの通しの再プレイ、記録は `playtest-t399.md`）。ユーザーのプレイを待つ（2026-11-19 ユーザーが後回しを指示）。
+更新: 2026-11-20 Asia/Tokyo / 状態: **M3W（spec D-92〜D-100、2026-11-17 承認 sha256 `63c282f45687`、plan 18章、tasks T380〜T399）実装中。T380〜T390 完了。** T399（ユーザーの通しの再プレイ、記録は `playtest-t399.md`）はユーザーの指示で後回し。M5 は T501 を進行中。
+- T501（2026-11-19〜20、tasks.md の行に記録）: ユーザー指示でデザイナーの担当は味方・敵のモデルとモーション、リールの図柄、スロット筐体だけ。ほかは企画側（AI 生成・サイトの素材）。必要な素材の一覧は [`docs/DESIGN_ASSETS.md`](../DESIGN_ASSETS.md)（11/7 の依頼書を置き換える、戦闘以外の画面も含む）。見た目の方向は、今はアークナイツ寄りで、敵は NIKKE のラプチャーのような機械（ユーザー）。見本は `Artifacts/design/art-direction.html`（Git 外、4方向＋本拠地でスロットを打つ人物の2案。絵は仮）。先生の提案「本拠地でスロットを打っているように見せる」は、ユーザーの参考（ヴァルブレイブ2のピノ）でサブモニターのキャラ案に発展した（ふだんは反応なし、予告・リーチ・ピンチなど熱いときだけ演出、見た目はオリジナル）。題材・作る人・置き場所・回る時間の延長は未決定で、**ユーザーが 2026-11-20 に話す予定**。採用するなら spec 変更（D-101〜）。企画側の素材の選定とライセンス記録は、方向が決まってから。見本などは claude.ai の Artifact に出さず `Artifacts/design/` に出力する。
 - T505 の中間確認（2026-11-19、tasks.md の行に記録）: 全テスト成功・ビルド成功・起動画像2枚を確認。T505 自体は T502/T504 の後にやり直すので未完了のまま。縦長の起動確認は `Test-UnityPlayer.ps1 -ShowWindow -Width 720 -Height 960 [-Scene Game]`。ビルドの警告3件は未確認。残りの M5 は T501（素材・デザイナー依頼）・T502・T503 の手動分・T504。どれを進めるかはユーザーに確認する。
 - T390（tasks.md の行に記録）: Codex に委任。未使用の4メンバーを削除し、plan 冒頭・1〜8・10章と PROJECT_CONTEXT に M3W を反映（18章が16・17章より新しい）。検証: ハーネス 8/8、EditMode 635/635、PlayMode 80 件で 79 成功＋撮影1件スキップ。
 - T389（plan 18.4・tasks.md の行に記録）: 文字あり版のラベルの地は `Setup/Restyle Text Mode (T389)`（`TextModeRestyleSetup.IsInsidePanel`: 不透明な地の上は地なし、盤面の上だけ `UiPanel`）。早見表の職の札は影絵＋右上にスキルの絵（`HelpScreen` が実行時に作る）。文言 `battle_end`・`skill_help_off`・`skill_help_on`、開始の演出の T352「戦闘開始」はマスの名前に置き換えて非表示。表に字を足したら `Create Text Mode Font (T352)` を実行。Codex の初版はスロット欄の職の色塗りを消していた（戻した、委任時の行番号の指示を正確に）。
@@ -28,7 +29,7 @@
 - T355 の記録: [`playtest-t355.md`](../../specs/001-slot-tower-defense/playtest-t355.md)。T355 は完了扱い（設定6はユーザーが不要と判断）。文字あり版の確認は T375（文字なし版ではロゴ右下の隅の見えないボタンで切り替え）。
 - 承認の範囲: spec 全体（D-01〜D-91、FR-001〜FR-064、AC-001〜AC-051、D-77〜D-91 の Claude 提案を含む）。plan 17章の数値（円は約8倍、bet 2、両替 10、1戦闘12回以上、intro 2秒など）は Claude の仮置きで承認の対象外。T368 の 5:5 はユーザー決定。
 - T365 の Claude の仮置き: 残りの敵数（上の段の右、敵の顔）と倍速ボタン（下の段の左「×1」）の位置と絵、一時停止中は倍速を変えられない。倍速は `BattleController.BattleSpeed`（plan 17.5 を書き換え済み）。`Time.timeScale` は `BattleController.ApplyTimeScale` だけが書く。文字あり版のラベル（「残りの敵」「速さ」）は T370 で追加。
-- 次の一手: T399 はユーザーの通しプレイ。結果を `specs/001-slot-tower-defense/playtest-t399.md` に記録し、出た調整は spec/plan の手順で扱う。
+- 次の一手: 2026-11-20 にユーザーとデザイン（方向・サブモニター案）を話す。T399 はユーザーの通しプレイ。結果を `specs/001-slot-tower-defense/playtest-t399.md` に記録し、出た調整は spec/plan の手順で扱う。
 - 対象: [`spec.md`](../../specs/001-slot-tower-defense/spec.md)、[`plan.md`](../../specs/001-slot-tower-defense/plan.md)、[`tasks.md`](../../specs/001-slot-tower-defense/tasks.md)。
 - T357 のカメラ 55° はユーザー確定（D-87 で寄せるのは距離・余白）。
 - ブランチ: `feature/001-t402-result`（main に直接コミットしない）。直下の未追跡ファイル（デザイナー制作依頼書 pptx・メモ txt・スクリーンショット png）と `ProjectSettings/URPProjectSettings.asset` の1行（Unity が自動で追加）はコミットしない。
