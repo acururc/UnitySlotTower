@@ -494,7 +494,7 @@ Assets/UnitySlotTower/
 
 ### 19.1 データ（FR-084, FR-085, D-107, D-108）
 - `game_config.csv` の `placement_time_scale` を 0.2 に。AC-055 の PlayMode テストは期待値を設定から読むか 0.2 に直す。
-- `encounters.csv` に `weight`（既定 1、0 より大きい）を足し、`EncounterTable.Pick` を重み付きの選び方にする（Core を TDD、`avoidMapId` の除外は今までどおり先に行う）。一本道の battle_a〜c を 7、battle_d・e を 20 にして約 34％。検証器は weight ≤ 0 をエラーにする。AC-065 は固定シードで 10,000 回、通常の戦闘マスで一本道の割合が 30〜40％（直前と同じマップを避ける決まりも入れたまま）。
+- `encounters.csv` に `weight`（既定 1、0 より大きい）を足し、`EncounterTable.Pick` を重み付きの選び方にする（Core を TDD、`avoidMapId` の除外は今までどおり先に行う）。一本道の battle_a〜c を 7、battle_d・e を 26 にして約 35％（直前と同じマップを避ける決まりで一本道が増えるため、20 だと約 39％になった。T420）。検証器は weight ≤ 0 をエラーにする。AC-065 は固定シードで 10,000 回、通常の戦闘マスで一本道の割合が 30〜40％（直前と同じマップを避ける決まりも入れたまま）。
 
 ### 19.2 本拠地に入られたときの赤い光（FR-078, D-101）
 - 画面いっぱいの Overlay Canvas に縁だけ赤い `Image`（中央が透明のグラデーションのスプライトを実行時に作る）を置き、`Battlefield.BaseReached` で不透明度 0.55 → 0 を 0.45 秒（`unscaledDeltaTime` ではなく通常の時間、一時停止中は止まる）。クリックは通さない（`raycastTarget` false）。連続で入ったら最初から光り直す。既存の本拠地とライフの光（T388）はそのまま。長さは `BattlePresentationTiming` に足す。

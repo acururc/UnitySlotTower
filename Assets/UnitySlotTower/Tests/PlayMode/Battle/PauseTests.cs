@@ -185,7 +185,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        [Description("AC-055, D-99: 札を選んでから配置をやめるまで 3倍でも 0.1 倍で進み、一時停止中は 0、やめると 3倍に戻る")]
+        [Description("AC-055, D-99: 札を選んでから配置をやめるまで 3倍でも 0.2 倍で進み、一時停止中は 0、やめると 3倍に戻る")]
         public IEnumerator Placing_Slows_Time_Regardless_Of_Speed_Until_Cancelled()
         {
             yield return PressSpeed();
@@ -211,7 +211,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             Assert.That((choosingCell, paused, resumed, cancelled),
                 Is.EqualTo(((DeployPhase.ChoosingCell, slow), 0f, slow, (DeployPhase.Idle, 3f, 3))));
-            // 1倍で約 SimulationClock.StepsPerSecond ステップ/秒。0.1 倍なら 1 秒で 1 割前後。
+            // 1倍で約 SimulationClock.StepsPerSecond ステップ/秒。0.2 倍なら 1 秒で 1/5 前後。
             Assert.That(slowSteps, Is.LessThanOrEqualTo(UnitySlotTower.Core.Simulation.SimulationClock.StepsPerSecond * slow * 2 + 1),
                 $"配置中に {slowSteps} ステップ進んだ");
         }

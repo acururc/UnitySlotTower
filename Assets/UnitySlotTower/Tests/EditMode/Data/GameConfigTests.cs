@@ -63,7 +63,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("FR-074, plan 18.1: 配置中の時間の倍率を読む（プロジェクトの表は仮 0.1）")]
+        [Description("AC-066: 配置中の時間の倍率を読む（プロジェクトの表は 1/5）")]
         public void Placement_Time_Scale_Is_Read()
         {
             var text = File.ReadAllText(Path.Combine(TablePaths.Root, "game_config.csv"));
@@ -71,7 +71,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
             Assert.That((GameConfig.Load(CsvParser.Parse("game_config.csv",
                         ValidConfig.Replace("placement_time_scale,0.1", "placement_time_scale,0.25"))).PlacementTimeScale,
                     GameConfig.Load(CsvParser.Parse("game_config.csv", text)).PlacementTimeScale),
-                Is.EqualTo((0.25, 0.1)));
+                Is.EqualTo((0.25, 0.2)));
         }
 
         [Test]

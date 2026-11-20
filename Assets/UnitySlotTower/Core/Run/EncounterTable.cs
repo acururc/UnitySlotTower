@@ -18,7 +18,7 @@ namespace UnitySlotTower.Core.Run
     public sealed class Encounter
     {
         internal Encounter(string id, EncounterKind kind, string mapId, int minFloor, int maxFloor, int fixedSpins,
-            int rewardMoney, int rewardCoins)
+            int rewardMoney, int rewardCoins, int weight)
         {
             Id = id;
             Kind = kind;
@@ -28,6 +28,7 @@ namespace UnitySlotTower.Core.Run
             FixedSpins = fixedSpins;
             RewardMoney = rewardMoney;
             RewardCoins = rewardCoins;
+            Weight = weight;
         }
 
         /// <summary>waves.csv の encounter_id。</summary>
@@ -50,11 +51,13 @@ namespace UnitySlotTower.Core.Run
         /// <summary>クリア時に足すコイン。</summary>
         public int RewardCoins { get; }
 
+        public int Weight { get; }
+
         public bool IsOnFloor(int floor) => MinFloor <= floor && floor <= MaxFloor;
     }
 
     /// <summary>
-    /// 戦闘マスの出現表（FR-018、plan 16.6）。戦闘マスに入ったとき、種類と階が合う行から一様に1つ選ぶ。
+    /// 戦闘マスの出現表（FR-018、plan 16.6）。戦闘マスに入ったとき、種類と階が合う行から重みに応じて1つ選ぶ。
     /// </summary>
     public sealed class EncounterTable
     {
@@ -82,7 +85,7 @@ namespace UnitySlotTower.Core.Run
                 : throw new KeyNotFoundException($"戦闘マス '{id}' がない");
 
         /// <summary>
-        /// 種類と階が合う行から一様に1つ選ぶ。合う行がなければ <see cref="InvalidOperationException"/>。
+        /// 種類と階が合う行から重みに応じて1つ選ぶ。合う行がなければ <see cref="InvalidOperationException"/>。
         /// D-89: <paramref name="avoidMapId"/> のマップの行は、ほかのマップの行もあるときだけ除く。
         /// </summary>
         public Encounter Pick(EncounterKind kind, int floor, IRandom random, string avoidMapId = null)
@@ -105,16 +108,40 @@ namespace UnitySlotTower.Core.Run
 
             if (avoided > 0 && avoided < _matches.Count)
             {
-                _matches.RemoveAll(encounter => encounter.MapId == avoidMapId);
+                for (var i = _matches.Count - 1; i >= 0; i--)
+                {
+                    if (_matches[i].MapId == avoidMapId)
+                    {
+                        _matches.RemoveAt(i);
+                    }
+                }
             }
 
-            return _matches[random.NextInt(0, _matches.Count)];
+            var totalWeight = 0;
+            foreach (var match in _matches)
+            {
+                totalWeight = checked(totalWeight + match.Weight);
+            }
+
+            var ticket = random.NextInt(0, totalWeight);
+            foreach (var match in _matches)
+            {
+                if (ticket < match.Weight)
+                {
+                    return match;
+                }
+
+                ticket -= match.Weight;
+            }
+
+            throw new InvalidOperationException("抽選値が重みの範囲外");
         }
 
         /// <summary>不正な行（id の重複・未知の種類・階の範囲の逆転・負の値）はファイル名・行・列つきの <see cref="CsvFormatException"/>。</summary>
         public static EncounterTable Load(CsvTable table)
         {
             var result = new EncounterTable();
+            var hasWeight = table.HasColumn("weight");
             foreach (var row in table.Rows)
             {
                 var id = row.Get("id");
@@ -141,12 +168,19 @@ namespace UnitySlotTower.Core.Run
                     throw row.Error("max_floor", $"max_floor {maxFloor} が min_floor {minFloor} より小さい");
                 }
 
+                var weight = hasWeight ? row.GetInt("weight") : 1;
+                if (weight <= 0)
+                {
+                    throw row.Error("weight", $"重みは1以上: {weight}");
+                }
+
                 var encounter = new Encounter(id, (EncounterKind)kindIndex, row.Get("map_id"), minFloor, maxFloor,
-                    NonNegative(row, "fixed_spins"), NonNegative(row, "reward_money"), NonNegative(row, "reward_coins"));
+                    NonNegative(row, "fixed_spins"), NonNegative(row, "reward_money"), NonNegative(row, "reward_coins"), weight);
                 result._encounters.Add(encounter);
                 result._byId.Add(id, encounter);
             }
 
+            result._matches.Capacity = result._encounters.Count;
             return result;
         }
 

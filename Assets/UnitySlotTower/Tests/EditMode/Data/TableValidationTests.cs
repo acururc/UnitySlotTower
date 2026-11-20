@@ -188,7 +188,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
             foreach (var value in new[] { "0", "1.5" })
             {
                 var files = TablePaths.ReadAll();
-                files["game_config.csv"] = files["game_config.csv"].Replace("placement_time_scale,0.1", "placement_time_scale," + value);
+                files["game_config.csv"] = files["game_config.csv"].Replace("placement_time_scale,0.2", "placement_time_scale," + value);
                 if (GameDataValidator.ValidateAll(files).Errors.Any(e => e.File == "game_config.csv"))
                 {
                     errors.Add(value);
@@ -196,6 +196,19 @@ namespace UnitySlotTower.Tests.EditMode.Data
             }
 
             Assert.That(errors, Is.EqualTo(new[] { "0", "1.5" }));
+        }
+
+        [TestCase(0)]
+        [TestCase(-1)]
+        public void Nonpositive_Encounter_Weight_Fails_Validation(int weight)
+        {
+            var files = TablePaths.ReadAll();
+            files[EncounterTable.FileName] = files[EncounterTable.FileName].Replace("battle_a,battle,battle_a,2,7,0,80,6,7",
+                $"battle_a,battle,battle_a,2,7,0,80,6,{weight}");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => (e.File, e.Column)), Does.Contain((EncounterTable.FileName, 9)));
         }
 
         [Test]
@@ -444,7 +457,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Encounter_Without_Waves_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files[EncounterTable.FileName] += "extra,battle,battle_a,2,7,0,10,3\n";
+            files[EncounterTable.FileName] += "extra,battle,battle_a,2,7,0,10,3,1\n";
 
             var report = GameDataValidator.ValidateAll(files);
 
@@ -590,7 +603,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Elite_Or_Boss_Map_Used_By_A_Normal_Battle_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files[EncounterTable.FileName] += "battle_d,battle,boss_a,2,7,0,10,3\n";
+            files[EncounterTable.FileName] += "battle_d,battle,boss_a,2,7,0,10,3,1\n";
             var line = files[EncounterTable.FileName].TrimEnd('\n').Split('\n').Length;
             files["waves.csv"] += "battle_d,0,melee,S1,boss_a_g1,0,3,1\n";
 

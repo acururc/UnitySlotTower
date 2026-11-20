@@ -24,6 +24,63 @@ namespace UnitySlotTower.Tests.EditMode.Run
         private static EncounterTable Load(string rows = Rows) =>
             EncounterTable.Load(CsvParser.Parse(EncounterTable.FileName, Header + rows));
 
+        private static EncounterTable LoadWeighted(string rows) =>
+            EncounterTable.Load(CsvParser.Parse(EncounterTable.FileName, Header.TrimEnd('\n') + ",weight\n" + rows));
+
+        [TestCase(null, 5)]
+        [TestCase("m1", 3)]
+        public void Pick_Uses_Weights_After_Previous_Map_Exclusion(string previous, int total)
+        {
+            var table = LoadWeighted("a,battle,m1,2,7,0,0,0,2\nb,battle,m2,2,7,0,0,0,1\nc,battle,m3,2,7,0,0,0,2\n");
+            var expectedRandom = new SeededRandom(7);
+            var random = new SeededRandom(7);
+            var tickets = previous == null ? "aabcc" : "bcc";
+            for (var i = 0; i < 100; i++)
+            {
+                var expected = tickets[expectedRandom.NextInt(0, total)].ToString();
+                Assert.That(table.Pick(EncounterKind.Battle, 2, random, previous).Id, Is.EqualTo(expected));
+            }
+        }
+
+        [Test]
+        public void Missing_Weight_Column_Defaults_To_One()
+        {
+            Assert.That(Load().All.Select(e => e.Weight), Is.All.EqualTo(1));
+        }
+
+        [TestCase(0)]
+        [TestCase(-1)]
+        public void Nonpositive_Weight_Is_An_Error_At_Its_Cell(int weight)
+        {
+            var error = Assert.Throws<CsvFormatException>(() => LoadWeighted($"a,battle,m1,2,7,0,0,0,{weight}\n")).Error;
+            Assert.That((error.Line, error.Column), Is.EqualTo((2, 9)));
+        }
+
+        [Test]
+        [Description("AC-065")]
+        public void Project_Battle_Picks_Are_Thirty_To_Forty_Percent_Single_Path()
+        {
+            var tables = TablePaths.ReadAll();
+            var table = EncounterTable.Load(CsvParser.Parse(EncounterTable.FileName, tables[EncounterTable.FileName]));
+            var random = new SeededRandom(420);
+            var picks = 0;
+            var singlePath = 0;
+            while (picks < 10000)
+            {
+                var run = RunFixtures.CreateRun();
+                for (var floor = 2; floor <= 7 && picks < 10000; floor++, picks++)
+                {
+                    var map = run.PickEncounter(table, EncounterKind.Battle, floor, random).MapId;
+                    if (map == "battle_a" || map == "battle_b" || map == "battle_c")
+                    {
+                        singlePath++;
+                    }
+                }
+            }
+
+            Assert.That(singlePath / (double)picks, Is.InRange(0.30, 0.40));
+        }
+
         private static CsvError LoadError(string rows) =>
             Assert.Throws<CsvFormatException>(() => Load(rows)).Error;
 
