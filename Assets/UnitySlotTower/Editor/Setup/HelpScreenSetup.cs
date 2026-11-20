@@ -67,8 +67,17 @@ namespace UnitySlotTower.Editor.Setup
             var serialized = new SerializedObject(screen);
 
             // 「?」ボタン: 一時停止中だけ出る。
-            var open = CreateButton("Open Button", screenRect, new Vector2(0.88f, 0.41f), new Vector2(0.98f, 0.41f + 0.1f / Square),
-                HelpColor);
+            var status = root.Find("Top Band/Status") as RectTransform;
+            var open = CreateButton("Open Button", status != null ? status : screenRect, Vector2.zero, Vector2.one, HelpColor);
+            if (status != null)
+                PauseMenuSetup.StyleHelpButton(status, open);
+            else
+            {
+                // Older setup order: T423 moves this button after the status band exists.
+                var rect = (RectTransform)open.transform;
+                rect.anchorMin = new Vector2(0.88f, 0.41f);
+                rect.anchorMax = new Vector2(0.98f, 0.41f + 0.1f / Square);
+            }
             var mark = CreateText("Mark", open.GetComponent<RectTransform>(), new Vector2(0.15f, 0.1f), new Vector2(0.85f, 0.9f),
                 Color.white);
             mark.text = "?";

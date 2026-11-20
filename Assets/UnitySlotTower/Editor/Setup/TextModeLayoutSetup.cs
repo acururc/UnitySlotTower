@@ -468,6 +468,15 @@ namespace UnitySlotTower.Editor.Setup
                 s.fontSize = 40f;
                 return s;
             });
+            if (status.Find("Home Button") is RectTransform home)
+            {
+                var open = Child(status, "Open Button");
+                BandButton(open, "help_open", 0.75f, 0.86f);
+                // 名前（下から 46px まで）と重ならないよう上半分に置く（T423）。
+                SetRect(Child(open, "Mark"), new Vector2(0.3f, 0.54f), new Vector2(0.7f, 1f));
+                BandButton(home, "pause_home", 0.63f, 0.74f);
+                SetRect(Child(home, "House"), new Vector2(0.34f, 0.52f), new Vector2(0.66f, 0.94f));
+            }
             var pause = Child(status, "Pause Button");
             BandButton(pause, "bar_pause", 0.87f, 0.99f);
             SetRect(Child(pause, "Bar Left"), new Vector2(0.38f, 0.5f), new Vector2(0.46f, 0.94f));

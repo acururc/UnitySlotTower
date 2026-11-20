@@ -25,6 +25,7 @@ namespace UnitySlotTower.Battle
 
         [SerializeField] private InputActionAsset inputActions;
         [SerializeField] private BattleController battle;
+        [SerializeField] private UnitySlotTower.Flow.QuitToTitle quitToTitle;
         [SerializeField] private BattleFieldView fieldView;
         [SerializeField] private Camera battleCamera;
         [Tooltip("向きを決めるのに必要な、マスの中心からポインターまでの距離（マス）。")]
@@ -249,6 +250,12 @@ namespace UnitySlotTower.Battle
 
         private void OnCancelAction(InputAction.CallbackContext context)
         {
+            if (quitToTitle != null && quitToTitle.IsConfirmOpen)
+            {
+                quitToTitle.Close();
+                return;
+            }
+
             // Esc は Pause にも割り当ててあるが、配置操作中かどうかで振り分けるためここで扱う（plan 3章）。
             var deployment = battle.Deployment;
             if (deployment == null)

@@ -165,7 +165,7 @@ namespace UnitySlotTower.Editor.Setup
         }
 
         /// <summary>帯の右の四角いボタン: 平らな暗い地に細い明るい縁（UiPanel の子 Frame）。</summary>
-        private static void CornerButton(RectTransform status, string name, float left, float right)
+        internal static void CornerButton(RectTransform status, string name, float left, float right)
         {
             var button = status.Find(name) as RectTransform;
             if (button == null)
@@ -416,8 +416,13 @@ namespace UnitySlotTower.Editor.Setup
         /// <summary>部品と子孫の TextModeLayout を文字なし版に戻してから外す（新しい配置を文字なし版の値として読み直させる）。</summary>
         private static void StripTextModeLayouts(RectTransform target)
         {
+            var help = target.Find("Open Button");
+            var home = target.Find("Home Button");
             foreach (var layout in target.GetComponentsInChildren<TextModeLayout>(true))
             {
+                // T423 owns these controls in both layouts.
+                if ((help != null && layout.transform.IsChildOf(help)) ||
+                    (home != null && layout.transform.IsChildOf(home))) continue;
                 if (layout.GetComponent<TextModeLabel>() != null || layout.transform.parent.GetComponent<TextModeLabel>() != null)
                 {
                     // ラベルの配置は文字あり版にしか出ないので、そのまま残して Build Text Mode Layout で置き直す。

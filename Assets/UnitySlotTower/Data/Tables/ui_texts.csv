@@ -114,3 +114,7 @@ guide_routenodes,マスの印で中身が分かる。押して次へ
 battle_end,戦闘終了
 skill_help_off,スキルなし
 skill_help_on,スキル中
+pause_home,タイトル
+pause_question,タイトルに戻りますか？
+pause_yes,戻る
+pause_no,やめる

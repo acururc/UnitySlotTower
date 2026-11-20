@@ -276,7 +276,15 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Readable("戦闘", problems);
             battle.SetPaused(true);
             yield return Settle();
+            Assert.That(ShownIds(), Does.Contain("help_open").And.Contain("pause_home"));
             Readable("一時停止", problems);
+            var quit = Object.FindAnyObjectByType<QuitToTitle>();
+            quit.HomeButton.onClick.Invoke();
+            yield return Settle();
+            Assert.That(ShownIds(), Does.Contain("pause_question").And.Contain("pause_yes").And.Contain("pause_no"));
+            Readable("タイトル確認", problems);
+            quit.CancelButton.onClick.Invoke();
+            yield return Settle();
             var skillHelp = Object.FindAnyObjectByType<SkillHelpPanel>();
             GameObject.Find("Skill Gauge 1").GetComponent<Button>().onClick.Invoke();
             yield return Settle();

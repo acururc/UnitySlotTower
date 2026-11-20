@@ -105,6 +105,7 @@ namespace UnitySlotTower.Battle
             if (battle.IsPaused != _shownPaused)
             {
                 _shownPaused = battle.IsPaused;
+                speedButton.gameObject.SetActive(!_shownPaused);
                 pauseBackground.color = _shownPaused ? pausedColor : _pauseNormalColor;
             }
         }

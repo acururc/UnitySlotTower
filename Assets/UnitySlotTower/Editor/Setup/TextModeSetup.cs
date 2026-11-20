@@ -353,13 +353,28 @@ namespace UnitySlotTower.Editor.Setup
             InsideBottom(Child(panel, "Title Button"), "result_title", 64f, 40f);
         }
 
+        internal static void AddPauseLabels(RectTransform root, HelpScreen help)
+        {
+            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+            _table = AssetDatabase.LoadAssetAtPath<TextAsset>(TablePath);
+            _texts = UiTexts.Parse(_table.text);
+            var menu = help.GetComponent<QuitToTitle>();
+            InsideBottom((RectTransform)help.OpenButton.transform, "help_open", 44f, 36f);
+            InsideBottom((RectTransform)menu.HomeButton.transform, "pause_home", 44f, 36f);
+            var board = Child(root, "Quit Confirmation/Board");
+            Label(board, "pause_question", new Vector2(0.04f, 0.65f), new Vector2(0.96f, 0.95f),
+                Vector2.zero, Vector2.zero, 56f);
+            InsideBottom((RectTransform)menu.ConfirmButton.transform, "pause_yes", 64f, 44f);
+            InsideBottom((RectTransform)menu.CancelButton.transform, "pause_no", 64f, 44f);
+        }
+
         private static void AddHelpLabels(RectTransform root, CsvTable units)
         {
             var help = root.GetComponentInChildren<HelpScreen>(true);
-            var helpRect = (RectTransform)help.transform;
-            // T359f: 位置は文字あり版のもの（部品の文字あり版の位置は TextModeLayoutSetup.BuildHelp）。字は 36 以上。
-            // 「?」の名前はボタンの上（下だと操作バーの札4の職名に掛かる）。
-            Above(Child(helpRect, "Open Button"), "help_open", 52f, 36f);
+            if (help.GetComponent<QuitToTitle>() != null)
+                AddPauseLabels(root, help);
+            else
+                Above((RectTransform)help.OpenButton.transform, "help_open", 52f, 36f);
             var panel = PanelOf(help);
             Label(Child(panel, "Mark"), "help_title", new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(8f, 0f), new Vector2(220f, 0f), 56f)
                 .Text.alignment = TextAlignmentOptions.Left;

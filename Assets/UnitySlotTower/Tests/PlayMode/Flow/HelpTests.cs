@@ -4,6 +4,7 @@ using System.Reflection;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.SceneManagement;
@@ -148,6 +149,102 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             // 一時停止していないときの / は一時停止して開く。
             yield return Press(Key.Slash, () => help.IsOpen);
             Assert.That(battle.IsPaused && help.IsOpen, Is.True, "/ キーで一時停止して開かない");
+        }
+
+        [UnityTest]
+        public IEnumerator Pause_Band_And_Quit_Confirmation()
+        {
+            GameSession.StartGame(3);
+            BattleController battle = null;
+            for (var i = 0; i < 300 && (battle == null || battle.Run == null); i++)
+            {
+                yield return null;
+                if (SceneManager.GetActiveScene().name == GameSession.GameScene)
+                    battle = Object.FindAnyObjectByType<BattleController>();
+            }
+            Assert.That(battle?.Run, Is.Not.Null);
+            var help = Object.FindAnyObjectByType<HelpScreen>();
+            var quit = Object.FindAnyObjectByType<QuitToTitle>();
+            Assert.That(quit, Is.Not.Null);
+            var status = Object.FindAnyObjectByType<OperationBarStatus>().transform;
+            var band = (RectTransform)status.parent;
+            var speed = status.Find("Speed Button");
+            Assert.That(band.name, Is.EqualTo("Top Band"));
+            Assert.That(speed.gameObject.activeInHierarchy, Is.True);
+            Assert.That(help.OpenButton.gameObject.activeInHierarchy || quit.HomeButton.gameObject.activeInHierarchy, Is.False);
+
+            battle.SetPaused(true);
+            yield return null;
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            Assert.That(speed.gameObject.activeInHierarchy, Is.False);
+            foreach (var button in new[] { help.OpenButton, quit.HomeButton })
+            {
+                Assert.That(button.gameObject.activeInHierarchy, Is.True);
+                Assert.That(button.transform.parent, Is.EqualTo(status));
+                var corners = new Vector3[4];
+                ((RectTransform)button.transform).GetWorldCorners(corners);
+                foreach (var corner in corners)
+                {
+                    var point = band.InverseTransformPoint(corner);
+                    Assert.That(point.x, Is.InRange(band.rect.xMin - 0.1f, band.rect.xMax + 0.1f));
+                    Assert.That(point.y, Is.InRange(band.rect.yMin - 0.1f, band.rect.yMax + 0.1f));
+                }
+            }
+
+            help.OpenButton.onClick.Invoke();
+            yield return null;
+            yield return null;
+            Assert.That(quit.HomeButton.gameObject.activeInHierarchy || help.OpenButton.gameObject.activeInHierarchy, Is.False);
+            help.Close();
+            yield return null;
+            yield return null;
+            quit.HomeButton.onClick.Invoke();
+            Assert.That(quit.IsConfirmOpen, Is.True);
+            Assert.That(Time.timeScale, Is.Zero);
+            // 出したばかりの Graphic は描かれるまで depth が -1 で、GraphicRaycaster の対象にならない。
+            yield return null;
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            var pause = (RectTransform)status.Find("Pause Button");
+            var canvas = pause.GetComponentInParent<Canvas>().rootCanvas;
+            var camera = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+            var pointer = new PointerEventData(EventSystem.current)
+            {
+                position = RectTransformUtility.WorldToScreenPoint(camera, pause.TransformPoint(pause.rect.center))
+            };
+            var hits = new List<RaycastResult>();
+            EventSystem.current.RaycastAll(pointer, hits);
+            Assert.That(hits, Is.Not.Empty);
+            var overlay = quit.ConfirmButton.transform.parent.parent;
+            Assert.That(hits[0].gameObject.transform.IsChildOf(overlay), Is.True, "確認中に帯を押せる");
+            help.OpenButton.onClick.Invoke();
+            yield return Press(Key.Slash, () => true);
+            Assert.That(help.IsOpen, Is.False);
+            quit.CancelButton.onClick.Invoke();
+            Assert.That(quit.IsConfirmOpen, Is.False);
+            Assert.That(battle.IsPaused, Is.True);
+            Assert.That(Time.timeScale, Is.Zero);
+
+            quit.HomeButton.onClick.Invoke();
+            yield return Press(Key.Escape, () => !quit.IsConfirmOpen);
+            Assert.That(quit.IsConfirmOpen, Is.False);
+            Assert.That(battle.IsPaused, Is.True);
+            Assert.That(Time.timeScale, Is.Zero);
+
+            quit.HomeButton.onClick.Invoke();
+            yield return Press(Key.P, () => !battle.IsPaused);
+            Assert.That(quit.IsConfirmOpen || battle.IsPaused, Is.False);
+            Assert.That(speed.gameObject.activeInHierarchy, Is.True);
+            battle.SetPaused(true);
+            yield return null;
+            yield return null;
+            quit.HomeButton.onClick.Invoke();
+            quit.ConfirmButton.onClick.Invoke();
+            for (var i = 0; i < 300 && SceneManager.GetActiveScene().name != GameSession.TitleScene; i++)
+                yield return null;
+            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(GameSession.TitleScene));
+            Assert.That(Time.timeScale, Is.EqualTo(1f));
         }
 
         private IEnumerator Press(Key key, System.Func<bool> done)

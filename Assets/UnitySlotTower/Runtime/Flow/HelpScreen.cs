@@ -76,6 +76,8 @@ namespace UnitySlotTower.Flow
         [SerializeField] private Color rangeCellColor = new Color(1f, 0.6f, 0.15f);
         [SerializeField] private Color emptyCellColor = new Color(0.22f, 0.22f, 0.26f);
 
+        private QuitToTitle _quit;
+        private bool ConfirmOpen => _quit != null && _quit.IsConfirmOpen;
         private InputAction _help;
         private bool _gridsBuilt;
 
@@ -87,21 +89,24 @@ namespace UnitySlotTower.Flow
 
         private void Awake()
         {
+            _quit = GetComponent<QuitToTitle>();
             _help = inputActions.FindActionMap(ActionMap, true).FindAction("Help", true);
-            openButton.onClick.AddListener(Open);
-            closeButton.onClick.AddListener(Close);
             panel.SetActive(false);
             openButton.gameObject.SetActive(false);
         }
 
         private void OnEnable()
         {
+            openButton.onClick.AddListener(Open);
+            closeButton.onClick.AddListener(Close);
             _help.performed += OnHelpAction;
             _help.actionMap.Enable();
         }
 
         private void OnDisable()
         {
+            openButton.onClick.RemoveListener(Open);
+            closeButton.onClick.RemoveListener(Close);
             _help.performed -= OnHelpAction;
         }
 
@@ -113,7 +118,7 @@ namespace UnitySlotTower.Flow
                 panel.SetActive(false);
             }
 
-            var showButton = battle.IsPaused && !IsOpen;
+            var showButton = battle.IsPaused && !IsOpen && !ConfirmOpen;
             if (openButton.gameObject.activeSelf != showButton)
             {
                 openButton.gameObject.SetActive(showButton);
@@ -123,7 +128,7 @@ namespace UnitySlotTower.Flow
         /// <summary>一時停止中なら早見表を開く。一時停止していなければ何もしない。</summary>
         public void Open()
         {
-            if (!battle.IsPaused || battle.Run == null)
+            if (ConfirmOpen || !battle.IsPaused || battle.Run == null)
             {
                 return;
             }
@@ -143,6 +148,7 @@ namespace UnitySlotTower.Flow
 
         private void OnHelpAction(InputAction.CallbackContext context)
         {
+            if (ConfirmOpen) return;
             if (IsOpen)
             {
                 Close();
