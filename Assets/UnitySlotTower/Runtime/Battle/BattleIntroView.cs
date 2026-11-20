@@ -106,6 +106,7 @@ namespace UnitySlotTower.Battle
 
         private void Begin(BattleNodeRun run)
         {
+            fieldView.ShowAllPaths();
             _shownRun = run;
             _shown = true;
             EnsureLights(run.Map.Paths.Count * lightsPerPath);
@@ -138,6 +139,8 @@ namespace UnitySlotTower.Battle
 
         private void Hide()
         {
+            // A fighting step may already have replaced the intro lines with a spawn cue.
+            if (fieldView.ShowingAllPaths) fieldView.HideAllPaths();
             _shown = false;
             _shownRun = null;
             for (var i = 0; i < _lights.Count; i++)

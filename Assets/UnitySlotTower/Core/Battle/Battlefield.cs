@@ -170,7 +170,7 @@ namespace UnitySlotTower.Core.Battle
         public event Action<BattleUnit> UnitFell;
 
         /// <summary>表示用の通知。複数ステップを一度に進めても出現・到達を取りこぼさない。</summary>
-        public event Action<GridPoint> EnemySpawned;
+        public event Action<MapPath> EnemySpawned;
         public event Action<GridPoint> BaseReached;
 
         /// <summary>撤退（FR-025）。その味方がブロックしていた敵は再び進む。フィールドに居ない味方なら何もせず false。</summary>
@@ -223,7 +223,7 @@ namespace UnitySlotTower.Core.Battle
                 {
                     AreaCooldownSteps = StepsOf(spawn.Enemy.AreaInterval),
                 });
-                EnemySpawned?.Invoke(spawn.Path.Cells[0]);
+                EnemySpawned?.Invoke(spawn.Path);
             }
         }
 

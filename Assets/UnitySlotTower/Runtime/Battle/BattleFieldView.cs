@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
@@ -41,6 +42,22 @@ namespace UnitySlotTower.Battle
         private Transform _pathsRoot;
         private Transform _markersRoot;
         private Battlefield _observed;
+        private sealed class PathLine
+        {
+            public Transform Root;
+            public Vector3[] Points;
+            public Quaternion[] Headings;
+            public Transform[] Arrows;
+            public Transform[] Shadows;
+            public float Offset;
+            public float Remaining;
+            public double LastSpawn = double.NegativeInfinity;
+        }
+
+        private readonly Dictionary<string, PathLine> _lines = new Dictionary<string, PathLine>();
+        private double _battleTime;
+        internal bool ShowingAllPaths { get; private set; }
+
         private sealed class Marker
         {
             public Renderer[] Parts;
@@ -64,6 +81,7 @@ namespace UnitySlotTower.Battle
                 _observed.BaseReached -= OnArrival;
             }
             _observed = field;
+            ResetPathCues();
             if (field != null)
             {
                 field.EnemySpawned += OnSpawn;
@@ -73,9 +91,22 @@ namespace UnitySlotTower.Battle
             foreach (var marker in _bases.Values) marker.Until = 0f;
         }
 
-        private void OnDestroy() => Observe(null);
-        private void OnSpawn(GridPoint cell)
+        private void OnDestroy()
         {
+            _lines.Clear();
+            Observe(null);
+        }
+
+        private void OnSpawn(MapPath path)
+        {
+            var cell = path.Cells[0];
+            if (ShowingAllPaths) HideAllPaths();
+            if (_lines.TryGetValue(path.Id, out var line))
+            {
+                if (_battleTime - line.LastSpawn >= BattlePresentationTiming.PathCueGap)
+                    ShowPath(path.Id, BattlePresentationTiming.PathCue);
+                line.LastSpawn = _battleTime;
+            }
             if (_exits.TryGetValue(cell, out var marker)) marker.Until = Time.unscaledTime + BattlePresentationTiming.ExitFlash;
         }
         private void OnArrival(GridPoint cell)
@@ -85,6 +116,22 @@ namespace UnitySlotTower.Battle
 
         private void LateUpdate()
         {
+            var delta = Time.deltaTime;
+            _battleTime += delta;
+            foreach (var line in _lines.Values)
+            {
+                if (!line.Root.gameObject.activeSelf || delta <= 0f) continue;
+                line.Remaining -= delta;
+                if (line.Remaining <= -BattlePresentationTiming.PathCueFade)
+                {
+                    line.Root.gameObject.SetActive(false);
+                    continue;
+                }
+                line.Offset = Mathf.Repeat(line.Offset + delta * 1.5f, line.Headings.Length);
+                PositionArrows(line);
+                if (line.Remaining < 0f)
+                    ScaleLine(line, 1f + line.Remaining / BattlePresentationTiming.PathCueFade);
+            }
             foreach (var marker in _exits.Values) PaintMarker(marker, Color.white);
             foreach (var marker in _bases.Values) PaintMarker(marker, UnitySlotTower.Ui.UiStyle.Danger);
         }
@@ -162,6 +209,7 @@ namespace UnitySlotTower.Battle
         /// <summary>マップの表示を作り直す（ステージの切り替え）。</summary>
         public void Show(BattleMap map)
         {
+            ResetPathCues();
             if (map == Map)
             {
                 return;
@@ -174,6 +222,7 @@ namespace UnitySlotTower.Battle
                 Destroy(_markersRoot.gameObject);
             }
 
+            _lines.Clear();
             Map = map;
             _exits.Clear();
             _bases.Clear();
@@ -230,17 +279,102 @@ namespace UnitySlotTower.Battle
             root.SetParent(transform, false);
             foreach (var path in Map.Paths)
             {
-                var color = path.IsAir ? airPathColor : groundPathColor;
-                var lift = Vector3.up * (path.IsAir ? airPathHeight : 0.02f);
-                for (var i = 1; i < path.Cells.Count; i++)
+                var segments = path.Cells.Count - 1;
+                var line = new PathLine
                 {
-                    var from = CellToLocal(path.Cells[i - 1]) + lift;
-                    var to = CellToLocal(path.Cells[i]) + lift;
-                    var segment = CreateCube($"Path {path.Id} {i}", root, color, false);
-                    segment.localPosition = (from + to) * 0.5f;
-                    segment.localRotation = Quaternion.LookRotation(to - from);
-                    segment.localScale = new Vector3(0.12f, 0.02f, 1.12f);
+                    Root = new GameObject(path.Id).transform,
+                    Points = new Vector3[path.Cells.Count],
+                    Headings = new Quaternion[segments],
+                    Arrows = new Transform[segments * 2],
+                    Shadows = path.IsAir ? new Transform[segments * 2] : Array.Empty<Transform>()
+                };
+                line.Root.SetParent(root, false);
+                line.Root.gameObject.SetActive(false);
+                _lines.Add(path.Id, line);
+                // Preserve the serialized brightness of the ground cue while drawing it in white.
+                var color = path.IsAir ? airPathColor : Color.white * groundPathColor.maxColorComponent;
+                for (var i = 0; i < path.Cells.Count; i++)
+                    line.Points[i] = CellToLocal(path.Cells[i]) + Vector3.up * (path.IsAir ? airPathHeight : 0.03f);
+                for (var i = 0; i < segments; i++)
+                    line.Headings[i] = Quaternion.LookRotation(line.Points[i + 1] - line.Points[i]);
+
+                for (var i = 0; i < line.Arrows.Length; i++)
+                {
+                    var arrow = line.Arrows[i] = new GameObject("Chevron").transform;
+                    arrow.SetParent(line.Root, false);
+                    for (var side = -1; side <= 1; side += 2)
+                    {
+                        var arm = CreateCube("Arm", arrow, color, false);
+                        arm.localPosition = new Vector3(side * 0.065f, 0f, 0f);
+                        arm.localRotation = Quaternion.Euler(0f, -side * 45f, 0f);
+                        arm.localScale = new Vector3(0.045f, 0.015f, 0.2f);
+                    }
+                    if (path.IsAir)
+                    {
+                        var dash = line.Shadows[i] = CreateCube("Shadow", line.Root, Color.gray * 0.55f, false);
+                        var segment = i / 2;
+                        var fraction = i % 2 == 0 ? 0.25f : 0.75f;
+                        var point = Vector3.Lerp(line.Points[segment], line.Points[segment + 1], fraction);
+                        var cell = path.Cells[fraction < 0.5f ? segment : segment + 1];
+                        point.y = TileHeight(Map.TileAt(cell)) - groundHeight + 0.02f;
+                        dash.localPosition = point;
+                        dash.localRotation = line.Headings[segment];
+                    }
                 }
+            }
+        }
+
+        private static void PositionArrows(PathLine line)
+        {
+            for (var i = 0; i < line.Arrows.Length; i++)
+            {
+                var along = Mathf.Repeat(i * 0.5f + line.Offset, line.Headings.Length);
+                var segment = Mathf.Min((int)along, line.Headings.Length - 1);
+                var arrow = line.Arrows[i];
+                arrow.localPosition = Vector3.Lerp(line.Points[segment], line.Points[segment + 1], along - segment);
+                arrow.localRotation = line.Headings[segment];
+            }
+        }
+
+        private static void ScaleLine(PathLine line, float scale)
+        {
+            foreach (var arrow in line.Arrows) arrow.localScale = Vector3.one * scale;
+            foreach (var dash in line.Shadows) dash.localScale = new Vector3(0.065f, 0.012f, 0.22f) * scale;
+        }
+
+        public bool IsPathVisible(string id) => _lines.TryGetValue(id, out var line) && line.Root.gameObject.activeSelf;
+        public bool PathHasGroundShadow(string id) => _lines.TryGetValue(id, out var line) && line.Shadows.Length > 0;
+
+        public void ShowPath(string id, float seconds)
+        {
+            if (!_lines.TryGetValue(id, out var line)) return;
+            line.Remaining = ShowingAllPaths ? float.PositiveInfinity : Mathf.Max(0f, seconds);
+            PositionArrows(line);
+            ScaleLine(line, 1f);
+            line.Root.gameObject.SetActive(true);
+        }
+
+        public void ShowAllPaths()
+        {
+            ShowingAllPaths = true;
+            foreach (var id in _lines.Keys) ShowPath(id, float.PositiveInfinity);
+        }
+
+        public void HideAllPaths()
+        {
+            ShowingAllPaths = false;
+            foreach (var line in _lines.Values) line.Root.gameObject.SetActive(false);
+        }
+
+        private void ResetPathCues()
+        {
+            HideAllPaths();
+            _battleTime = 0d;
+            foreach (var line in _lines.Values)
+            {
+                line.LastSpawn = double.NegativeInfinity;
+                line.Offset = 0f;
+                line.Remaining = 0f;
             }
         }
 

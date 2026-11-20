@@ -257,6 +257,55 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                 Is.EqualTo((1f, WavePhase.Fighting, 1, 1f)));
         }
 
+        [UnityTest]
+        [Description("AC-060: Intro routes give way to a timed cue on the spawning route.")]
+        public IEnumerator Intro_Paths_Give_Way_To_A_Timed_Spawn_Cue()
+        {
+            var paths = _battle.Run.Map.Paths;
+            Assert.That(_battle.IsInIntro, Is.True);
+            foreach (var path in paths) Assert.That(_fieldView.IsPathVisible(path.Id), Is.True, path.Id);
+
+            var field = _battle.Field;
+            MapPath spawned = null;
+            var spawnTime = 0f;
+            void RecordFirstSpawn(MapPath path)
+            {
+                if (spawned != null) return;
+                spawned = path;
+                spawnTime = Time.time;
+            }
+
+            field.EnemySpawned += RecordFirstSpawn;
+            try
+            {
+                yield return RouteTestUtil.WaitForIntro(_battle);
+                yield return null; // Allow the intro's LateUpdate to hide its lines.
+                foreach (var path in paths)
+                    Assert.That(_fieldView.IsPathVisible(path.Id), Is.EqualTo(path == spawned), path.Id);
+
+                var limit = Time.realtimeSinceStartup + 5f;
+                while (spawned == null && Time.realtimeSinceStartup < limit) yield return null;
+                Assert.That(spawned, Is.Not.Null);
+                Assert.That(_fieldView.IsPathVisible(spawned.Id), Is.True);
+                var duration = BattlePresentationTiming.PathCue + BattlePresentationTiming.PathCueFade;
+                limit = Time.realtimeSinceStartup + duration + 3f;
+                while (_fieldView.IsPathVisible(spawned.Id) && Time.realtimeSinceStartup < limit) yield return null;
+                Assert.That(_fieldView.IsPathVisible(spawned.Id), Is.False);
+                Assert.That(Time.time - spawnTime, Is.EqualTo(duration).Within(0.35f));
+            }
+            finally
+            {
+                field.EnemySpawned -= RecordFirstSpawn;
+            }
+
+            // The first encounter only has ground routes. Battle A contains both types.
+            var mixedMap = _fieldView.LoadMap("battle_a");
+            _fieldView.Show(mixedMap);
+            Assert.That(_fieldView.PathHasGroundShadow("battle_a_a1"), Is.True);
+            foreach (var path in mixedMap.Paths)
+                Assert.That(_fieldView.PathHasGroundShadow(path.Id), Is.EqualTo(path.IsAir), path.Id);
+        }
+
         private int TileRoots()
         {
             var count = 0;
