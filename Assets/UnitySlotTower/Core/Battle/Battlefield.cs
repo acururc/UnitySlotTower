@@ -551,7 +551,7 @@ namespace UnitySlotTower.Core.Battle
             unit.InRange(enemy.Cell) && (!enemy.Definition.IsAir || unit.Definition.Role == UnitRole.Ranged);
 
         /// <summary>
-        /// HP0 の敵を消し、使っていたブロックの空きを戻す。ドロップ確率に当たれば、最小〜最大の量（両端を含む一様）を落とす（FR-033）。
+        /// HP0 の敵を消し、使っていたブロックの空きを戻す。コインと所持金をそれぞれ別に抽選し、当たれば最小〜最大の量（両端を含む一様）を落とす（FR-107）。
         /// </summary>
         private void RemoveDefeatedEnemies()
         {
@@ -569,13 +569,13 @@ namespace UnitySlotTower.Core.Battle
                 }
 
                 var definition = enemy.Definition;
-                // 1回の抽選で [0, コイン率) ならコイン、[コイン率, コイン率 + 所持金率) なら所持金（plan 16.2）。
-                var roll = _random.NextDouble();
-                if (roll < definition.CoinRate)
+                // コインと所持金は別々の抽選（FR-107、002 plan 2.4）。
+                if (_random.NextDouble() < definition.CoinRate)
                 {
                     DroppedCoins += _random.NextInt(definition.CoinMin, definition.CoinMax + 1);
                 }
-                else if (roll < definition.CoinRate + definition.MoneyRate)
+
+                if (_random.NextDouble() < definition.MoneyRate)
                 {
                     // 所持金だけにコインの倍率を掛ける（四捨五入、plan 16.2）。
                     var money = _random.NextInt(definition.MoneyMin, definition.MoneyMax + 1);

@@ -7,7 +7,7 @@ using UnitySlotTower.Tests.EditMode.Slot;
 namespace UnitySlotTower.Tests.EditMode.Battle
 {
     /// <summary>
-    /// ゴール到達でのライフ減少・ゲームオーバー（FR-013）と撃破ドロップ（FR-033）。1 ステップ = 1/60 秒。
+    /// ゴール到達でのライフ減少・ゲームオーバー（FR-013）と撃破ドロップ（FR-033、FR-107）。1 ステップ = 1/60 秒。
     /// 地図と敵は <see cref="BattleFixtures"/>（地上経路 g: (0,0)→(3,0)。速度1の敵は出現から 180 ステップでゴールに着く）。
     /// </summary>
     public sealed class LifeAndDropTests
@@ -101,12 +101,31 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("plan 16.2: 撃破時の抽選は1回だけ。コインと所持金を同時には落とさない")]
-        public void One_Defeat_Never_Drops_Both_Coins_And_Money()
+        [Description("FR-107: コインと所持金は別々の抽選。コイン25%・所持金40%の敵を 2000 回倒すと、両方を落とす割合は 10% ± 2.5%")]
+        public void Coins_And_Money_Are_Drawn_Separately()
         {
             var drops = DropsOfDefeats("purse", 2000);
 
-            Assert.That(drops.Count(d => d.Coins > 0 && d.Money > 0), Is.EqualTo(0));
+            Assert.That(drops.Count(d => d.Coins > 0 && d.Money > 0) / 2000.0, Is.EqualTo(0.1).Within(0.025));
+        }
+
+        [Test]
+        [Description("AC-104: コイン15%で1枚・所持金100%で30の敵を 10000 回倒すと、所持金は毎回30、コインを落とす割合は 15% ± 1.5%")]
+        public void Grunt_Always_Drops_Money_And_Coins_At_Fifteen_Percent()
+        {
+            var drops = DropsOfDefeats("grunt", 10000);
+
+            Assert.That((drops.All(d => d.Money == 30), drops.All(d => d.Coins <= 1)), Is.EqualTo((true, true)));
+            Assert.That(drops.Sum(d => d.Coins) / 10000.0, Is.EqualTo(0.15).Within(0.015));
+        }
+
+        [Test]
+        [Description("AC-104: コインの倍率 1.5 なら雑魚の所持金は毎回 30→45")]
+        public void Grunt_Money_Is_Multiplied_By_The_Coin_Boost()
+        {
+            var drops = DropsOfDefeats("grunt", 200, coinBoosts: 5);
+
+            Assert.That(drops.Select(d => d.Money).Distinct(), Is.EqualTo(new[] { 45 }));
         }
 
         [Test]

@@ -60,7 +60,7 @@ namespace UnitySlotTower.Core.Battle
         public int CoinMin { get; }
         public int CoinMax { get; }
 
-        /// <summary>撃破時に所持金を落とす確率。コインと同じ1回の抽選で、コインに外れた分から当たる（和は1以下）。</summary>
+        /// <summary>撃破時に所持金を落とす確率。コインとは別の抽選（FR-107）。</summary>
         public double MoneyRate { get; }
         public int MoneyMin { get; }
         public int MoneyMax { get; }
@@ -81,9 +81,6 @@ namespace UnitySlotTower.Core.Battle
     public sealed class EnemyTable
     {
         public const string FileName = "enemies.csv";
-
-        // 0.7 + 0.3 のような和を浮動小数の誤差でエラーにしないための許容幅。
-        private const double RateEpsilon = 1e-9;
 
         private readonly Dictionary<string, EnemyDefinition> _enemies = new Dictionary<string, EnemyDefinition>();
         private readonly string _fileName;
@@ -124,11 +121,8 @@ namespace UnitySlotTower.Core.Battle
                 }
 
                 var coinRate = row.GetProbability("coin_rate");
+                // コインと所持金は別々の抽選なので、率の和は 1 を超えてよい（FR-107）。
                 var moneyRate = row.GetProbability("money_rate");
-                if (coinRate + moneyRate > 1 + RateEpsilon)
-                {
-                    throw row.Error("money_rate", $"敵 '{id}' のコインと所持金のドロップ率の和が 1 を超える");
-                }
 
                 var rangedDamageRate = table.HasColumn("ranged_damage_rate")
                     ? row.GetDouble("ranged_damage_rate") : 1;

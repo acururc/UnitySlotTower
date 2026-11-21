@@ -92,7 +92,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var heavy = EnemyTable.Load(Project(EnemyTable.FileName)).Get("heavy");
             Assert.That((heavy.MaxHp, heavy.Def, heavy.Range, heavy.IsAir, heavy.RangedDamageRate,
                     heavy.CoinRate, heavy.CoinMin, heavy.CoinMax, heavy.MoneyRate, heavy.MoneyMin, heavy.MoneyMax),
-                Is.EqualTo((2200, 180, 0.0, false, 0.4, 0.4, 2, 2, 0.28, 16, 16)));
+                Is.EqualTo((2200, 180, 0.0, false, 0.4, 0.15, 1, 1, 1.0, 30, 30)));
         }
     }
 }

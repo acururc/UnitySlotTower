@@ -73,15 +73,12 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("plan 16.2: コインと所持金の率の和が 1 を超える行は読み込みエラー（その行を報告）")]
-        public void Drop_Rates_Summing_Over_One_Are_A_Load_Error()
+        [Description("FR-107: コインと所持金は別々の抽選なので、率の和が 1 を超える行も読み込める")]
+        public void Drop_Rates_Summing_Over_One_Load()
         {
-            // 4 行目の air（0.5 + 0.3）の所持金率を 0.6 にして和を 1.1 にする。
-            var text = BattleFixtures.Enemies.Replace("0.5,1,2,0.3,4,5", "0.5,1,2,0.6,4,5");
+            var grunt = BattleFixtures.LoadEnemies().Get("grunt");
 
-            var ex = Assert.Throws<CsvFormatException>(() => EnemyTable.Load(CsvParser.Parse(EnemyTable.FileName, text)));
-
-            Assert.That(ex.Error.Line, Is.EqualTo(4));
+            Assert.That((grunt.CoinRate, grunt.MoneyRate), Is.EqualTo((0.15, 1.0)));
         }
 
         [Test]
@@ -106,11 +103,11 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("plan 17.1・17.3: ドロップは 近 コイン40%で2／所持金28%で16円、遠・空 コイン45%で2／所持金28%で16〜24円")]
+        [Description("FR-107、002 plan 2.4: 雑魚（近・遠・空・重）はコイン15%で1枚、所持金100%で30円")]
         public void Project_Grunt_Drops_Follow_Plan()
         {
             var enemies = Project();
-            var drops = new[] { "melee", "ranged", "air" };
+            var drops = new[] { "melee", "ranged", "air", "heavy" };
             var actual = new (double, int, int, double, int, int)[drops.Length];
             for (var i = 0; i < drops.Length; i++)
             {
@@ -119,7 +116,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             }
 
             Assert.That(actual,
-                Is.EqualTo(new[] { (0.4, 2, 2, 0.28, 16, 16), (0.45, 2, 2, 0.28, 16, 24), (0.45, 2, 2, 0.28, 16, 24) }));
+                Is.EqualTo(new[] { (0.15, 1, 1, 1.0, 30, 30), (0.15, 1, 1, 1.0, 30, 30), (0.15, 1, 1, 1.0, 30, 30), (0.15, 1, 1, 1.0, 30, 30) }));
         }
     }
 }
