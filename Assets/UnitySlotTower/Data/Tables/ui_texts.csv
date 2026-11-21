@@ -91,6 +91,8 @@ slot_green7,緑7：バッファーのスキルゲージ+1
 slot_yellow7,黄7：タンクのスキルゲージ+1
 slot_bar,バー：この戦闘の攻撃力アップ
 slot_coin,コイン：この戦闘の獲得金アップ
+help_tab_slot,スロット
+help_tab_units,味方
 help_slot_heading,スロットの図柄
 help_units_heading,味方
 help_col_symbol,図柄

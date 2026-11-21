@@ -35,10 +35,14 @@ namespace UnitySlotTower.Editor.Setup
             HelpScreenSetup.LoadAssets();
             var helpObject = new SerializedObject(help);
             var panel = ((GameObject)helpObject.FindProperty("panel").objectReferenceValue).GetComponent<RectTransform>();
-            RemoveSlotRows(panel);
-            HelpScreenSetup.BuildSlot(panel, helpObject);
-            UpdateUnitRows(helpObject.FindProperty("unitRows"));
-            helpObject.ApplyModifiedPropertiesWithoutUndo();
+            // ページ化済みの早見表には旧形式の行を作らない。
+            if (helpObject.FindProperty("slotPage").objectReferenceValue == null)
+            {
+                RemoveSlotRows(panel);
+                HelpScreenSetup.BuildSlot(panel, helpObject);
+                UpdateUnitRows(helpObject.FindProperty("unitRows"));
+                helpObject.ApplyModifiedPropertiesWithoutUndo();
+            }
 
             var scene = help.gameObject.scene;
             EditorSceneManager.MarkSceneDirty(scene);

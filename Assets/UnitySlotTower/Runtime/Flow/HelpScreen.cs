@@ -10,14 +10,15 @@ using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Core.Ui;
 using UnitySlotTower.Slot;
+using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Flow
 {
     /// <summary>
     /// 一時停止中の説明（T404・T351、FR-012、plan 16.10）。一時停止中だけ「?」ボタンを出し、押すと早見表を開く。
-    /// 上半分はスロット: 現在の設定の20パターンの内訳（ハズレと図柄ごとの %＝個数×5）と効果（色7 → その職とゲージ+1、
+    /// 1ページ目はスロット: 現在の設定の20パターンの内訳（ハズレと図柄ごとの %＝個数×5）と効果（色7 → その職とゲージ+1、
     /// バー → 攻撃力 +10%〔上限〕、コイン → 所持金の倍率〔上限〕。値は slot_rules.csv）。
-    /// 下半分は味方: 本体の色とスキルの色、右向きの範囲図、現在の強化段階での HP・攻撃（バッファーは倍率）・防御・攻撃間隔・
+    /// 2ページ目は味方: 本体の色とスキルの色、右向きの範囲図、現在の強化段階での HP・攻撃（バッファーは倍率）・防御・攻撃間隔・
     /// ブロック数・コスト・待ち時間。
     /// キーボードは ?（/）キーで開閉（一時停止していなければ一時停止して開く）。◀ で閉じる。再開すると閉じる。
     /// </summary>
@@ -59,6 +60,14 @@ namespace UnitySlotTower.Flow
         [Tooltip("開いているあいだだけ表示する画面全体（背景で下の操作を遮る）。")]
         [SerializeField] private GameObject panel;
         [SerializeField] private Button closeButton;
+        public enum Page { Slot, Units }
+
+        [SerializeField] private GameObject slotPage;
+        [SerializeField] private GameObject unitPage;
+        [SerializeField] private Button slotTab;
+        [SerializeField] private Button unitTab;
+        [SerializeField] private Button previousButton;
+        [SerializeField] private Button nextButton;
         [SerializeField] private TMP_Text missText;
         [Tooltip("図柄ごとの20パターン中の割合（SlotSymbol の順）。")]
         [SerializeField] private TMP_Text[] chanceTexts = new TMP_Text[SlotSymbols.Count];
@@ -87,6 +96,28 @@ namespace UnitySlotTower.Flow
         public Button OpenButton => openButton;
         public Button CloseButton => closeButton;
 
+        public Page CurrentPage { get; private set; } = Page.Slot;
+        public Button SlotTab => slotTab;
+        public Button UnitTab => unitTab;
+        public Button PreviousButton => previousButton;
+        public Button NextButton => nextButton;
+
+        public void ShowPage(Page page)
+        {
+            CurrentPage = page;
+            var slot = page == Page.Slot;
+            slotPage.SetActive(slot);
+            unitPage.SetActive(!slot);
+            slotTab.image.color = slot ? UiStyle.Ally : UiStyle.ButtonFill;
+            unitTab.image.color = slot ? UiStyle.ButtonFill : UiStyle.Ally;
+            Deselect();
+        }
+
+        private void ShowSlot() => ShowPage(Page.Slot);
+        private void ShowUnits() => ShowPage(Page.Units);
+        public void NextPage() => ShowPage(CurrentPage == Page.Slot ? Page.Units : Page.Slot);
+        public void PreviousPage() => NextPage();
+
         private void Awake()
         {
             _quit = GetComponent<QuitToTitle>();
@@ -99,6 +130,10 @@ namespace UnitySlotTower.Flow
         {
             openButton.onClick.AddListener(Open);
             closeButton.onClick.AddListener(Close);
+            slotTab.onClick.AddListener(ShowSlot);
+            unitTab.onClick.AddListener(ShowUnits);
+            previousButton.onClick.AddListener(PreviousPage);
+            nextButton.onClick.AddListener(NextPage);
             _help.performed += OnHelpAction;
             _help.actionMap.Enable();
         }
@@ -107,6 +142,10 @@ namespace UnitySlotTower.Flow
         {
             openButton.onClick.RemoveListener(Open);
             closeButton.onClick.RemoveListener(Close);
+            slotTab.onClick.RemoveListener(ShowSlot);
+            unitTab.onClick.RemoveListener(ShowUnits);
+            previousButton.onClick.RemoveListener(PreviousPage);
+            nextButton.onClick.RemoveListener(NextPage);
             _help.performed -= OnHelpAction;
         }
 
@@ -133,7 +172,7 @@ namespace UnitySlotTower.Flow
                 return;
             }
 
-            Deselect();
+            ShowPage(CurrentPage);
             Refresh();
             panel.SetActive(true);
             openButton.gameObject.SetActive(false);

@@ -15,7 +15,7 @@ namespace UnitySlotTower.Editor.Setup
     /// <summary>
     /// Game シーンに一時停止中の説明（T404）を組む一回限りの手順。Portrait Root のリザルトの手前に置き、BattleController と筐体に結ぶ。
     /// 既にあれば何もしない。以後の変更は Editor でシーンを直接編集する。
-    /// 「?」ボタンは戦闘の右下（操作バーの一時停止ボタンの上）。早見表は上がスロット（ハズレと6図柄の確率・効果）、下が味方4種（範囲図と数値）。
+    /// 「?」ボタンは戦闘の右下（操作バーの一時停止ボタンの上）。早見表はスロット（確率・効果）と味方4種（範囲図と数値）の2ページ。
     /// </summary>
     internal static class HelpScreenSetup
     {
@@ -49,11 +49,13 @@ namespace UnitySlotTower.Editor.Setup
                 return;
             }
 
-            var root = GameObject.Find("Portrait Root")?.GetComponent<RectTransform>();
+            var portrait = GameObject.Find("Portrait Root");
+            var root = portrait == null ? null : portrait.GetComponent<RectTransform>();
             var battle = Object.FindAnyObjectByType<BattleController>(FindObjectsInactive.Include);
             var cabinet = Object.FindAnyObjectByType<SlotCabinet>(FindObjectsInactive.Include);
             var result = Object.FindAnyObjectByType<ResultScreen>(FindObjectsInactive.Include);
-            var bar = GameObject.Find("Operation Bar")?.transform;
+            var operationBar = GameObject.Find("Operation Bar");
+            var bar = operationBar == null ? null : operationBar.transform;
             if (root == null || battle == null || cabinet == null || result == null || bar == null)
             {
                 Debug.LogError("[SlotTower Setup] Game シーンの Portrait Root / BattleController / SlotCabinet / Result / Operation Bar が見つからない。");
@@ -96,9 +98,7 @@ namespace UnitySlotTower.Editor.Setup
             header.text = "?";
             header.alignment = TextAlignmentOptions.Center;
 
-            BuildSlot(area, serialized);
-            CreateImage("Divider", area, new Vector2(0.04f, 0.556f), new Vector2(0.96f, 0.56f), DimColor, null);
-            BuildUnits(area, bar, serialized);
+            HelpPagesSetup.BuildPages(area, bar, serialized);
 
             serialized.FindProperty("inputActions").objectReferenceValue =
                 AssetDatabase.LoadAssetAtPath<InputActionAsset>(InputActionsPath);
@@ -119,7 +119,7 @@ namespace UnitySlotTower.Editor.Setup
             Debug.Log("[SlotTower Setup] 説明画面を作成した。");
         }
 
-        /// <summary>早見表の上半分（スロット）をまとめる親の名前。作り直すときはこれを消す。</summary>
+        /// <summary>スロットページの行をまとめる親の名前。作り直すときはこれを消す。</summary>
         internal const string SlotRowsName = "Slot Rows";
 
         internal static void LoadAssets()
@@ -132,10 +132,8 @@ namespace UnitySlotTower.Editor.Setup
         // スロット（T351、plan 16.10）: 1行目はハズレ（暗い枠に赤い×）、続いて6図柄。各行は 図柄・20パターン中の %・▶・効果。
         // 効果: 色7 → その職の札（色は実行時）＋ゲージの点＋「+1」、バー → 攻撃の印「+10%」と上限の印「+50%」、
         // コイン → コイン「×1.1」と上限の印「×1.5」。
-        internal static void BuildSlot(RectTransform panel, SerializedObject serialized)
+        internal static void BuildSlot(RectTransform panel, SerializedObject serialized, float top = 0.92f, float height = 0.05f)
         {
-            const float top = 0.92f;
-            const float height = 0.05f;
             var area = CreateRect(SlotRowsName, panel, Vector2.zero, Vector2.one);
             var miss = Row(area, "Miss", top, height);
             var missIcon = CreateImage("Icon", miss, new Vector2(0.06f, 0.08f), new Vector2(0.06f + 0.84f * height * Square, 0.92f),
@@ -145,7 +143,7 @@ namespace UnitySlotTower.Editor.Setup
                 new Color(0.95f, 0.2f, 0.2f));
             cross.text = "×";
             cross.alignment = TextAlignmentOptions.Center;
-            serialized.FindProperty("missText").objectReferenceValue = Chance(miss);
+            serialized.FindProperty("missText").objectReferenceValue = Chance(miss, height);
 
             var chances = serialized.FindProperty("chanceTexts");
             var effects = serialized.FindProperty("effectTexts");
@@ -169,7 +167,7 @@ namespace UnitySlotTower.Editor.Setup
                 card.type = Image.Type.Sliced;
                 var icon = CreateRect("Symbol", card.rectTransform, new Vector2(0.08f, 0.08f), new Vector2(0.92f, 0.92f));
                 SlotSymbolArt.Create(symbol, icon);
-                chances.GetArrayElementAtIndex(s).objectReferenceValue = Chance(row);
+                chances.GetArrayElementAtIndex(s).objectReferenceValue = Chance(row, height);
                 var arrow = CreateRect("Arrow", row, new Vector2(0.36f, 0.3f), new Vector2(0.39f, 0.7f));
                 arrow.gameObject.AddComponent<TriangleGraphic>().color = DimColor;
 
@@ -192,21 +190,21 @@ namespace UnitySlotTower.Editor.Setup
                         var job = CreateImage("Job Card", row, iconMin, iconMax, Color.white, _box);
                         job.type = Image.Type.Sliced;
                         jobs.GetArrayElementAtIndex(s).objectReferenceValue = job;
-                        GaugeDots(CreateRect("Gauge", row, new Vector2(0.52f, 0.3f), new Vector2(0.68f, 0.7f)),
+                        GaugeDots(CreateRect("Gauge", row, new Vector2(0.44f + iconWidth, 0.3f), new Vector2(0.68f, 0.7f)),
                             SlotSymbolArt.SevenColors[s], 1);
                         break;
                     }
                 }
 
                 var isSeven = symbol != SlotSymbol.Bar && symbol != SlotSymbol.Coin;
-                var value = CreateText("Effect", row, new Vector2(isSeven ? 0.7f : 0.5f, 0.05f), new Vector2(isSeven ? 0.86f : 0.7f, 0.95f),
+                var value = CreateText("Effect", row, new Vector2(isSeven ? 0.7f : 0.44f + iconWidth, 0.05f), new Vector2(isSeven ? 0.86f : 0.7f, 0.95f),
                     Color.white);
                 effects.GetArrayElementAtIndex(s).objectReferenceValue = value;
                 if (!isSeven)
                 {
                     CapIcon(CreateRect("Cap Icon", row, new Vector2(0.73f, 0.14f), new Vector2(0.73f + iconWidth, 0.86f)));
                     caps.GetArrayElementAtIndex(s).objectReferenceValue =
-                        CreateText("Cap", row, new Vector2(0.8f, 0.05f), new Vector2(0.97f, 0.95f), Color.white);
+                        CreateText("Cap", row, new Vector2(0.74f + iconWidth, 0.05f), new Vector2(0.97f, 0.95f), Color.white);
                 }
             }
         }
@@ -281,9 +279,9 @@ namespace UnitySlotTower.Editor.Setup
         private static RectTransform Row(RectTransform area, string name, float top, float height) =>
             CreateRect(name, area, new Vector2(0f, top - height), new Vector2(1f, top));
 
-        private static TextMeshProUGUI Chance(RectTransform row)
+        private static TextMeshProUGUI Chance(RectTransform row, float height)
         {
-            var text = CreateText("Chance", row, new Vector2(0.16f, 0.05f), new Vector2(0.34f, 0.95f), Color.white);
+            var text = CreateText("Chance", row, new Vector2(0.07f + 0.92f * height * Square, 0.05f), new Vector2(0.34f, 0.95f), Color.white);
             text.alignment = TextAlignmentOptions.Right;
             return text;
         }
@@ -292,21 +290,21 @@ namespace UnitySlotTower.Editor.Setup
 
         // 味方: 本体の色の札とスキルの印、範囲図（実行時に作る）、左列に HP・攻撃（バッファーは倍率）・防御・攻撃間隔、
         // 右列にブロック・コスト・待ち時間。
-        private static void BuildUnits(RectTransform area, Transform bar, SerializedObject serialized)
+        internal static void BuildUnits(RectTransform area, Transform bar, SerializedObject serialized,
+            float top = 0.54f, float height = UnitRowHeight)
         {
-            const float top = 0.54f;
-            const float height = UnitRowHeight;
             var rows = serialized.FindProperty("unitRows");
             rows.arraySize = UnitCount;
             for (var i = 0; i < UnitCount; i++)
             {
                 var row = Row(area, $"Unit {i + 1}", top - i * height, height);
-                var body = bar.Find($"Unit Icon {i + 1}")?.GetComponent<Image>();
+                var icon = bar.Find($"Unit Icon {i + 1}");
+                var body = icon == null ? null : icon.GetComponent<Image>();
                 var color = body != null ? body.color : Color.white;
                 var card = CreateImage("Body", row, Vector2.zero, Vector2.one, color, _box);
                 card.type = Image.Type.Sliced;
                 PlaceBody(card.rectTransform, height);
-                var rangeArea = CreateRect("Range", row, new Vector2(0.17f, 0.06f), new Vector2(0.45f, 0.94f));
+                var rangeArea = CreateRect("Range", row, new Vector2(0.065f + 0.6f * height * Square, 0.06f), new Vector2(0.45f, 0.94f));
 
                 var element = rows.GetArrayElementAtIndex(i);
                 element.FindPropertyRelative("rangeArea").objectReferenceValue = rangeArea;
@@ -339,7 +337,11 @@ namespace UnitySlotTower.Editor.Setup
                 if (panel == null) continue;
                 for (var i = 0; i < looks.Count; i++)
                 {
-                    var card = panel.transform.Find($"Unit {i + 1}/Body")?.GetComponent<Image>();
+                    var parent = panel.transform.Find("Unit Page");
+                    if (parent == null) parent = panel.transform;
+                    var body = parent.Find($"Unit {i + 1}/Body");
+                    if (body == null) continue;
+                    var card = body.GetComponent<Image>();
                     if (card == null) continue;
                     BuildJobArt(card, looks[i]);
                 }
@@ -350,8 +352,8 @@ namespace UnitySlotTower.Editor.Setup
         {
             card.color = JobCardColor;
             card.sprite = null;
-            var art = card.transform.Find("Job Art") as RectTransform
-                ?? CreateRect("Job Art", card.rectTransform, Vector2.zero, Vector2.one);
+            var art = card.transform.Find("Job Art") as RectTransform;
+            if (art == null) art = CreateRect("Job Art", card.rectTransform, Vector2.zero, Vector2.one);
             UnitLooks.BuildShape(art, look);
         }
 
@@ -360,7 +362,7 @@ namespace UnitySlotTower.Editor.Setup
             float lineHeight, System.Action<RectTransform> draw)
         {
             var y = line * lineHeight;
-            var iconWidth = 0.7f * lineHeight * 0.13f * Square;
+            var iconWidth = 0.7f * lineHeight * (row.anchorMax.y - row.anchorMin.y) * Square;
             var icon = CreateRect(property.Replace("Text", " Icon"), row, new Vector2(x, y + 0.15f * lineHeight),
                 new Vector2(x + iconWidth, y + 0.85f * lineHeight));
             var content = CreateRect("Content", icon, Vector2.zero, Vector2.one);
@@ -422,7 +424,7 @@ namespace UnitySlotTower.Editor.Setup
             CreateImage("Hand Right", face.rectTransform, new Vector2(0.48f, 0.45f), new Vector2(0.78f, 0.55f), DarkColor, null);
         }
 
-        private static Button CreateButton(string name, RectTransform parent, Vector2 anchorMin, Vector2 anchorMax, Color color)
+        internal static Button CreateButton(string name, RectTransform parent, Vector2 anchorMin, Vector2 anchorMax, Color color)
         {
             var image = CreateImage(name, parent, anchorMin, anchorMax, color, _box);
             image.type = Image.Type.Sliced;
@@ -432,7 +434,7 @@ namespace UnitySlotTower.Editor.Setup
             return button;
         }
 
-        private static RectTransform CreateRect(string name, RectTransform parent, Vector2 anchorMin, Vector2 anchorMax)
+        internal static RectTransform CreateRect(string name, RectTransform parent, Vector2 anchorMin, Vector2 anchorMax)
         {
             var rect = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
             rect.gameObject.layer = parent.gameObject.layer;
@@ -443,7 +445,7 @@ namespace UnitySlotTower.Editor.Setup
             return rect;
         }
 
-        private static Image CreateImage(string name, RectTransform parent, Vector2 anchorMin, Vector2 anchorMax, Color color,
+        internal static Image CreateImage(string name, RectTransform parent, Vector2 anchorMin, Vector2 anchorMax, Color color,
             Sprite sprite)
         {
             var image = CreateRect(name, parent, anchorMin, anchorMax).gameObject.AddComponent<Image>();

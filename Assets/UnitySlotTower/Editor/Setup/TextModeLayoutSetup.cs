@@ -75,16 +75,14 @@ namespace UnitySlotTower.Editor.Setup
         }
 
         // --- T359f 早見表 ---
-        // 画面いっぱい（1440×1920 px）。上から 閉じる・題（1795〜1891）、スロットの見出し・列の名前・7行（70 px）、区切り、
-        // 味方の見出し・列の名前・4行（255 px）。y は px（下端, 上端）。ラベルは TextModeSetup がこの値で作る。
+        // ページごとの見出しと列名の高さを揃える（1440×1920 基準）。
 
-        internal static readonly Vector2 HelpSlotHeadingY = new Vector2(1716f, 1786f);
-        internal static readonly Vector2 HelpSlotColumnsY = new Vector2(1666f, 1716f);
-        private const float HelpSlotRowHeight = 70f;
-        private static readonly Vector2 HelpDividerY = new Vector2(1160f, 1166f);
-        internal static readonly Vector2 HelpUnitHeadingY = new Vector2(1080f, 1150f);
-        internal static readonly Vector2 HelpUnitColumnsY = new Vector2(1030f, 1080f);
-        private const float HelpUnitRowHeight = 255f;
+        internal static readonly Vector2 HelpSlotHeadingY = new Vector2(1560f, 1630f);
+        internal static readonly Vector2 HelpSlotColumnsY = new Vector2(1510f, 1560f);
+        private const float HelpSlotRowHeight = 100f;
+        internal static readonly Vector2 HelpUnitHeadingY = new Vector2(1560f, 1630f);
+        internal static readonly Vector2 HelpUnitColumnsY = new Vector2(1510f, 1560f);
+        private const float HelpUnitRowHeight = 330f;
 
         // 図柄の行（行の割合）: 図柄・確率・▶・効果（〜0.48）・説明（0.49〜）。
         internal const float HelpDescriptionLeft = 0.49f;
@@ -108,9 +106,11 @@ namespace UnitySlotTower.Editor.Setup
         private static void BuildHelp(RectTransform root)
         {
             var panel = PanelOf(root.GetComponentInChildren<HelpScreen>(true));
-            SetRect(Child(panel, "Divider"), new Vector2(0.04f, HelpDividerY.x / 1920f), new Vector2(0.96f, HelpDividerY.y / 1920f));
+            // タブの絵は上半分（下に名前のラベル、TextModeSetup）。
+            SetRect(Child(panel, "Page Tabs/Slot Tab/Icon"), new Vector2(0f, 0.52f), new Vector2(1f, 0.92f));
+            SetRect(Child(panel, "Page Tabs/Unit Tab/Icon"), new Vector2(0f, 0.52f), new Vector2(1f, 0.92f));
 
-            var slotRows = Child(panel, HelpScreenSetup.SlotRowsName);
+            var slotRows = Child(Child(panel, "Slot Page"), HelpScreenSetup.SlotRowsName);
             for (var i = 0; i < slotRows.childCount; i++)
             {
                 var top = HelpSlotColumnsY.x - i * HelpSlotRowHeight;
@@ -122,13 +122,13 @@ namespace UnitySlotTower.Editor.Setup
             for (var i = 0; i < 4; i++)
             {
                 var top = HelpUnitColumnsY.x - i * HelpUnitRowHeight;
-                var row = Child(panel, $"Unit {i + 1}");
+                var row = Child(panel, $"Unit Page/Unit {i + 1}");
                 SetRect(row, new Vector2(0f, (top - HelpUnitRowHeight) / 1920f), new Vector2(1f, top / 1920f));
                 HelpUnitRow(row);
             }
         }
 
-        // 図柄の行（70 px）の部品。名前は HelpScreenSetup.BuildSlot のもの。ない部品（ハズレの行など）は飛ばす。
+        // 図柄の行（100 px）の部品。名前は HelpScreenSetup.BuildSlot のもの。ない部品（ハズレの行など）は飛ばす。
         private static void HelpSlotRow(RectTransform row)
         {
             const float px = 1f / 1440f;
@@ -160,28 +160,28 @@ namespace UnitySlotTower.Editor.Setup
             SetXIfAny(row, "Cap", 0.405f, HelpDescriptionLeft - 0.005f);
         }
 
-        // 味方の行（255 px）の部品。名前は HelpScreenSetup.BuildUnits のもの。
+        // 味方の行（330 px）の部品。名前は HelpScreenSetup.BuildUnits のもの。
         private static void HelpUnitRow(RectTransform row)
         {
             const float h = HelpUnitRowHeight;
-            // 本体の札 130 px の正方形（上）、その下に職名（TextModeSetup）、いちばん下にスキルの印。
-            SetRect(Child(row, "Body"), new Vector2(0.035f, 120f / h), new Vector2(0.035f + 130f / 1440f, 250f / h));
+            // 本体の札 150 px の正方形（上）、その下に職名（TextModeSetup）、いちばん下にスキルの印。
+            SetRect(Child(row, "Body"), new Vector2(0.035f, 159f / h), new Vector2(0.035f + 150f / 1440f, 309f / h));
             SetRect(Child(row, "Skill Mark"), new Vector2(0.02f, 8f / h), new Vector2(0.14f, 48f / h));
-            SetRect(Child(row, "Range"), new Vector2(HelpRangeLeft, 58f / h), new Vector2(HelpRangeRight, 250f / h));
+            SetRect(Child(row, "Range"), new Vector2(HelpRangeLeft, 58f / h), new Vector2(HelpRangeRight, 309f / h));
 
-            // 左の列は上から HP・攻撃・防御・攻撃間隔、右の列は ブロック・コスト・待ち時間（シーンと同じ並び）。段は下の 55 px より上に 50 px ずつ。
+            // 左の列は上から HP・攻撃・防御・攻撃間隔、右の列は ブロック・コスト・待ち時間（シーンと同じ並び）。段は下の 60 px より上に 65 px ずつ。
             string[][] columns = { new[] { "hp", "atk", "def", "interval" }, new[] { "block", "cost", "cooldown" } };
             for (var c = 0; c < columns.Length; c++)
             {
                 for (var line = 0; line < columns[c].Length; line++)
                 {
                     var stat = columns[c][line];
-                    var bottom = 55f + (3 - line) * 50f;
-                    var middle = bottom + 25f;
+                    var bottom = 60f + (3 - line) * 65f;
+                    var middle = bottom + 32.5f;
                     SetRect(Child(row, stat + " Icon"), new Vector2(HelpStatColumns[c], (middle - HelpStatIcon / 2f) / h),
                         new Vector2(HelpStatColumns[c] + HelpStatIcon / 1440f, (middle + HelpStatIcon / 2f) / h));
                     SetRect(Child(row, stat), new Vector2(HelpStatValueLefts[c], bottom / h),
-                        new Vector2(HelpStatValueLefts[c] + 0.135f, (bottom + 50f) / h));
+                        new Vector2(HelpStatValueLefts[c] + 0.135f, (bottom + 65f) / h));
                 }
             }
         }

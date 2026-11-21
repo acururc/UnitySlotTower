@@ -152,6 +152,54 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         [UnityTest]
+        public IEnumerator Help_Pages_Switch_With_Tabs_And_Arrows()
+        {
+            GameSession.StartGame(3);
+            BattleController battle = null;
+            for (var i = 0; i < 300 && (battle == null || battle.Run == null); i++)
+            {
+                yield return null;
+                if (SceneManager.GetActiveScene().name == GameSession.GameScene)
+                    battle = Object.FindAnyObjectByType<BattleController>();
+            }
+            Assert.That(battle != null && battle.Run != null, Is.True);
+            var help = Object.FindAnyObjectByType<HelpScreen>();
+            battle.SetPaused(true);
+            yield return null;
+
+            void Check(HelpScreen.Page page)
+            {
+                Assert.That(help.CurrentPage, Is.EqualTo(page));
+                Assert.That(((GameObject)Field(help, "slotPage")).activeInHierarchy, Is.EqualTo(page == HelpScreen.Page.Slot));
+                Assert.That(((GameObject)Field(help, "unitPage")).activeInHierarchy, Is.EqualTo(page == HelpScreen.Page.Units));
+                Assert.That(help.PreviousButton.gameObject.activeInHierarchy && help.NextButton.gameObject.activeInHierarchy, Is.True);
+                Assert.That(battle.IsPaused, Is.True);
+                Assert.That(Time.timeScale, Is.Zero);
+            }
+
+            help.OpenButton.onClick.Invoke();
+            Check(HelpScreen.Page.Slot);
+            help.UnitTab.onClick.Invoke();
+            Check(HelpScreen.Page.Units);
+            help.PreviousButton.onClick.Invoke();
+            Check(HelpScreen.Page.Slot);
+            help.PreviousButton.onClick.Invoke();
+            Check(HelpScreen.Page.Units);
+            help.NextButton.onClick.Invoke();
+            Check(HelpScreen.Page.Slot);
+            help.NextButton.onClick.Invoke();
+            Check(HelpScreen.Page.Units);
+            help.CloseButton.onClick.Invoke();
+            Assert.That(help.IsOpen, Is.False);
+            Assert.That(Time.timeScale, Is.Zero);
+            yield return null;
+            help.OpenButton.onClick.Invoke();
+            Check(HelpScreen.Page.Units);
+            help.SlotTab.onClick.Invoke();
+            Check(HelpScreen.Page.Slot);
+        }
+
+        [UnityTest]
         public IEnumerator Pause_Band_And_Quit_Confirmation()
         {
             GameSession.StartGame(3);

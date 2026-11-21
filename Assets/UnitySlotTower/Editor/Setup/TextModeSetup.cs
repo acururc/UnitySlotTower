@@ -368,6 +368,14 @@ namespace UnitySlotTower.Editor.Setup
             InsideBottom((RectTransform)menu.CancelButton.transform, "pause_no", 64f, 44f);
         }
 
+        internal static void AddHelpLabels(RectTransform root)
+        {
+            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+            _table = AssetDatabase.LoadAssetAtPath<TextAsset>(TablePath);
+            _texts = UiTexts.Parse(_table.text);
+            AddHelpLabels(root, CsvParser.Parse("units.csv", AssetDatabase.LoadAssetAtPath<TextAsset>(UnitsPath).text));
+        }
+
         private static void AddHelpLabels(RectTransform root, CsvTable units)
         {
             var help = root.GetComponentInChildren<HelpScreen>(true);
@@ -380,22 +388,27 @@ namespace UnitySlotTower.Editor.Setup
                 .Text.alignment = TextAlignmentOptions.Left;
             RightOf(Child(panel, "Close Button"), "help_close");
 
+            var slotPage = Child(panel, "Slot Page");
+            var unitPage = Child(panel, "Unit Page");
+            InsideBottom(Child(panel, "Page Tabs/Slot Tab"), "help_tab_slot", 54f, 40f);
+            InsideBottom(Child(panel, "Page Tabs/Unit Tab"), "help_tab_units", 54f, 40f);
+
             // 表の見出し（48）と列の名前（36）。
-            HelpLine(panel, "help_slot_heading", 0.02f, 0.6f, TextModeLayoutSetup.HelpSlotHeadingY, 48f);
-            HelpLine(panel, "help_col_symbol", 0.005f, 0.09f, TextModeLayoutSetup.HelpSlotColumnsY, 36f, TextAlignmentOptions.Center);
-            HelpLine(panel, "help_col_chance", 0.09f, 0.18f, TextModeLayoutSetup.HelpSlotColumnsY, 36f, TextAlignmentOptions.Right);
-            HelpLine(panel, "help_col_effect", 0.215f, 0.99f, TextModeLayoutSetup.HelpSlotColumnsY, 36f);
-            HelpLine(panel, "help_units_heading", 0.02f, 0.6f, TextModeLayoutSetup.HelpUnitHeadingY, 48f);
-            HelpLine(panel, "help_col_job", 0.005f, TextModeLayoutSetup.HelpRangeLeft - 0.01f, TextModeLayoutSetup.HelpUnitColumnsY, 36f,
+            HelpLine(slotPage, "help_slot_heading", 0.02f, 0.6f, TextModeLayoutSetup.HelpSlotHeadingY, 48f);
+            HelpLine(slotPage, "help_col_symbol", 0.005f, 0.09f, TextModeLayoutSetup.HelpSlotColumnsY, 36f, TextAlignmentOptions.Center);
+            HelpLine(slotPage, "help_col_chance", 0.09f, 0.18f, TextModeLayoutSetup.HelpSlotColumnsY, 36f, TextAlignmentOptions.Right);
+            HelpLine(slotPage, "help_col_effect", 0.215f, 0.99f, TextModeLayoutSetup.HelpSlotColumnsY, 36f);
+            HelpLine(unitPage, "help_units_heading", 0.02f, 0.6f, TextModeLayoutSetup.HelpUnitHeadingY, 48f);
+            HelpLine(unitPage, "help_col_job", 0.005f, TextModeLayoutSetup.HelpRangeLeft - 0.01f, TextModeLayoutSetup.HelpUnitColumnsY, 36f,
                 TextAlignmentOptions.Center);
-            HelpLine(panel, "help_col_range", TextModeLayoutSetup.HelpRangeLeft, TextModeLayoutSetup.HelpRangeRight,
+            HelpLine(unitPage, "help_col_range", TextModeLayoutSetup.HelpRangeLeft, TextModeLayoutSetup.HelpRangeRight,
                 TextModeLayoutSetup.HelpUnitColumnsY, 36f, TextAlignmentOptions.Center);
-            HelpLine(panel, "help_col_stats", TextModeLayoutSetup.HelpStatColumns[0], 0.99f, TextModeLayoutSetup.HelpUnitColumnsY, 36f);
+            HelpLine(unitPage, "help_col_stats", TextModeLayoutSetup.HelpStatColumns[0], 0.99f, TextModeLayoutSetup.HelpUnitColumnsY, 36f);
 
             string[] stats = { "hp", "atk", "def", "interval", "block", "cost", "cooldown" };
             for (var i = 0; i < 4 && i < units.Rows.Count; i++)
             {
-                var row = Child(panel, $"Unit {i + 1}");
+                var row = Child(unitPage, $"Unit {i + 1}");
                 var unitId = units.Rows[i].Get("id");
                 // 職名は本体の札の下（札の左右に 43 px はみ出す。札の大きさは TextModeLayoutSetup）。
                 Label(Child(row, "Body"), "unit_" + unitId, Vector2.zero, new Vector2(1f, 0f), new Vector2(-43f, -56f), new Vector2(43f, -4f), 40f);
@@ -413,7 +426,7 @@ namespace UnitySlotTower.Editor.Setup
             }
 
             // 図柄の行の説明は効果の右（1行）。
-            var slotRows = Child(panel, HelpScreenSetup.SlotRowsName);
+            var slotRows = Child(slotPage, HelpScreenSetup.SlotRowsName);
             for (var i = 0; i < slotRows.childCount; i++)
             {
                 var row = (RectTransform)slotRows.GetChild(i);

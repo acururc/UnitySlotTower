@@ -92,7 +92,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             battle.SetPaused(true);
             var help = Object.FindAnyObjectByType<HelpScreen>();
             help.Open();
-            yield return Capture(prefix + "-help");
+            yield return Capture(prefix + "-help-slot");
+            help.UnitTab.onClick.Invoke();
+            yield return Capture(prefix + "-help-units");
             help.Close();
             battle.SetPaused(false);
 

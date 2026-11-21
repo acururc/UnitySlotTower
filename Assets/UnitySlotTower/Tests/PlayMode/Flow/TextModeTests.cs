@@ -116,11 +116,13 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             help.Open();
             yield return null;
             Assert.That(help.IsOpen, Is.True);
-            Assert.That(ShownIds(), Does.Contain("help_title").And.Contain("stat_hp").And.Contain("skill_sword").And.Contain("slot_red7"),
-                "早見表にラベルが出ない");
-            // T359f: 表の見出しと列の名前、閉じるの名前。文字あり版でもボタンで閉じて開き直せる。
-            Assert.That(ShownIds(), Does.Contain("help_slot_heading").And.Contain("help_units_heading").And.Contain("help_col_chance")
-                .And.Contain("help_col_range").And.Contain("help_close"), "早見表に見出しか列の名前が出ない");
+            Assert.That(ShownIds(), Does.Contain("help_title").And.Contain("help_close").And.Contain("help_tab_slot")
+                .And.Contain("help_tab_units").And.Contain("slot_red7").And.Contain("help_slot_heading").And.Contain("help_col_chance"));
+            Assert.That(ShownIds(), Does.Not.Contain("help_units_heading"));
+            help.UnitTab.onClick.Invoke();
+            yield return null;
+            Assert.That(ShownIds(), Does.Contain("help_units_heading").And.Contain("help_col_range").And.Contain("stat_hp").And.Contain("skill_sword"));
+            Assert.That(ShownIds(), Does.Not.Contain("help_slot_heading"));
             help.CloseButton.onClick.Invoke();
             yield return null;
             Assert.That((help.IsOpen, help.OpenButton.gameObject.activeInHierarchy, ShownIds().Contains("help_open")),
@@ -296,7 +298,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var help = Object.FindAnyObjectByType<HelpScreen>();
             help.Open();
             yield return Settle();
-            Readable("早見表", problems);
+            Readable("早見表 スロット", problems);
+            help.UnitTab.onClick.Invoke();
+            yield return Settle();
+            Readable("早見表 味方", problems);
             help.Close();
             battle.SetPaused(false);
 
