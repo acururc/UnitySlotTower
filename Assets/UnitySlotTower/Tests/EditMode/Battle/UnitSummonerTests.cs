@@ -17,50 +17,77 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             "archer,700,350,50,1,0,high,14,15,ranged,1\n";
 
         private CoinWallet _wallet;
-        private UnitStock _stock;
 
-        private UnitSummoner Create(int coins, int deployLimit = 8)
+        private UnitSummoner Create(int coins, int deployLimit = 8, int freeSummons = 0)
         {
             _wallet = new CoinWallet(coins);
-            _stock = new UnitStock();
             return new UnitSummoner(UnitTable.Load(CsvParser.Parse(UnitTable.FileName, Units)), _wallet, deployLimit, 0.5,
-                _stock);
+                freeSummons);
+        }
+
+        [TestCase("tank")]
+        [TestCase("sword")]
+        [TestCase("archer")]
+        [Description("spec 002 AC-105: 所持金0でも無料の1回でどの職も置け、所持金は減らず待ち時間も始まらない")]
+        public void Free_Summon_Places_Any_Unit_Without_Money_Or_Cooldown(string unitId)
+        {
+            var summoner = Create(0, freeSummons: 1);
+
+            var result = summoner.TrySummon(unitId);
+
+            Assert.That((result, _wallet.Coins, summoner.CooldownRemaining(unitId), summoner.FreeSummons,
+                    summoner.LastSummonWasFree),
+                Is.EqualTo((SummonResult.Summoned, 0, 0.0, 0, true)));
         }
 
         [Test]
-        [Description("AC-020, D-79: 無料ストックからの配置は待ち時間を始めない")]
-        public void Placing_From_Stock_Starts_No_Cooldown()
+        [Description("spec 002 AC-105: 無料の1回を使った後は費用が要る")]
+        public void Second_Summon_After_The_Free_One_Needs_The_Cost()
         {
-            var summoner = Create(100);
-            _stock.Add("sword", 1);
-
+            var summoner = Create(0, freeSummons: 1);
             summoner.TrySummon("sword");
 
-            Assert.That((summoner.CooldownRemaining("sword"), _wallet.Coins), Is.EqualTo((0.0, 100)));
+            Assert.That((summoner.TrySummon("archer"), summoner.DeployedCount), Is.EqualTo((SummonResult.NotEnoughCoins, 1)));
         }
 
         [Test]
-        [Description("AC-020, D-79: 待ち時間中でも無料ストックがあれば配置できる")]
-        public void Stock_Can_Be_Placed_During_The_Cooldown()
+        [Description("spec 002 FR-108: 無料の後の所持金での召喚は費用を払い、待ち時間を始める")]
+        public void Paid_Summon_After_The_Free_One_Pays_And_Starts_The_Cooldown()
         {
-            var summoner = Create(100);
+            var summoner = Create(100, freeSummons: 1);
             summoner.TrySummon("sword");
-            _stock.Add("sword", 1);
 
-            Assert.That((summoner.TrySummon("sword"), _stock.Count("sword")), Is.EqualTo((SummonResult.Summoned, 0)));
+            var paid = summoner.TrySummon("sword");
+
+            Assert.That((paid, summoner.LastSummonWasFree, _wallet.Coins, summoner.TrySummon("sword")),
+                Is.EqualTo((SummonResult.Summoned, false, 88, SummonResult.CoolingDown)));
         }
 
         [Test]
-        [Description("D-79: ストックを使い切った後の所持金での召喚は待ち時間を始める")]
-        public void Paid_Summon_After_Stock_Starts_The_Cooldown()
+        [Description("spec 002 FR-106: 無料の回数がなければ所持金0の召喚は拒否される")]
+        public void Without_Free_Summons_Zero_Money_Is_Rejected()
         {
-            var summoner = Create(100);
-            _stock.Add("sword", 1);
-            summoner.TrySummon("sword");
+            var summoner = Create(0);
 
-            summoner.TrySummon("sword");
+            Assert.That((summoner.TrySummon("sword"), summoner.FreeSummons), Is.EqualTo((SummonResult.NotEnoughCoins, 0)));
+        }
 
-            Assert.That(summoner.TrySummon("sword"), Is.EqualTo(SummonResult.CoolingDown));
+        [Test]
+        [Description("spec 002 E-25: 無料の1回で出した味方の撤退は返還0")]
+        public void Retreat_Of_A_Free_Unit_Refunds_Nothing()
+        {
+            var summoner = Create(0, freeSummons: 1);
+            summoner.TrySummon("tank");
+
+            Assert.That((summoner.RefundFor("tank", wasFree: true), summoner.Retreat("tank", fullRefund: true, wasFree: true),
+                    _wallet.Coins, summoner.DeployedCount),
+                Is.EqualTo((0, 0, 0, 0)));
+        }
+
+        [Test]
+        public void Negative_Free_Summons_Throw()
+        {
+            Assert.Throws<System.ArgumentOutOfRangeException>(() => Create(0, freeSummons: -1));
         }
 
         [Test]

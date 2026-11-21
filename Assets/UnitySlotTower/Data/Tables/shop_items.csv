@@ -1,8 +1,4 @@
 id,kind,unit_id,price,weight
-stock_tank,stock,tank,160,1
-stock_sword,stock,sword,160,1
-stock_archer,stock,archer,160,1
-stock_buffer,stock,buffer,160,1
 gauge_tank,gauge,tank,120,1
 gauge_sword,gauge,sword,120,1
 gauge_archer,gauge,archer,120,1

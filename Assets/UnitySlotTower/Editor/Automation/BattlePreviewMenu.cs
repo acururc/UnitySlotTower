@@ -111,11 +111,6 @@ namespace UnitySlotTower.Editor.Automation
                 battle.Deployment.Cancel();
             }
 
-            if (units.Count > 3)
-            {
-                battle.Run.State.Stock.Add(units[3].Id, 1);
-            }
-
             battle.Wallet.TrySpend(Mathf.Max(0, battle.Wallet.Coins - 110));
             var input = Object.FindAnyObjectByType<UnitPlacementInput>();
             typeof(UnitPlacementInput).GetProperty(nameof(UnitPlacementInput.SelectedUnit))

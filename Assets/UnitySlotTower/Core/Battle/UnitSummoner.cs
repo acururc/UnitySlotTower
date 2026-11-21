@@ -15,7 +15,7 @@ namespace UnitySlotTower.Core.Battle
 
     /// <summary>
     /// 召喚の可否判定と支払い（FR-020〜FR-022）。待ち時間は種類ごとで、所持金で召喚した瞬間から数える。
-    /// 無料ストックからの配置は待ち時間中でもでき、待ち時間も始めない（D-79）。
+    /// 無料の1回（spec 002 FR-108）はどの職にも使え、所持金を使わず待ち時間も始めない。撤退しても返還はない。
     /// 時間は <see cref="SimulationClock"/> の固定ステップで進める。
     /// </summary>
     public sealed class UnitSummoner
@@ -24,21 +24,25 @@ namespace UnitySlotTower.Core.Battle
         private readonly CoinWallet _wallet;
         private readonly int _deployLimit;
         private readonly double _refundRate;
-        private readonly UnitStock _stock;
         private readonly Dictionary<string, int> _indices = new Dictionary<string, int>();
 
         // 種類ごとの残り待ちステップ数（UnitTable.All と同じ並び）。
         private readonly int[] _cooldownSteps;
 
         /// <param name="refundRate">撤退で召喚コストのうち返す割合（FR-025）。</param>
-        /// <param name="stock">無料ストック（FR-016）。ある種類はコインを使わずストックから出す。null ならストックなし。</param>
-        public UnitSummoner(UnitTable units, CoinWallet wallet, int deployLimit, double refundRate, UnitStock stock = null)
+        /// <param name="freeSummons">どの職にも使える無料の召喚の回数（spec 002 FR-108。ステージ1の開始時だけ 1）。</param>
+        public UnitSummoner(UnitTable units, CoinWallet wallet, int deployLimit, double refundRate, int freeSummons = 0)
         {
             _units = units;
             _wallet = wallet;
             _deployLimit = deployLimit;
             _refundRate = refundRate;
-            _stock = stock ?? new UnitStock();
+            if (freeSummons < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(freeSummons), freeSummons, "無料の回数が負");
+            }
+
+            FreeSummons = freeSummons;
             _cooldownSteps = new int[units.All.Count];
             for (var i = 0; i < units.All.Count; i++)
             {
@@ -49,12 +53,18 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>フィールド上の味方の総数。</summary>
         public int DeployedCount { get; private set; }
 
+        /// <summary>残りの無料の召喚の回数（FR-108）。</summary>
+        public int FreeSummons { get; private set; }
+
+        /// <summary>直前の <see cref="TrySummon"/> の成功が無料の1回だったか。</summary>
+        public bool LastSummonWasFree { get; private set; }
+
         /// <summary>いま召喚できるかだけを調べる（何も変えない）。召喚できるなら <see cref="SummonResult.Summoned"/>。</summary>
         public SummonResult Check(string unitId)
         {
             var unit = _units.Get(unitId);
-            var fromStock = _stock.Count(unitId) > 0;
-            if (!fromStock && _cooldownSteps[_indices[unitId]] > 0)
+            var free = FreeSummons > 0;
+            if (!free && _cooldownSteps[_indices[unitId]] > 0)
             {
                 return SummonResult.CoolingDown;
             }
@@ -64,12 +74,12 @@ namespace UnitySlotTower.Core.Battle
                 return SummonResult.DeployLimitReached;
             }
 
-            return !fromStock && _wallet.Coins < unit.Cost
+            return !free && _wallet.Coins < unit.Cost
                 ? SummonResult.NotEnoughCoins
                 : SummonResult.Summoned;
         }
 
-        /// <summary>拒否したときは何も変えない（コイン・ストック・待ち時間・配置数）。ストックがあれば先に使う（plan 4章）。</summary>
+        /// <summary>拒否したときは何も変えない（所持金・無料の回数・待ち時間・配置数）。無料の回数があれば先に使う。</summary>
         public SummonResult TrySummon(string unitId)
         {
             var result = Check(unitId);
@@ -79,7 +89,12 @@ namespace UnitySlotTower.Core.Battle
             }
 
             var unit = _units.Get(unitId);
-            if (!_stock.TryTake(unitId))
+            LastSummonWasFree = FreeSummons > 0;
+            if (LastSummonWasFree)
+            {
+                FreeSummons--;
+            }
+            else
             {
                 _wallet.TrySpend(unit.Cost);
                 _cooldownSteps[_indices[unitId]] = (int)Math.Round(unit.Cooldown * SimulationClock.StepsPerSecond);
@@ -92,21 +107,21 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>
         /// 撤退した味方の分の返還（FR-025）。召喚コスト × 返還率を切り捨てて財布に戻し、返した額を返す。
         /// <paramref name="fullRefund"/> が true（説明の撤退の題目を表示中、D-56）なら召喚コストの全額を返す。
-        /// ストックから出した味方も同じく召喚コストを基準にする（plan C-3）。
+        /// 無料の1回で出した味方（<paramref name="wasFree"/>）は返還しない（spec 002 E-25）。
         /// </summary>
-        public int Retreat(string unitId, bool fullRefund = false)
+        public int Retreat(string unitId, bool fullRefund = false, bool wasFree = false)
         {
-            var refund = RefundFor(unitId, fullRefund);
+            var refund = RefundFor(unitId, fullRefund, wasFree);
             _wallet.Add(refund);
             DeployedCount--;
             return refund;
         }
 
         /// <summary>撤退したときに戻る額（Retreat と同じ計算。何も変えない）。詳細の板に出す（T384）。</summary>
-        public int RefundFor(string unitId, bool fullRefund = false)
+        public int RefundFor(string unitId, bool fullRefund = false, bool wasFree = false)
         {
             var cost = _units.Get(unitId).Cost;
-            return fullRefund ? cost : (int)Math.Floor(cost * _refundRate);
+            return wasFree ? 0 : fullRefund ? cost : (int)Math.Floor(cost * _refundRate);
         }
 
         /// <summary>倒された味方の分の配置枠を空ける（返還はない）。</summary>

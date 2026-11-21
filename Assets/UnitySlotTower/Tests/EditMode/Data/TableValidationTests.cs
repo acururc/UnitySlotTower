@@ -524,7 +524,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Shop_Item_Of_An_Unknown_Unit_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["shop_items.csv"] += "stock_ghost,stock,ghost,20,1\n";
+            files["shop_items.csv"] += "gauge_ghost,gauge,ghost,20,1\n";
 
             var report = GameDataValidator.ValidateAll(files);
 

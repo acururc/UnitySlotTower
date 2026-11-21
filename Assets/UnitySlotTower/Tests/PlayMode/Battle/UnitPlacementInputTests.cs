@@ -172,6 +172,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         [UnityTest]
         public IEnumerator Keyboard_Upgrades_With_Shift_Digit_And_Retreats_With_Tab_And_X()
         {
+            UseFreeSummonAndFund();
             yield return Tap(Key.Digit1);
             yield return MoveCursorTo(FirstPlaceableCell());
             yield return Tap(Key.Enter);
@@ -195,6 +196,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         [UnityTest]
         public IEnumerator Mouse_Upgrades_Selects_And_Retreats_A_Unit_From_The_Bar()
         {
+            UseFreeSummonAndFund();
             yield return Tap(Key.Digit1);
             var target = FirstPlaceableCell();
             yield return MoveCursorTo(target);
@@ -274,6 +276,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         [Description("AC-020, D-56: 説明の撤退の題目を表示中（FullRefundRetreat）に撤退アイコンで撤退すると、召喚コストの全額が戻る")]
         public IEnumerator Retreat_During_The_Retreat_Hint_Refunds_The_Whole_Cost()
         {
+            UseFreeSummonAndFund();
             var bar = Object.FindAnyObjectByType<OperationBarStatus>();
             yield return Tap(Key.Digit1);
             var target = FirstPlaceableCell();
@@ -399,6 +402,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             var icon = GameObject.Find("Unit Icon 1").GetComponent<UnitBarIcon>();
             Assert.That(icon.CooldownText.enabled, Is.False, "召喚する前に待ち時間の数字が出ている");
 
+            UseFreeSummonAndFund();
             yield return PlaceTank(_ => { });
             yield return null;
             var cooldown = _battle.Units.Get("tank").Cooldown;
@@ -410,6 +414,18 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return Click(icon.transform);
             Assert.That((_battle.Deployment.Phase, icon.IsShowingReject), Is.EqualTo((DeployPhase.Idle, true)),
                 "待ち時間中に押して選べたか、光らない");
+        }
+
+        /// <summary>
+        /// spec 002 FR-108: ステージ1の最初の1体は無料（待ち時間・返還なし）。費用・待ち時間・返還を見るテストは、
+        /// 盤面に置かずに無料の1回を使い切り、002 より前の初期の所持金（250）を足してから始める。
+        /// </summary>
+        private void UseFreeSummonAndFund()
+        {
+            Assert.That(_battle.Summoner.TrySummon("tank"), Is.EqualTo(SummonResult.Summoned));
+            Assert.That(_battle.Summoner.LastSummonWasFree, Is.True, "ステージ1の最初の召喚が無料でない");
+            _battle.Summoner.ReleaseFallen();
+            _battle.Wallet.Add(250);
         }
 
         private IEnumerator PlaceTank(System.Action<BattleUnit> placed)

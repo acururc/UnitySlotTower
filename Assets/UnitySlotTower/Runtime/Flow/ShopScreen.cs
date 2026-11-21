@@ -243,8 +243,6 @@ namespace UnitySlotTower.Flow
         {
             switch (kind)
             {
-                case ShopItemKind.Stock:
-                    return "shop_stock";
                 case ShopItemKind.Gauge:
                     return "shop_gauge";
                 default:
@@ -252,7 +250,7 @@ namespace UnitySlotTower.Flow
             }
         }
 
-        // 職の色の台に白い印。ストック＝十字、ゲージ＝点、強化＝上向きの三角。
+        // 職の色の台に白い印。ゲージ＝点、強化＝上向きの三角。
         private void BuildIcon(RectTransform icon, ShopItem item)
         {
             var plateColor = _skills != null && _skills.TryGetColor(item.UnitId, out var color) && (int)color < sevenColors.Length
@@ -264,10 +262,6 @@ namespace UnitySlotTower.Flow
             var rect = plate.rectTransform;
             switch (item.Kind)
             {
-                case ShopItemKind.Stock:
-                    RouteNodeIcons.CreateImage("Plus V", rect, new Vector2(0.42f, 0.2f), new Vector2(0.58f, 0.8f), Color.white, boxSprite);
-                    RouteNodeIcons.CreateImage("Plus H", rect, new Vector2(0.2f, 0.42f), new Vector2(0.8f, 0.58f), Color.white, boxSprite);
-                    break;
                 case ShopItemKind.Gauge:
                     for (var k = 0; k < 3; k++)
                     {

@@ -16,11 +16,11 @@ namespace UnitySlotTower.Tests.EditMode.Run
 
         // 重みが正の4品と、重み0の1品。sword のスキルは赤7（BattleFixtures.Skills）。
         private const string Rows =
-            "stock_sword,stock,sword,20,1\n" +
+            "gauge_tank,gauge,tank,20,1\n" +
             "gauge_sword,gauge,sword,15,1\n" +
             "upgrade_sword,upgrade,sword,0,1\n" +
             "upgrade_tank,upgrade,tank,0,1\n" +
-            "never,stock,archer,20,0\n";
+            "never,gauge,archer,20,0\n";
 
         private static ShopTable LoadTable(string rows = Rows) =>
             ShopTable.Load(CsvParser.Parse(ShopTable.FileName, Header + rows));
@@ -58,7 +58,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
         [Test]
         public void Duplicate_Id_Is_An_Error()
         {
-            Assert.Throws<CsvFormatException>(() => LoadTable(Rows + "never,stock,tank,20,1\n"));
+            Assert.Throws<CsvFormatException>(() => LoadTable(Rows + "never,gauge,tank,20,1\n"));
         }
 
         [Test]
@@ -91,7 +91,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
                 new SeededRandom(1));
 
             Assert.That(shop.Offers.Select(o => o.Id),
-                Is.EquivalentTo(new[] { "stock_sword", "gauge_sword", "upgrade_sword", "upgrade_tank" }));
+                Is.EquivalentTo(new[] { "gauge_tank", "gauge_sword", "upgrade_sword", "upgrade_tank" }));
         }
 
         [Test]
@@ -107,7 +107,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
         [Description("plan 16.2: 重みで選ぶ（3 : 1 → 75% ± 3%）")]
         public void Offers_Are_Chosen_By_Weight()
         {
-            var table = LoadTable("heavy,stock,sword,20,3\nlight,stock,tank,20,1\n");
+            var table = LoadTable("heavy,gauge,sword,20,3\nlight,gauge,tank,20,1\n");
             var heavy = 0;
             for (ulong seed = 1; seed <= 2000; seed++)
             {
@@ -117,16 +117,6 @@ namespace UnitySlotTower.Tests.EditMode.Run
             }
 
             Assert.That(heavy / 2000.0, Is.EqualTo(0.75).Within(0.03));
-        }
-
-        [Test]
-        [Description("AC-013: 値段どおりに所持金が減り、無料ストックが1体増える")]
-        public void Buying_Stock_Pays_And_Adds_One_Stock()
-        {
-            var (run, shop) = Create(money: 30);
-
-            Assert.That((shop.TryBuy(IndexOf(shop, "stock_sword")), run.Money.Coins, run.Stock.Count("sword")),
-                Is.EqualTo((ShopResult.Bought, 10, 1)));
         }
 
         [Test]
@@ -162,11 +152,11 @@ namespace UnitySlotTower.Tests.EditMode.Run
         public void Bought_Item_Is_Sold_Out()
         {
             var (run, shop) = Create(money: 100);
-            var index = IndexOf(shop, "stock_sword");
+            var index = IndexOf(shop, "gauge_sword");
             shop.TryBuy(index);
 
-            Assert.That((shop.IsSold(index), shop.TryBuy(index), run.Money.Coins, run.Stock.Count("sword")),
-                Is.EqualTo((true, ShopResult.SoldOut, 80, 1)));
+            Assert.That((shop.IsSold(index), shop.TryBuy(index), run.Money.Coins, run.Gauges.Level(SlotSymbol.Red7)),
+                Is.EqualTo((true, ShopResult.SoldOut, 85, 1)));
         }
 
         [Test]
@@ -174,9 +164,9 @@ namespace UnitySlotTower.Tests.EditMode.Run
         public void Buying_Without_Enough_Money_Is_Refused()
         {
             var (run, shop) = Create(money: 10);
-            var index = IndexOf(shop, "stock_sword");
+            var index = IndexOf(shop, "gauge_sword");
 
-            Assert.That((shop.TryBuy(index), shop.IsSold(index), run.Money.Coins, run.Stock.Count("sword")),
+            Assert.That((shop.TryBuy(index), shop.IsSold(index), run.Money.Coins, run.Gauges.Level(SlotSymbol.Red7)),
                 Is.EqualTo((ShopResult.NotEnoughMoney, false, 10, 0)));
         }
 

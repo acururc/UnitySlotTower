@@ -9,7 +9,8 @@ namespace UnitySlotTower.Core.Run
 {
     /// <summary>
     /// ゲーム1回分の状態（plan 16.2）。コイン（スロット用）と所持金（召喚・強化・撤退の返還）は別の財布で、
-    /// ライフ・強化・ストックとともに戦闘マスをまたいで残る。リトライでは作り直す（AC-004）。
+    /// ライフ・強化とともにステージをまたいで残る（spec 002 FR-105）。配置とスロットの効果はステージごとの
+    /// <see cref="BattleNodeRun"/> が持つので持ち越さない。リトライでは作り直す（AC-004）。
     /// </summary>
     public sealed class RunState
     {
@@ -37,7 +38,18 @@ namespace UnitySlotTower.Core.Run
         public int MaxLife { get; }
         public int Setting { get; }
         public UnitUpgrades Upgrades { get; }
-        public UnitStock Stock { get; } = new UnitStock();
+
+        /// <summary>いまのステージ（1 から。spec 002 FR-101）。</summary>
+        public int StageIndex { get; private set; } = 1;
+
+        /// <summary>ステージ1の間だけ、最初の1体を無料で置ける（spec 002 FR-108）。</summary>
+        public bool HasFreeSummon => StageIndex == 1;
+
+        /// <summary>次のステージへ進む。ライフ・コイン・所持金・強化はそのまま残る（FR-105）。</summary>
+        public void AdvanceStage()
+        {
+            StageIndex++;
+        }
 
         /// <summary>スロットの値。戦闘マスごとの <see cref="SlotEffects"/> もこれで作る。</summary>
         public SlotRules SlotRules { get; }

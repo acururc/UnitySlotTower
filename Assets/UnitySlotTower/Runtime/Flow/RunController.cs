@@ -167,7 +167,12 @@ namespace UnitySlotTower.Flow
             }
         }
 
-        private void OnNodeCompleted() => ShowRoute();
+        private void OnNodeCompleted()
+        {
+            // T607 でステージの流れに置き換えるまで、戦闘マスを1つ終えるごとに次のステージとして数える（FR-108 の無料はステージ1だけ）。
+            State.AdvanceStage();
+            ShowRoute();
+        }
 
         // 今のマスから先を、ルート画面と筐体のルート選びのモードで選ばせる。
         private void ShowRoute()

@@ -24,6 +24,9 @@ namespace UnitySlotTower.Core.Battle
 
         private bool _cursorPlaced;
 
+        // 無料の1回で置いた味方（撤退の返還なし、spec 002 E-25）。
+        private readonly HashSet<BattleUnit> _freeUnits = new HashSet<BattleUnit>();
+
         public UnitDeployment(BattleMap map, UnitTable units, UnitRanges ranges, UnitSummoner summoner, Battlefield field,
             UnitUpgrades upgrades)
         {
@@ -34,7 +37,11 @@ namespace UnitySlotTower.Core.Battle
             _field = field;
             _upgrades = upgrades;
             // 戦闘と同じ寿命なので解除しない。
-            _field.UnitFell += _ => _summoner.ReleaseFallen();
+            _field.UnitFell += unit =>
+            {
+                _freeUnits.Remove(unit);
+                _summoner.ReleaseFallen();
+            };
         }
 
         public DeployPhase Phase { get; private set; }
@@ -152,7 +159,11 @@ namespace UnitySlotTower.Core.Battle
             var result = _summoner.TrySummon(Selected.Id);
             if (result == SummonResult.Summoned)
             {
-                _field.AddUnit(Selected, Cursor, Facing, _upgrades.Current(Selected.Id));
+                var unit = _field.AddUnit(Selected, Cursor, Facing, _upgrades.Current(Selected.Id));
+                if (_summoner.LastSummonWasFree)
+                {
+                    _freeUnits.Add(unit);
+                }
             }
 
             Clear();
@@ -167,12 +178,13 @@ namespace UnitySlotTower.Core.Battle
         {
             if (_field.RemoveUnit(unit))
             {
-                _summoner.Retreat(unit.Definition.Id, fullRefund);
+                _summoner.Retreat(unit.Definition.Id, fullRefund, _freeUnits.Remove(unit));
             }
         }
 
         /// <summary>その味方を撤退させたときに戻る額（T384、詳細の板）。</summary>
-        public int RetreatRefund(BattleUnit unit, bool fullRefund = false) => _summoner.RefundFor(unit.Definition.Id, fullRefund);
+        public int RetreatRefund(BattleUnit unit, bool fullRefund = false) =>
+            _summoner.RefundFor(unit.Definition.Id, fullRefund, _freeUnits.Contains(unit));
 
         /// <summary>
         /// その種類を1段階強化する（FR-026。戦闘中いつでも、配置操作の途中でもよい）。配置中の同種の全個体にすぐ反映し、

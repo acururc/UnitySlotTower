@@ -1,6 +1,6 @@
 ﻿key,value
 initial_coins,3
-initial_money,250
+initial_money,0
 bet,1
 life,10
 deploy_limit,8

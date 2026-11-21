@@ -9,7 +9,7 @@ using UnitySlotTower.Tests.EditMode.Slot;
 
 namespace UnitySlotTower.Tests.EditMode.Battle
 {
-    [Description("FR-010, FR-013〜016, FR-019: 戦闘マスの開始の演出・1ウェーブ・終了・ストック・報酬とマスをまたぐ状態（AC-010, AC-012, AC-016）")]
+    [Description("FR-010, FR-013〜016, FR-019: 戦闘マスの開始の演出・1ウェーブ・終了・報酬とマスをまたぐ状態、spec 002 の無料の1体と持ち越し（AC-010, AC-012, AC-016）")]
     public sealed class BattleNodeRunTests
     {
         // フィクスチャの地図（4×2）。地上マスは (1,0)(2,0)、高台マスは (1,1)(3,1)。
@@ -41,12 +41,18 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         private string _waveRows;
 
         private BattleNodeRun Create(int money = 100, int coins = 50, int life = 10, int deployLimit = 8,
-            string waveRows = OneFodder, string encounterId = "e", double introSeconds = 1)
+            string waveRows = OneFodder, string encounterId = "e", double introSeconds = 1, int stage = 2)
         {
             _config = GameConfig.Load(CsvParser.Parse(GameConfig.FileName,
                 $"key,value\ninitial_coins,{coins}\ninitial_money,{money}\nbet,3\nlife,{life}\n" +
                 $"deploy_limit,{deployLimit}\nretreat_refund_rate,0.5\nintro_seconds,{introSeconds}\nplacement_time_scale,0.1\nwave_gap_seconds,1\n"));
             _state = new RunState(_config, BattleFixtures.LoadUpgrades(), SlotTestRules.Create(), 1);
+            // 既定はステージ2（無料の1体なし）。無料の1体を調べるテストだけ stage: 1。
+            for (var i = 1; i < stage; i++)
+            {
+                _state.AdvanceStage();
+            }
+
             _waveRows = waveRows;
             return Next(encounterId);
         }
@@ -79,13 +85,13 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
         private static void PlayNode(BattleNodeRun run) => run.Advance(IntroSteps + WaveSteps);
 
-        /// <summary>剣士を1体置いて1つ目の戦闘マスを終え、次のマスに入った状態（剣士のストック1）。</summary>
+        /// <summary>剣士を1体置いて1つ目の戦闘マスを終え、次のマスに入った状態。</summary>
         private BattleNodeRun ClearFirstNodeWithSword(int money = 100, int deployLimit = 8)
         {
             var first = Create(money: money, deployLimit: deployLimit);
             Place(first, "sword", 1, 0);
             PlayNode(first);
-            Assert.That((first.Phase, first.Stock.Count("sword")), Is.EqualTo((WavePhase.Completed, 1)),
+            Assert.That(first.Phase, Is.EqualTo(WavePhase.Completed),
                 "剣士1体で戦闘マスを終えられない");
             return Next();
         }
@@ -160,19 +166,6 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             Place(run, "sword", 1, 0);
 
             Assert.That(run.Deployment.Select("sword"), Is.EqualTo(SummonResult.CoolingDown));
-        }
-
-        [Test]
-        [Description("FR-022, D-79: 待ち時間中でも無料ストックからは配置できる")]
-        public void Stock_Can_Be_Placed_While_The_Type_Cools_Down()
-        {
-            var run = ClearFirstNodeWithSword();
-            SkipIntro(run);
-            _state.Stock.TryTake("sword");
-            Place(run, "sword", 1, 0);
-            _state.Stock.Add("sword", 1);
-
-            Assert.That(Place(run, "sword", 2, 0), Is.EqualTo(SummonResult.Summoned));
         }
 
         [Test]
@@ -269,19 +262,12 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("AC-012: 配置中だった数と同数の無料ストックができる")]
-        public void Deployed_Units_Become_Free_Stock_By_Type()
+        [Description("spec 002 FR-106: 配置中だった味方はストックにならず、次の戦闘では無料で置けない")]
+        public void Deployed_Units_Do_Not_Carry_Over_As_Free_Units()
         {
-            // 剣士が fodder を止めて倒し、弓とバッファーは高台に居るだけ（同じ種類の2体目は待ち時間に当たるので別の種類）。
-            var run = Create(money: 1000);
-            Place(run, "sword", 1, 0);
-            Place(run, "archer", 1, 1);
-            Place(run, "buffer", 3, 1);
+            var run = ClearFirstNodeWithSword(money: 12);
 
-            PlayNode(run);
-
-            Assert.That((run.Stock.Count("sword"), run.Stock.Count("archer"), run.Stock.Count("buffer"), run.Stock.Count("tank")),
-                Is.EqualTo((1, 1, 1, 0)));
+            Assert.That((run.Summoner.FreeSummons, Place(run, "sword", 1, 0)), Is.EqualTo((0, SummonResult.NotEnoughCoins)));
         }
 
         [Test]
@@ -333,76 +319,68 @@ namespace UnitySlotTower.Tests.EditMode.Battle
                 Is.EqualTo((2, 90, 53)));
         }
 
-        [Test]
-        [Description("FR-016: 無料ストックは所持金なしで配置できる")]
-        public void Placing_From_Stock_Costs_No_Money()
+        [TestCase("tank", 1, 0)]
+        [TestCase("sword", 1, 0)]
+        [TestCase("archer", 1, 1)]
+        [TestCase("buffer", 1, 1)]
+        [Description("spec 002 AC-105: ステージ1では所持金0でも最初の1体をどの職でも置け、待ち時間が始まらない")]
+        public void Stage_One_First_Unit_Is_Free_For_Any_Type(string unitId, int x, int y)
         {
-            var run = ClearFirstNodeWithSword();
-            var money = _state.Money.Coins;
+            var run = Create(money: 0, stage: 1);
 
+            Assert.That((Place(run, unitId, x, y), _state.Money.Coins, run.Summoner.CooldownRemaining(unitId)),
+                Is.EqualTo((SummonResult.Summoned, 0, 0.0)));
+        }
+
+        [Test]
+        [Description("spec 002 AC-105: ステージ1の2体目は費用が要る")]
+        public void Stage_One_Second_Unit_Needs_The_Cost()
+        {
+            var run = Create(money: 0, stage: 1);
             Place(run, "sword", 1, 0);
 
-            Assert.That((_state.Money.Coins, run.Stock.Count("sword")), Is.EqualTo((money, 0)));
+            Assert.That(run.Deployment.Select("archer"), Is.EqualTo(SummonResult.NotEnoughCoins));
         }
 
         [Test]
-        public void Stock_Can_Be_Placed_Without_Enough_Money()
+        [Description("spec 002 AC-105: ステージ2以降は無料にならない")]
+        public void Stage_Two_Has_No_Free_Unit()
         {
-            // 剣士 12 をちょうど払い、報酬 10 が入っても 12 には届かない（fodder は所持金を落とさない）。
-            var run = ClearFirstNodeWithSword(money: 12);
+            var run = Create(money: 0, stage: 2);
 
-            Assert.That((_state.Money.Coins < 12, Place(run, "sword", 1, 0)), Is.EqualTo((true, SummonResult.Summoned)));
+            Assert.That((run.Summoner.FreeSummons, run.Deployment.Select("sword")), Is.EqualTo((0, SummonResult.NotEnoughCoins)));
         }
 
         [Test]
-        [Description("plan C-3: ストックからの配置も配置上限に数える")]
-        public void Stock_Placement_Counts_Toward_The_Deploy_Limit()
+        [Description("spec 002 E-25: 無料の1体の撤退は返還がなく、有料の2体目は今までどおり半分返る")]
+        public void Retreating_The_Free_Unit_Refunds_Nothing()
         {
-            var run = ClearFirstNodeWithSword(deployLimit: 1);
+            var run = Create(money: 100, stage: 1);
             Place(run, "sword", 1, 0);
+            Place(run, "archer", 1, 1);
+            var free = run.Field.Units[0];
+            var paid = run.Field.Units[1];
 
-            Assert.That(run.Deployment.Select("archer"), Is.EqualTo(SummonResult.DeployLimitReached));
+            Assert.That((run.Deployment.RetreatRefund(free), run.Deployment.RetreatRefund(paid)), Is.EqualTo((0, 7)));
+            run.Deployment.Retreat(free);
+            run.Deployment.Retreat(paid);
+            Assert.That((_state.Money.Coins, run.Summoner.DeployedCount), Is.EqualTo((100 - 14 + 7, 0)));
         }
 
         [Test]
-        [Description("AC-012: 強化が残り、ストックから置いた個体は HP 全快")]
-        public void Stock_Unit_Has_Full_Hp_At_The_Carried_Upgrade()
+        [Description("spec 002 AC-103: バーとコインの効果は次の戦闘に持ち越さない")]
+        public void Slot_Effects_Do_Not_Carry_Over()
         {
-            // 剣士は段階2で HP×1.5 → 1800。
             var first = Create();
-            Place(first, "sword", 1, 0);
-            first.Deployment.Upgrade("sword");
-            PlayNode(first);
+            SkipIntro(first);
+            first.ApplySlot(SlotSymbol.Bar);
+            first.ApplySlot(SlotSymbol.Coin);
+            Assert.That((first.Field.Effects.IsAttackUp, first.Field.Effects.Coins), Is.EqualTo((true, 1)));
+
             var next = Next();
 
-            Place(next, "sword", 1, 0);
-
-            var unit = next.Field.Units[0];
-            Assert.That((unit.MaxHp, unit.Hp), Is.EqualTo((1800, 1800)));
-        }
-
-        [Test]
-        public void Unused_Stock_Carries_Over_To_Later_Nodes()
-        {
-            var second = ClearFirstNodeWithSword();
-            PlayNode(second);
-
-            Next();
-
-            Assert.That(_state.Stock.Count("sword"), Is.EqualTo(1));
-        }
-
-        [Test]
-        [Description("plan C-3: ストック由来の味方の撤退も召喚コストを基準に返す")]
-        public void Retreating_A_Stock_Unit_Refunds_Half_Its_Cost()
-        {
-            var run = ClearFirstNodeWithSword();
-            Place(run, "sword", 1, 0);
-            var money = _state.Money.Coins;
-
-            run.Deployment.Retreat(run.Field.Units[0]);
-
-            Assert.That(_state.Money.Coins - money, Is.EqualTo(6));
+            Assert.That((next.Field.Effects.IsAttackUp, next.Field.Effects.Coins, next.Field.Effects.MoneyRate),
+                Is.EqualTo((false, 0, 1.0)));
         }
 
         [Test]

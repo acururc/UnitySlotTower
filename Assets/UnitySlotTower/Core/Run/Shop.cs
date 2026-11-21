@@ -10,7 +10,6 @@ namespace UnitySlotTower.Core.Run
     /// <summary>ショップの品の種類: 無料ストック1体・スキルゲージ1段・強化1段。</summary>
     public enum ShopItemKind
     {
-        Stock,
         Gauge,
         Upgrade,
     }
@@ -46,7 +45,7 @@ namespace UnitySlotTower.Core.Run
         public const string FileName = "shop_items.csv";
 
         /// <summary>kind 列の値（<see cref="ShopItemKind"/> の順）。</summary>
-        public static readonly string[] KindIds = { "stock", "gauge", "upgrade" };
+        public static readonly string[] KindIds = { "gauge", "upgrade" };
 
         private readonly List<ShopItem> _items = new List<ShopItem>();
 
@@ -206,10 +205,6 @@ namespace UnitySlotTower.Core.Run
             var item = _offers[index];
             switch (item.Kind)
             {
-                case ShopItemKind.Stock:
-                    _run.Money.TrySpend(item.Price);
-                    _run.Stock.Add(item.UnitId, 1);
-                    break;
                 case ShopItemKind.Gauge:
                     _run.Money.TrySpend(item.Price);
                     _run.Gauges.Add(ColorOf(item));

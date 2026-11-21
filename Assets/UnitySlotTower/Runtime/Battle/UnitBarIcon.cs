@@ -209,16 +209,16 @@ namespace UnitySlotTower.Battle
             }
 
             var unit = battle.Units.All[slot];
-            var stock = battle.Run.Stock.Count(unit.Id);
-            if (stock != _shownStock)
+            // 無料ストックはない（spec 002 FR-106）。ステージ1の無料の1回の「¥0」は T611 で出す。
+            var free = summoner.FreeSummons > 0;
+            if (_shownStock != 0)
             {
-                _shownStock = stock;
-                stockText.gameObject.SetActive(stock > 0);
+                _shownStock = 0;
+                stockText.gameObject.SetActive(false);
                 if (stockBadge != null)
                 {
-                    stockBadge.SetActive(stock > 0);
+                    stockBadge.SetActive(false);
                 }
-                stockText.SetText("×{0}", stock);
             }
 
             if (unit.Cost != _shownCost)
@@ -233,8 +233,8 @@ namespace UnitySlotTower.Battle
                 BlockText.Show(blockText, unit.Block);
             }
 
-            // 無料ストックがあれば待ち時間中でも出せる（D-79）。
-            var remaining = stock > 0 ? 0d : summoner.CooldownRemaining(unit.Id);
+            // 無料の1回があれば待ち時間中でも出せる（FR-108）。
+            var remaining = free ? 0d : summoner.CooldownRemaining(unit.Id);
             cooldownGauge.fillAmount = unit.Cooldown > 0d ? (float)(remaining / unit.Cooldown) : 0f;
             var seconds = remaining > 0d ? (int)System.Math.Ceiling(remaining) : 0;
             if (seconds != _shownSeconds)
@@ -252,7 +252,7 @@ namespace UnitySlotTower.Battle
             var normal = state == CardState.Placeable ? _bodyColor
                 : _bodyColor * (state == CardState.Cooldown ? UiStyle.CooldownTint : UiStyle.DisabledTint);
             var costColor = state == CardState.Money ? UiStyle.Danger : UiStyle.TextColor;
-            var hasStock = stock > 0;
+            var hasStock = free;
             if (state != _shownState || hasStock != _shownFrameStock)
             {
                 if (stateFrame != null)

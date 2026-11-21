@@ -81,21 +81,21 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         [UnityTest]
-        public IEnumerator Placement_Becomes_Stock_And_State_Carries_To_The_Next_Battle()
+        public IEnumerator Placement_Is_Not_Carried_And_State_Carries_To_The_Next_Battle()
         {
             var state = _run.State;
             var first = _battle.Run;
             yield return RouteTestUtil.WaitForIntro(_battle);
-            Assert.That(Place("archer"), Is.True, "弓を置けない");
+            // spec 002 FR-108: 所持金0でもステージ1の最初の1体は無料で置ける。
+            Assert.That((state.Money.Coins, Place("archer")), Is.EqualTo((0, true)), "ステージ1の最初の弓を無料で置けない");
 
-            // 1ウェーブ（D-78）でこのマスが終わる。配置中の弓はストックに戻る。
+            // このマスが終わる。配置中の弓は持ち越さない（spec 002 FR-106）。
             var completed = false;
             void OnCompleted() => completed = true;
             _battle.NodeCompleted += OnCompleted;
             var lifeAtEnd = 0;
             var moneyAtEnd = 0;
             var coinsAtEnd = 0;
-            var stockAtEnd = 0;
             first.Ended += Snapshot;
             Time.timeScale = 20f;
             var limit = Time.realtimeSinceStartup + 30f;
@@ -119,19 +119,18 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                     next.Map == _fieldView.Map, next.Phase),
                 Is.EqualTo((true, state.Current.Floor, _run.Visited[_run.Visited.Count - 1], next.Encounter.MapId, true,
                     WavePhase.Intro)));
-            Assert.That((state.Life, state.Money.Coins, state.Coins.Coins, state.Stock.Count("archer"), _battle.Field.Units.Count),
-                Is.EqualTo((Mathf.Min(state.MaxLife, lifeAtEnd + heal), moneyAtEnd, coinsAtEnd, stockAtEnd, 0)),
-                "戦闘マスをまたいでライフ・所持金・コイン・ストックが引き継がれない");
-            Assert.That(stockAtEnd, Is.EqualTo(1), "終了時に配置中の弓がストックに戻らない");
+            Assert.That((state.Life, state.Money.Coins, state.Coins.Coins, _battle.Field.Units.Count),
+                Is.EqualTo((Mathf.Min(state.MaxLife, lifeAtEnd + heal), moneyAtEnd, coinsAtEnd, 0)),
+                "戦闘マスをまたいでライフ・所持金・コインが引き継がれない、または味方が残った");
+            Assert.That((state.StageIndex, next.Summoner.FreeSummons), Is.EqualTo((2, 0)), "次のステージで無料の1体が残った");
             Assert.That(CornersVisible(_fieldView.Map), Is.True, $"{_fieldView.Map.Id} の四隅がカメラに収まらない");
 
-            // Ended は報酬とストックへの戻しの後、RunController が次のマスへ進む前に呼ばれるので、そこで終了時の値を取る。
+            // Ended は報酬の後、RunController が次のマスへ進む前に呼ばれるので、そこで終了時の値を取る。
             void Snapshot()
             {
                 lifeAtEnd = state.Life;
                 moneyAtEnd = state.Money.Coins;
                 coinsAtEnd = state.Coins.Coins;
-                stockAtEnd = state.Stock.Count("archer");
             }
         }
 

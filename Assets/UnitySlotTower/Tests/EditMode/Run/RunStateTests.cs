@@ -8,7 +8,7 @@ using UnitySlotTower.Tests.EditMode.Slot;
 
 namespace UnitySlotTower.Tests.EditMode.Run
 {
-    [Description("plan 16.2 / FR-013, FR-033: ゲーム1回分の状態（コイン・所持金・ライフ・強化・ストック・難易度）")]
+    [Description("plan 16.2 / FR-013, FR-033: ゲーム1回分の状態（コイン・所持金・ライフ・強化・ステージ・難易度）")]
     public sealed class RunStateTests
     {
         private static RunState Create(int coins = 15, int money = 30, int life = 10, int setting = 4,
@@ -79,11 +79,27 @@ namespace UnitySlotTower.Tests.EditMode.Run
         }
 
         [Test]
-        public void New_Run_Has_Empty_Stock()
+        [Description("spec 002 FR-101・FR-108: ステージ1から始まり、無料の1体はステージ1だけ")]
+        public void New_Run_Starts_At_Stage_One_With_The_Free_Summon()
         {
             var run = Create();
 
-            Assert.That(run.Stock.Count("sword"), Is.EqualTo(0));
+            Assert.That((run.StageIndex, run.HasFreeSummon), Is.EqualTo((1, true)));
+        }
+
+        [Test]
+        [Description("spec 002 AC-103・AC-105: 次のステージへ進んでもライフ・コイン・所持金・強化は同じ値で、無料の1体はなくなる")]
+        public void Advancing_The_Stage_Carries_Life_Coins_Money_And_Upgrades()
+        {
+            var run = Create(coins: 7, money: 100, life: 10);
+            run.Upgrades.TryUpgrade("sword");
+            run.LoseLife(3);
+            var before = (run.Life, run.Coins.Coins, run.Money.Coins, run.Upgrades.Level("sword"));
+
+            run.AdvanceStage();
+
+            Assert.That((run.StageIndex, run.HasFreeSummon), Is.EqualTo((2, false)));
+            Assert.That((run.Life, run.Coins.Coins, run.Money.Coins, run.Upgrades.Level("sword")), Is.EqualTo(before));
         }
 
         [Test]

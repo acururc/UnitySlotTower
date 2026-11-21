@@ -12,7 +12,7 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>開始の演出（FR-019、plan 17.2）。戦闘の時間は進まず、スキルは拒否する（ほかの操作の拒否は Runtime）。</summary>
         Intro,
         Fighting,
-        /// <summary>この戦闘マスを終えた（ストック化と報酬は済んでいる）。</summary>
+        /// <summary>この戦闘マスを終えた（報酬は済んでいる）。</summary>
         Completed,
         GameOver,
     }
@@ -31,8 +31,9 @@ namespace UnitySlotTower.Core.Battle
 
     /// <summary>
     /// 1つの戦闘マスの進行（FR-010, FR-013〜016, FR-019、plan 17.2）。開始の演出 → 戦闘（1ウェーブ）→ 終了。
-    /// ライフ・お金・強化・ストック・スキルゲージは <see cref="RunState"/> を直接書き換え、戦闘（バー・コインの倍率を含む）・召喚・配置操作は
-    /// このマスだけのもの。終了時に配置中の味方を種類ごとにストックへ足し、報酬を加える。ボスマスの終了でクリア。
+    /// ライフ・お金・強化・スキルゲージは <see cref="RunState"/> を直接書き換え、戦闘（バー・コインの倍率を含む）・召喚・配置操作は
+    /// このマスだけのもの（spec 002 FR-105・FR-106: 配置と効果は持ち越さない）。ステージ1では最初の1体が無料（FR-108）。
+    /// 終了時に報酬を加える。ボスマスの終了でクリア。
     /// </summary>
     public sealed class BattleNodeRun
     {
@@ -63,7 +64,8 @@ namespace UnitySlotTower.Core.Battle
             Phase = _introSteps > 0 ? WavePhase.Intro : WavePhase.Fighting;
             _fieldLife = state.Life;
             Field = new Battlefield(waves, ranges, _fieldLife, random, new SlotEffects(state.SlotRules));
-            Summoner = new UnitSummoner(units, Wallet, config.DeployLimit, config.RetreatRefundRate, Stock);
+            Summoner = new UnitSummoner(units, Wallet, config.DeployLimit, config.RetreatRefundRate,
+                state.HasFreeSummon ? 1 : 0);
             Deployment = new UnitDeployment(Map, units, ranges, Summoner, Field, Upgrades);
         }
 
@@ -84,7 +86,6 @@ namespace UnitySlotTower.Core.Battle
         public CoinWallet Wallet => State.Money;
 
         public UnitUpgrades Upgrades => State.Upgrades;
-        public UnitStock Stock => State.Stock;
 
         /// <summary>
         /// 残りの敵の数（FR-009、AC-017）: まだ出ていない敵と、フィールドにいる（倒していない・ゴールしていない）敵の合計。
@@ -193,14 +194,9 @@ namespace UnitySlotTower.Core.Battle
             }
         }
 
-        /// <summary>配置中の味方を種類ごとに無料ストックへ足し（FR-015）、報酬を加える（plan 16.2）。</summary>
+        /// <summary>報酬を加える（plan 16.2）。配置中の味方はストックにならない（spec 002 FR-106）。</summary>
         private void End()
         {
-            foreach (var unit in Field.Units)
-            {
-                Stock.Add(unit.Definition.Id, 1);
-            }
-
             State.Money.Add(Encounter.RewardMoney);
             State.Coins.Add(Encounter.RewardCoins);
             Phase = WavePhase.Completed;
