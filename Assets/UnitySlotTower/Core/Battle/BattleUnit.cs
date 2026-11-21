@@ -44,7 +44,7 @@ namespace UnitySlotTower.Core.Battle
         public int Block => Definition.Block + (Skill?.BlockAdd ?? 0);
 
         /// <summary>攻撃間隔に掛ける倍率（スキルの効果時間中だけ1以外）。</summary>
-        internal double IntervalRate => Skill?.IntervalRate ?? 1;
+        public double IntervalRate => Skill?.IntervalRate ?? 1;
 
         /// <summary>バッファーとしての倍率（スキルの効果時間中は <see cref="SkillDefinition.BuffAdd"/> を足す）。</summary>
         internal double BuffRate => Definition.BuffRate + (Skill?.BuffAdd ?? 0);

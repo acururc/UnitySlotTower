@@ -58,9 +58,44 @@ namespace UnitySlotTower.Battle
         [SerializeField] private Color unitGaugeColor = UiStyle.Ally;
         [SerializeField] private Color enemyGaugeColor = UiStyle.Danger;
 
+        [Header("Shots")]
+        [Tooltip("弓の矢と遠距離の敵の弾（FR-082、見た目だけ）。飛ぶ時間は攻撃の間隔の 1/3 とこの値の短い方（戦闘の時間で進む）。")]
+        [SerializeField] private float maxShotSeconds = 0.2f;
+        [SerializeField] private Vector3 arrowSize = new Vector3(0.05f, 0.05f, 0.38f);
+        [SerializeField] private Color arrowColor = new Color(1f, 0.95f, 0.7f);
+        [SerializeField] private float enemyShotSize = 0.15f;
+        [SerializeField] private Color enemyShotColor = new Color(1f, 0.45f, 0.85f);
+
+        private sealed class Shot
+        {
+            public Transform Root;
+            public bool IsArrow;
+            public BattleUnit TargetUnit;
+            public BattleEnemy TargetEnemy;
+            public Vector3 From;
+            public Vector3 To;
+            public float Elapsed;
+            public float Duration;
+        }
+
+        private readonly List<Shot> _shots = new List<Shot>();
+        private readonly Stack<Shot> _freeArrows = new Stack<Shot>();
+        private readonly Stack<Shot> _freeEnemyShots = new Stack<Shot>();
+        private Transform _shotRoot;
+        private Battlefield _observed;
+
+        /// <summary>テスト用（AC-063）: 飛んでいる弾・撃った数・届いた数・作った弾の数（使い回すので撃った数より少ない）。</summary>
+        public int ActiveShotCount => _shots.Count;
+        public int ShotsFired { get; private set; }
+        public int ArrowsFired { get; private set; }
+        public int ArrowsLanded { get; private set; }
+        public int ShotsLanded { get; private set; }
+        public int CreatedShotCount { get; private set; }
+
         private sealed class Actor
         {
             public Transform Root;
+            public float Center;
             public Transform Gauge;
             public Transform Fill;
             public Transform SkillMark;
@@ -88,11 +123,19 @@ namespace UnitySlotTower.Battle
             _block = new MaterialPropertyBlock();
             _unitRoot = CreateGroup("Units");
             _enemyRoot = CreateGroup("Enemies");
+            _shotRoot = CreateGroup("Shots");
         }
+
+        private void OnDestroy() => Observe(null);
 
         private void LateUpdate()
         {
             var field = battle.Field;
+            if (field != _observed)
+            {
+                Observe(field);
+            }
+
             if (field == null)
             {
                 return;
@@ -101,7 +144,151 @@ namespace UnitySlotTower.Battle
             var frame = Time.frameCount;
             SyncUnits(field.Units, frame);
             SyncEnemies(field.Enemies, frame);
+            UpdateShots();
         }
+
+        /// <summary>戦闘が作り直されたら通知を付け替え、前の戦闘の弾は片付ける。</summary>
+        private void Observe(Battlefield field)
+        {
+            if (_observed != null)
+            {
+                _observed.UnitAttacked -= OnUnitAttacked;
+                _observed.EnemyAttacked -= OnEnemyAttacked;
+            }
+
+            _observed = field;
+            for (var i = _shots.Count - 1; i >= 0; i--)
+            {
+                ReleaseShot(i);
+            }
+
+            if (field != null)
+            {
+                field.UnitAttacked += OnUnitAttacked;
+                field.EnemyAttacked += OnEnemyAttacked;
+            }
+        }
+
+        private void OnUnitAttacked(BattleUnit unit, BattleEnemy enemy)
+        {
+            if (unit.Definition.Role != UnitRole.Ranged)
+            {
+                return;
+            }
+
+            var shot = TakeShot(true);
+            shot.TargetEnemy = enemy;
+            Fire(shot, AimPoint(unit), AimPoint(enemy), unit.Definition.AttackInterval * unit.IntervalRate);
+        }
+
+        private void OnEnemyAttacked(BattleEnemy enemy, BattleUnit unit)
+        {
+            if (enemy.Definition.Range <= 0)
+            {
+                return;
+            }
+
+            var shot = TakeShot(false);
+            shot.TargetUnit = unit;
+            Fire(shot, AimPoint(enemy), AimPoint(unit), enemy.Definition.AttackInterval);
+        }
+
+        private void Fire(Shot shot, Vector3 from, Vector3 to, double interval)
+        {
+            shot.From = from;
+            shot.To = to;
+            shot.Elapsed = 0f;
+            shot.Duration = Mathf.Max(0.01f, Mathf.Min(maxShotSeconds, (float)interval / 3f));
+            PlaceShot(shot, 0f);
+            shot.Root.gameObject.SetActive(true);
+            _shots.Add(shot);
+            ShotsFired++;
+            if (shot.IsArrow) ArrowsFired++;
+        }
+
+        /// <summary>相手が居る間は今の位置を追い、先に消えたら最後に見た位置まで飛んで消える。戦闘の時間（timeScale）で進む。</summary>
+        private void UpdateShots()
+        {
+            var delta = Time.deltaTime;
+            for (var i = _shots.Count - 1; i >= 0; i--)
+            {
+                var shot = _shots[i];
+                if (shot.TargetEnemy != null && _enemies.TryGetValue(shot.TargetEnemy, out var enemyActor))
+                {
+                    shot.To = AimPoint(enemyActor);
+                }
+                else if (shot.TargetUnit != null && _units.TryGetValue(shot.TargetUnit, out var unitActor))
+                {
+                    shot.To = AimPoint(unitActor);
+                }
+
+                shot.Elapsed += delta;
+                if (shot.Elapsed >= shot.Duration)
+                {
+                    ShotsLanded++;
+                    if (shot.IsArrow) ArrowsLanded++;
+                    ReleaseShot(i);
+                    continue;
+                }
+
+                PlaceShot(shot, shot.Elapsed / shot.Duration);
+            }
+        }
+
+        private void PlaceShot(Shot shot, float t)
+        {
+            shot.Root.position = Vector3.Lerp(shot.From, shot.To, t);
+            var direction = shot.To - shot.From;
+            if (shot.IsArrow && direction.sqrMagnitude > 1e-6f)
+            {
+                shot.Root.rotation = Quaternion.LookRotation(direction);
+            }
+        }
+
+        private Shot TakeShot(bool arrow)
+        {
+            var pool = arrow ? _freeArrows : _freeEnemyShots;
+            if (pool.Count > 0)
+            {
+                return pool.Pop();
+            }
+
+            CreatedShotCount++;
+            Transform root;
+            if (arrow)
+            {
+                root = CreatePrimitive(PrimitiveType.Cube, "Arrow", _shotRoot, arrowColor);
+                root.localScale = arrowSize;
+            }
+            else
+            {
+                root = CreatePrimitive(PrimitiveType.Sphere, "Enemy Shot", _shotRoot, enemyShotColor);
+                root.localScale = Vector3.one * enemyShotSize;
+            }
+
+            return new Shot { Root = root, IsArrow = arrow };
+        }
+
+        private void ReleaseShot(int index)
+        {
+            var shot = _shots[index];
+            _shots.RemoveAt(index);
+            shot.TargetEnemy = null;
+            shot.TargetUnit = null;
+            shot.Root.gameObject.SetActive(false);
+            (shot.IsArrow ? _freeArrows : _freeEnemyShots).Push(shot);
+        }
+
+        private static Vector3 AimPoint(Actor actor) => actor.Root.position + Vector3.up * actor.Center;
+
+        private Vector3 AimPoint(BattleUnit unit) =>
+            _units.TryGetValue(unit, out var actor) ? AimPoint(actor)
+                : fieldView.CellTopToWorld(unit.Cell) + Vector3.up * 0.3f;
+
+        private Vector3 AimPoint(BattleEnemy enemy) =>
+            _enemies.TryGetValue(enemy, out var actor) ? AimPoint(actor)
+                : fieldView.PositionToWorld(enemy.X, enemy.Y, enemy.Definition.IsAir) +
+                  (enemy.Definition.IsAir ? Vector3.zero : Vector3.up * enemySize * 0.5f);
 
         private void SyncUnits(IReadOnlyList<BattleUnit> units, int frame)
         {
@@ -196,6 +383,7 @@ namespace UnitySlotTower.Battle
 
             var actor = CreateActor(root, 0f, unitGaugeColor, body, look.color);
             actor.HeadHeight = height;
+            actor.Center = height * 0.5f;
             actor.SkillMark = CreatePrimitive(PrimitiveType.Quad, "Skill Ready", root, UiStyle.Ready);
             actor.SkillMark.localScale = new Vector3(0.22f, 0.22f, 1f);
             actor.SkillMark.gameObject.SetActive(false);
@@ -250,7 +438,9 @@ namespace UnitySlotTower.Battle
                 shield.localScale = new Vector3(size * 1.2f, height * 0.95f, size * 0.18f);
                 shield.localPosition = new Vector3(0, height * 0.5f, -size * 0.6f);
             }
-            return CreateActor(root, 0f, enemyGaugeColor, body, color);
+            var groundActor = CreateActor(root, 0f, enemyGaugeColor, body, color);
+            groundActor.Center = height * 0.5f;
+            return groundActor;
         }
 
         /// <summary>体の下端のすぐ下に HP ゲージを付ける。空中の敵は浮いた体を基準にする。</summary>

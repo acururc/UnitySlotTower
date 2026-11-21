@@ -173,6 +173,10 @@ namespace UnitySlotTower.Core.Battle
         public event Action<MapPath> EnemySpawned;
         public event Action<GridPoint> BaseReached;
 
+        /// <summary>通常攻撃の通知（弾の見た目用、FR-082）。ダメージを入れた後に呼ぶ。スキルと範囲攻撃では呼ばれない。</summary>
+        public event Action<BattleUnit, BattleEnemy> UnitAttacked;
+        public event Action<BattleEnemy, BattleUnit> EnemyAttacked;
+
         /// <summary>撤退（FR-025）。その味方がブロックしていた敵は再び進む。フィールドに居ない味方なら何もせず false。</summary>
         public bool RemoveUnit(BattleUnit unit)
         {
@@ -332,6 +336,7 @@ namespace UnitySlotTower.Core.Battle
                 target.TakeDamage(Damage.Calculate(enemy.Definition.Atk, target.Def));
                 enemy.AttackCooldownSteps =
                     (int)Math.Round(enemy.Definition.AttackInterval * SimulationClock.StepsPerSecond);
+                EnemyAttacked?.Invoke(enemy, target);
             }
         }
 
@@ -434,6 +439,7 @@ namespace UnitySlotTower.Core.Battle
 
                 unit.AttackCooldownSteps = (int)Math.Round(
                     unit.Definition.AttackInterval * unit.IntervalRate * SimulationClock.StepsPerSecond);
+                UnitAttacked?.Invoke(unit, target);
             }
         }
 
