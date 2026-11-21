@@ -97,9 +97,9 @@ namespace UnitySlotTower.Flow
             IsClear = run.IsRunCleared;
             clearIcon.SetActive(IsClear);
             gameOverIcon.SetActive(!IsClear);
-            // 到達した階・所持金・コイン（T350d、plan 16章）。
+            // 到達したステージ・所持金・コイン（T350d、spec 002 FR-101）。
             var state = run.State;
-            floorText.SetText("{0}", (float)state.Floor);
+            floorText.SetText("{0}", (float)state.StageIndex);
             moneyText.SetText(NumericText.YenFormat, (float)state.Money.Coins);
             slotCoinsText.SetText("{0}", (float)state.Coins.Coins);
             _openedFrame = Time.frameCount;
@@ -107,7 +107,7 @@ namespace UnitySlotTower.Flow
             panel.SetActive(true);
         }
 
-        /// <summary>同じ設定のまま Game シーンを読み込み直す（設定は <see cref="GameSession.SelectedSetting"/> に残っている）。</summary>
+        /// <summary>Game シーンを読み込み直して、ステージ1から始め直す。</summary>
         public void Retry() => SceneManager.LoadScene(GameSession.GameScene);
 
         public void BackToTitle() => SceneManager.LoadScene(GameSession.TitleScene);

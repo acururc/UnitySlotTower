@@ -129,11 +129,9 @@ namespace UnitySlotTower.Editor.Setup
         private static void AddTitleLabels(TitleScreen title)
         {
             var serialized = new SerializedObject(title);
-            var titlePanel = ((GameObject)serialized.FindProperty("titlePanel").objectReferenceValue).GetComponent<RectTransform>();
-            var difficulty = ((GameObject)serialized.FindProperty("difficultyPanel").objectReferenceValue).GetComponent<RectTransform>();
+            var titlePanel = GameObject.Find("Title Panel").GetComponent<RectTransform>();
             var logo = (RectTransform)titlePanel.Find(TextAudit.TitleLogoName);
             var start = (RectTransform)((Button)serialized.FindProperty("startButton").objectReferenceValue).transform;
-            var back = (RectTransform)((Button)serialized.FindProperty("backButton").objectReferenceValue).transform;
 
             // ロゴ右下の透明なボタン（キーボードの選択の対象にしない）と、その横の「あ」の印。
             DestroyChild(logo, TextModeButtonName);
@@ -147,17 +145,8 @@ namespace UnitySlotTower.Editor.Setup
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             Label(logo, "title_text_mode", new Vector2(1f, 0f), new Vector2(1f, 0.28f), new Vector2(4f, 0f), new Vector2(84f, 0f), 56f);
-            // T359e: 字は 36 以上。難易度選択の見出しは札の上（札は TextModeLayoutSetup.BuildTitle が下げる）、もどるは ◀ の右。
+            // T359e: 字は 36 以上。
             Below(start, "title_start", 60f, 40f);
-            Label(difficulty, "title_difficulty", new Vector2(0.1f, 0.76f), new Vector2(0.9f, 0.82f), Vector2.zero, Vector2.zero, 56f);
-            RightOf(back, "title_back");
-            var settings = serialized.FindProperty("settingButtons");
-            for (var i = 0; i < settings.arraySize; i++)
-            {
-                // 札の下に設定の名前（「やさしい」など）。
-                var plate = (RectTransform)((Button)settings.GetArrayElementAtIndex(i).objectReferenceValue).transform;
-                Below(plate, $"setting_{i + 1}", 66f, 40f);
-            }
         }
 
         private static void AddGameLabels(SlotCabinet cabinet)

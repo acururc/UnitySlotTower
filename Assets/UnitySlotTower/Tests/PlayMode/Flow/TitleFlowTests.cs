@@ -8,11 +8,11 @@ using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnitySlotTower.Flow;
-using UnitySlotTower.Slot;
+using UnitySlotTower.Battle;
 
 namespace UnitySlotTower.Tests.PlayMode.Flow
 {
-    [Description("AC-004 の一部: タイトルから難易度選択を通って、選んだ設定で Game が始まる（FR-005, T401）")]
+    [Description("AC-004 の一部: タイトルの ▶ ですぐ Game のステージ1が始まる（FR-005, T401, spec 002 E-18）")]
     public sealed class TitleFlowTests
     {
         private Keyboard _keyboard;
@@ -73,42 +73,35 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         [UnityTest]
-        public IEnumerator Keyboard_Enter_Opens_Difficulty_And_Arrows_Choose_Setting_For_Game()
+        public IEnumerator Keyboard_Enter_Starts_The_Game_At_Stage_One()
         {
-            Assert.That(_title.IsChoosingDifficulty, Is.False, "最初からタイトルではなく難易度選択が出ている");
+            Assert.That(IsSelected("Start Button"), Is.True, "タイトルの初期選択が ▶ ではない");
+            Assert.That(GameObject.Find("Difficulty Panel"), Is.Null, "難易度選択の画面が残っている（spec 002 E-18）");
 
-            yield return Press(Key.Enter, () => _title.IsChoosingDifficulty);
-            Assert.That(_title.IsChoosingDifficulty, Is.True, "Enter で難易度選択に進まない");
-
-            yield return Press(Key.Escape, () => !_title.IsChoosingDifficulty);
-            Assert.That(_title.IsChoosingDifficulty, Is.False, "Esc でタイトルに戻らない");
-
-            yield return Press(Key.Enter, () => IsSelected("Setting 1"));
-            Assert.That(IsSelected("Setting 1"), Is.True, "難易度選択の初期選択が設定1ではない");
-            yield return Press(Key.RightArrow, () => IsSelected("Setting 2"));
-            Assert.That(IsSelected("Setting 2"), Is.True, "→ で設定2に移らない");
-            yield return Press(Key.RightArrow, () => IsSelected("Setting 3"));
-            Assert.That(IsSelected("Setting 3"), Is.True, "→ で設定3に移らない");
-            yield return Press(Key.Enter, () => GameSession.SelectedSetting == 3);
-
-            yield return WaitForGame();
-            Assert.That(Object.FindAnyObjectByType<SlotCabinet>().Setting, Is.EqualTo(3));
+            yield return Press(Key.Enter, () => SceneManager.GetActiveScene().name == GameSession.GameScene);
+            yield return WaitForStageOne();
         }
 
         [UnityTest]
-        public IEnumerator Mouse_Clicks_Start_Back_And_Plate_Six_For_Game()
+        public IEnumerator Mouse_Click_On_Start_Starts_The_Game_At_Stage_One()
         {
             yield return Click("Start Button");
-            Assert.That(_title.IsChoosingDifficulty, Is.True, "▶ のクリックで難易度選択に進まない");
+            yield return WaitForStageOne();
+        }
 
-            yield return Click("Back Button");
-            Assert.That(_title.IsChoosingDifficulty, Is.False, "◀ のクリックでタイトルに戻らない");
-
-            yield return Click("Start Button");
-            yield return Click("Setting 6");
-
+        // Game シーンに移り、ステージ1が始まる（難易度の選択を通らない: spec 002 FR-101）。
+        private static IEnumerator WaitForStageOne()
+        {
             yield return WaitForGame();
-            Assert.That(Object.FindAnyObjectByType<SlotCabinet>().Setting, Is.EqualTo(6));
+            BattleController battle = null;
+            for (var i = 0; i < 120 && (battle == null || battle.Run == null); i++)
+            {
+                battle = Object.FindAnyObjectByType<BattleController>();
+                yield return null;
+            }
+
+            Assert.That(battle != null && battle.Run != null, Is.True, "ステージ1が始まらない");
+            Assert.That(battle.StageNumber, Is.EqualTo(1));
         }
 
         private static IEnumerator WaitForGame()

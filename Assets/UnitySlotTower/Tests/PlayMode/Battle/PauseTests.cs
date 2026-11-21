@@ -57,7 +57,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                 yield return null;
             }
 
-            yield return RouteTestUtil.WaitForIntro(_battle);
+            yield return StageTestUtil.WaitForIntro(_battle);
             for (var i = 0; i < 300 && (_battle.Field == null || _battle.Field.Enemies.Count == 0); i++)
             {
                 yield return null;

@@ -61,7 +61,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(_battle?.Deployment, Is.Not.Null, "Game シーンの戦闘が始まらない");
-            yield return RouteTestUtil.WaitForIntro(_battle);
+            yield return StageTestUtil.WaitForIntro(_battle);
             _fieldView = Object.FindAnyObjectByType<BattleFieldView>();
             _input = Object.FindAnyObjectByType<UnitPlacementInput>();
             _camera = GameObject.Find("Battle Camera").GetComponent<Camera>();

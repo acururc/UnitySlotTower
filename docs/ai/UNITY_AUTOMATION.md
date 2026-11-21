@@ -74,7 +74,7 @@ Check `summary.total`, `passed`, `failed`. Zero tests verifies the execution pat
 - 実機デバイス（DualShock4 を含むゲームパッド、マウス・キーボード）は SetUp で無効化し TearDown で戻す。仮想デバイスは `InputSystem.AddDevice`、`editorInputBehaviorInPlayMode`・`backgroundBehavior` を一時的に変えて非フォーカスでも入力を通す。
 - シーンは `LoadSceneAsync` の完了を待ってから探す。待つのは実時間（フレーム数で待たない。リールの自動停止は約1.8秒）。
 - 結果を固定するならシーン読み込み前に `SlotCabinet.RandomOverride`（TearDown で null）。説明を出すなら `GuideOverlay.DisabledForTests = false`（TearDown で true）。最初の戦闘は回数固定なのでコインの減りを見るなら先に `SetFixedSpins(0)`。
-- 戦闘を早送りしてマスをまたぐときは毎フレーム `RouteTestUtil.Step()`（ルート画面・開いた画面も閉じる）。一部のテストは `wavesTable` に短い表を差し込むので waves.csv の列を変えたらそれらも直す。
+- ステージをまたぐときは `StageTestUtil`（`UseShortWaves` を `sceneLoaded` に足すと各ステージ敵1体、`FinishStage` で早送りして次のステージまで待つ）。一部のテストは `wavesTable` に短い表を差し込むので waves.csv の列を変えたらそれらも直す。
 
 ## Player build / images
 Stop Play and confirm reconnection first.

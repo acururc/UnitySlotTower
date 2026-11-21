@@ -15,8 +15,7 @@ namespace UnitySlotTower.Core.Run
     public sealed class RunState
     {
         /// <param name="slotRules">スロットの値（スキルゲージの段数など）。</param>
-        /// <param name="setting">難易度（スロットの設定 1〜6）。</param>
-        public RunState(GameConfig config, UnitUpgradeTable upgradeTable, SlotRules slotRules, int setting)
+        public RunState(GameConfig config, UnitUpgradeTable upgradeTable, SlotRules slotRules)
         {
             SlotRules = slotRules ?? throw new ArgumentNullException(nameof(slotRules));
             Gauges = new SkillGauges(slotRules.GaugeMax);
@@ -24,7 +23,6 @@ namespace UnitySlotTower.Core.Run
             Money = new CoinWallet(config.InitialMoney);
             MaxLife = config.Life;
             Life = config.Life;
-            Setting = setting;
             Upgrades = new UnitUpgrades(upgradeTable, Money);
         }
 
@@ -36,7 +34,6 @@ namespace UnitySlotTower.Core.Run
 
         public int Life { get; private set; }
         public int MaxLife { get; }
-        public int Setting { get; }
         public UnitUpgrades Upgrades { get; }
 
         /// <summary>いまのステージ（1 から。spec 002 FR-101）。</summary>

@@ -11,14 +11,12 @@ namespace UnitySlotTower.Tests.EditMode.Run
     [Description("plan 16.2 / FR-013, FR-033: ゲーム1回分の状態（コイン・所持金・ライフ・強化・ステージ・難易度）")]
     public sealed class RunStateTests
     {
-        private static RunState Create(int coins = 15, int money = 30, int life = 10, int setting = 4,
-            int gaugeMax = 5)
+        private static RunState Create(int coins = 15, int money = 30, int life = 10, int gaugeMax = 5)
         {
             var config = GameConfig.Load(CsvParser.Parse(GameConfig.FileName,
                 $"key,value\ninitial_coins,{coins}\ninitial_money,{money}\nbet,3\nlife,{life}\n" +
                 "deploy_limit,8\nretreat_refund_rate,0.5\nintro_seconds,2\nplacement_time_scale,0.1\nwave_gap_seconds,1\n"));
-            return new RunState(config, BattleFixtures.LoadUpgrades(), SlotTestRules.Create(gaugeMax: gaugeMax),
-                setting);
+            return new RunState(config, BattleFixtures.LoadUpgrades(), SlotTestRules.Create(gaugeMax: gaugeMax));
         }
 
         [Test]
@@ -45,14 +43,6 @@ namespace UnitySlotTower.Tests.EditMode.Run
             var run = Create(life: 10);
 
             Assert.That((run.Life, run.MaxLife), Is.EqualTo((10, 10)));
-        }
-
-        [Test]
-        public void New_Run_Keeps_The_Chosen_Setting()
-        {
-            var run = Create(setting: 4);
-
-            Assert.That(run.Setting, Is.EqualTo(4));
         }
 
         [Test]

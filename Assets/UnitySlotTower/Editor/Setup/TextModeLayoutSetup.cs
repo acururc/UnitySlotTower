@@ -27,8 +27,8 @@ namespace UnitySlotTower.Editor.Setup
             var cabinet = Object.FindAnyObjectByType<SlotCabinet>(FindObjectsInactive.Include);
             if (title != null)
             {
-                BuildTitle(title);
-                Save(title.gameObject);
+                // 難易度の選択をなくしたので、タイトルに文字あり版の配置はない（spec 002 E-18）。
+                Debug.Log("[SlotTower Setup] Title には文字あり版の配置がない。");
             }
             else if (cabinet != null)
             {
@@ -38,27 +38,6 @@ namespace UnitySlotTower.Editor.Setup
             else
             {
                 Debug.LogError("[SlotTower Setup] Title か Game シーンを開いてから実行する。");
-            }
-        }
-
-        // 文字あり版の難易度選択の札の下端（Title の割合。上の段・下の段）。札の下に名前（TextModeSetup）が入るように段の間を広げる。
-        private static readonly float[] PlateRowBottoms = { 0.5f, 0.2f };
-
-        /// <summary>難易度選択: 札を下げて段の間を広げ、札の下に設定の名前、上に大きな見出しを入れる（plan 16.13）。タイトルは今のまま。</summary>
-        private static void BuildTitle(TitleScreen title)
-        {
-            var settings = new SerializedObject(title).FindProperty("settingButtons");
-            for (var i = 0; i < settings.arraySize; i++)
-            {
-                var plate = ((Component)settings.GetArrayElementAtIndex(i).objectReferenceValue).gameObject;
-                var bottom = PlateRowBottoms[i / 3];
-                Set(plate, TextModeLayout.Parts.Rect, s =>
-                {
-                    var height = s.anchorMax.y - s.anchorMin.y;
-                    s.anchorMin.y = bottom;
-                    s.anchorMax.y = bottom + height;
-                    return s;
-                });
             }
         }
 

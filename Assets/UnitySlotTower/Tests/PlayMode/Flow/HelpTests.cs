@@ -70,7 +70,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         [UnityTest]
         public IEnumerator Help_Opens_Only_While_Paused_And_Shows_Current_Odds()
         {
-            GameSession.StartGame(3);
+            GameSession.StartGame();
             BattleController battle = null;
             for (var i = 0; i < 300 && (battle == null || battle.Run == null); i++)
             {
@@ -154,7 +154,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         [UnityTest]
         public IEnumerator Help_Pages_Switch_With_Tabs_And_Arrows()
         {
-            GameSession.StartGame(3);
+            GameSession.StartGame();
             BattleController battle = null;
             for (var i = 0; i < 300 && (battle == null || battle.Run == null); i++)
             {
@@ -202,7 +202,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         [UnityTest]
         public IEnumerator Pause_Band_And_Quit_Confirmation()
         {
-            GameSession.StartGame(3);
+            GameSession.StartGame();
             BattleController battle = null;
             for (var i = 0; i < 300 && (battle == null || battle.Run == null); i++)
             {

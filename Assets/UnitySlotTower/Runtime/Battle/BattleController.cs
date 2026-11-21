@@ -13,8 +13,8 @@ namespace UnitySlotTower.Battle
     /// <summary>
     /// 戦闘マスの進行（<see cref="BattleNodeRun"/>）を組み立てて実時間で進める。スロット操作中も止まらない（FR-011）。
     /// 戦闘マスに入ると開始の演出（FR-019）の後すぐ戦闘が始まる。演出中は操作とスロットを受け付けない。
-    /// ゲーム1回分の状態とルートは RunController（T350a）が持ち、戦闘マスに入るたびに <see cref="BeginNode"/> を呼ぶ。
-    /// 戦闘マスが始まるとフィールドの表示をそのマップに差し替える。
+    /// ゲーム1回分の状態は RunController が持ち、ステージを始めるたびに <see cref="BeginStage"/> を呼ぶ（spec 002 FR-101）。
+    /// ステージが始まるとフィールドの表示をそのマップに差し替える。
     /// </summary>
     [DefaultExecutionOrder(-10)]
     public sealed class BattleController : MonoBehaviour
@@ -26,7 +26,6 @@ namespace UnitySlotTower.Battle
         [SerializeField] private TextAsset unitUpgradesTable;
         [SerializeField] private TextAsset enemiesTable;
         [SerializeField] private TextAsset wavesTable;
-        [SerializeField] private TextAsset encountersTable;
         [SerializeField] private TextAsset stagesTable;
         [SerializeField] private TextAsset stageWavesTable;
         [SerializeField] private TextAsset skillsTable;
@@ -36,7 +35,6 @@ namespace UnitySlotTower.Battle
         [SerializeField] private SlotCabinet slotCabinet;
 
         private SimulationClock _clock;
-        private EncounterTable _encounters;
         private EnemyTable _enemies;
         private CsvTable _waves;
         private CsvTable _stageWaves;
@@ -72,8 +70,11 @@ namespace UnitySlotTower.Battle
         /// <summary>いまの戦闘マス。戦闘マスが変わると別のものになる。最初の戦闘マスに入るまで null。</summary>
         public BattleNodeRun Run { get; private set; }
 
-        /// <summary>いまの戦闘マスの階（1 から）。</summary>
-        public int Floor { get; private set; }
+        /// <summary>いまのステージの番号（1 から）。</summary>
+        public int StageNumber { get; private set; }
+
+        /// <summary>ステージの数（stages.csv の行数）。<see cref="Initialize"/> で読む。</summary>
+        public int StageCount => _stages?.Count ?? 0;
 
         /// <summary>このシーン（1回のプレイ）で入った戦闘マスの数。いまの戦闘マスが何番目か（説明の撤退の題目に使う）。</summary>
         public int NodeCount { get; private set; }
@@ -81,7 +82,7 @@ namespace UnitySlotTower.Battle
         /// <summary>新しい戦闘マスに入った（開始の演出が始まる）。</summary>
         public event Action NodeBegan;
 
-        /// <summary>いまの戦闘マスがボス以外で終わった（RunController が次のマスへ進める）。1マスにつき1回。</summary>
+        /// <summary>いまのステージが最後以外で終わり、勝利の帯が消えた（RunController が次のステージへ進める）。1ステージにつき1回。</summary>
         public event Action NodeCompleted;
 
         public CoinWallet Wallet => Run?.Wallet;
@@ -120,7 +121,6 @@ namespace UnitySlotTower.Battle
             UpgradeTable = UnitUpgradeTable.Load(Parse(UnitUpgradeTable.FileName, unitUpgradesTable), Units);
             _enemies = EnemyTable.Load(Parse(EnemyTable.FileName, enemiesTable));
             _waves = Parse(WaveSchedule.FileName, wavesTable);
-            _encounters = EncounterTable.Load(Parse(EncounterTable.FileName, encountersTable));
             _stages = StageTable.Load(Parse(StageTable.FileName, stagesTable));
             _stageWaves = Parse(WaveSchedule.StageWavesFileName, stageWavesTable);
             Skills = SkillTable.Load(Parse(SkillTable.FileName, skillsTable));
@@ -272,24 +272,29 @@ namespace UnitySlotTower.Battle
         private bool CanRoll(SlotSymbol symbol) => Run == null || Run.Field.Effects == null || Run.Field.Effects.CanRoll(symbol);
 
         /// <summary>
-        /// 戦闘マス（<paramref name="node"/>）に入る。種類と階が合う出現を選んで開始の演出に入り、フィールドの表示をそのマップに差し替える。
+        /// <see cref="RunState.StageIndex"/> のステージを始める（spec 002 FR-101）。開始の演出に入り、フィールドの表示をそのマップに差し替える。
         /// </summary>
-        public void BeginNode(RunState state, RouteNode node)
+        public void BeginStage(RunState state)
         {
             if (!IsInitialized)
             {
-                throw new InvalidOperationException("表を読む前に戦闘マスに入った");
+                throw new InvalidOperationException("表を読む前にステージを始めた");
             }
 
-            var kind = RouteNodeKinds.Get(node.Kind).Encounter
-                ?? throw new ArgumentException($"戦闘マスではない: {node.Kind}", nameof(node));
-            var encounter = state.PickEncounter(_encounters, kind, node.Floor, _random);
-            var map = fieldView.LoadMap(encounter.MapId);
+            if (state == null)
+            {
+                throw new ArgumentNullException(nameof(state));
+            }
+
+            var stage = _stages.Get(state.StageIndex);
+            var isFinal = stage.Number == _stages.Count;
+            var map = fieldView.LoadMap(stage.MapId);
+            var schedule = WaveSchedule.Load(_waves, stage.Number, map, _enemies, _stageWaves);
             if (Field != null) Field.BaseReached -= OnBaseReached;
-            NodeKind = node.Kind;
-            Floor = node.Floor;
-            Run = new BattleNodeRun(Config, Units, Ranges, state, encounter, map,
-                StageWaves(encounter.MapId, map), _random);
+            NodeKind = IntroKind(stage, isFinal);
+            StageNumber = stage.Number;
+            Run = new BattleNodeRun(Config, Units, Ranges, state, stage, isFinal, map,
+                new WaveProgress(schedule, stage.Mode, Config.WaveGapSeconds), _random);
             NodeCount++;
             Field.BaseReached += OnBaseReached;
             BaseFlashUntil = 0f;
@@ -303,13 +308,12 @@ namespace UnitySlotTower.Battle
             NodeBegan?.Invoke();
         }
 
-        // ステージの流れ（T607）までは、戦闘マスのマップを使うステージのウェーブで戦う（FR-102）。
-        private WaveProgress StageWaves(string mapId, BattleMap map)
+        // 開始の演出の印（旧ルートのマスの種類の絵を使う。T609 でステージの表示に替える）。
+        private static string IntroKind(StageDefinition stage, bool isFinal)
         {
-            var stage = _stages.FindByMap(mapId)
-                ?? throw new InvalidOperationException($"マップ '{mapId}' を使うステージが {StageTable.FileName} にない");
-            var schedule = WaveSchedule.Load(_waves, stage.Number, map, _enemies, _stageWaves);
-            return new WaveProgress(schedule, stage.Mode, Config.WaveGapSeconds);
+            if (stage.Number == 1) return RouteNodeKinds.First;
+            if (stage.BossId == null) return RouteNodeKinds.Battle;
+            return isFinal ? RouteNodeKinds.Boss : RouteNodeKinds.Elite;
         }
 
         // 揃った図柄の効果を戦闘へ渡す（FR-042）。

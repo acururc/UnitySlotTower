@@ -34,7 +34,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(battle?.Field, Is.Not.Null, "Game シーンの戦闘が始まらない");
-            yield return RouteTestUtil.WaitForIntro(battle);
+            yield return StageTestUtil.WaitForIntro(battle);
             var view = Object.FindAnyObjectByType<BattleActorsView>();
             var map = Object.FindAnyObjectByType<BattleFieldView>().Map;
             var archer = battle.Units.Get("archer");

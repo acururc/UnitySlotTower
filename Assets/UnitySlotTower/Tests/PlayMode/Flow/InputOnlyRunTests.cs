@@ -17,8 +17,8 @@ using UnitySlotTower.Slot;
 
 namespace UnitySlotTower.Tests.PlayMode.Flow
 {
-    [Description("AC-002: タイトルから1戦闘（召喚・配置・向き・強化・スキル・レバー・一時停止・早見表・撤退）、ルートのマス選び、" +
-                 "ショップ（購入・両替）までをマウスだけで通す。リザルトもマウスで操作できる（FR-002, T353。キーボードだけの通しは D-55 で削除）")]
+    [Description("AC-002: タイトルから1戦闘（召喚・配置・向き・強化・スキル・レバー・一時停止・早見表・撤退）と次のステージまでを" +
+                 "マウスだけで通す。リザルトもマウスで操作できる（FR-002, T353, spec 002 FR-101。キーボードだけの通しは D-55 で削除）")]
     public sealed class InputOnlyRunTests
     {
         // 最初の戦闘は近接の敵2体だけにして短く終わらせる。準備フェーズがない（D-79）ので、操作を確かめ終えるまで敵を出さない（30 秒後）。
@@ -105,20 +105,17 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         [UnityTest]
-        public IEnumerator Mouse_Alone_Goes_From_Title_Through_A_Battle_The_Route_And_The_Shop([Values(false, true)] bool textMode)
+        public IEnumerator Mouse_Alone_Goes_From_Title_Through_A_Battle_To_The_Next_Stage([Values(false, true)] bool textMode)
         {
             // 文字あり版（T359、D-76）でも部品の配置が変わるだけで、同じ操作で同じことが起こる（AC-005）。
             GameSession.SetTextMode(textMode);
             _waves = ShortWaves;
-            // 2階にショップがあるルートにする（行き先のリールでショップを選ぶため）。
-            RunController.SeedOverride = RouteTestUtil.SeedWithSecondFloor(RouteNodeKinds.Shop);
             yield return SceneManager.LoadSceneAsync(GameSession.TitleScene);
 
-            // タイトル ▶ → 設定2 のプレート → Game。
+            // タイトル ▶ → すぐ Game のステージ1（難易度の選択はない: spec 002 E-18）。
             yield return Click(GameObject.Find("Start Button").transform);
-            yield return Click(GameObject.Find("Setting 2").transform);
             yield return WaitForGame();
-            Assert.That(_cabinet.Setting, Is.EqualTo(2), "マウスで設定2を選べない");
+            Assert.That(_battle.StageNumber, Is.EqualTo(1), "▶ のクリックでステージ1が始まらない");
 
             // リールのカスタムは 2026-11-14 に廃止（T341 で画面を削除）。
 
@@ -175,46 +172,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(_battle.Field.Units.Count, Is.EqualTo(0),
                 "撤退アイコンで撤退できない（当たった UI: " + HitsAt(ScreenOf(RetreatButton())) + "）");
 
-            // 戦闘マスを終えてルート選びに進む（1ウェーブ: D-78）。
-            yield return WaitForRouteChoice();
-
-            // ルート: リールは入った時点で回る（D-90）。ショップのリールのボタンをクリックして止める。
-            var reel = RouteTestUtil.ReelTo(_run.State.Current, RouteNodeKinds.Shop);
-            Assert.That(reel, Is.GreaterThanOrEqualTo(0), "2階にショップがない");
-            yield return RouteTestUtil.WaitForRouteSpin(_cabinet);
-            yield return Click(RouteReelButton(reel).transform);
-            for (var limit = Time.realtimeSinceStartup + 5f; _run.OpenScreen == null && Time.realtimeSinceStartup < limit;)
-            {
-                yield return null;
-            }
-
-            var shop = _run.OpenScreen as ShopScreen;
-            Assert.That(shop != null && shop.IsOpen, Is.True, "リールのボタンのクリックでショップに入らない");
-
-            // ショップ: 品の札をクリックして買い、「所持金→コイン」をクリックして両替する。
-            var state = _run.State;
-            state.Money.Add(1000);
-            yield return null;
-            var offer = -1;
-            for (var i = 0; i < shop.OfferButtons.Count && offer < 0; i++)
-            {
-                if (shop.Shop.Check(i) == ShopResult.Bought)
-                {
-                    offer = i;
-                }
-            }
-
-            Assert.That(offer, Is.GreaterThanOrEqualTo(0), "所持金 1000 で買える品がない");
-            yield return Click(shop.OfferButtons[offer].transform);
-            Assert.That(shop.Shop.IsSold(offer), Is.True, "品の札のクリックで買えない");
-            var coins = state.Coins.Coins;
-            yield return Click(shop.BuyCoinsButton.transform);
-            Assert.That(state.Coins.Coins, Is.EqualTo(coins + shop.Exchange.CoinsPerTrade), "クリックで両替できない");
-
-            // ◀ のクリックでルート画面に戻る。
-            yield return Click(shop.BackButton.transform);
-            Assert.That((shop.IsOpen, _run.OpenScreen == null, _run.IsChoosingRoute), Is.EqualTo((false, true, true)),
-                "◀ のクリックでルート画面に戻らない");
+            // ステージ1を終えると、勝利の帯の後でステージ2に進む（spec 002 FR-101）。
+            yield return WaitForNextStage();
         }
 
         [UnityTest]
@@ -225,7 +184,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             _waves = LosingWaves;
             // 前のテストの Game シーンを拾わないよう、タイトルから始める。
             yield return SceneManager.LoadSceneAsync(GameSession.TitleScene);
-            GameSession.StartGame(1);
+            GameSession.StartGame();
             yield return WaitForGame();
             yield return LoseTheGame();
             var result = Object.FindAnyObjectByType<ResultScreen>();
@@ -239,7 +198,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
 
             yield return WaitForGame();
-            Assert.That((_battle != before, _battle.Floor), Is.EqualTo((true, 1)), "↻ のクリックでリトライしない");
+            Assert.That((_battle != before, _battle.StageNumber), Is.EqualTo((true, 1)), "↻ のクリックでリトライしない");
 
             yield return LoseTheGame();
             result = Object.FindAnyObjectByType<ResultScreen>();
@@ -264,16 +223,17 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 yield return null;
             }
 
-            var title = Object.FindAnyObjectByType<TitleScreen>();
+            bool InGame() => SceneManager.GetActiveScene().name == GameSession.GameScene;
             if (clickFirst)
             {
                 yield return Click(GameObject.Find("Start Button").transform);
-                Assert.That(title.IsChoosingDifficulty, Is.True, "Game から戻った後、▶ のクリックが効かない");
+                for (var i = 0; i < 60 && !InGame(); i++) yield return null;
+                Assert.That(InGame(), Is.True, "Game から戻った後、▶ のクリックが効かない");
                 yield break;
             }
 
-            yield return Press(Key.Enter, () => title.IsChoosingDifficulty);
-            Assert.That(title.IsChoosingDifficulty, Is.True, "Game から戻った後、Enter が効かない");
+            yield return Press(Key.Enter, InGame);
+            Assert.That(InGame(), Is.True, "Game から戻った後、Enter が効かない");
         }
 
         // 初期コイン（30）では召喚（15）と強化（20）を両方は払えないので、強化の分だけ足す（操作の確認が目的）。
@@ -289,21 +249,17 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
         }
 
-        private Button RouteReelButton(int reel) =>
-            ((Button[])typeof(SlotCabinet).GetField("routeReelButtons", BindingFlags.Instance | BindingFlags.NonPublic)
-                .GetValue(_cabinet))[reel];
-
-        private IEnumerator WaitForRouteChoice()
+        private IEnumerator WaitForNextStage()
         {
             Time.timeScale = 20f;
             var limit = Time.realtimeSinceStartup + 60f;
-            while (!_run.IsChoosingRoute && !_battle.IsFinished && Time.realtimeSinceStartup < limit)
+            while (_battle.StageNumber == 1 && !_battle.IsFinished && Time.realtimeSinceStartup < limit)
             {
                 yield return null;
             }
 
             Time.timeScale = 1f;
-            Assert.That(_run.IsChoosingRoute, Is.True, "最初の戦闘マスを終えてもルート選びにならない");
+            Assert.That((_battle.StageNumber, _run.State.StageIndex), Is.EqualTo((2, 2)), "ステージ1を終えてもステージ2に進まない");
             yield return null;
         }
 
@@ -355,7 +311,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             _cabinet = Object.FindAnyObjectByType<SlotCabinet>();
             _fieldView = Object.FindAnyObjectByType<BattleFieldView>();
             _camera = GameObject.Find("Battle Camera").GetComponent<Camera>();
-            yield return RouteTestUtil.WaitForIntro(_battle);
+            yield return StageTestUtil.WaitForIntro(_battle);
             // 物理の当たり判定が揃うまで待つ。
             yield return new WaitForFixedUpdate();
             yield return null;

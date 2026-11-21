@@ -68,13 +68,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(ShownIds(), Does.Contain("title_text_mode").And.Contain("title_start"), "「あ」の印か ▶ のラベルが出ない");
             AssertSameLayout(before, after);
 
-            // 難易度選択の画面に進んでもラベルが出る。
-            GameObject.Find("Start Button").GetComponent<Button>().onClick.Invoke();
-            yield return null;
-            Assert.That(ShownIds(), Does.Contain("title_difficulty"));
-            title.GetType().GetMethod("Show", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(title, new object[] { false });
-            yield return null;
-
             title.TextModeButton.onClick.Invoke();
             yield return null;
             Assert.That((GameSession.TextMode, ShownIds().Count), Is.EqualTo((false, 0)), "もう一度押しても文字なし版に戻らない");
@@ -143,88 +136,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         [UnityTest]
-        public IEnumerator Route_And_Shop_Show_Labels_For_What_They_Offer()
-        {
-            GameSession.SetTextMode(true);
-            RunController.SeedOverride = 1;
-            var battle = default(BattleController);
-            yield return LoadGame(b => battle = b);
-            var run = Object.FindAnyObjectByType<RunController>();
-            var seed = default(ulong?);
-            for (ulong s = 1; s < 5000 && seed == null; s++)
-            {
-                foreach (var next in RouteGenerator.Generate(run.Rules, new SeededRandom(s)).Start.Next)
-                {
-                    if (next.Kind == RouteNodeKinds.Shop)
-                    {
-                        seed = s;
-                        break;
-                    }
-                }
-            }
-
-            Assert.That(seed, Is.Not.Null, "2階にショップのあるシードが見つからない");
-            RunController.SeedOverride = seed;
-            yield return LoadGame(b => battle = b);
-            run = Object.FindAnyObjectByType<RunController>();
-            var cabinet = Object.FindAnyObjectByType<SlotCabinet>();
-
-            var first = battle.Run;
-            Time.timeScale = 20f;
-            var limit = Time.realtimeSinceStartup + 30f;
-            while (!run.IsChoosingRoute && first.Phase != WavePhase.GameOver && Time.realtimeSinceStartup < limit)
-            {
-                yield return null;
-            }
-
-            Time.timeScale = 1f;
-            Assert.That(run.IsChoosingRoute, Is.True, "最初の戦闘マスを終えてもルート選びにならない");
-            yield return null;
-            var shown = ShownIds();
-            Assert.That(shown, Does.Contain("route_title").And.Contain("node_shop"), "ルート画面に題と行き先の種類が出ない");
-
-            var reel = -1;
-            for (var r = 0; r < 3 && reel < 0; r++)
-            {
-                if (run.State.Current.NextOnReel(r)?.Kind == RouteNodeKinds.Shop)
-                {
-                    reel = r;
-                }
-            }
-
-            yield return RouteTestUtil.WaitForRouteSpin(cabinet);
-            Assert.That(cabinet.PickRouteReel(reel), Is.True, "行き先のリールを止められない");
-            limit = Time.realtimeSinceStartup + 5f;
-            while (run.OpenScreen == null && Time.realtimeSinceStartup < limit)
-            {
-                yield return null;
-            }
-
-            var shop = run.OpenScreen as ShopScreen;
-            Assert.That(shop != null && shop.IsOpen, Is.True, "ショップの画面が開かない");
-            yield return null;
-            var offerLabels = 0;
-            foreach (var button in shop.OfferButtons)
-            {
-                var label = button.GetComponentInChildren<TextModeLabel>();
-                // T359e: 職名・品の名前・短い説明の3行。
-                if (label != null && label.IsShown && label.Text.text.Split('\n').Length == 3)
-                {
-                    offerLabels++;
-                }
-            }
-
-            Assert.That(offerLabels, Is.EqualTo(shop.OfferButtons.Count), "品の札に名前と説明が出ない");
-            Assert.That(ShownIds(), Does.Contain("shop_title").And.Contain("shop_buy_coins").And.Contain("back"));
-
-            // T359e: 両替は数字の入った文（値は Exchange のもの）。
-            var exchange = shop.Exchange;
-            Assert.That((shop.BuyCoinsRateLabel.IsShown, shop.BuyCoinsRateLabel.Text.text, shop.SellCoinsRateLabel.Text.text),
-                Is.EqualTo((true, $"¥{exchange.MoneyPerTrade} → コイン {exchange.CoinsPerTrade}",
-                    $"コイン {exchange.CoinsPerTrade} → ¥{exchange.MoneyPerTrade}")), "両替の文が出ない");
-        }
-
-        [UnityTest]
         [Description("T359 (plan 16.13): 文字あり版にして戻すと、全部品の配置・字の大きさ・色・表示が元と同じ（文字なし版の見た目が変わらない）")]
         public IEnumerator Switching_Back_Restores_Every_Part_Of_The_No_Text_Screen()
         {
@@ -265,9 +176,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return SceneManager.LoadSceneAsync(GameSession.TitleScene);
             yield return Settle();
             Readable("タイトル", problems);
-            GameObject.Find("Start Button").GetComponent<Button>().onClick.Invoke();
-            yield return Settle();
-            Readable("難易度", problems);
 
             // 戦闘（最初の説明が出ている状態）、一時停止中の「?」、早見表。
             RunController.SeedOverride = 1;
@@ -305,25 +213,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             help.Close();
             battle.SetPaused(false);
 
-            // 最初の戦闘を終えてルート、そこからショップ・回復・リザルトを直接開く。
+            // リザルトを直接開く（ルート・ショップ・回復はない: spec 002 FR-101）。
             GuideOverlay.DisabledForTests = true;
             yield return LoadGame(b => battle = b);
-            var run = Object.FindAnyObjectByType<RunController>();
-            Time.timeScale = 20f;
-            var limit = Time.realtimeSinceStartup + 30f;
-            while (!run.IsChoosingRoute && battle.Run.Phase != WavePhase.GameOver && Time.realtimeSinceStartup < limit)
-            {
-                yield return null;
-            }
-
-            Time.timeScale = 1f;
-            Assert.That(run.IsChoosingRoute, Is.True, "最初の戦闘マスを終えてもルート選びにならない");
-            yield return Settle();
-            Readable("ルート", problems);
-
-            yield return CollectNodeScreen<ShopScreen>(run, RouteNodeKinds.Shop, "ショップ", problems);
-            yield return CollectNodeScreen<RestScreen>(run, RouteNodeKinds.Rest, "回復", problems);
-
             var result = Object.FindAnyObjectByType<ResultScreen>();
             typeof(ResultScreen).GetMethod("Open", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(result, new object[] { battle.Run });
             yield return Settle();
@@ -358,32 +250,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(shown, Is.GreaterThan(0), $"{screen}: 表示中のラベルがない");
         }
 
-        private static IEnumerator CollectNodeScreen<T>(RunController run, string kind, string screen, List<string> problems)
-            where T : NodeScreen
-        {
-            RouteNode found = null;
-            for (var floor = 1; floor <= run.State.Route.Floors && found == null; floor++)
-            {
-                foreach (var node in run.State.Route.NodesOn(floor))
-                {
-                    if (node.Kind == kind)
-                    {
-                        found = node;
-                        break;
-                    }
-                }
-            }
-
-            Assert.That(found, Is.Not.Null, $"ルートに {kind} のマスがない");
-            var opened = Object.FindAnyObjectByType<T>(FindObjectsInactive.Include);
-            opened.Open(run, found);
-            yield return Settle();
-            Readable(screen, problems);
-            opened.Close();
-            yield return null;
-        }
-
-        // 判定が空振りしていないこと（その画面で日本語のテキストを1つ以上調べた）も確かめる。
         private static void Readable(string screen, List<string> problems) =>
             Assert.That(TextReadability.Collect(screen, problems), Is.GreaterThan(0), $"{screen}: 表示中の日本語のテキストが見つからない");
 
@@ -484,7 +350,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
 
             Assert.That(battle.Run, Is.Not.Null, "Game シーンの進行が作られない");
-            yield return RouteTestUtil.WaitForIntro(battle);
+            yield return StageTestUtil.WaitForIntro(battle);
             found(battle);
         }
 

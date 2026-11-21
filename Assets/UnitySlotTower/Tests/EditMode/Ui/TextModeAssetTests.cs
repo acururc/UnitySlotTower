@@ -82,7 +82,8 @@ namespace UnitySlotTower.Tests.EditMode.Ui
             }
 
             Assert.That(problems, Is.Empty, string.Join("\n", problems));
-            Assert.That((counts[Scenes[0]] >= 3, counts[Scenes[1]] >= 40), Is.EqualTo((true, true)),
+            // Title は「あ」の印と ▶ の2つ（難易度選択の見出し・札の名前は spec 002 E-18 で消した）。
+            Assert.That((counts[Scenes[0]] >= 2, counts[Scenes[1]] >= 40), Is.EqualTo((true, true)),
                 $"ラベルが足りない（Setup/Add Text Mode Labels (T352) を各シーンで実行する）: {string.Join(", ", counts)}");
         }
 

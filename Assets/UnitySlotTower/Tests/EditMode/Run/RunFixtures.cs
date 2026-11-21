@@ -39,7 +39,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
             var config = GameConfig.Load(CsvParser.Parse(GameConfig.FileName,
                 $"key,value\ninitial_coins,{coins}\ninitial_money,{money}\nbet,3\nlife,{life}\n" +
                 "deploy_limit,8\nretreat_refund_rate,0.5\nintro_seconds,2\nplacement_time_scale,0.1\nwave_gap_seconds,1\n"));
-            return new RunState(config, BattleFixtures.LoadUpgrades(), SlotTestRules.Create(gaugeMax: gaugeMax), 4);
+            return new RunState(config, BattleFixtures.LoadUpgrades(), SlotTestRules.Create(gaugeMax: gaugeMax));
         }
     }
 }

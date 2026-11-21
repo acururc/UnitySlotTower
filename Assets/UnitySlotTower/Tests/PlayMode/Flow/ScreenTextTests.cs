@@ -18,7 +18,7 @@ using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Tests.PlayMode.Flow
 {
-    [Description("AC-001 / FR-003: 実行中にコードが入れる数字も含め、タイトルのロゴ以外の画面（戦闘・ルート・ショップ・回復・リザルト）に" +
+    [Description("AC-001 / FR-003: 実行中にコードが入れる数字も含め、タイトルのロゴ以外の画面（戦闘・リザルト）に" +
                  "文字がなく、数字専用フォントで描く（T406, T353）")]
     public sealed class ScreenTextTests
     {
@@ -62,16 +62,11 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         [UnityTest]
-        public IEnumerator Title_And_Difficulty_Show_Only_The_Logo_As_Letters()
+        public IEnumerator Title_Shows_Only_The_Logo_As_Letters()
         {
             yield return SceneManager.LoadSceneAsync(GameSession.TitleScene);
             yield return null;
             AssertNoLetters("タイトル");
-
-            GameObject.Find("Start Button").GetComponent<Button>().onClick.Invoke();
-            yield return null;
-            Assert.That(Object.FindAnyObjectByType<TitleScreen>().IsChoosingDifficulty, Is.True);
-            AssertNoLetters("難易度選択");
         }
 
         [UnityTest]
@@ -117,7 +112,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             _waves = WinningWaves;
             var battle = default(BattleController);
             yield return LoadGame(b => battle = b);
-            // ルートは最長7戦（T350a）で、敵1体ずつでもライフ 10 では足りないため、戦闘マスごとにライフを戻す。
+            // 8ステージでは敵1体ずつでもライフ 10 では足りないため、ステージごとにライフを戻す。
             var run = Object.FindAnyObjectByType<RunController>();
             void Refill() => run.State.Heal(run.State.MaxLife);
             battle.NodeBegan += Refill;
@@ -128,43 +123,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             AssertNoLetters("リザルト（クリア）");
         }
 
-        [UnityTest]
-        public IEnumerator Route_Shop_And_Rest_Screens_Show_No_Letters([Values(RouteNodeKinds.Shop, RouteNodeKinds.Rest)] string kind)
-        {
-            _waves = WinningWaves;
-            RunController.SeedOverride = RouteTestUtil.SeedWithSecondFloor(kind);
-            var battle = default(BattleController);
-            yield return LoadGame(b => battle = b);
-            var run = Object.FindAnyObjectByType<RunController>();
-            var cabinet = Object.FindAnyObjectByType<SlotCabinet>();
-
-            Time.timeScale = 20f;
-            var limit = Time.realtimeSinceStartup + 60f;
-            while (!run.IsChoosingRoute && !battle.IsFinished && Time.realtimeSinceStartup < limit)
-            {
-                yield return null;
-            }
-
-            Time.timeScale = 1f;
-            Assert.That(run.IsChoosingRoute, Is.True, "最初の戦闘マスを終えてもルート選びにならない");
-            yield return null;
-            AssertNoLetters("ルート");
-
-            yield return RouteTestUtil.WaitForRouteSpin(cabinet);
-            AssertNoLetters("ルート（回転中）");
-
-            Assert.That(cabinet.PickRouteReel(RouteTestUtil.ReelTo(run.State.Current, kind)), Is.True, "行き先のリールを止められない");
-            for (limit = Time.realtimeSinceStartup + 5f; run.OpenScreen == null && Time.realtimeSinceStartup < limit;)
-            {
-                yield return null;
-            }
-
-            Assert.That(run.OpenScreen != null && run.OpenScreen.Kind == kind, Is.True, $"{kind} の画面が開かない");
-            yield return null;
-            AssertNoLetters(kind == RouteNodeKinds.Shop ? "ショップ" : "回復");
-        }
-
-        // 表示中かどうかに関わらず、読み込まれた全シーンの文字部品を調べる（隠れた部品も後で出るため）。
         private static void AssertNoLetters(string screen)
         {
             var violations = new List<string>();
@@ -255,7 +213,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var limit = Time.realtimeSinceStartup + 90f + 7 * BattlePresentationTiming.VictoryBand;
             while (!battle.IsFinished && Time.realtimeSinceStartup < limit)
             {
-                RouteTestUtil.Step();
                 if (!battle.IsShowingVictory && (battle.IsInIntro || battle.Run.Phase == WavePhase.Fighting))
                     Time.timeScale = 20f;
                 yield return null;

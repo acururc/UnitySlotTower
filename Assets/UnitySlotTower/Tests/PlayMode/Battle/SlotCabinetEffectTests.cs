@@ -167,7 +167,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(_battle.Field, Is.Not.Null, "Game シーンの戦闘が始まらない");
-            yield return RouteTestUtil.WaitForIntro(_battle);
+            yield return StageTestUtil.WaitForIntro(_battle);
             Select(SlotSymbol.Bar);
             yield return null;
             _reels = _cabinet.GetComponentsInChildren<SlotReelView>();

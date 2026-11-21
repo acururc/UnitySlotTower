@@ -1,70 +1,37 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace UnitySlotTower.Flow
 {
     /// <summary>
-    /// Title シーン（T401、plan 4章）。ロゴと ▶ の画面から、設定1〜6の筐体プレートを選ぶ画面に進み、選んだ設定で Game を始める。
-    /// ロゴ右下の透明なボタンで文字あり版に切り替える（FR-006）。マウスはクリック、キーボードは矢印で選んで Enter（UI のナビゲーション）、Esc で難易度選択からタイトルへ戻る。
+    /// Title シーン（T401、plan 4章）。ロゴと ▶ の画面で、▶ を押すとすぐ Game が始まる（難易度の選択はない: spec 002 E-18）。
+    /// ロゴ右下の透明なボタンで文字あり版に切り替える（FR-006）。マウスはクリック、キーボードは Enter（UI のナビゲーション）。
     /// </summary>
     public sealed class TitleScreen : MonoBehaviour
     {
-        [SerializeField] private InputActionAsset inputActions;
-        [SerializeField] private GameObject titlePanel;
-        [SerializeField] private GameObject difficultyPanel;
         [SerializeField] private Button startButton;
-        [SerializeField] private Button backButton;
         [Tooltip("ロゴ右下の透明なボタン。押すと文字あり／なしを切り替える（FR-006）。")]
         [SerializeField] private Button textModeButton;
-        [Tooltip("設定1〜6の順。")]
-        [SerializeField] private Button[] settingButtons = new Button[GameSession.MaxSetting];
 
-        private InputAction _cancel;
-
-        /// <summary>難易度選択の画面を表示中か。</summary>
-        public bool IsChoosingDifficulty => difficultyPanel.activeSelf;
+        /// <summary>▶（押すと Game が始まる）。</summary>
+        public Button StartButton => startButton;
 
         /// <summary>文字あり／なしを切り替える隠しボタン。</summary>
         public Button TextModeButton => textModeButton;
 
         private void Awake()
         {
-            _cancel = inputActions.FindActionMap("SlotTower", true).FindAction("Cancel", true);
-            startButton.onClick.AddListener(ShowDifficulty);
-            backButton.onClick.AddListener(ShowTitle);
+            startButton.onClick.AddListener(GameSession.StartGame);
             if (textModeButton != null)
             {
                 textModeButton.onClick.AddListener(ToggleTextMode);
             }
 
-            for (var i = 0; i < settingButtons.Length; i++)
-            {
-                var setting = GameSession.MinSetting + i;
-                settingButtons[i].onClick.AddListener(() => GameSession.StartGame(setting));
-            }
-
-            ShowTitle();
+            SelectStart();
         }
 
-        private void OnEnable()
-        {
-            _cancel.performed += OnCancel;
-            _cancel.actionMap.Enable();
-        }
-
-        private void OnDisable() => _cancel.performed -= OnCancel;
-
-        private void OnCancel(InputAction.CallbackContext context)
-        {
-            if (IsChoosingDifficulty)
-            {
-                ShowTitle();
-            }
-        }
-
-        // 背景をクリックすると選択が外れてキーボードで操作できなくなるので、画面の既定のボタンを選び直す。
+        // 背景をクリックすると選択が外れてキーボードで操作できなくなるので、▶ を選び直す。
         private void Update()
         {
             var eventSystem = EventSystem.current;
@@ -76,7 +43,7 @@ namespace UnitySlotTower.Flow
             var selected = eventSystem.currentSelectedGameObject;
             if (selected == null || !selected.activeInHierarchy)
             {
-                eventSystem.SetSelectedGameObject(DefaultButton().gameObject);
+                eventSystem.SetSelectedGameObject(startButton.gameObject);
             }
         }
 
@@ -84,26 +51,15 @@ namespace UnitySlotTower.Flow
         private void ToggleTextMode()
         {
             GameSession.SetTextMode(!GameSession.TextMode);
-            if (EventSystem.current != null)
-            {
-                EventSystem.current.SetSelectedGameObject(DefaultButton().gameObject);
-            }
+            SelectStart();
         }
 
-        private void ShowTitle() => Show(false);
-
-        private void ShowDifficulty() => Show(true);
-
-        private void Show(bool difficulty)
+        private void SelectStart()
         {
-            titlePanel.SetActive(!difficulty);
-            difficultyPanel.SetActive(difficulty);
             if (EventSystem.current != null)
             {
-                EventSystem.current.SetSelectedGameObject(DefaultButton().gameObject);
+                EventSystem.current.SetSelectedGameObject(startButton.gameObject);
             }
         }
-
-        private Button DefaultButton() => IsChoosingDifficulty ? settingButtons[0] : startButton;
     }
 }

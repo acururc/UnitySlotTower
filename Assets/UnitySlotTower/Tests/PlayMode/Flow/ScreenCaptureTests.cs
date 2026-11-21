@@ -77,11 +77,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var prefix = textMode ? "text" : "notext";
             GameSession.SetTextMode(textMode);
 
-            // タイトルと難易度選択。
+            // タイトル（難易度の選択はない: spec 002 E-18）。
             yield return SceneManager.LoadSceneAsync(GameSession.TitleScene);
             yield return Capture(prefix + "-title");
-            GameObject.Find("Start Button").GetComponent<Button>().onClick.Invoke();
-            yield return Capture(prefix + "-difficulty");
 
             // 戦闘（最初の説明が出ている状態）と早見表。
             RunController.SeedOverride = 1;
@@ -98,55 +96,23 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             help.Close();
             battle.SetPaused(false);
 
-            // 最初の戦闘を終えてルート、そこからショップ・回復・リザルトを直接開く。
+            // 最初のステージを終えて次のステージ、そこからリザルトを直接開く（ルート・ショップ・回復はない: spec 002 FR-101）。
             GuideOverlay.DisabledForTests = true;
             yield return LoadGame(b => battle = b);
-            var run = Object.FindAnyObjectByType<RunController>();
             Time.timeScale = 20f;
             var limit = Time.realtimeSinceStartup + 30f;
-            while (!run.IsChoosingRoute && battle.Run.Phase != WavePhase.GameOver && Time.realtimeSinceStartup < limit)
+            while (battle.StageNumber == 1 && battle.Run.Phase != WavePhase.GameOver && Time.realtimeSinceStartup < limit)
             {
                 yield return null;
             }
 
             Time.timeScale = 1f;
-            Assert.That(run.IsChoosingRoute, Is.True, "最初の戦闘マスを終えてもルート選びにならない");
-            yield return Capture(prefix + "-route");
-
-            yield return CaptureNodeScreen<ShopScreen>(run, RouteNodeKinds.Shop, prefix + "-shop");
-            yield return CaptureNodeScreen<RestScreen>(run, RouteNodeKinds.Rest, prefix + "-rest");
+            Assert.That(battle.StageNumber, Is.EqualTo(2), "最初のステージを終えても次のステージに進まない");
+            yield return Capture(prefix + "-stage2");
 
             var result = Object.FindAnyObjectByType<ResultScreen>();
             typeof(ResultScreen).GetMethod("Open", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(result, new object[] { battle.Run });
             yield return Capture(prefix + "-result");
-        }
-
-        private IEnumerator CaptureNodeScreen<T>(RunController run, string kind, string name)
-            where T : NodeScreen
-        {
-            var node = FindNode(run.State.Route, kind);
-            Assert.That(node, Is.Not.Null, $"ルートに {kind} のマスがない");
-            var screen = Object.FindAnyObjectByType<T>(FindObjectsInactive.Include);
-            screen.Open(run, node);
-            yield return Capture(name);
-            screen.Close();
-            yield return null;
-        }
-
-        private static RouteNode FindNode(RouteMap route, string kind)
-        {
-            for (var floor = 1; floor <= route.Floors; floor++)
-            {
-                foreach (var node in route.NodesOn(floor))
-                {
-                    if (node.Kind == kind)
-                    {
-                        return node;
-                    }
-                }
-            }
-
-            return null;
         }
 
         private IEnumerator Capture(string name)

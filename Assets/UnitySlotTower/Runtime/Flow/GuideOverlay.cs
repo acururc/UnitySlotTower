@@ -203,9 +203,9 @@ namespace UnitySlotTower.Flow
                 Paused = battle.IsPaused,
                 Finished = battle.IsFinished,
                 // ルートの移動のアニメ中（D-90）も画面中として扱い、戦闘の題目を始めない。
-                OnScreen = runController != null && runController.OpenScreen != null || routeScreen != null && routeScreen.IsMoving,
-                // ルート選びのリールは入った時点で自動で回る（D-90）ので、説明はレバーを指さずに行き先のリールを指す。
-                ChoosingRoute = runController != null && runController.IsChoosingRoute,
+                // ルートはなくなった（spec 002 FR-101）。説明そのものは T610 で消す。
+                OnScreen = false,
+                ChoosingRoute = false,
                 Intro = run.Phase == WavePhase.Intro,
                 BattleNode = battle.NodeCount,
                 Deploy = run.Deployment.Phase,

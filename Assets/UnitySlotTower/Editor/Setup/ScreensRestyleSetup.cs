@@ -54,15 +54,6 @@ namespace UnitySlotTower.Editor.Setup
             var count = Background(GameObject.Find("Backdrop")?.transform);
             var serialized = new SerializedObject(title);
             count += Primary(Ref<Button>(serialized, "startButton"));
-            count += Back(Ref<Button>(serialized, "backButton"));
-            var plates = serialized.FindProperty("settingButtons");
-            for (var i = 0; plates != null && i < plates.arraySize; i++)
-            {
-                // 設定の札は色で見分けるので、今の色のまま角を切って縁を付ける。
-                var plate = plates.GetArrayElementAtIndex(i).objectReferenceValue as Button;
-                count += Skin(plate, null, UiStyle.PanelBorder);
-            }
-
             return count;
         }
 

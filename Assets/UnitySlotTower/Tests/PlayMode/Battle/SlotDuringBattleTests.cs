@@ -58,7 +58,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(_battle.Field, Is.Not.Null, "Game シーンの戦闘が始まらない");
-            yield return RouteTestUtil.WaitForIntro(_battle);
+            yield return StageTestUtil.WaitForIntro(_battle);
             yield return null;
         }
 
@@ -137,14 +137,9 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                 yield return null;
             }
 
-            // コインは筐体のコインへ、所持金は召喚の財布へ（plan 16.2。ライフボーナスは廃止）。
-            // T605 でステージ1が短くなり60秒で終わるので、終えたなら戦闘マスの報酬も入っている（報酬は T606 で消す）。
-            var completed = _battle.Run.Phase == WavePhase.Completed;
-            var rewardCoins = completed ? _battle.Run.Encounter.RewardCoins : 0;
-            var rewardMoney = completed ? _battle.Run.Encounter.RewardMoney : 0;
+            // コインは筐体のコインへ、所持金は召喚の財布へ（plan 16.2。ライフボーナスは廃止）。ステージを終えても報酬はない（T607）。
             Assert.That((_cabinet.Wallet.Coins - coinsBefore, _battle.Wallet.Coins - moneyBefore),
-                Is.EqualTo((field.DroppedCoins - droppedBefore.DroppedCoins + rewardCoins,
-                    field.DroppedMoney - droppedBefore.DroppedMoney + rewardMoney)));
+                Is.EqualTo((field.DroppedCoins - droppedBefore.DroppedCoins, field.DroppedMoney - droppedBefore.DroppedMoney)));
             // 雑魚は倒すと必ず所持金を落とす（T603）。T604 の小さい桁では剣士が遅く、ゴールに着く数は撃破の目安にしない。
             Assert.That(field.DroppedMoney - droppedBefore.DroppedMoney, Is.GreaterThan(0), "1体も倒せていない");
         }

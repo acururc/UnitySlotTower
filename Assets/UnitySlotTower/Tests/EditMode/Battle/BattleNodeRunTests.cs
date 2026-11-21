@@ -46,7 +46,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             _config = GameConfig.Load(CsvParser.Parse(GameConfig.FileName,
                 $"key,value\ninitial_coins,{coins}\ninitial_money,{money}\nbet,3\nlife,{life}\n" +
                 $"deploy_limit,{deployLimit}\nretreat_refund_rate,0.5\nintro_seconds,{introSeconds}\nplacement_time_scale,0.1\nwave_gap_seconds,1\n"));
-            _state = new RunState(_config, BattleFixtures.LoadUpgrades(), SlotTestRules.Create(), 1);
+            _state = new RunState(_config, BattleFixtures.LoadUpgrades(), SlotTestRules.Create());
             // 既定はステージ2（無料の1体なし）。無料の1体を調べるテストだけ stage: 1。
             for (var i = 1; i < stage; i++)
             {
@@ -66,6 +66,18 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             return new BattleNodeRun(_config, BattleFixtures.LoadUnits(), BattleFixtures.LoadRanges(), _state, encounter,
                 BattleFixtures.LoadMap(), BattleFixtures.LoadStageWave(rows, 1),
                 new SeededRandom(1));
+        }
+
+        /// <summary>同じ <see cref="RunState"/> で、ステージの表の行から戦闘を作る（T607 の Runtime の流れと同じ）。</summary>
+        private BattleNodeRun Stage(int number, bool isFinal)
+        {
+            var stages = StageTable.Load(CsvParser.Parse(StageTable.FileName,
+                "stage,map_id,wave_mode,boss\n1,m,clear,none\n2,m,timed,none\n"));
+            var rows = Regex.Replace(_waveRows, "^e,", "1,", RegexOptions.Multiline);
+            var stage = stages.Get(number);
+            var waves = new WaveProgress(BattleFixtures.LoadStageWave(rows, 1), stage.Mode, _config.WaveGapSeconds);
+            return new BattleNodeRun(_config, BattleFixtures.LoadUnits(), BattleFixtures.LoadRanges(), _state,
+                stage, isFinal, BattleFixtures.LoadMap(), waves, new SeededRandom(1));
         }
 
         private static SummonResult Place(BattleNodeRun run, string unitId, int x, int y)
@@ -240,6 +252,19 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             PlayNode(run);
 
             Assert.That((_state.Money.Coins, _state.Coins.Coins), Is.EqualTo((110, 53)));
+        }
+
+        [Test]
+        [Description("spec 002 FR-101、plan 2.1: ステージを終えても報酬はなく、最後のステージを終えたときだけクリア")]
+        public void Only_The_Last_Stage_Clears_The_Run_And_Stages_Give_No_Reward([Values(1, 2)] int stage)
+        {
+            var run = Create(money: 100, coins: 50, stage: stage);
+            run = Stage(stage, isFinal: stage == 2);
+
+            PlayNode(run);
+
+            Assert.That((run.Phase, run.IsRunCleared, run.Stage.Number, _state.Money.Coins, _state.Coins.Coins),
+                Is.EqualTo((WavePhase.Completed, stage == 2, stage, 100, 50)));
         }
 
         [Test]

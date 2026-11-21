@@ -15,7 +15,7 @@ using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Tests.PlayMode.Battle
 {
-    [Description("FR-010, FR-019, T312: 戦闘マスが終わると戦闘フィールドが次の戦闘マスのマップに替わり、開始の演出の後すぐ戦闘になる（AC-016）")]
+    [Description("FR-010, FR-019, T312, spec 002 FR-101: ステージが終わると戦闘フィールドが次のステージのマップに替わり、開始の演出の後すぐ戦闘になる（AC-016）")]
     public sealed class StageTransitionTests
     {
         // 近接の敵だけ（最初の戦闘は2体、通常の戦闘は1体）。味方を置かないので敵はゴールに着き、ライフ1ずつ減って戦闘が終わる。
@@ -104,7 +104,6 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             GameSession.SetTextMode(textMode);
             var intro = Object.FindAnyObjectByType<BattleIntroView>();
             var status = Object.FindAnyObjectByType<OperationBarStatus>();
-            var flow = Object.FindAnyObjectByType<RunController>();
             var cabinet = Object.FindAnyObjectByType<SlotCabinet>();
             var map = _battle.Run.Map;
             var path = map.Paths[0];
@@ -127,7 +126,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return null;
             Assert.That((intro.BackgroundAlpha, intro.IconAlpha), Is.EqualTo((0f, 1f)),
                 "絵を残して盤面を先に見せない");
-            yield return RouteTestUtil.WaitForIntro(_battle);
+            yield return StageTestUtil.WaitForIntro(_battle);
             yield return null;
             Assert.That((intro.IsShowing, intro.BackgroundAlpha, intro.IconAlpha), Is.EqualTo((false, 0f, 0f)));
 
@@ -165,8 +164,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             while (!_battle.IsShowingVictory && Time.realtimeSinceStartup < limit) yield return null;
             yield return null;
             Assert.That((_battle.IsShowingVictory, intro.IsVictoryBandVisible, intro.IsVictoryNameVisible,
-                Time.timeScale, _battle.IsInputBlocked, cabinet.InputLocked, flow.IsChoosingRoute, intro.BackgroundAlpha),
-                Is.EqualTo((true, true, textMode, 0f, true, true, false, 0f)), "盤面を残す勝利の帯で時間と入力が止まらない");
+                Time.timeScale, _battle.IsInputBlocked, cabinet.InputLocked, intro.BackgroundAlpha),
+                Is.EqualTo((true, true, textMode, 0f, true, true, 0f)), "盤面を残す勝利の帯で時間と入力が止まらない");
             var captions = intro.GetComponentInParent<Canvas>().GetComponentsInChildren<TextModeLabel>(true);
             TextModeLabel victoryLabel = null;
             foreach (var caption in captions)
@@ -182,15 +181,16 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return new WaitForSecondsRealtime(0.6f);
             Assert.That((_battle.IsShowingVictory, _battle.Field.Tick, _battle.IsPaused, _battle.BattleSpeed),
                 Is.EqualTo((true, tick, false, speed)), "勝利の帯の間に戦闘か操作が進んだ");
-            yield return RouteTestUtil.WaitForVictory(_battle);
+            yield return StageTestUtil.WaitForVictory(_battle);
             yield return null;
-            Assert.That((intro.IsVictoryBandVisible, flow.IsChoosingRoute, Time.timeScale, cabinet.InputLocked),
-                Is.EqualTo((false, true, 1f, false)),
-                "勝利の帯の後にルートへ移らない");
+            // 勝利の帯の後はすぐ次のステージの開始の演出（spec 002 E-21）。演出中はレバーを受け付けない。
+            Assert.That((intro.IsVictoryBandVisible, _battle.StageNumber, _battle.IsInIntro, Time.timeScale, cabinet.InputLocked),
+                Is.EqualTo((false, 2, true, 1f, true)),
+                "勝利の帯の後に次のステージへ移らない");
         }
 
         [UnityTest]
-        public IEnumerator Clearing_The_First_Node_Shows_The_Next_Map_And_Starts_After_The_Intro()
+        public IEnumerator Clearing_Stage_One_Shows_The_Next_Map_And_Starts_After_The_Intro()
         {
             yield return null;
             Assert.That((_fieldView.Map.Id, TileRoots()), Is.EqualTo(("first", 1)));
@@ -198,59 +198,56 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             // 敵が歩き切るまで速める（1体あたり実時間で約1秒）。
             Time.timeScale = 20f;
             var limit = Time.realtimeSinceStartup + 30f;
-            while (_battle.Floor == 1 && _battle.Run.Phase != WavePhase.GameOver &&
+            while (_battle.StageNumber == 1 && _battle.Run.Phase != WavePhase.GameOver &&
                    Time.realtimeSinceStartup < limit)
             {
-                RouteTestUtil.Step();
                 yield return null;
             }
 
             Time.timeScale = 1f;
-            // 次の戦闘マスはルート画面で選ぶ（ショップ・回復を挟むと3階以上: T350b）。
-            Assert.That((_battle.Floor >= 2, _battle.Run.Phase, _battle.IsInputBlocked),
-                Is.EqualTo((true, WavePhase.Intro, true)), "次の戦闘マスが開始の演出から始まらない（演出中は操作できない）");
+            Assert.That((_battle.StageNumber, _battle.Run.Phase, _battle.IsInputBlocked),
+                Is.EqualTo((2, WavePhase.Intro, true)), "ステージ2が開始の演出から始まらない（演出中は操作できない）");
 
             // 古いマスの Destroy はフレームの終わりに効く。
             yield return null;
             var map = _fieldView.Map;
             var tiles = _fieldView.transform.Find("Tiles");
-            // 出現は種類と階が合う行からランダムに選ばれる（plan 16.6）。
-            Assert.That((map.Id == _battle.Run.Encounter.MapId, map == _battle.Run.Map, TileRoots(), tiles.childCount),
-                Is.EqualTo((true, true, 1, map.Width * map.Height)), map.Id);
+            // ステージ2のマップは stages.csv の battle_a（plan 2.1）。
+            Assert.That((map.Id, map == _battle.Run.Map, TileRoots(), tiles.childCount),
+                Is.EqualTo(("battle_a", true, 1, map.Width * map.Height)), map.Id);
 
             // 演出のあいだは戦闘の時間が進まず、終わるとすぐ戦闘になる（準備フェーズはない: D-79）。
             var cabinet = Object.FindAnyObjectByType<UnitySlotTower.Slot.SlotCabinet>();
             var intro = Object.FindAnyObjectByType<BattleIntroView>();
             Assert.That((_battle.Field.Tick, cabinet.InputLocked, intro.IsShowing), Is.EqualTo((0L, true, true)),
                 "開始の演出中に戦闘の時間が進むか、レバーを受け付けるか、演出が出ない");
-            yield return RouteTestUtil.WaitForIntro(_battle);
+            yield return StageTestUtil.WaitForIntro(_battle);
             yield return null;
             Assert.That((_battle.Run.Phase, _battle.IsInputBlocked, cabinet.InputLocked, intro.IsShowing),
                 Is.EqualTo((WavePhase.Fighting, false, false, false)), "開始の演出の後に戦闘が始まらないか、演出が消えない");
         }
 
         [UnityTest]
-        [Description("AC-015, D-96: 次の戦闘マスは 1倍で始まり、戦闘の外（ルート・開始の演出）でも 1倍")]
-        public IEnumerator Next_Node_Starts_At_Normal_Speed()
+        [Description("AC-015, D-96: 次のステージは 1倍で始まり、戦闘の外（開始の演出）でも 1倍")]
+        public IEnumerator Next_Stage_Starts_At_Normal_Speed()
         {
-            yield return RouteTestUtil.WaitForIntro(_battle);
+            yield return StageTestUtil.WaitForIntro(_battle);
             _battle.CycleBattleSpeed();
             _battle.CycleBattleSpeed();
             yield return null;
             Assert.That((_battle.BattleSpeed, Time.timeScale), Is.EqualTo((3, 3f)), "3倍にならない");
 
-            // 敵が歩き切るまで速める。マスを終えると BattleController が 1 に戻す。
+            // 敵が歩き切るまで速める。ステージを終えると BattleController が 1 に戻す。
             Time.timeScale = 20f;
             var limit = Time.realtimeSinceStartup + 30f;
-            while (_battle.Floor == 1 && _battle.Run.Phase != WavePhase.GameOver &&
+            while (_battle.StageNumber == 1 && _battle.Run.Phase != WavePhase.GameOver &&
                    Time.realtimeSinceStartup < limit)
             {
-                RouteTestUtil.Step();
                 yield return null;
             }
 
             var outside = Time.timeScale;
-            yield return RouteTestUtil.WaitForIntro(_battle);
+            yield return StageTestUtil.WaitForIntro(_battle);
             yield return null;
 
             Assert.That((outside, _battle.Run.Phase, _battle.BattleSpeed, Time.timeScale),
@@ -278,7 +275,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             field.EnemySpawned += RecordFirstSpawn;
             try
             {
-                yield return RouteTestUtil.WaitForIntro(_battle);
+                yield return StageTestUtil.WaitForIntro(_battle);
                 yield return null; // Allow the intro's LateUpdate to hide its lines.
                 foreach (var path in paths)
                     Assert.That(_fieldView.IsPathVisible(path.Id), Is.EqualTo(path == spawned), path.Id);

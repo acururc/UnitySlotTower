@@ -32,9 +32,6 @@ namespace UnitySlotTower.Slot
         [FormerlySerializedAs("defaultReelTable")]
         [SerializeField] private TextAsset reelsTable;
 
-        [Tooltip("難易度（設定1〜6）。Game シーンを直接開いたときだけ使う。難易度選択を通ったときはその設定（T401）。")]
-        [SerializeField, Range(1, 6)] private int setting = 1;
-
         [Header("Input")]
         [SerializeField] private InputActionAsset inputActions;
         [SerializeField] private Button leverButton;
@@ -90,9 +87,6 @@ namespace UnitySlotTower.Slot
 
         /// <summary>true のあいだはレバーを受け付けない（ショップ・回復の画面が筐体を覆っている: T350c）。一時停止とは別に持つ。</summary>
         public bool HeldByScreen { get; set; }
-
-        /// <summary>このプレイの難易度（設定1〜6、FR-045）。</summary>
-        public int Setting => setting;
 
         /// <summary>slot_rules.csv の値。Awake で読む。</summary>
         public SlotRules Rules { get; private set; }
@@ -311,7 +305,6 @@ namespace UnitySlotTower.Slot
                 fixedSpinsIcon.SetActive(false);
             }
 
-            setting = GameSession.SelectedSetting ?? setting;
             try
             {
                 var config = GameConfig.Load(Parse(GameConfig.FileName, gameConfigTable));

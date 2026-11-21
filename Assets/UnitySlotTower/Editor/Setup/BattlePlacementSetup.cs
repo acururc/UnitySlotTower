@@ -55,7 +55,6 @@ namespace UnitySlotTower.Editor.Setup
             Assign(battle, "unitUpgradesTable", Table(UnitUpgradeTable.FileName));
             Assign(battle, "enemiesTable", Table(EnemyTable.FileName));
             Assign(battle, "wavesTable", Table(WaveSchedule.FileName));
-            Assign(battle, "encountersTable", Table(EncounterTable.FileName));
             Assign(battle, "stagesTable", Table(StageTable.FileName));
             Assign(battle, "stageWavesTable", Table(WaveSchedule.StageWavesFileName));
             Assign(battle, "fieldView", field);
@@ -105,7 +104,6 @@ namespace UnitySlotTower.Editor.Setup
                 return;
             }
 
-            Assign(battle, "encountersTable", Table(EncounterTable.FileName));
             Assign(battle, "skillsTable", Table(SkillTable.FileName));
             Assign(battle, "stagesTable", Table(StageTable.FileName));
             Assign(battle, "stageWavesTable", Table(WaveSchedule.StageWavesFileName));

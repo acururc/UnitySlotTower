@@ -25,14 +25,6 @@ namespace UnitySlotTower.Editor.Setup
         public const string ScenePath = "Assets/UnitySlotTower/Scenes/Title.unity";
         private const string NumericFontPath = "Assets/UnitySlotTower/Art/Fonts/NumericOnly SDF.asset";
         private const string LogoFontPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
-        private const string InputActionsPath = "Assets/InputSystem_Actions.inputactions";
-
-        // 設定1（ハズレ率が高く難しい）から6へ、青→赤に寄せる仮の色。
-        private static readonly Color[] PlateColors =
-        {
-            new Color(0.2f, 0.35f, 0.75f), new Color(0.2f, 0.55f, 0.7f), new Color(0.25f, 0.6f, 0.35f),
-            new Color(0.75f, 0.65f, 0.2f), new Color(0.8f, 0.45f, 0.2f), new Color(0.8f, 0.2f, 0.25f),
-        };
 
         private static Sprite _box;
 
@@ -57,10 +49,9 @@ namespace UnitySlotTower.Editor.Setup
 
             var numericFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(NumericFontPath);
             var logoFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(LogoFontPath);
-            var actions = AssetDatabase.LoadAssetAtPath<InputActionAsset>(InputActionsPath);
-            if (numericFont == null || logoFont == null || actions == null)
+            if (numericFont == null || logoFont == null)
             {
-                Debug.LogError("[SlotTower Setup] フォントか InputActionAsset が見つからない。");
+                Debug.LogError("[SlotTower Setup] フォントが見つからない。");
                 return;
             }
 
@@ -97,39 +88,6 @@ namespace UnitySlotTower.Editor.Setup
             CreateRect("Play", start.GetComponent<RectTransform>(), new Vector2(0.4f, 0.2f), new Vector2(0.64f, 0.8f))
                 .gameObject.AddComponent<TriangleGraphic>().raycastTarget = false;
 
-            // 難易度選択: 設定1〜6の筐体プレート（3列×2段）と ◀。
-            var difficulty = CreateRect("Difficulty Panel", root, Vector2.zero, Vector2.one);
-            var plates = new Button[GameSession.MaxSetting];
-            for (var i = 0; i < plates.Length; i++)
-            {
-                var column = i % 3;
-                var row = i / 3;
-                var min = new Vector2(0.08f + column * 0.3f, 0.6f - row * 0.26f);
-                var plate = CreateButton($"Setting {i + 1}", difficulty, min, min + new Vector2(0.24f, 0.22f), PlateColors[i]);
-                plate.navigation = new Navigation { mode = Navigation.Mode.Automatic };
-                var plateRect = plate.GetComponent<RectTransform>();
-                CreateImage("Reel Window", plateRect, new Vector2(0.15f, 0.55f), new Vector2(0.85f, 0.85f),
-                    new Color(0.92f, 0.92f, 0.9f));
-                var number = CreateRect("Number", plateRect, new Vector2(0.1f, 0.08f), new Vector2(0.9f, 0.5f))
-                    .gameObject.AddComponent<TextMeshProUGUI>();
-                number.font = numericFont;
-                number.text = (i + 1).ToString();
-                number.color = Color.white;
-                number.enableAutoSizing = true;
-                number.fontSizeMin = 10f;
-                number.fontSizeMax = 300f;
-                number.alignment = TextAlignmentOptions.Center;
-                number.raycastTarget = false;
-                plates[i] = plate;
-            }
-
-            var back = CreateButton("Back Button", difficulty, new Vector2(0.06f, 0.86f), new Vector2(0.2f, 0.94f),
-                new Color(0.3f, 0.3f, 0.34f));
-            var arrow = CreateRect("Arrow", back.GetComponent<RectTransform>(), new Vector2(0.34f, 0.2f), new Vector2(0.62f, 0.8f));
-            arrow.localEulerAngles = new Vector3(0f, 0f, 180f);
-            arrow.gameObject.AddComponent<TriangleGraphic>().raycastTarget = false;
-            difficulty.gameObject.SetActive(false);
-
             var eventSystem = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
             eventSystem.GetComponent<EventSystem>().firstSelectedGameObject = start.gameObject;
 
@@ -137,20 +95,7 @@ namespace UnitySlotTower.Editor.Setup
             Assign(layout, "canvasScaler", scaler);
 
             var screen = new GameObject("Title Screen").AddComponent<TitleScreen>();
-            Assign(screen, "inputActions", actions);
-            Assign(screen, "titlePanel", title.gameObject);
-            Assign(screen, "difficultyPanel", difficulty.gameObject);
             Assign(screen, "startButton", start);
-            Assign(screen, "backButton", back);
-            var serialized = new SerializedObject(screen);
-            var buttons = serialized.FindProperty("settingButtons");
-            buttons.arraySize = plates.Length;
-            for (var i = 0; i < plates.Length; i++)
-            {
-                buttons.GetArrayElementAtIndex(i).objectReferenceValue = plates[i];
-            }
-
-            serialized.ApplyModifiedPropertiesWithoutUndo();
 
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath));
             EditorSceneManager.SaveScene(scene, ScenePath);

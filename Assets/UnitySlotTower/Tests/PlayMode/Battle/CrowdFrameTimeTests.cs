@@ -61,7 +61,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(battle.Run, Is.Not.Null, "Game シーンの進行が作られない");
-            yield return RouteTestUtil.WaitForIntro(battle);
+            yield return StageTestUtil.WaitForIntro(battle);
 
             var limit = Time.realtimeSinceStartup + 15f;
             while (battle.Field.Enemies.Count < Crowd && Time.realtimeSinceStartup < limit)
