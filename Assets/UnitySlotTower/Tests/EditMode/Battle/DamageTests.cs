@@ -38,5 +38,26 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             Assert.That(Damage.Calculate(150, 300), Is.EqualTo(8));
         }
+
+        [TestCase(1, 0, 1)]
+        [TestCase(2, 5, 1)]
+        public void Positive_Attack_Has_At_Least_One_Damage(int atk, int def, int expected)
+        {
+            Assert.That(Damage.Calculate(atk, def), Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void Ranged_Reduction_Still_Has_Minimum_One()
+        {
+            Assert.That(Damage.Calculate(1, 0, UnitRole.Ranged, 0.5), Is.EqualTo(1));
+        }
+
+        [TestCase(UnitRole.Melee, 1)]
+        [TestCase(UnitRole.Ranged, 1)]
+        public void Zero_Attack_Deals_Zero_Damage(UnitRole role, double rate)
+        {
+            Assert.That(Damage.Calculate(0, 0, role, rate), Is.EqualTo(0));
+            Assert.That(Damage.Calculate(0, 0), Is.EqualTo(0));
+        }
     }
 }

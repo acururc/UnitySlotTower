@@ -111,6 +111,22 @@ namespace UnitySlotTower.Tests.EditMode.Battle
                     Is.EqualTo(new[] { 5, 160, 280, 440, 640 }), unit.Id);
             }
         }
+
+        [Test]
+        public void Project_Upgrade_Stats_Match_E05()
+        {
+            var units = UnitTable.Load(CsvParser.Parse(UnitTable.FileName,
+                File.ReadAllText(Path.Combine(TablePaths.Root, UnitTable.FileName))));
+            var table = UnitUpgradeTable.Load(CsvParser.Parse(UnitUpgradeTable.FileName,
+                File.ReadAllText(Path.Combine(TablePaths.Root, UnitUpgradeTable.FileName))), units);
+            var sword = units.Get("sword");
+            var tank = units.Get("tank");
+            Assert.That(table.Get("sword", 3).AtkOf(sword), Is.EqualTo(2));
+            Assert.That(table.Get("sword", 5).AtkOf(sword), Is.EqualTo(3));
+            Assert.That(table.Get("tank", 5).MaxHpOf(tank), Is.EqualTo(60));
+            Assert.That(table.Get("tank", 5).AtkOf(tank), Is.EqualTo(0));
+            Assert.That(table.Get("archer", 2).MaxHpOf(units.Get("archer")), Is.EqualTo(10));
+        }
     }
 
     /// <summary>

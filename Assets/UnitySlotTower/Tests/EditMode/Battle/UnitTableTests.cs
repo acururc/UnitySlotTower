@@ -79,7 +79,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("FR-020, AC-022 / plan 5章: 味方は4種（ヒーラーはいない、バッファーは倍率 1.3）。コスト 130/100/120/150 円（plan 17.1）、待ち時間 20/12/15/25、近距離は地上・遠距離は高台")]
+        [Description("FR-020, AC-022 / plan 5章: 味方は4種（ヒーラーはいない、バッファーは倍率 2、spec 002 plan 4章）。コスト 130/100/120/150 円（plan 17.1）、待ち時間 20/12/15/25、近距離は地上・遠距離は高台")]
         public void Project_Table_Holds_Four_Units_With_Planned_Cost_Cooldown_And_Tile()
         {
             var text = File.ReadAllText(Path.Combine(TablePaths.Root, UnitTable.FileName));
@@ -91,7 +91,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
                 ("tank", 130, 20.0, UnitTile.Ground, 1.0),
                 ("sword", 100, 12.0, UnitTile.Ground, 1.0),
                 ("archer", 120, 15.0, UnitTile.High, 1.0),
-                ("buffer", 150, 25.0, UnitTile.High, 1.3),
+                ("buffer", 150, 25.0, UnitTile.High, 2.0),
             }));
         }
     }

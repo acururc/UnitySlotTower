@@ -102,7 +102,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var final = enemies.Get("final_boss");
 
             Assert.That((mid.CoinRate, mid.MoneyRate, mid.MoneyMin, mid.MoneyMax, final.CoinRate, final.MoneyRate),
-                Is.EqualTo((0.0, 1.0, 120, 120, 0.0, 0.0)));
+                Is.EqualTo((0.0, 1.0, 200, 200, 0.0, 0.0)));
         }
 
         [Test]

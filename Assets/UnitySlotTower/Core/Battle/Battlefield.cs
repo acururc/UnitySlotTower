@@ -211,6 +211,10 @@ namespace UnitySlotTower.Core.Battle
         private void SkillAttack(BattleUnit unit, double rate)
         {
             var atk = EffectiveAtk(unit, rate);
+            if (atk <= 0)
+            {
+                return;
+            }
             foreach (var enemy in _enemies)
             {
                 if (enemy.IsAlive && CanTarget(unit, enemy))
@@ -475,12 +479,18 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>
         /// 攻撃間隔ごとに、範囲内の敵を攻撃する。対象がなければ待たずに次のステップで探す。
         /// バッファーは攻撃せず、<see cref="EffectiveAtk"/> で範囲内の味方の攻撃力を上げる。
+        /// 攻撃力0の職（タンク）も攻撃しない（FR-109）。ブロックはする。
         /// </summary>
         private void Act()
         {
             foreach (var unit in _units)
             {
                 if (unit.Definition.Role == UnitRole.Buff)
+                {
+                    continue;
+                }
+
+                if (EffectiveAtk(unit) <= 0)
                 {
                     continue;
                 }

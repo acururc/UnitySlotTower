@@ -45,7 +45,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Invalid_Enemy_Ranged_Damage_Rate_Is_Reported(string rate)
         {
             var files = TablePaths.ReadAll();
-            files["enemies.csv"] = files["enemies.csv"].Replace(",0.4\n", "," + rate + "\n");
+            files["enemies.csv"] = files["enemies.csv"].Replace(",0.5\n", "," + rate + "\n");
             Assert.That(GameDataValidator.ValidateAll(files).Errors.Any(e =>
                 e.File == "enemies.csv" && e.Column == 20), Is.True);
         }
@@ -167,6 +167,24 @@ namespace UnitySlotTower.Tests.EditMode.Data
             var report = GameDataValidator.ValidateAll(TablePaths.ReadAll());
 
             Assert.That(report.IsValid, Is.True, report.ToString());
+        }
+
+        [Test]
+        public void Base_Stats_Match_E05()
+        {
+            var files = TablePaths.ReadAll();
+            var enemies = CsvParser.Parse("enemies.csv", files["enemies.csv"]);
+            var units = CsvParser.Parse("units.csv", files["units.csv"]);
+            var melee = enemies.Rows.Single(row => row.Get("id") == "melee");
+            Assert.That((melee.GetInt("max_hp"), melee.GetInt("atk"), melee.GetDouble("attack_interval"),
+                melee.GetInt("money_min"), melee.GetInt("money_max")), Is.EqualTo((10, 1, 1.0, 30, 30)));
+            var sword = units.Rows.Single(row => row.Get("id") == "sword");
+            Assert.That((sword.GetInt("max_hp"), sword.GetInt("atk"), sword.GetDouble("attack_interval")),
+                Is.EqualTo((10, 1, 0.5)));
+            Assert.That(units.Rows.All(row => row.GetInt("def") == 0), Is.True);
+            Assert.That(enemies.Rows.All(row => row.GetInt("def") == 0), Is.True);
+            Assert.That(units.Rows.Single(row => row.Get("id") == "tank").GetInt("atk"), Is.EqualTo(0));
+            Assert.That(units.Rows.Single(row => row.Get("id") == "buffer").GetInt("atk"), Is.EqualTo(0));
         }
 
         [Test]

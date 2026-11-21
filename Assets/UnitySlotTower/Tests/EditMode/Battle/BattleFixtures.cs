@@ -24,7 +24,8 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         // fodder: HP1・攻撃0・コイン40%で1枚、rich: HP1・攻撃0・必ずコイン2〜3枚、
         // purse: HP1・攻撃0・コイン25%で3枚／所持金40%で2、banker: HP1・攻撃0・必ず所持金2〜3（ドロップを見る役）、
         // quaker: 動かず・通常攻撃0・2秒ごとに半径1.5マスへ範囲攻撃500（範囲攻撃を見る役）、
-        // grunt: HP1・攻撃0・コイン15%で1枚／所持金100%で30（002 の雑魚と同じドロップ、AC-104）
+        // grunt: HP1・攻撃0・コイン15%で1枚／所持金100%で30（002 の雑魚と同じドロップ、AC-104）、
+        // dummy: HP100・攻撃0・防御0・ドロップなし（002 の小さい桁のダメージを見る的、FR-109）
         public const string Enemies =
             "id,max_hp,atk,def,attack_interval,move_speed,range,is_air,block_cost,life_damage," +
             "coin_rate,coin_min,coin_max,money_rate,money_min,money_max,area_atk,area_radius,area_interval\n" +
@@ -38,7 +39,8 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             "purse,1,0,0,1,1,0,0,1,1,0.25,3,3,0.4,2,2,0,0,0\n" +
             "banker,1,0,0,1,1,0,0,1,1,0,0,0,1,2,3,0,0,0\n" +
             "quaker,100000,0,0,1,0,0,0,2,10,0,0,0,0,0,0,500,1.5,2\n" +
-            "grunt,1,0,0,1,1,0,0,1,1,0.15,1,1,1,30,30,0,0,0\n";
+            "grunt,1,0,0,1,1,0,0,1,1,0.15,1,1,1,30,30,0,0,0\n" +
+            "dummy,100,0,0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0\n";
 
         // tank: HP1800・防御300・ブロック3、sword: HP1200・防御50・ブロック1、archer: HP700・防御50、
         // buffer: 倍率1.5、weak_buffer: 倍率1.2（どちらも攻撃力100を持つが攻撃しない）

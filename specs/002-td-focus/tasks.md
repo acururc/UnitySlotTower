@@ -6,7 +6,7 @@
 - [x] T601 (FR-110, FR-111) スロット: 1枚賭け・回数固定の削除・`setting` 列のない20パターン・発動中の出目を外す抽選 — 検証: EditMode（AC-107 の Core 部分、AC-108 の固定シード試行） → 2026-11-22 EditMode 650/650 成功、PlayMode 86 成功・失敗0・撮影用 Explicit 1件スキップ、ハーネス 8/8。`bet`=1・`initial_coins`=3（`initial_money` は T606）。除外の関数は `SlotCabinet.OutcomeFilter`（T602 で効果からつなぐ）。筐体の回数固定の印 `fixedSpinsIcon` は常に非表示にしただけで、シーンの部品は残っている。
 - [x] T602 (FR-112) `SlotEffects`（全体ダメージ・停止・回復・毒・攻撃力・コイン倍率）と `Battlefield` への組み込み、`slot_rules.csv` の値 — 検証: EditMode（AC-109 の Core 部分: 空中にも効く、停止中に動かず攻撃しない、毒は停止中も減る、効果で倒してもドロップ、時間が切れると戻る、コインは 1.5 で止まる） → 2026-11-22 EditMode 650/650 成功、PlayMode 86 成功・失敗0・撮影用 Explicit 1件スキップ、ハーネス 8/8。`BattleBoosts` を `SlotEffects` に置き換え（GUID 維持）、`Battlefield.ApplySlot`、抽選の除外は `BattleController` が `SlotCabinet.OutcomeFilter` に `SlotEffects.CanRoll` を渡す。色7はスキルゲージをためなくなった（スキル本体は T608 まで残る、`gauge_max` も同じ）。早見表のバーは「×2.0」と秒数「10」の仮表示。
 - [x] T603 (FR-107) 所持金とコインの別々の抽選、コイン15%・所持金100% — 検証: EditMode（AC-104）
-- [ ] T604 (FR-109) 最低ダメージ1・攻撃0の職は攻撃しない・`units`/`enemies`/`unit_upgrades` を新しい桁に — 検証: EditMode（AC-106、強化とバッファーとバーが効くこと）
+- [x] T604 (FR-109) 最低ダメージ1・攻撃0の職は攻撃しない・`units`/`enemies`/`unit_upgrades` を新しい桁に — 検証: EditMode（AC-106、強化とバッファーとバーが効くこと）
 - [ ] T605 (FR-102, FR-103, FR-104) `stages.csv`・`stage_waves.csv`・`waves.csv` の `wave` 列、`WaveProgress`（clear/timed）、8ステージの仮データ、データ検証 — 検証: EditMode（AC-102 の Core 部分）
 - [ ] T606 (FR-105, FR-106, FR-108) `RunState` のステージ化と持ち越し、無料ストックの削除、ステージ1の無料の1回 — 検証: EditMode（AC-103、AC-105 の Core 部分）
 
