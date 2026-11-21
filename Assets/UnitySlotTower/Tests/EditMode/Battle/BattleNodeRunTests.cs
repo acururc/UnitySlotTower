@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
@@ -14,7 +15,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         // フィクスチャの地図（4×2）。地上マスは (1,0)(2,0)、高台マスは (1,1)(3,1)。
         //   S1 G G E
         //   S2 H X H
-        // fodder（HP1・攻撃0・1マス/秒・コインだけ落とす）は 0 秒に出て約3秒でゴールに着く。行は encounter_id,time,enemy_id,spawn,path_id,is_boss。
+        // fodder（HP1・攻撃0・1マス/秒・コインだけ落とす）は 0 秒に出て約3秒でゴールに着く。行は e,time,enemy_id,spawn,path_id,is_boss（e は stage 列の 1 に置き換えて読む）。
         private const string OneFodder = "e,0,fodder,S1,g,0\n";
 
         // 通常 e は報酬 所持金10・コイン3、ボス boss は報酬なし、最初 first は回数固定6。
@@ -44,7 +45,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             _config = GameConfig.Load(CsvParser.Parse(GameConfig.FileName,
                 $"key,value\ninitial_coins,{coins}\ninitial_money,{money}\nbet,3\nlife,{life}\n" +
-                $"deploy_limit,{deployLimit}\nretreat_refund_rate,0.5\nintro_seconds,{introSeconds}\nplacement_time_scale,0.1\n"));
+                $"deploy_limit,{deployLimit}\nretreat_refund_rate,0.5\nintro_seconds,{introSeconds}\nplacement_time_scale,0.1\nwave_gap_seconds,1\n"));
             _state = new RunState(_config, BattleFixtures.LoadUpgrades(), SlotTestRules.Create(), 1);
             _waveRows = waveRows;
             return Next(encounterId);
@@ -54,9 +55,10 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         private BattleNodeRun Next(string encounterId = "e")
         {
             var encounter = EncounterFixtures.Get(encounterId);
-            var rows = _waveRows.Replace("e,", encounterId + ",");
+            // 出現はどの戦闘マスでもステージ1の行として読む（行の先頭の "e," を stage 列の "1," にする）。
+            var rows = Regex.Replace(_waveRows, "^e,", "1,", RegexOptions.Multiline);
             return new BattleNodeRun(_config, BattleFixtures.LoadUnits(), BattleFixtures.LoadRanges(), _state, encounter,
-                BattleFixtures.LoadMap(), BattleFixtures.LoadEncounterWave(rows, encounterId),
+                BattleFixtures.LoadMap(), BattleFixtures.LoadStageWave(rows, 1),
                 new SeededRandom(1));
         }
 

@@ -7,7 +7,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
     public sealed class GameConfigTests
     {
         private const string ValidConfig =
-            "key,value\ninitial_coins,15\ninitial_money,30\nbet,3\nlife,10\ndeploy_limit,8\nretreat_refund_rate,0.5\nintro_seconds,2\nplacement_time_scale,0.1\n";
+            "key,value\ninitial_coins,15\ninitial_money,30\nbet,3\nlife,10\ndeploy_limit,8\nretreat_refund_rate,0.5\nintro_seconds,2\nplacement_time_scale,0.1\nwave_gap_seconds,1\n";
 
         [Test]
         [Description("plan 16.2: コインと所持金の初期値を別々に読む（ライフボーナスのキーはない）")]
@@ -18,6 +18,16 @@ namespace UnitySlotTower.Tests.EditMode.Data
             Assert.That((config.InitialCoins, config.InitialMoney, config.Bet, config.Life, config.DeployLimit,
                     config.RetreatRefundRate),
                 Is.EqualTo((15, 30, 3, 10, 8, 0.5)));
+        }
+
+        [Test]
+        [Description("FR-102, plan 2.1: 全滅から次のウェーブまでの間隔を読む")]
+        public void Wave_Gap_Is_Read()
+        {
+            var config = GameConfig.Load(CsvParser.Parse("game_config.csv",
+                ValidConfig.Replace("wave_gap_seconds,1", "wave_gap_seconds,2.5")));
+
+            Assert.That(config.WaveGapSeconds, Is.EqualTo(2.5));
         }
 
         [Test]

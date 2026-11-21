@@ -7,7 +7,7 @@
 - [x] T602 (FR-112) `SlotEffects`（全体ダメージ・停止・回復・毒・攻撃力・コイン倍率）と `Battlefield` への組み込み、`slot_rules.csv` の値 — 検証: EditMode（AC-109 の Core 部分: 空中にも効く、停止中に動かず攻撃しない、毒は停止中も減る、効果で倒してもドロップ、時間が切れると戻る、コインは 1.5 で止まる） → 2026-11-22 EditMode 650/650 成功、PlayMode 86 成功・失敗0・撮影用 Explicit 1件スキップ、ハーネス 8/8。`BattleBoosts` を `SlotEffects` に置き換え（GUID 維持）、`Battlefield.ApplySlot`、抽選の除外は `BattleController` が `SlotCabinet.OutcomeFilter` に `SlotEffects.CanRoll` を渡す。色7はスキルゲージをためなくなった（スキル本体は T608 まで残る、`gauge_max` も同じ）。早見表のバーは「×2.0」と秒数「10」の仮表示。
 - [x] T603 (FR-107) 所持金とコインの別々の抽選、コイン15%・所持金100% — 検証: EditMode（AC-104）
 - [x] T604 (FR-109) 最低ダメージ1・攻撃0の職は攻撃しない・`units`/`enemies`/`unit_upgrades` を新しい桁に — 検証: EditMode（AC-106、強化とバッファーとバーが効くこと）
-- [ ] T605 (FR-102, FR-103, FR-104) `stages.csv`・`stage_waves.csv`・`waves.csv` の `wave` 列、`WaveProgress`（clear/timed）、8ステージの仮データ、データ検証 — 検証: EditMode（AC-102 の Core 部分）
+- [x] T605 (FR-102, FR-103, FR-104) `stages.csv`・`stage_waves.csv`・`waves.csv` の `wave` 列、`WaveProgress`（clear/timed）、8ステージの仮データ、データ検証 — 検証: EditMode（AC-102 の Core 部分） → 2026-11-22 EditMode 697/697、PlayMode 86 成功・失敗0・Explicit 1件スキップ、ハーネス 8/8。`waves.csv` は `encounter_id` を `stage,wave` に置き換え（時刻はウェーブの始まりから）。ステージ2〜8は旧データの群れをそのまま5ウェーブに分割し、5〜7に重装・空中・遠距離を少し足した（敵数 14/38/49/51/51/50/50/71）。`game_config` に `wave_gap_seconds`=1。T607 までは旧ルートの戦闘マスがマップの一致するステージのウェーブで戦う（`BattleController.StageWaves`、Game シーンに `stagesTable`・`stageWavesTable` を割り当て済み）。出現のない `stage_waves` の行は読み込みで無視し検証でエラーにする（PlayMode の差し込み表が1ウェーブのため）。PlayMode の修正: `SlotDuringBattleTests` はステージ1が60秒で終わるので報酬込みで比べ、撃破は所持金ドロップで見る。`HelpTests` のバッファー倍率を ×2.0 に（T604 の積み残し）。
 - [ ] T606 (FR-105, FR-106, FR-108) `RunState` のステージ化と持ち越し、無料ストックの削除、ステージ1の無料の1回 — 検証: EditMode（AC-103、AC-105 の Core 部分）
 
 ## M2 流れの作り替え

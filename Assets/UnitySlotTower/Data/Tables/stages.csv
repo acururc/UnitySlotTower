@@ -1,0 +1,9 @@
+stage,map_id,wave_mode,boss
+1,first,clear,none
+2,battle_a,timed,none
+3,battle_b,timed,none
+4,elite_a,timed,mid_boss
+5,battle_c,timed,none
+6,battle_d,timed,none
+7,battle_e,timed,none
+8,boss_a,timed,final_boss

@@ -7,3 +7,4 @@ deploy_limit,8
 retreat_refund_rate,0.5
 intro_seconds,2
 placement_time_scale,0.2
+wave_gap_seconds,1

@@ -31,14 +31,55 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("FR-010, D-78: 戦闘マスの id が合う行だけを読む（戦闘マスは1ウェーブ）")]
-        public void Only_Rows_Of_The_Encounter_Are_Read()
+        [Description("FR-102: ステージ番号が合う行だけを読む")]
+        public void Only_Rows_Of_The_Stage_Are_Read()
         {
-            var wave = BattleFixtures.LoadEncounterWave(
-                "a,0,melee,S1,g,0\nb,0,air,S2,a,0\na,1,ranged,S1,g,0\nb,1,rich,S1,g,0\n", "b");
+            var wave = BattleFixtures.LoadStageWave(
+                "1,0,melee,S1,g,0\n2,0,air,S2,a,0\n1,1,ranged,S1,g,0\n2,1,rich,S1,g,0\n", 2);
 
-            Assert.That((wave.EncounterId, string.Join(",", wave.Spawns.Select(s => s.Enemy.Id))),
-                Is.EqualTo(("b", "air,rich")));
+            Assert.That((wave.Stage, string.Join(",", wave.Spawns.Select(s => s.Enemy.Id))),
+                Is.EqualTo((2, "air,rich")));
+        }
+
+        [Test]
+        [Description("FR-102, plan 2.1: 行は wave 列でウェーブに分かれ、時刻はウェーブの始まりから。start_after は stage_waves.csv から読む")]
+        public void Rows_Are_Grouped_By_Wave_With_Start_After()
+        {
+            var wave = BattleFixtures.LoadStagedWave(
+                "2,1,ranged,S1,g,0,1,0\n1,3,melee,S1,g,0,1,0\n2,0,air,S2,a,0,1,0\n1,0,rich,S1,g,0,1,0\n", 0, 7.5);
+
+            Assert.That(wave.Waves.Select(w => (w.Number, w.StartAfter,
+                    string.Join(",", w.Spawns.Select(s => $"{s.Wave}:{s.Time}:{s.Enemy.Id}")))),
+                Is.EqualTo(new[] { (1, 0.0, "1:0:rich,1:3:melee"), (2, 7.5, "2:0:air,2:1:ranged") }));
+            Assert.That(wave.Spawns.Select(s => s.Enemy.Id), Is.EqualTo(new[] { "rich", "melee", "air", "ranged" }));
+        }
+
+        [Test]
+        [Description("plan 2.1: stage_waves.csv にないウェーブの行はその行の wave のセルのエラー")]
+        public void Wave_Missing_From_Stage_Waves_Is_An_Error_At_Its_Cell()
+        {
+            var error = Assert.Throws<CsvFormatException>(() =>
+                BattleFixtures.LoadStagedWave("1,0,melee,S1,g,0,1,0\n2,0,melee,S1,g,0,1,0\n", 0)).Error;
+
+            Assert.That((error.File, error.Line, error.Column), Is.EqualTo((WaveSchedule.FileName, 3, 2)));
+        }
+
+        [Test]
+        [Description("plan 2.1: 出現のないウェーブの stage_waves.csv の行は読み飛ばす（データ検証でエラーにする）")]
+        public void Stage_Wave_Without_Spawns_Is_Skipped_On_Load()
+        {
+            var wave = BattleFixtures.LoadStagedWave("1,0,melee,S1,g,0,1,0\n", 0, 5);
+
+            Assert.That(wave.Waves.Select(w => w.Number), Is.EqualTo(new[] { 1 }));
+        }
+
+        [Test]
+        public void Wave_Below_One_Is_An_Error_At_Its_Cell()
+        {
+            var error = Assert.Throws<CsvFormatException>(() =>
+                BattleFixtures.LoadStagedWave("0,0,melee,S1,g,0,1,0\n", 0)).Error;
+
+            Assert.That((error.Line, error.Column), Is.EqualTo((2, 2)));
         }
 
         [Test]
@@ -58,12 +99,12 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("D-78, FR-034: waves.csv に wave 列はなく（戦闘マスは1ウェーブ）、群れの count・interval 列がある")]
-        public void Project_Waves_Have_Group_Columns_And_No_Wave_Column()
+        [Description("FR-102, FR-034: waves.csv はステージとウェーブの列で始まり、群れの count・interval 列がある")]
+        public void Project_Waves_Have_Stage_Wave_And_Group_Columns()
         {
             var header = TablePaths.ReadAll()[WaveSchedule.FileName].Split('\n')[0].Trim();
 
-            Assert.That(header, Is.EqualTo("encounter_id,time,enemy_id,spawn,path_id,is_boss,count,interval"));
+            Assert.That(header, Is.EqualTo("stage,wave,time,enemy_id,spawn,path_id,is_boss,count,interval"));
         }
 
         [Test]
@@ -110,17 +151,18 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("FR-034 / FR-075: 群れは3〜5体。重装1体は同じ経路の直前の3体の群れに続く。ボスは1体")]
+        [Description("FR-034 / FR-075: ステージ1（チュートリアル）以外の群れは3〜5体。重装1体は同じウェーブの3〜5体の群れの直後に続く。ボスは1体")]
         public void Project_Groups_Have_Three_To_Five_Enemies_Except_Bosses()
         {
             var waves = CsvParser.Parse(WaveSchedule.FileName, TablePaths.ReadAll()[WaveSchedule.FileName]);
             var wrong = waves.Rows
+                .Where(r => r.GetInt("stage") != 1)
                 .Where(r => r.GetBool("is_boss") ? r.GetInt("count") != 1 :
                     r.Get("enemy_id") == "heavy" ? r.GetInt("count") != 1 || !waves.Rows.Any(group =>
-                        group.Get("encounter_id") == r.Get("encounter_id") &&
-                        group.Get("path_id") == r.Get("path_id") && group.Get("enemy_id") == "melee" &&
-                        group.GetInt("count") == 3 && System.Math.Abs(group.GetDouble("time") +
-                            3 * group.GetDouble("interval") - r.GetDouble("time")) < 0.0001) :
+                        group.Get("stage") == r.Get("stage") && group.Get("wave") == r.Get("wave") &&
+                        group.Get("enemy_id") == "melee" && group.GetInt("count") >= 3 && group.GetInt("count") <= 5 &&
+                        System.Math.Abs(group.GetDouble("time") +
+                            group.GetInt("count") * group.GetDouble("interval") - r.GetDouble("time")) < 0.0001) :
                     r.GetInt("count") < 3 || r.GetInt("count") > 5)
                 .Select(r => r.Line)
                 .ToArray();
@@ -162,23 +204,29 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("FR-010: 出現表のどの戦闘マスも、そのマップで敵が出る")]
-        public void Project_Every_Encounter_Wave_Loads_On_Its_Map()
+        [Description("FR-102: どのステージも、そのマップで stage_waves.csv のウェーブどおりに敵が出る")]
+        public void Project_Every_Stage_Wave_Loads_On_Its_Map()
         {
             var tables = TablePaths.ReadAll();
             var paths = CsvParser.Parse(BattleMap.PathsFileName, tables[BattleMap.PathsFileName]);
             var waves = CsvParser.Parse(WaveSchedule.FileName, tables[WaveSchedule.FileName]);
+            var stageWaves = CsvParser.Parse(WaveSchedule.StageWavesFileName, tables[WaveSchedule.StageWavesFileName]);
             var enemies = EnemyTable.Load(CsvParser.Parse(EnemyTable.FileName, tables[EnemyTable.FileName]));
-            var encounters = EncounterTable.Load(CsvParser.Parse(EncounterTable.FileName, tables[EncounterTable.FileName]));
-            var counts = new System.Collections.Generic.List<int>();
+            var stages = StageTable.Load(CsvParser.Parse(StageTable.FileName, tables[StageTable.FileName]));
+            var empty = new System.Collections.Generic.List<string>();
 
-            foreach (var encounter in encounters.All)
+            foreach (var stage in stages.Stages)
             {
-                var map = BattleMap.Load(encounter.MapId, tables[BattleMap.MapFileName(encounter.MapId)], paths);
-                counts.Add(WaveSchedule.Load(waves, encounter.Id, map, enemies).Spawns.Count);
+                var map = BattleMap.Load(stage.MapId, tables[BattleMap.MapFileName(stage.MapId)], paths);
+                var schedule = WaveSchedule.Load(waves, stage.Number, map, enemies, stageWaves);
+                empty.AddRange(schedule.Waves.Where(w => w.Spawns.Count == 0).Select(w => $"{stage.Number}-{w.Number}"));
+                if (schedule.Waves.Count == 0)
+                {
+                    empty.Add($"{stage.Number}");
+                }
             }
 
-            Assert.That((counts.Count, counts.All(c => c > 0)), Is.EqualTo((encounters.All.Count, true)));
+            Assert.That(empty, Is.Empty);
         }
     }
 }

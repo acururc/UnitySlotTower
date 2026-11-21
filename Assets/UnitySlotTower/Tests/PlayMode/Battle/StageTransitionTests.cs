@@ -20,11 +20,11 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
     {
         // 近接の敵だけ（最初の戦闘は2体、通常の戦闘は1体）。味方を置かないので敵はゴールに着き、ライフ1ずつ減って戦闘が終わる。
         private const string ShortWaves =
-            "encounter_id,time,enemy_id,spawn,path_id,is_boss\n" +
-            "first,0,melee,S1,first_g1,0\n" +
-            "first,3,melee,S1,first_g1,0\n" +
-            "battle_a,0,melee,S1,battle_a_g1,0\nbattle_b,0,melee,S1,battle_b_g1,0\nbattle_c,0,melee,S1,battle_c_g1,0\nbattle_d,0,melee,S1,battle_d_g1,0\nbattle_e,0,melee,S1,battle_e_g1,0\n" +
-            "elite_a,0,melee,S1,elite_a_g1,0\n";
+            "stage,time,enemy_id,spawn,path_id,is_boss\n" +
+            "1,0,melee,S1,first_g1,0\n" +
+            "1,3,melee,S1,first_g1,0\n" +
+            "2,0,melee,S1,battle_a_g1,0\n3,0,melee,S1,battle_b_g1,0\n5,0,melee,S1,battle_c_g1,0\n6,0,melee,S1,battle_d_g1,0\n7,0,melee,S1,battle_e_g1,0\n" +
+            "4,0,melee,S1,elite_a_g1,0\n";
 
         private bool _runInBackground;
         private BattleController _battle;

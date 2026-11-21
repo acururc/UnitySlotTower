@@ -22,6 +22,7 @@ namespace UnitySlotTower.Core.Data
             ColumnRule.Float("retreat_refund_rate", 0, 1),
             ColumnRule.Float("intro_seconds", 0, 10),
             ColumnRule.Float("placement_time_scale", 0.01, 1),
+            ColumnRule.Float("wave_gap_seconds", 0, 10),
         };
 
         private static readonly ColumnRule[] SlotRuleKeys =
@@ -107,8 +108,18 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Int("reward_money", 0, 100000),
                 ColumnRule.Int("reward_coins", 0, 100000),
                 ColumnRule.Int("weight", 1, int.MaxValue)),
+            new TableSchema(StageTable.FileName, new[] { "stage" },
+                ColumnRule.Int("stage", 1, 99),
+                ColumnRule.Id("map_id"),
+                ColumnRule.Enum("wave_mode", StageTable.ModeIds),
+                ColumnRule.Id("boss")),
+            new TableSchema(WaveSchedule.StageWavesFileName, new[] { "stage", WaveSchedule.WaveColumn },
+                ColumnRule.Int("stage", 1, 99),
+                ColumnRule.Int(WaveSchedule.WaveColumn, 1, 99),
+                ColumnRule.Float("start_after", 0, 3600)),
             new TableSchema("waves.csv", null,
-                ColumnRule.Id("encounter_id"),
+                ColumnRule.Int("stage", 1, 99),
+                ColumnRule.Int(WaveSchedule.WaveColumn, 1, 99),
                 ColumnRule.Float("time", 0, 3600),
                 ColumnRule.Id("enemy_id"),
                 ColumnRule.Id("spawn"),
@@ -171,11 +182,16 @@ namespace UnitySlotTower.Core.Data
                 }
             }
 
-            // 検証するマップは出現表（encounters.csv）が使うもの（plan 16.6）。
+            // 検証するマップはステージ（stages.csv）と出現表（encounters.csv）が使うもの（plan 16.6、002 plan 2.1）。
             var maps = new List<string>();
-            if (tables.TryGetValue(EncounterTable.FileName, out var encounterRows))
+            foreach (var fileName in new[] { StageTable.FileName, EncounterTable.FileName })
             {
-                foreach (var row in encounterRows.Rows)
+                if (!tables.TryGetValue(fileName, out var mapRows))
+                {
+                    continue;
+                }
+
+                foreach (var row in mapRows.Rows)
                 {
                     var name = row.Get("map_id");
                     if (!maps.Contains(name) && ValidateMap(files, BattleMap.MapFileName(name), report))
@@ -192,16 +208,18 @@ namespace UnitySlotTower.Core.Data
 
             TableValidator.ValidateReference(tables["unit_ranges.csv"], "unit_id", tables["units.csv"], "id", report);
             TableValidator.ValidateReference(tables["unit_upgrades.csv"], "unit_id", tables["units.csv"], "id", report);
-            TableValidator.ValidateReference(tables["waves.csv"], "encounter_id", tables[EncounterTable.FileName], "id",
-                report);
+            TableValidator.ValidateReference(tables["waves.csv"], "stage", tables[StageTable.FileName], "stage", report);
+            TableValidator.ValidateReference(tables[WaveSchedule.StageWavesFileName], "stage", tables[StageTable.FileName],
+                "stage", report);
             TableValidator.ValidateReference(tables["waves.csv"], "enemy_id", tables["enemies.csv"], "id", report);
             TableValidator.ValidateReference(tables["waves.csv"], "path_id", tables["map_paths.csv"], "path_id", report);
             ValidateMapIds(tables["map_paths.csv"], maps, report);
 
             TableValidator.ValidatePathContinuity(tables["map_paths.csv"], report);
             var battleMaps = ValidateMapPaths(files, tables["map_paths.csv"], maps, report);
-            ValidateWaves(tables["waves.csv"], tables[EncounterTable.FileName], tables["enemies.csv"], battleMaps, report);
-            ValidateEncounters(tables[EncounterTable.FileName], tables["waves.csv"], routeTable, report);
+            ValidateStages(tables[StageTable.FileName], tables["waves.csv"], tables[WaveSchedule.StageWavesFileName],
+                tables["enemies.csv"], battleMaps, report);
+            ValidateEncounters(tables[EncounterTable.FileName], tables[StageTable.FileName], routeTable, report);
             ValidateSlotPatterns(tables[SlotPatterns.FileName], report);
             ValidateSlotReels(tables[SlotReels.FileName], report);
             TableValidator.ValidateReference(tables[SkillTable.FileName], "unit_id", tables["units.csv"], "id", report);
@@ -403,10 +421,10 @@ namespace UnitySlotTower.Core.Data
         }
 
         /// <summary>
-        /// 出現表の組み合わせ（plan 16.6）: 強敵・ボスのマップは専用、ボス（is_boss）は強敵・ボスマスの最後のウェーブだけ、
-        /// ルートの各階に置かれうる戦闘マスの種類に合う行がある。
+        /// 出現表の組み合わせ（plan 16.6）: 強敵・ボスのマップは専用、各行のマップを使うステージがある（ステージの流れの T607 までは
+        /// 戦闘マスのマップのステージのウェーブで戦う）、ルートの各階に置かれうる戦闘マスの種類に合う行がある。
         /// </summary>
-        private static void ValidateEncounters(CsvTable encounterTable, CsvTable waves, CsvTable routeTable,
+        private static void ValidateEncounters(CsvTable encounterTable, CsvTable stageTable, CsvTable routeTable,
             ValidationReport report)
         {
             EncounterTable encounters;
@@ -414,13 +432,14 @@ namespace UnitySlotTower.Core.Data
             {
                 encounters = EncounterTable.Load(encounterTable);
             }
-            catch (CsvFormatException)
+            catch (CsvFormatException ex)
             {
-                return; // ValidateWaves で報告済み。
+                report.Add(ex.Error);
+                return;
             }
 
             ValidateDedicatedMaps(encounterTable, encounters, report);
-            ValidateBosses(waves, encounters, report);
+            ValidateEncounterStages(encounterTable, stageTable, report);
             if (routeTable == null)
             {
                 return;
@@ -464,49 +483,25 @@ namespace UnitySlotTower.Core.Data
             }
         }
 
-        /// <summary>ボス（is_boss）は強敵・ボスマスの最後のウェーブにだけ出て、強敵・ボスマスには必ず出る（FR-010）。</summary>
-        private static void ValidateBosses(CsvTable waves, EncounterTable encounters, ValidationReport report)
+        /// <summary>出現表の各行のマップを使うステージがある（なければ戦闘マスのウェーブが決まらない）。</summary>
+        private static void ValidateEncounterStages(CsvTable encounterTable, CsvTable stageTable, ValidationReport report)
         {
-            var withBoss = new HashSet<string>();
-            foreach (var row in waves.Rows)
+            StageTable stages;
+            try
             {
-                var id = row.Get("encounter_id");
-                if (!encounters.Contains(id))
-                {
-                    continue; // 参照の検証で報告済み。
-                }
-
-                bool isBoss;
-                try
-                {
-                    isBoss = row.GetBool("is_boss");
-                }
-                catch (CsvFormatException)
-                {
-                    continue; // 列の検証で報告済み。
-                }
-
-                if (!isBoss)
-                {
-                    continue;
-                }
-
-                if (IsBossKind(encounters.Get(id).Kind))
-                {
-                    withBoss.Add(id);
-                }
-                else
-                {
-                    report.Add(row.Error("is_boss", $"ボスが出られるのは強敵・ボスマスだけ（'{id}'）").Error);
-                }
+                stages = StageTable.Load(stageTable);
+            }
+            catch (CsvFormatException)
+            {
+                return; // ValidateStages で報告済み。
             }
 
-            foreach (var encounter in encounters.All)
+            foreach (var row in encounterTable.Rows)
             {
-                if (IsBossKind(encounter.Kind) && !withBoss.Contains(encounter.Id))
+                var mapId = row.Get("map_id");
+                if (stages.FindByMap(mapId) == null)
                 {
-                    report.Add(new CsvError(waves.FileName, 0, 0,
-                        $"戦闘マス '{encounter.Id}' にボス（is_boss）がいない"));
+                    report.Add(row.Error("map_id", $"マップ '{mapId}' を使うステージが {StageTable.FileName} にない").Error);
                 }
             }
         }
@@ -589,18 +584,19 @@ namespace UnitySlotTower.Core.Data
         }
 
         /// <summary>
-        /// 各戦闘マス（encounters.csv）の行が、そのマップの経路・出現口・空中フラグと合うかを <see cref="WaveSchedule"/> で確かめる。
-        /// 敵のいない戦闘マスもエラーにする。
+        /// ステージとウェーブ（FR-102〜FR-104、002 plan 2.1）: ステージ番号は1から連番、各ステージにマップとウェーブがあり、
+        /// ウェーブは1から連番で敵がいる、ウェーブ1の start_after は0、timed では次のウェーブが前のウェーブを出し終わってから来る、
+        /// ボスは boss 列のステージの最後のウェーブにだけ出る。各行がマップの経路・出現口・空中フラグと合うかは <see cref="WaveSchedule"/> で確かめる。
         /// </summary>
-        private static void ValidateWaves(CsvTable waves, CsvTable encounterTable, CsvTable enemyTable,
+        private static void ValidateStages(CsvTable stageTable, CsvTable waves, CsvTable stageWaves, CsvTable enemyTable,
             Dictionary<string, BattleMap> maps, ValidationReport report)
         {
             EnemyTable enemies;
-            EncounterTable encounters;
+            StageTable stages;
             try
             {
                 enemies = EnemyTable.Load(enemyTable);
-                encounters = EncounterTable.Load(encounterTable);
+                stages = StageTable.Load(stageTable);
             }
             catch (CsvFormatException ex)
             {
@@ -608,45 +604,194 @@ namespace UnitySlotTower.Core.Data
                 return;
             }
 
-            foreach (var encounter in encounters.All)
+            ValidateStageNumbers(stageTable, stages, report);
+            for (var i = 0; i < stages.Count; i++)
             {
-                if (!maps.TryGetValue(encounter.MapId, out var map))
+                var stage = stages.Stages[i];
+                var stageRow = stageTable.Rows[i];
+                if (stage.BossId != null && !enemies.Contains(stage.BossId))
                 {
+                    report.Add(stageRow.Error("boss", $"敵 '{stage.BossId}' がない").Error);
+                }
+
+                if (!maps.TryGetValue(stage.MapId, out var map))
+                {
+                    continue; // マップの検証で報告済み。
+                }
+
+                WaveSchedule schedule;
+                try
+                {
+                    schedule = WaveSchedule.Load(waves, stage.Number, map, enemies, stageWaves);
+                }
+                catch (CsvFormatException ex)
+                {
+                    report.Add(ex.Error);
+                    continue;
+                }
+
+                if (schedule.Waves.Count == 0)
+                {
+                    report.Add(stageRow.Error("stage", $"ステージ {stage.Number} の敵が {waves.FileName} にない").Error);
                     continue;
                 }
 
                 try
                 {
-                    if (WaveSchedule.Load(waves, encounter.Id, map, enemies).Spawns.Count == 0)
+                    ValidateWaveTiming(stage, schedule, stageWaves, report);
+                    ValidateEmptyWaves(stage, schedule, stageWaves, report);
+                    ValidateStageBoss(stage, schedule, waves, report);
+                    if (stage.Number == 1)
                     {
-                        report.Add(new CsvError(waves.FileName, 0, 0, $"戦闘マス '{encounter.Id}' の敵がない"));
+                        ValidateCenterLane(waves, stage.Number, map, report);
+                        foreach (var row in waves.Rows)
+                        {
+                            if (row.GetInt("stage") == stage.Number && row.Get("enemy_id") == "heavy")
+                            {
+                                report.Add(row.Error("enemy_id", "ステージ1には重装を出せない（FR-075）").Error);
+                            }
+                        }
                     }
                 }
                 catch (CsvFormatException ex)
                 {
-                    report.Add(ex.Error);
-                }
-
-                if (encounter.Kind == EncounterKind.First)
-                {
-                    ValidateCenterLane(waves, encounter.Id, map, report);
-                    foreach (var row in waves.Rows)
-                    {
-                        if (row.Get("encounter_id") == encounter.Id && row.Get("enemy_id") == "heavy")
-                        {
-                            report.Add(row.Error("enemy_id", "最初の戦闘には重装を出せない（FR-075）").Error);
-                        }
-                    }
+                    report.Add(ex.Error); // 型の誤りは列の検証でも報告される。ここでは残りのステージの検証を続ける。
                 }
             }
         }
 
-        /// <summary>最初の戦闘の敵は中央のレーン（出現口がマップの中央の行にある道）からだけ出る（FR-034, D-80）。</summary>
-        private static void ValidateCenterLane(CsvTable waves, string encounterId, BattleMap map, ValidationReport report)
+        /// <summary>ステージ番号は1から連番（全ステージを順に進む、FR-101）。</summary>
+        private static void ValidateStageNumbers(CsvTable stageTable, StageTable stages, ValidationReport report)
+        {
+            for (var i = 0; i < stages.Count; i++)
+            {
+                var number = stages.Stages[i].Number;
+                if (number > stages.Count)
+                {
+                    report.Add(stageTable.Rows[i].Error("stage",
+                        $"ステージは1から連番: {number} は {stages.Count} 行の表の番号を超える").Error);
+                }
+            }
+        }
+
+        /// <summary>ウェーブは1から連番、ウェーブ1の start_after は0、timed では start_after が前のウェーブの最後の出現より後。</summary>
+        private static void ValidateWaveTiming(StageDefinition stage, WaveSchedule schedule, CsvTable stageWaves,
+            ValidationReport report)
+        {
+            for (var i = 0; i < schedule.Waves.Count; i++)
+            {
+                var wave = schedule.Waves[i];
+                var row = FindStageWaveRow(stageWaves, stage.Number, wave.Number);
+                if (wave.Number != i + 1)
+                {
+                    report.Add(row.Error(WaveSchedule.WaveColumn,
+                        $"ステージ {stage.Number} のウェーブは1から連番: {i + 1} がない").Error);
+                    return;
+                }
+
+                if (i == 0)
+                {
+                    if (wave.StartAfter != 0)
+                    {
+                        report.Add(row.Error("start_after", "ウェーブ1の start_after は0").Error);
+                    }
+
+                    continue;
+                }
+
+                var previous = schedule.Waves[i - 1].Spawns;
+                var lastSpawn = previous[previous.Count - 1].Time;
+                if (stage.Mode == WaveMode.Timed && wave.StartAfter <= lastSpawn)
+                {
+                    report.Add(row.Error("start_after",
+                        $"ステージ {stage.Number} のウェーブ {wave.Number} は前のウェーブの最後の出現（{lastSpawn} 秒）より後に始める").Error);
+                }
+            }
+        }
+
+        /// <summary>stage_waves.csv のウェーブには waves.csv の出現がある。</summary>
+        private static void ValidateEmptyWaves(StageDefinition stage, WaveSchedule schedule, CsvTable stageWaves,
+            ValidationReport report)
+        {
+            foreach (var row in stageWaves.Rows)
+            {
+                if (row.GetInt("stage") != stage.Number)
+                {
+                    continue;
+                }
+
+                var number = row.GetInt(WaveSchedule.WaveColumn);
+                var found = false;
+                foreach (var wave in schedule.Waves)
+                {
+                    found |= wave.Number == number;
+                }
+
+                if (!found)
+                {
+                    report.Add(row.Error(WaveSchedule.WaveColumn,
+                        $"ステージ {stage.Number} のウェーブ {number} の出現が waves.csv にない").Error);
+                }
+            }
+        }
+
+        private static CsvRow FindStageWaveRow(CsvTable stageWaves, int stage, int wave)
+        {
+            foreach (var row in stageWaves.Rows)
+            {
+                if (row.GetInt("stage") == stage && row.GetInt(WaveSchedule.WaveColumn) == wave)
+                {
+                    return row;
+                }
+            }
+
+            throw new KeyNotFoundException($"{WaveSchedule.StageWavesFileName} にステージ {stage} のウェーブ {wave} がない");
+        }
+
+        /// <summary>ボス（is_boss）は boss 列の敵が、そのステージの最後のウェーブにだけ出る。boss 列のステージには必ず出る（FR-104）。</summary>
+        private static void ValidateStageBoss(StageDefinition stage, WaveSchedule schedule, CsvTable waves,
+            ValidationReport report)
+        {
+            var lastWave = schedule.Waves[schedule.Waves.Count - 1].Number;
+            var found = false;
+            foreach (var row in waves.Rows)
+            {
+                if (row.GetInt("stage") != stage.Number || !row.GetBool("is_boss"))
+                {
+                    continue;
+                }
+
+                if (stage.BossId == null)
+                {
+                    report.Add(row.Error("is_boss", $"ステージ {stage.Number} にはボスが出ない（{StageTable.FileName} の boss）").Error);
+                }
+                else if (row.GetInt(WaveSchedule.WaveColumn) != lastWave)
+                {
+                    report.Add(row.Error(WaveSchedule.WaveColumn, $"ボスはステージ {stage.Number} の最後のウェーブ {lastWave} だけ").Error);
+                }
+                else if (row.Get("enemy_id") != stage.BossId)
+                {
+                    report.Add(row.Error("enemy_id", $"ステージ {stage.Number} のボスは '{stage.BossId}'").Error);
+                }
+                else
+                {
+                    found = true;
+                }
+            }
+
+            if (stage.BossId != null && !found)
+            {
+                report.Add(new CsvError(waves.FileName, 0, 0,
+                    $"ステージ {stage.Number} の最後のウェーブにボス '{stage.BossId}'（is_boss）がいない"));
+            }
+        }
+
+        /// <summary>ステージ1の敵は中央のレーン（出現口がマップの中央の行にある道）からだけ出る（FR-034, D-80）。</summary>
+        private static void ValidateCenterLane(CsvTable waves, int stage, BattleMap map, ValidationReport report)
         {
             foreach (var row in waves.Rows)
             {
-                if (row.Get("encounter_id") != encounterId)
+                if (row.GetInt("stage") != stage)
                 {
                     continue;
                 }

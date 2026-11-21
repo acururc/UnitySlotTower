@@ -35,8 +35,8 @@ namespace UnitySlotTower.Tests.EditMode.Battle
                     "m,upper,0,1,0,0\nm,upper,0,2,1,0\nm,upper,0,3,2,0\n" +
                     "m,lower,0,1,0,2\nm,lower,0,2,1,2\nm,lower,0,3,2,2\n"));
             var wave = WaveSchedule.Load(CsvParser.Parse(WaveSchedule.FileName, BattleFixtures.GroupWavesHeader +
-                $"e,0,{enemyId},S1,upper,0,1,0\ne,5,{enemyId},S2,lower,0,1,0\n"),
-                "e", map, BattleFixtures.LoadEnemies());
+                $"1,0,{enemyId},S1,upper,0,1,0\n1,5,{enemyId},S2,lower,0,1,0\n"),
+                1, map, BattleFixtures.LoadEnemies());
             var field = new Battlefield(wave, BattleFixtures.LoadRanges(), 10, new SeededRandom(1));
 
             field.Advance(3 * SimulationClock.StepsPerSecond);
@@ -85,8 +85,10 @@ namespace UnitySlotTower.Tests.EditMode.Battle
                         .Where(c => map.TileAt(c) != MapTile.Spawn && map.TileAt(c) != MapTile.Goal), Is.Empty);
                 }
             }
+            var stage = StageTable.Load(CsvParser.Parse(StageTable.FileName, files[StageTable.FileName])).FindByMap(id);
             var wave = WaveSchedule.Load(CsvParser.Parse(WaveSchedule.FileName, files[WaveSchedule.FileName]),
-                id, map, EnemyTable.Load(CsvParser.Parse(EnemyTable.FileName, files[EnemyTable.FileName])));
+                stage.Number, map, EnemyTable.Load(CsvParser.Parse(EnemyTable.FileName, files[EnemyTable.FileName])),
+                CsvParser.Parse(WaveSchedule.StageWavesFileName, files[WaveSchedule.StageWavesFileName]));
             Assert.That(wave.Spawns.Select(s => s.Path.Id).Distinct(),
                 Is.EquivalentTo(map.Paths.Select(p => p.Id)));
         }
@@ -101,9 +103,9 @@ namespace UnitySlotTower.Tests.EditMode.Battle
                 File.ReadAllText(Path.Combine(TablePaths.Root, EnemyTable.FileName))));
             var ground = map.Paths.Where(p => !p.IsAir).ToArray();
             var rows = string.Join("\n", ground.Select((p, i) =>
-                $"e,{i * 120},{enemyId},S{map.SpawnNumberAt(p.Cells[0])},{p.Id},0,1,0"));
+                $"1,{i * 120},{enemyId},S{map.SpawnNumberAt(p.Cells[0])},{p.Id},0,1,0"));
             var wave = WaveSchedule.Load(CsvParser.Parse(WaveSchedule.FileName,
-                BattleFixtures.GroupWavesHeader + rows), "e", map, enemies);
+                BattleFixtures.GroupWavesHeader + rows), 1, map, enemies);
             var field = new Battlefield(wave, BattleFixtures.LoadRanges(), 100, new SeededRandom(1));
             var damage = enemies.Get(enemyId).LifeDamage;
 

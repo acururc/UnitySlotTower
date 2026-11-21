@@ -43,7 +43,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             for (var i = 1; i < lines.Length; i++) lines[i] += ",0.4";
             var enemies = EnemyTable.Load(CsvParser.Parse(EnemyTable.FileName, string.Join("\n", lines)));
             var wave = WaveSchedule.Load(CsvParser.Parse(WaveSchedule.FileName,
-                BattleFixtures.WavesHeader + "e,0,heavy,S1,g,0\n"), "e", BattleFixtures.LoadMap(), enemies);
+                BattleFixtures.WavesHeader + "1,0,heavy,S1,g,0\n"), 1, BattleFixtures.LoadMap(), enemies);
             return new Battlefield(wave, BattleFixtures.LoadRanges(), 10, new SeededRandom(1));
         }
 

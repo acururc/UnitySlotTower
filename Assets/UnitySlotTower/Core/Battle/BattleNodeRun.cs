@@ -46,6 +46,14 @@ namespace UnitySlotTower.Core.Battle
         /// <param name="wave">この戦闘マスの出現内容。</param>
         public BattleNodeRun(GameConfig config, UnitTable units, UnitRanges ranges, RunState state, Encounter encounter,
             BattleMap map, WaveSchedule wave, IRandom random)
+            : this(config, units, ranges, state, encounter, map, new WaveProgress(wave, WaveMode.Timed, 0), random)
+        {
+        }
+
+        /// <param name="map">この戦闘マスのマップ（<see cref="Encounter.MapId"/>）。</param>
+        /// <param name="waves">このステージのウェーブの進行（FR-102）。</param>
+        public BattleNodeRun(GameConfig config, UnitTable units, UnitRanges ranges, RunState state, Encounter encounter,
+            BattleMap map, WaveProgress waves, IRandom random)
         {
             State = state ?? throw new ArgumentNullException(nameof(state));
             Encounter = encounter ?? throw new ArgumentNullException(nameof(encounter));
@@ -54,7 +62,7 @@ namespace UnitySlotTower.Core.Battle
             _introStepsLeft = _introSteps;
             Phase = _introSteps > 0 ? WavePhase.Intro : WavePhase.Fighting;
             _fieldLife = state.Life;
-            Field = new Battlefield(wave, ranges, _fieldLife, random, new SlotEffects(state.SlotRules));
+            Field = new Battlefield(waves, ranges, _fieldLife, random, new SlotEffects(state.SlotRules));
             Summoner = new UnitSummoner(units, Wallet, config.DeployLimit, config.RetreatRefundRate, Stock);
             Deployment = new UnitDeployment(Map, units, ranges, Summoner, Field, Upgrades);
         }

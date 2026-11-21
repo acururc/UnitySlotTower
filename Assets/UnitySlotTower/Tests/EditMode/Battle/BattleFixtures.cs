@@ -82,7 +82,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         public static SkillTable LoadSkills(string csv = Skills) =>
             SkillTable.Load(CsvParser.Parse(SkillTable.FileName, csv));
 
-        public const string WavesHeader = "encounter_id,time,enemy_id,spawn,path_id,is_boss\n";
+        public const string WavesHeader = "stage,time,enemy_id,spawn,path_id,is_boss\n";
 
         public static BattleMap LoadMap() =>
             BattleMap.Load("m", Map, CsvParser.Parse(BattleMap.PathsFileName, Paths));
@@ -97,23 +97,43 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         public static UnitUpgradeTable LoadUpgrades(string csv = Upgrades) =>
             UnitUpgradeTable.Load(CsvParser.Parse(UnitUpgradeTable.FileName, csv), LoadUnits());
 
-        /// <summary>戦闘マス "e" の出現。行は encounter_id 列を省いて書く（time,enemy_id,spawn,path_id,is_boss）。</summary>
+        /// <summary>ステージ1の1ウェーブの出現。行は stage 列を省いて書く（time,enemy_id,spawn,path_id,is_boss）。</summary>
         public static WaveSchedule LoadWave(string rows) =>
-            LoadEncounterWave(Regex.Replace(rows, "^(?=.)", "e,", RegexOptions.Multiline), "e");
+            LoadStageWave(Regex.Replace(rows, "^(?=.)", "1,", RegexOptions.Multiline), 1);
 
-        /// <summary>行は encounter_id 列から書く。</summary>
-        public static WaveSchedule LoadEncounterWave(string rows, string encounterId) =>
-            WaveSchedule.Load(CsvParser.Parse(WaveSchedule.FileName, WavesHeader + rows), encounterId, LoadMap(),
+        /// <summary>行は stage 列から書く（wave 列なし＝全行ウェーブ1）。</summary>
+        public static WaveSchedule LoadStageWave(string rows, int stage) =>
+            WaveSchedule.Load(CsvParser.Parse(WaveSchedule.FileName, WavesHeader + rows), stage, LoadMap(),
                 LoadEnemies());
 
-        public const string GroupWavesHeader = "encounter_id,time,enemy_id,spawn,path_id,is_boss,count,interval\n";
+        public const string GroupWavesHeader = "stage,time,enemy_id,spawn,path_id,is_boss,count,interval\n";
 
-        /// <summary>群れの列つき（FR-034）。行は encounter_id 列を省いて書く（time,enemy_id,spawn,path_id,is_boss,count,interval）。</summary>
+        /// <summary>群れの列つき（FR-034）。行は stage 列を省いて書く（time,enemy_id,spawn,path_id,is_boss,count,interval）。</summary>
         public static WaveSchedule LoadGroupWave(string rows) =>
             WaveSchedule.Load(
                 CsvParser.Parse(WaveSchedule.FileName,
-                    GroupWavesHeader + Regex.Replace(rows, "^(?=.)", "e,", RegexOptions.Multiline)),
-                "e", LoadMap(), LoadEnemies());
+                    GroupWavesHeader + Regex.Replace(rows, "^(?=.)", "1,", RegexOptions.Multiline)),
+                1, LoadMap(), LoadEnemies());
+
+        public const string StagedWavesHeader = "stage,wave,time,enemy_id,spawn,path_id,is_boss,count,interval\n";
+
+        /// <summary>
+        /// ウェーブ分けしたステージ1（FR-102）。行は stage 列を省いて書く（wave,time,enemy_id,spawn,path_id,is_boss,count,interval）。
+        /// <paramref name="startAfters"/> はウェーブ1からの順の start_after。
+        /// </summary>
+        public static WaveSchedule LoadStagedWave(string rows, params double[] startAfters)
+        {
+            var stageWaves = "stage,wave,start_after\n";
+            for (var i = 0; i < startAfters.Length; i++)
+            {
+                stageWaves += $"1,{i + 1},{startAfters[i].ToString(System.Globalization.CultureInfo.InvariantCulture)}\n";
+            }
+
+            return WaveSchedule.Load(
+                CsvParser.Parse(WaveSchedule.FileName,
+                    StagedWavesHeader + Regex.Replace(rows, "^(?=.)", "1,", RegexOptions.Multiline)),
+                1, LoadMap(), LoadEnemies(), CsvParser.Parse(WaveSchedule.StageWavesFileName, stageWaves));
+        }
 
         /// <summary>既定はライフ10・シード1の戦闘。</summary>
         public static Battlefield CreateField(string waveRows, int life = 10, IRandom random = null) =>

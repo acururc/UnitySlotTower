@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Run;
 using UnitySlotTower.Core.Slot;
@@ -10,31 +11,29 @@ namespace UnitySlotTower.Tests.EditMode.Data
 {
     public sealed class TableValidationTests
     {
-        [TestCase("battle_a")]
-        [TestCase("battle_b")]
-        [TestCase("battle_c")]
-        [TestCase("battle_d")]
-        [TestCase("battle_e")]
-        [TestCase("elite_a")]
-        [TestCase("boss_a")]
-        public void Later_Battles_Mix_Heavy_Into_Ground_Groups(string encounter)
+        [TestCase(2)]
+        [TestCase(3)]
+        [TestCase(4)]
+        [TestCase(5)]
+        [TestCase(6)]
+        [TestCase(7)]
+        [TestCase(8)]
+        public void Later_Stages_Mix_Heavy_Into_Ground_Groups(int stage)
         {
             var rows = CsvParser.Parse("waves.csv", TablePaths.ReadAll()["waves.csv"]).Rows;
-            Assert.That(rows.Any(row => row.Get("encounter_id") == encounter && row.Get("enemy_id") == "heavy"),
+            Assert.That(rows.Any(row => row.GetInt("stage") == stage && row.Get("enemy_id") == "heavy"),
                 Is.True);
         }
 
         [Test]
-        [Description("AC-056: first のIDを変えても、最初の戦闘種別には重装を出せない")]
-        public void Heavy_In_First_Battle_Is_An_Error()
+        [Description("AC-056: ステージ1には重装を出せない")]
+        public void Heavy_In_Stage_1_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["encounters.csv"] = files["encounters.csv"].Replace("first,first,", "tutorial,first,");
-            files["waves.csv"] = files["waves.csv"].Replace("first,", "tutorial,") +
-                "tutorial,70,heavy,S2,first_g2,0,1,0\n";
+            files["waves.csv"] += "1,4,70,heavy,S2,first_g2,0,1,0\n";
             var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
             Assert.That(GameDataValidator.ValidateAll(files).Errors.Select(e => (e.File, e.Line, e.Column)),
-                Does.Contain(("waves.csv", line, 3)));
+                Does.Contain(("waves.csv", line, 4)));
         }
 
         [TestCase("0")]
@@ -270,20 +269,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Wave_Spawn_Not_On_Its_Path_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["waves.csv"] += "first,0,melee,S1,first_g2,0,3,1\n";
-            var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("waves.csv", line, 4)));
-        }
-
-        [Test]
-        [Description("FR-034, AC-031: 最初の戦闘の敵が中央のレーン以外から出るとエラー")]
-        public void First_Battle_Enemy_Off_The_Center_Lane_Is_An_Error()
-        {
-            var files = TablePaths.ReadAll();
-            files["waves.csv"] += "first,70,melee,S1,first_g1,0,3,1\n";
+            files["waves.csv"] += "1,1,0,melee,S1,first_g2,0,3,1\n";
             var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
 
             var report = GameDataValidator.ValidateAll(files);
@@ -292,11 +278,24 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("FR-034: 中央のレーン以外から出てよいのは最初の戦闘ではない戦闘マス")]
-        public void Normal_Battle_Enemy_Off_The_Center_Lane_Is_Allowed()
+        [Description("FR-034, AC-031: ステージ1の敵が中央のレーン以外から出るとエラー")]
+        public void Stage_1_Enemy_Off_The_Center_Lane_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["waves.csv"] += "boss_a,70,melee,S1,boss_a_g1,0,3,1\n";
+            files["waves.csv"] += "1,4,70,melee,S1,first_g1,0,3,1\n";
+            var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("waves.csv", line, 6)));
+        }
+
+        [Test]
+        [Description("FR-034: 中央のレーン以外から出てよいのはステージ1以外")]
+        public void Later_Stage_Enemy_Off_The_Center_Lane_Is_Allowed()
+        {
+            var files = TablePaths.ReadAll();
+            files["waves.csv"] += "8,1,10,melee,S1,boss_a_g1,0,3,1\n";
 
             var report = GameDataValidator.ValidateAll(files);
 
@@ -308,12 +307,12 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Group_Of_Zero_Is_A_Validation_Error()
         {
             var files = TablePaths.ReadAll();
-            files["waves.csv"] += "battle_a,70,melee,S1,battle_a_g1,0,0,1\n";
+            files["waves.csv"] += "2,1,0,melee,S1,battle_a_g1,0,0,1\n";
             var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
 
             var report = GameDataValidator.ValidateAll(files);
 
-            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("waves.csv", line, 7)));
+            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain(("waves.csv", line, 8)));
         }
 
         [Test]
@@ -321,7 +320,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         {
             var files = TablePaths.ReadAll();
             files["map_paths.csv"] = WithoutLinesStartingWith(files["map_paths.csv"], "boss_a,");
-            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "boss_a,");
+            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "8,");
 
             var report = GameDataValidator.ValidateAll(files);
 
@@ -329,15 +328,17 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        public void Encounter_Without_Enemies_Is_An_Error()
+        [Description("AC-102: 敵のいないステージはエラー")]
+        public void Stage_Without_Enemies_Is_An_Error()
         {
-            // 通常の戦闘マス battle_a の行だけを消す（マップと出現表の行は残る）。
+            // ステージ2の出現の行だけを消す（stages.csv と stage_waves.csv の行は残る）。
             var files = TablePaths.ReadAll();
-            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "battle_a,");
+            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "2,");
 
             var report = GameDataValidator.ValidateAll(files);
 
-            Assert.That(report.Errors.Where(e => e.File == "waves.csv").Select(e => e.Message), Has.Some.Contains("'battle_a'"));
+            Assert.That(report.Errors.Where(e => e.File == StageTable.FileName).Select(e => e.Message),
+                Has.Some.Contains("ステージ 2"));
         }
 
         [Test]
@@ -435,10 +436,10 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        public void Wave_Of_An_Unknown_Encounter_Is_An_Error()
+        public void Wave_Of_An_Unknown_Stage_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["waves.csv"] += "nowhere,0,melee,S1,first_g1,0,1,0\n";
+            files["waves.csv"] += "9,1,0,melee,S1,first_g1,0,1,0\n";
             var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
 
             var report = GameDataValidator.ValidateAll(files);
@@ -471,15 +472,16 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("plan 16.6: 出現表の行に出現がなければエラー")]
-        public void Encounter_Without_Waves_Is_An_Error()
+        [Description("T605: 出現表の行のマップを使うステージがなければエラー（その戦闘マスのウェーブが決まらない）")]
+        public void Encounter_Map_Without_A_Stage_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files[EncounterTable.FileName] += "extra,battle,battle_a,2,7,0,10,3,1\n";
+            files[StageTable.FileName] = files[StageTable.FileName].Replace("7,battle_e,", "7,battle_d,");
+            var line = files[EncounterTable.FileName].Split('\n').ToList().FindIndex(l => l.StartsWith("battle_e,")) + 1;
 
             var report = GameDataValidator.ValidateAll(files);
 
-            Assert.That(report.Errors.Select(e => e.Message), Has.Some.Contains("'extra'"));
+            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain((EncounterTable.FileName, line, 3)));
         }
 
         [Test]
@@ -592,23 +594,24 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("FR-010・plan 16.6: 強敵マスには中ボス（is_boss）が要る")]
-        public void Elite_Without_A_Boss_Is_An_Error()
+        [Description("FR-104・AC-102: boss 列のステージ（4）の最後のウェーブに中ボス（is_boss）が要る")]
+        public void Boss_Stage_Without_Its_Boss_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
             files["waves.csv"] = string.Join("\n", files["waves.csv"].Split('\n').Where(line => !line.Contains(",mid_boss,")));
 
             var report = GameDataValidator.ValidateAll(files);
 
-            Assert.That(report.Errors.Where(e => e.File == "waves.csv").Select(e => e.Message), Has.Some.Contains("'elite_a'"));
+            Assert.That(report.Errors.Where(e => e.File == "waves.csv").Select(e => e.Message),
+                Has.Some.Contains("ステージ 4 の最後のウェーブにボス 'mid_boss'"));
         }
 
         [Test]
-        [Description("plan 16.6: ボス（is_boss）が出るのは強敵・ボスマスだけ")]
-        public void Boss_In_A_Normal_Battle_Is_An_Error()
+        [Description("FR-104: ボス（is_boss）が出るのは boss 列のステージだけ")]
+        public void Boss_In_A_Stage_Without_Boss_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files["waves.csv"] += "battle_a,70,mid_boss,S1,battle_a_g1,1,1,0\n";
+            files["waves.csv"] += "2,5,0,mid_boss,S1,battle_a_g1,1,1,0\n";
             var line = files["waves.csv"].TrimEnd('\n').Split('\n').Length;
 
             var report = GameDataValidator.ValidateAll(files);
@@ -623,19 +626,103 @@ namespace UnitySlotTower.Tests.EditMode.Data
             var files = TablePaths.ReadAll();
             files[EncounterTable.FileName] += "battle_d,battle,boss_a,2,7,0,10,3,1\n";
             var line = files[EncounterTable.FileName].TrimEnd('\n').Split('\n').Length;
-            files["waves.csv"] += "battle_d,0,melee,S1,boss_a_g1,0,3,1\n";
 
             var report = GameDataValidator.ValidateAll(files);
 
             Assert.That(report.Errors.Select(e => (e.File, e.Line)), Does.Contain((EncounterTable.FileName, line)));
         }
 
+        [Test]
+        [Description("AC-102: stage_waves.csv のウェーブに出現がなければエラー")]
+        public void Stage_Wave_Without_Spawns_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files[WaveSchedule.StageWavesFileName] += "2,6,40\n";
+            var line = files[WaveSchedule.StageWavesFileName].TrimEnd('\n').Split('\n').Length;
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => (e.File, e.Line)), Does.Contain((WaveSchedule.StageWavesFileName, line)));
+        }
+
+        [Test]
+        [Description("plan 2.1: timed のステージで次のウェーブが前のウェーブを出し終わる前に始まるとエラー")]
+        public void Timed_Wave_Starting_Before_The_Previous_Ends_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            Assert.That(files[WaveSchedule.StageWavesFileName], Does.Contain("\n2,2,24\n"));
+            files[WaveSchedule.StageWavesFileName] = files[WaveSchedule.StageWavesFileName].Replace("\n2,2,24\n", "\n2,2,5\n");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => (e.File, e.Column)), Does.Contain((WaveSchedule.StageWavesFileName, 3)));
+        }
+
+        [Test]
+        [Description("plan 2.1: ウェーブ1の start_after は0")]
+        public void First_Wave_With_A_Start_Delay_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files[WaveSchedule.StageWavesFileName] = files[WaveSchedule.StageWavesFileName].Replace("\n3,1,0\n", "\n3,1,4\n");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => (e.File, e.Column)), Does.Contain((WaveSchedule.StageWavesFileName, 3)));
+        }
+
+        [Test]
+        [Description("FR-101: ステージ番号は1から連番")]
+        public void Stage_Numbers_With_A_Gap_Are_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files[StageTable.FileName] = files[StageTable.FileName].Replace("8,boss_a,", "9,boss_a,");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain((StageTable.FileName, 9, 1)));
+        }
+
+        [Test]
+        [Description("AC-102: ステージのマップのファイルがなければエラー")]
+        public void Stage_With_A_Missing_Map_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files[StageTable.FileName] = files[StageTable.FileName].Replace("2,battle_a,", "2,s9,");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => e.File), Does.Contain("maps/s9.csv"));
+        }
+
+        [Test]
+        [Description("FR-104: boss 列の敵が enemies.csv になければエラー")]
+        public void Unknown_Stage_Boss_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files[StageTable.FileName] = files[StageTable.FileName].Replace("4,elite_a,timed,mid_boss", "4,elite_a,timed,dragon");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain((StageTable.FileName, 5, 4)));
+        }
+
+        [Test]
+        [Description("FR-102: wave_mode は clear/timed のどれか")]
+        public void Unknown_Wave_Mode_Is_An_Error()
+        {
+            var files = TablePaths.ReadAll();
+            files[StageTable.FileName] = files[StageTable.FileName].Replace("2,battle_a,timed,", "2,battle_a,rush,");
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain((StageTable.FileName, 3, 3)));
+        }
+
         private static System.Collections.Generic.Dictionary<string, string> WithoutElite(
             System.Collections.Generic.Dictionary<string, string> files)
         {
+            // マップ elite_a はステージ4が使うので、出現表の行だけを消す。
             files[EncounterTable.FileName] = WithoutLinesStartingWith(files[EncounterTable.FileName], "elite_a,");
-            files["waves.csv"] = WithoutLinesStartingWith(files["waves.csv"], "elite_a,");
-            files["map_paths.csv"] = WithoutLinesStartingWith(files["map_paths.csv"], "elite_a,");
             return files;
         }
 

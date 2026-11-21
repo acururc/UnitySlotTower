@@ -15,12 +15,12 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         // 最初の戦闘に3レーンから5体ずつ×5群れ（25体）を2.5秒以内に出す。道は10マスで、先頭がゴールに着くのは約10秒後。
         // 一番多いウェーブ（boss_a）の同時に出ている敵の数（20体ほど）より多い。最初の戦闘の中央レーンの決まりは検証器の対象で、ここでは使わない。
         private const string CrowdWaves =
-            "encounter_id,time,enemy_id,spawn,path_id,is_boss,count,interval\n" +
-            "first,0,melee,S1,first_g1,0,5,0.5\n" +
-            "first,0,melee,S2,first_g2,0,5,0.5\n" +
-            "first,0,melee,S3,first_g3,0,5,0.5\n" +
-            "first,0.25,ranged,S1,first_g1,0,5,0.5\n" +
-            "first,0.25,ranged,S3,first_g3,0,5,0.5\n";
+            "stage,time,enemy_id,spawn,path_id,is_boss,count,interval\n" +
+            "1,0,melee,S1,first_g1,0,5,0.5\n" +
+            "1,0,melee,S2,first_g2,0,5,0.5\n" +
+            "1,0,melee,S3,first_g3,0,5,0.5\n" +
+            "1,0.25,ranged,S1,first_g1,0,5,0.5\n" +
+            "1,0.25,ranged,S3,first_g3,0,5,0.5\n";
 
         private const int Crowd = 20;
         private const int Frames = 120;

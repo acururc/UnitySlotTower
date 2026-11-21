@@ -27,6 +27,8 @@ namespace UnitySlotTower.Battle
         [SerializeField] private TextAsset enemiesTable;
         [SerializeField] private TextAsset wavesTable;
         [SerializeField] private TextAsset encountersTable;
+        [SerializeField] private TextAsset stagesTable;
+        [SerializeField] private TextAsset stageWavesTable;
         [SerializeField] private TextAsset skillsTable;
 
         [SerializeField] private BattleFieldView fieldView;
@@ -37,6 +39,8 @@ namespace UnitySlotTower.Battle
         private EncounterTable _encounters;
         private EnemyTable _enemies;
         private CsvTable _waves;
+        private CsvTable _stageWaves;
+        private StageTable _stages;
         private IRandom _random;
         private bool _completionReported;
         private bool _slotLocked;
@@ -117,6 +121,8 @@ namespace UnitySlotTower.Battle
             _enemies = EnemyTable.Load(Parse(EnemyTable.FileName, enemiesTable));
             _waves = Parse(WaveSchedule.FileName, wavesTable);
             _encounters = EncounterTable.Load(Parse(EncounterTable.FileName, encountersTable));
+            _stages = StageTable.Load(Parse(StageTable.FileName, stagesTable));
+            _stageWaves = Parse(WaveSchedule.StageWavesFileName, stageWavesTable);
             Skills = SkillTable.Load(Parse(SkillTable.FileName, skillsTable));
             _random = new SeededRandom((ulong)DateTime.UtcNow.Ticks);
             _clock = new SimulationClock { IsPaused = IsPaused };
@@ -283,7 +289,7 @@ namespace UnitySlotTower.Battle
             NodeKind = node.Kind;
             Floor = node.Floor;
             Run = new BattleNodeRun(Config, Units, Ranges, state, encounter, map,
-                WaveSchedule.Load(_waves, encounter.Id, map, _enemies), _random);
+                StageWaves(encounter.MapId, map), _random);
             NodeCount++;
             Field.BaseReached += OnBaseReached;
             BaseFlashUntil = 0f;
@@ -295,6 +301,15 @@ namespace UnitySlotTower.Battle
             fieldView.Show(map);
             fieldView.Observe(Field);
             NodeBegan?.Invoke();
+        }
+
+        // ステージの流れ（T607）までは、戦闘マスのマップを使うステージのウェーブで戦う（FR-102）。
+        private WaveProgress StageWaves(string mapId, BattleMap map)
+        {
+            var stage = _stages.FindByMap(mapId)
+                ?? throw new InvalidOperationException($"マップ '{mapId}' を使うステージが {StageTable.FileName} にない");
+            var schedule = WaveSchedule.Load(_waves, stage.Number, map, _enemies, _stageWaves);
+            return new WaveProgress(schedule, stage.Mode, Config.WaveGapSeconds);
         }
 
         // 揃った図柄の効果を戦闘へ渡す（FR-042）。

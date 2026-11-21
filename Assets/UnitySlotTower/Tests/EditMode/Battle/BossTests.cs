@@ -116,32 +116,31 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("FR-010: ボスは戦闘マスの最後に1体だけ。ボスマスは最終ボスで終わり、最終ボスはボスマスにだけ出る")]
-        public void Project_Bosses_Appear_Only_At_The_End_Of_The_Wave()
+        [Description("FR-104: ボスはステージの最後のウェーブの最後に1体だけ。ステージ8は最終ボスで終わり、最終ボスはステージ8にだけ出る")]
+        public void Project_Bosses_Appear_Only_At_The_End_Of_The_Stage()
         {
-            // 通常の戦闘マスにボスを出さない決まり（強敵は中ボス）は、出現データを作り直す T347 で確かめる。
             var tables = TablePaths.ReadAll();
             var paths = CsvParser.Parse(BattleMap.PathsFileName, tables[BattleMap.PathsFileName]);
             var waves = CsvParser.Parse(WaveSchedule.FileName, tables[WaveSchedule.FileName]);
-            var encounters = EncounterTable.Load(CsvParser.Parse(EncounterTable.FileName, tables[EncounterTable.FileName]));
+            var stages = StageTable.Load(CsvParser.Parse(StageTable.FileName, tables[StageTable.FileName]));
             var enemies = ProjectEnemies();
             var problems = new List<string>();
-            foreach (var encounter in encounters.All)
+            foreach (var stage in stages.Stages)
             {
-                var map = BattleMap.Load(encounter.MapId, tables[BattleMap.MapFileName(encounter.MapId)], paths);
-                var spawns = WaveSchedule.Load(waves, encounter.Id, map, enemies).Spawns;
+                var map = BattleMap.Load(stage.MapId, tables[BattleMap.MapFileName(stage.MapId)], paths);
+                var spawns = WaveSchedule.Load(waves, stage.Number, map, enemies).Spawns;
                 for (var i = 0; i < spawns.Count; i++)
                 {
                     var isLast = i == spawns.Count - 1;
                     if (spawns[i].IsBoss && !isLast)
                     {
-                        problems.Add($"{encounter.Id} の {i + 1} 体目がボス");
+                        problems.Add($"ステージ {stage.Number} の {i + 1} 体目がボス");
                     }
 
                     var isFinal = spawns[i].Enemy.Id == "final_boss";
-                    if (isFinal != (isLast && encounter.Kind == EncounterKind.Boss))
+                    if (isFinal != (isLast && stage.Number == stages.Count))
                     {
-                        problems.Add($"{encounter.Id} の {i + 1} 体目: 最終ボスの位置が違う");
+                        problems.Add($"ステージ {stage.Number} の {i + 1} 体目: 最終ボスの位置が違う");
                     }
                 }
             }

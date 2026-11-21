@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnitySlotTower.Core.Run;
 using UnitySlotTower.Core.Simulation;
 using UnitySlotTower.Core.Slot;
 
@@ -12,7 +13,6 @@ namespace UnitySlotTower.Core.Battle
     /// </summary>
     public sealed class Battlefield
     {
-        private readonly WaveSchedule _wave;
         private readonly UnitRanges _ranges;
         private readonly IRandom _random;
         private readonly List<BattleEnemy> _enemies = new List<BattleEnemy>();
@@ -21,14 +21,22 @@ namespace UnitySlotTower.Core.Battle
         // 射程ちょうどの距離を浮動小数の誤差で外さないための許容幅。
         private const double RangeEpsilon = 1e-9;
 
-        private int _nextSpawn;
+        // Spawn で使い回す（ステップごとに確保しない）。
+        private readonly List<WaveSpawn> _due = new List<WaveSpawn>();
 
+        /// <summary>全ウェーブを決めた時刻に出す（時刻が絶対の1ウェーブの表として扱う）。</summary>
+        public Battlefield(WaveSchedule wave, UnitRanges ranges, int life, IRandom random, SlotEffects effects = null)
+            : this(new WaveProgress(wave, WaveMode.Timed, 0), ranges, life, random, effects)
+        {
+        }
+
+        /// <param name="waves">このステージのウェーブの進行（FR-102）。</param>
         /// <param name="life">ウェーブ開始時のライフ（満タン、FR-013）。</param>
         /// <param name="random">撃破ドロップの抽選に使う（FR-033）。</param>
         /// <param name="effects">この戦闘の出目の効果（FR-112）。null なら効果なし（<see cref="ApplySlot"/> は使えない）。</param>
-        public Battlefield(WaveSchedule wave, UnitRanges ranges, int life, IRandom random, SlotEffects effects = null)
+        public Battlefield(WaveProgress waves, UnitRanges ranges, int life, IRandom random, SlotEffects effects = null)
         {
-            _wave = wave;
+            Waves = waves ?? throw new ArgumentNullException(nameof(waves));
             _ranges = ranges;
             _random = random;
             Life = life;
@@ -37,6 +45,9 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>この戦闘の出目の効果（FR-112）。null なら効果なし。</summary>
         public SlotEffects Effects { get; }
+
+        /// <summary>このステージのウェーブの進行（FR-102）。</summary>
+        public WaveProgress Waves { get; }
 
         /// <summary>
         /// 攻撃に使う攻撃力。基礎×強化（<see cref="BattleUnit.Atk"/>、四捨五入済み）× バッファー × バーを最後に四捨五入する
@@ -147,11 +158,14 @@ namespace UnitySlotTower.Core.Battle
             }
         }
 
-        /// <summary>残りの敵の数（FR-009）: まだ出ていない出現予定とフィールドにいる敵の合計。撃破でもゴールでも1減る。</summary>
-        public int RemainingEnemies => _wave.Spawns.Count - _nextSpawn + _enemies.Count;
+        /// <summary>
+        /// 残りの敵の数（FR-009・FR-102）: ステージ全体のまだ出ていない出現予定（始まっていないウェーブを含む）とフィールドにいる敵の合計。
+        /// 撃破でもゴールでも1減る。
+        /// </summary>
+        public int RemainingEnemies => Waves.Unspawned + _enemies.Count;
 
-        /// <summary>出現予定の敵がすべて出て、フィールドに敵が残っていない（ゲームオーバーでない）。</summary>
-        public bool IsCleared => !IsGameOver && _nextSpawn >= _wave.Spawns.Count && _enemies.Count == 0;
+        /// <summary>最後のウェーブまで出し終わり、フィールドに敵が残っていない（ゲームオーバーでない）。</summary>
+        public bool IsCleared => !IsGameOver && Waves.IsFinished && _enemies.Count == 0;
 
         /// <summary>配置できるマスかは呼び出し側（<see cref="UnitPlacement"/>、T208）で判定する。</summary>
         /// <param name="upgrade">その種類のいまの強化段階（FR-026）。null なら段階1。</param>
@@ -289,11 +303,10 @@ namespace UnitySlotTower.Core.Battle
 
         private void Spawn()
         {
-            var spawns = _wave.Spawns;
-            while (_nextSpawn < spawns.Count &&
-                   Math.Round(spawns[_nextSpawn].Time * SimulationClock.StepsPerSecond) <= Tick)
+            _due.Clear();
+            Waves.Step(_enemies.Count, _due);
+            foreach (var spawn in _due)
             {
-                var spawn = spawns[_nextSpawn++];
                 _enemies.Add(new BattleEnemy(spawn.Enemy, spawn.Path)
                 {
                     AreaCooldownSteps = StepsOf(spawn.Enemy.AreaInterval),

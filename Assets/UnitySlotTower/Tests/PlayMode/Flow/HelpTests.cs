@@ -116,7 +116,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             // 下半分: バッファーは攻撃の代わりに倍率、全員にスキルの印。
             var buffer = rows[3];
             Assert.That((buffer.attackIcon.activeSelf, buffer.buffIcon.activeSelf, buffer.atkText.text),
-                Is.EqualTo((false, true, "×1.3")), "バッファーの行に倍率が出ない");
+                Is.EqualTo((false, true, "×2.0")), "バッファーの行に倍率が出ない"); // T604: buff_rate 2.0
             Assert.That((rows[0].attackIcon.activeSelf, rows[0].buffIcon.activeSelf), Is.EqualTo((true, false)));
             foreach (var row in rows)
             {

@@ -18,6 +18,9 @@ namespace UnitySlotTower.Core.Data
         /// <summary>札を選んでから配置を終えるかやめるまでの時間の倍率（FR-074、D-99、plan 18.1）。倍速に関係なくこの値。</summary>
         public double PlacementTimeScale { get; private set; }
 
+        /// <summary>ウェーブを出し終わって盤上の敵が0になってから次のウェーブを始めるまでの秒数（FR-102、plan 2.1）。</summary>
+        public double WaveGapSeconds { get; private set; }
+
         public static GameConfig Load(CsvTable table)
         {
             var values = new KeyValueTable(table);
@@ -31,6 +34,7 @@ namespace UnitySlotTower.Core.Data
                 RetreatRefundRate = values.GetDouble("retreat_refund_rate"),
                 IntroSeconds = values.GetDouble("intro_seconds"),
                 PlacementTimeScale = values.GetDouble("placement_time_scale"),
+                WaveGapSeconds = values.GetDouble("wave_gap_seconds"),
             };
         }
     }
