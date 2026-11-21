@@ -469,27 +469,29 @@ namespace UnitySlotTower.Tests.EditMode.Battle
                 Is.EqualTo((true, 0)));
         }
 
-        [TestCase(SlotSymbol.Red7)]
-        [TestCase(SlotSymbol.Yellow7)]
-        [Description("AC-042: 色7が揃うとその色のスキルゲージが1段たまる")]
-        public void Color_Seven_Fills_Its_Skill_Gauge(SlotSymbol color)
+        [Test]
+        [Description("FR-112, E-14: 色7はその場の効果を出し、スキルゲージはためない")]
+        public void Color_Seven_Applies_Its_Effect_Without_Filling_Gauges()
         {
             var run = Create();
 
-            run.ApplySlot(color);
+            run.ApplySlot(SlotSymbol.Blue7);
+            run.ApplySlot(SlotSymbol.Yellow7);
 
-            Assert.That(_state.Gauges.Level(color), Is.EqualTo(1));
+            Assert.That((run.Field.Effects.IsStopped, run.Field.Effects.IsPoisoned,
+                _state.Gauges.Level(SlotSymbol.Blue7) + _state.Gauges.Level(SlotSymbol.Yellow7)),
+                Is.EqualTo((true, true, 0)));
         }
 
         [Test]
-        [Description("AC-042: バーは戦闘の攻撃力の倍率を上げ、所持金の倍率は変えない")]
+        [Description("FR-112: バーは戦闘の攻撃力の倍率を上げ（bar_attack_rate=2）、所持金の倍率は変えない")]
         public void Bar_Raises_The_Attack_Rate_Of_The_Battle()
         {
             var run = Create();
 
             run.ApplySlot(SlotSymbol.Bar);
 
-            Assert.That((run.Field.Boosts.AttackRate, run.Field.Boosts.MoneyRate), Is.EqualTo((1.1, 1.0)));
+            Assert.That((run.Field.Effects.AttackRate, run.Field.Effects.MoneyRate), Is.EqualTo((2.0, 1.0)));
         }
 
         [Test]
@@ -500,7 +502,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
             run.ApplySlot(SlotSymbol.Coin);
 
-            Assert.That((run.Field.Boosts.AttackRate, run.Field.Boosts.MoneyRate), Is.EqualTo((1.0, 1.1)));
+            Assert.That((run.Field.Effects.AttackRate, run.Field.Effects.MoneyRate), Is.EqualTo((1.0, 1.1)));
         }
 
         [Test]
@@ -517,7 +519,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("AC-012, plan 16.4: バー・コインの倍率は戦闘マスごとに新しくなる")]
+        [Description("E-16: バー・コインの効果は戦闘ごとに新しくなる（持ち越さない）")]
         public void Boosts_Reset_For_The_Next_Node()
         {
             var first = Create();
@@ -527,20 +529,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
             var next = Next();
 
-            Assert.That((next.Field.Boosts.AttackRate, next.Field.Boosts.MoneyRate), Is.EqualTo((1.0, 1.0)));
-        }
-
-        [Test]
-        [Description("AC-012, plan 16.4: スキルゲージは戦闘マスをまたいで残る")]
-        public void Skill_Gauges_Carry_Over_To_The_Next_Node()
-        {
-            var first = Create();
-            first.ApplySlot(SlotSymbol.Green7);
-            PlayNode(first);
-
-            Next();
-
-            Assert.That(_state.Gauges.Level(SlotSymbol.Green7), Is.EqualTo(1));
+            Assert.That((next.Field.Effects.AttackRate, next.Field.Effects.MoneyRate), Is.EqualTo((1.0, 1.0)));
         }
 
         private void FillGauge(SlotSymbol color)

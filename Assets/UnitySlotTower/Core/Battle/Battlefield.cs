@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnitySlotTower.Core.Simulation;
+using UnitySlotTower.Core.Slot;
 
 namespace UnitySlotTower.Core.Battle
 {
@@ -24,18 +25,18 @@ namespace UnitySlotTower.Core.Battle
 
         /// <param name="life">ウェーブ開始時のライフ（満タン、FR-013）。</param>
         /// <param name="random">撃破ドロップの抽選に使う（FR-033）。</param>
-        /// <param name="boosts">この戦闘マスの出目の効果（バー・コインの倍率）。null なら倍率なし。</param>
-        public Battlefield(WaveSchedule wave, UnitRanges ranges, int life, IRandom random, BattleBoosts boosts = null)
+        /// <param name="effects">この戦闘の出目の効果（FR-112）。null なら効果なし（<see cref="ApplySlot"/> は使えない）。</param>
+        public Battlefield(WaveSchedule wave, UnitRanges ranges, int life, IRandom random, SlotEffects effects = null)
         {
             _wave = wave;
             _ranges = ranges;
             _random = random;
             Life = life;
-            Boosts = boosts;
+            Effects = effects;
         }
 
-        /// <summary>この戦闘マスの出目の効果（plan 16.4）。null なら倍率なし。</summary>
-        public BattleBoosts Boosts { get; }
+        /// <summary>この戦闘の出目の効果（FR-112）。null なら効果なし。</summary>
+        public SlotEffects Effects { get; }
 
         /// <summary>
         /// 攻撃に使う攻撃力。基礎×強化（<see cref="BattleUnit.Atk"/>、四捨五入済み）× バッファー × バーを最後に四捨五入する
@@ -44,9 +45,9 @@ namespace UnitySlotTower.Core.Battle
         private int EffectiveAtk(BattleUnit unit, double skillRate = 1)
         {
             var rate = BuffRateOf(unit) * skillRate;
-            if (Boosts != null)
+            if (Effects != null)
             {
-                rate *= Boosts.AttackRate;
+                rate *= Effects.AttackRate;
             }
 
             return (int)Math.Round(unit.Atk * rate, MidpointRounding.AwayFromZero);
@@ -91,6 +92,60 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>ゴールに着いた敵の数。</summary>
         public int ArrivedCount { get; private set; }
+
+        /// <summary>
+        /// 揃った出目の効果をすぐ出す（FR-112）。赤7は空中を含む全ての敵に防御を無視した固定ダメージ（倒した敵はドロップする）、
+        /// 緑7は配置中の味方の HP を最大 HP × 率だけ回復（最大値で止め、ライフは回復しない）。青7・黄7・バーは時間の効果を始め、コインは倍率を上げる。
+        /// </summary>
+        public void ApplySlot(SlotSymbol symbol)
+        {
+            if (Effects == null)
+            {
+                throw new InvalidOperationException("この戦闘には出目の効果がない。");
+            }
+
+            switch (symbol)
+            {
+                case SlotSymbol.Red7:
+                    DamageAllEnemies(Effects.RedDamage);
+                    RemoveDefeatedEnemies();
+                    break;
+                case SlotSymbol.Blue7:
+                    Effects.StartStop();
+                    break;
+                case SlotSymbol.Green7:
+                    foreach (var unit in _units)
+                    {
+                        if (unit.IsAlive)
+                        {
+                            unit.Heal((int)Math.Round(unit.MaxHp * Effects.GreenHealRate, MidpointRounding.AwayFromZero));
+                        }
+                    }
+
+                    break;
+                case SlotSymbol.Yellow7:
+                    Effects.StartPoison();
+                    break;
+                case SlotSymbol.Bar:
+                    Effects.StartAttack();
+                    break;
+                case SlotSymbol.Coin:
+                    Effects.AddCoin();
+                    break;
+            }
+        }
+
+        /// <summary>生きている敵全員（空中を含む）に防御を無視した固定ダメージ。撃破とドロップは <see cref="RemoveDefeatedEnemies"/>。</summary>
+        private void DamageAllEnemies(int damage)
+        {
+            foreach (var enemy in _enemies)
+            {
+                if (enemy.IsAlive)
+                {
+                    enemy.TakeDamage(damage);
+                }
+            }
+        }
 
         /// <summary>残りの敵の数（FR-009）: まだ出ていない出現予定とフィールドにいる敵の合計。撃破でもゴールでも1減る。</summary>
         public int RemainingEnemies => _wave.Spawns.Count - _nextSpawn + _enemies.Count;
@@ -191,17 +246,29 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>
         /// 1 ステップごとに 出現 → 移動（ゴール到着で退場・ライフ減少） → 敵の攻撃 → HP0 の味方の消滅 → 味方の行動
-        /// → HP0 の敵の消滅（ドロップ） の順で処理し、最後にスロットの効果の残り時間を1ステップ減らす。ゲームオーバーになったら残りのステップは進めない。
+        /// → 毒 → HP0 の敵の消滅（ドロップ） の順で処理し、スキルと出目の効果の残り時間を1ステップ減らす。
+        /// 停止中（青7）は移動と敵の攻撃を飛ばす。ゲームオーバーになったら残りのステップは進めない。
         /// </summary>
         public void Advance(int steps)
         {
             for (var i = 0; i < steps && !IsGameOver; i++)
             {
                 Spawn();
-                Move();
-                Attack();
+                // 停止中の敵は進まず攻撃もしない（範囲攻撃と間隔の消化も止まる、E-27）。停止中に出た敵も止まる。
+                if (Effects == null || !Effects.IsStopped)
+                {
+                    Move();
+                    Attack();
+                }
+
                 RemoveFallenUnits();
                 Act();
+                // 毒は停止中も減る（E-27）。出目の効果の残り時間はここで1ステップ減る。
+                if (Effects != null && Effects.Step())
+                {
+                    DamageAllEnemies(Effects.PoisonDamage);
+                }
+
                 RemoveDefeatedEnemies();
                 TickSkills();
                 Tick++;
@@ -512,7 +579,7 @@ namespace UnitySlotTower.Core.Battle
                 {
                     // 所持金だけにコインの倍率を掛ける（四捨五入、plan 16.2）。
                     var money = _random.NextInt(definition.MoneyMin, definition.MoneyMax + 1);
-                    DroppedMoney += Boosts == null ? money : Boosts.ApplyMoneyRate(money);
+                    DroppedMoney += Effects == null ? money : Effects.ApplyMoneyRate(money);
                 }
 
                 _enemies.RemoveAt(i);

@@ -58,7 +58,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var drops = new (int, int)[trials];
             for (var i = 0; i < trials; i++)
             {
-                var boosts = new BattleBoosts(SlotTestRules.Create(coinStep: 0.1, coinCap: 1.5));
+                var boosts = new SlotEffects(SlotTestRules.Create(coinStep: 0.1, coinCap: 1.5));
                 for (var c = 0; c < coinBoosts; c++)
                 {
                     boosts.AddCoin();

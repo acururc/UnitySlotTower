@@ -101,6 +101,11 @@ namespace UnitySlotTower.Core.Battle
             Hp = Hp > damage ? Hp - damage : 0;
         }
 
+        internal void Heal(int amount)
+        {
+            Hp = Math.Min(MaxHp, Hp + amount);
+        }
+
         /// <summary>基本ステータスに段階の倍率をかけ直す（端数は四捨五入）。最大 HP が増えた分は現在 HP にも足す（plan 5章）。</summary>
         internal void ApplyUpgrade(UnitUpgradeLevel upgrade)
         {

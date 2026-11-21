@@ -2,7 +2,13 @@ key,value
 first_stop_seconds,0.6
 stop_interval_seconds,0.4
 gauge_max,5
-bar_step,0.1
-bar_cap,0.5
+red_damage,5
+blue_stop_seconds,3
+green_heal_rate,0.5
+yellow_poison_damage,1
+yellow_poison_tick_seconds,1
+yellow_poison_seconds,5
+bar_attack_rate,2
+bar_seconds,10
 coin_step,0.1
 coin_cap,1.5

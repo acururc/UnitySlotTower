@@ -298,10 +298,11 @@ namespace UnitySlotTower.Flow
                 switch (symbol)
                 {
                     case SlotSymbol.Bar:
-                        effect.SetText("+{0}%", (int)Math.Round(rules.BarStep * 100, MidpointRounding.AwayFromZero));
+                        effect.SetText("×{0:1}", (float)rules.BarAttackRate);
                         if (cap != null)
                         {
-                            cap.SetText("+{0}%", (int)Math.Round(rules.BarCap * 100, MidpointRounding.AwayFromZero));
+                            // 効果の秒数（文字なし版で使える字だけ。早見表は後で作り直す）。
+                            cap.SetText("{0}", (int)Math.Round(rules.BarSeconds, MidpointRounding.AwayFromZero));
                         }
 
                         break;

@@ -17,10 +17,16 @@ namespace UnitySlotTower.Core.Slot
         public int GaugeMax { get; private set; }
 
         /// <summary>バー1回ぶんの攻撃力の上がり幅（0.1 なら +10%）。</summary>
-        public double BarStep { get; private set; }
+        public int RedDamage { get; private set; }
+        public double BlueStopSeconds { get; private set; }
+        public double GreenHealRate { get; private set; }
+        public int YellowPoisonDamage { get; private set; }
+        public double YellowPoisonTickSeconds { get; private set; }
+        public double YellowPoisonSeconds { get; private set; }
+        public double BarAttackRate { get; private set; }
+        public double BarSeconds { get; private set; }
 
         /// <summary>バーによる攻撃力の上がり幅の上限（0.5 なら最大 1.5 倍）。</summary>
-        public double BarCap { get; private set; }
 
         /// <summary>コイン1回ぶんの所持金の倍率の上がり幅。</summary>
         public double CoinStep { get; private set; }
@@ -36,8 +42,14 @@ namespace UnitySlotTower.Core.Slot
                 FirstStopSeconds = values.GetDouble("first_stop_seconds"),
                 StopIntervalSeconds = values.GetDouble("stop_interval_seconds"),
                 GaugeMax = values.GetInt("gauge_max"),
-                BarStep = values.GetDouble("bar_step"),
-                BarCap = values.GetDouble("bar_cap"),
+                RedDamage = values.GetInt("red_damage"),
+                BlueStopSeconds = values.GetDouble("blue_stop_seconds"),
+                GreenHealRate = values.GetDouble("green_heal_rate"),
+                YellowPoisonDamage = values.GetInt("yellow_poison_damage"),
+                YellowPoisonTickSeconds = values.GetDouble("yellow_poison_tick_seconds"),
+                YellowPoisonSeconds = values.GetDouble("yellow_poison_seconds"),
+                BarAttackRate = values.GetDouble("bar_attack_rate"),
+                BarSeconds = values.GetDouble("bar_seconds"),
                 CoinStep = values.GetDouble("coin_step"),
                 CoinCap = values.GetDouble("coin_cap"),
             };

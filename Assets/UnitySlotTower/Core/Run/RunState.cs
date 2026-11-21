@@ -39,7 +39,7 @@ namespace UnitySlotTower.Core.Run
         public UnitUpgrades Upgrades { get; }
         public UnitStock Stock { get; } = new UnitStock();
 
-        /// <summary>スロットの値。戦闘マスごとの <see cref="BattleBoosts"/> もこれで作る。</summary>
+        /// <summary>スロットの値。戦闘マスごとの <see cref="SlotEffects"/> もこれで作る。</summary>
         public SlotRules SlotRules { get; }
 
         /// <summary>色ごとのスキルゲージ（plan 16.4）。戦闘マスをまたいで残る。</summary>

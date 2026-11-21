@@ -121,6 +121,7 @@ namespace UnitySlotTower.Battle
             _random = new SeededRandom((ulong)DateTime.UtcNow.Ticks);
             _clock = new SimulationClock { IsPaused = IsPaused };
             slotCabinet.Aligned += OnSlotAligned;
+            slotCabinet.OutcomeFilter = CanRoll;
             EdgeFlash = ScreenEdgeFlash.Create();
             IsInitialized = true;
         }
@@ -258,8 +259,11 @@ namespace UnitySlotTower.Battle
             if (IsInitialized && slotCabinet != null)
             {
                 slotCabinet.Aligned -= OnSlotAligned;
+                slotCabinet.OutcomeFilter = null;
             }
         }
+
+        private bool CanRoll(SlotSymbol symbol) => Run == null || Run.Field.Effects == null || Run.Field.Effects.CanRoll(symbol);
 
         /// <summary>
         /// 戦闘マス（<paramref name="node"/>）に入る。種類と階が合う出現を選んで開始の演出に入り、フィールドの表示をそのマップに差し替える。

@@ -102,8 +102,8 @@ namespace UnitySlotTower.Tests.EditMode.Data
 
         private static double AttackRateAfterOneBar(IReadOnlyDictionary<string, string> files)
         {
-            var boosts = new BattleBoosts(SlotRules.Load(Parse(files, SlotRules.FileName)));
-            boosts.AddBar();
+            var boosts = new SlotEffects(SlotRules.Load(Parse(files, SlotRules.FileName)));
+            boosts.StartAttack();
             return boosts.AttackRate;
         }
 
@@ -158,13 +158,13 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("図柄効果: slot_rules.csv の bar_step 0.1 → 0.2")]
+        [Description("図柄効果: slot_rules.csv の bar_attack_rate")]
         public void Bar_Effect_Follows_Slot_Rules_Csv()
         {
-            var changed = TablesWith(SlotRules.FileName, "value", "0.2", ("key", "bar_step"));
+            var changed = TablesWith(SlotRules.FileName, "value", "3", ("key", "bar_attack_rate"));
 
             Assert.That((AttackRateAfterOneBar(TablePaths.ReadAll()), AttackRateAfterOneBar(changed)),
-                Is.EqualTo((1.1, 1.2)));
+                Is.EqualTo((2.0, 3.0)));
         }
 
         [Test]

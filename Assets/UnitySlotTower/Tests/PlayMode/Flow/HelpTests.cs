@@ -104,8 +104,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(chances[(int)SlotSymbol.Coin].text, Is.EqualTo("20%"), "コイン（4/20）");
             var effects = (TMP_Text[])Field(help, "effectTexts");
             var caps = (TMP_Text[])Field(help, "capTexts");
-            Assert.That((effects[(int)SlotSymbol.Bar].text, caps[(int)SlotSymbol.Bar].text), Is.EqualTo(("+10%", "+50%")),
-                "バー: 攻撃力 +10%（上限 +50%）");
+            Assert.That((effects[(int)SlotSymbol.Bar].text, caps[(int)SlotSymbol.Bar].text), Is.EqualTo(("×2.0", "10")),
+                "バー: 攻撃力 ×2（10秒）");
             Assert.That((effects[(int)SlotSymbol.Coin].text, caps[(int)SlotSymbol.Coin].text), Is.EqualTo(("×1.1", "×1.5")),
                 "コイン: 所持金 ×1.1（上限 ×1.5）");
             Assert.That(effects[(int)SlotSymbol.Red7].text, Is.EqualTo("+1"), "色7: ゲージ+1");

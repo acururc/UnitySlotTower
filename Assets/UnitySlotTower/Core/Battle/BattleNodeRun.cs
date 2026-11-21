@@ -54,7 +54,7 @@ namespace UnitySlotTower.Core.Battle
             _introStepsLeft = _introSteps;
             Phase = _introSteps > 0 ? WavePhase.Intro : WavePhase.Fighting;
             _fieldLife = state.Life;
-            Field = new Battlefield(wave, ranges, _fieldLife, random, new BattleBoosts(state.SlotRules));
+            Field = new Battlefield(wave, ranges, _fieldLife, random, new SlotEffects(state.SlotRules));
             Summoner = new UnitSummoner(units, Wallet, config.DeployLimit, config.RetreatRefundRate, Stock);
             Deployment = new UnitDeployment(Map, units, ranges, Summoner, Field, Upgrades);
         }
@@ -92,23 +92,11 @@ namespace UnitySlotTower.Core.Battle
         public event Action Ended;
 
         /// <summary>
-        /// 揃った図柄の効果を渡す（FR-042、plan 16.4）。色7はその色のスキルゲージ（<see cref="RunState.Gauges"/>）、
-        /// バー・コインはこの戦闘の倍率（<see cref="Battlefield.Boosts"/>）に足す。
+        /// 揃った図柄の効果をこの戦闘にすぐ出す（FR-112、<see cref="Battlefield.ApplySlot"/>）。スキルゲージはもうたまらない（E-14）。
         /// </summary>
         public void ApplySlot(SlotSymbol symbol)
         {
-            switch (symbol)
-            {
-                case SlotSymbol.Bar:
-                    Field.Boosts.AddBar();
-                    break;
-                case SlotSymbol.Coin:
-                    Field.Boosts.AddCoin();
-                    break;
-                default:
-                    State.Gauges.Add(symbol);
-                    break;
-            }
+            Field.ApplySlot(symbol);
         }
 
         /// <summary>

@@ -98,7 +98,7 @@ namespace UnitySlotTower.Battle
             SetNumber(moneyText, run.Wallet.Coins, ref _shownMoney, NumericText.YenFormat);
             SetNumber(remainingText, run.RemainingEnemies, ref _shownRemaining);
             SetNumber(speedText, battle.BattleSpeed, ref _shownSpeed, "×{0}");
-            var boosts = run.Field.Boosts;
+            var boosts = run.Field.Effects;
             SetRate(attackRateGroup, attackRateText, boosts?.AttackRate ?? 1d, ref _shownAttackRate);
             SetRate(moneyRateGroup, moneyRateText, boosts?.MoneyRate ?? 1d, ref _shownMoneyRate);
 

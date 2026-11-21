@@ -84,11 +84,11 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return SpinAndStopAll();
 
             var tick = _battle.Field.Tick;
-            Assert.That(_battle.Field.Boosts.AttackRate, Is.EqualTo(1 + _cabinet.Rules.BarStep).Within(1e-9));
+            Assert.That(_battle.Field.Effects.AttackRate, Is.EqualTo(_cabinet.Rules.BarAttackRate).Within(1e-9));
             yield return null;
             yield return null;
 
-            Assert.That(rate.text, Is.EqualTo("×" + (1 + _cabinet.Rules.BarStep).ToString("0.0",
+            Assert.That(rate.text, Is.EqualTo("×" + _cabinet.Rules.BarAttackRate.ToString("0.0",
                 System.Globalization.CultureInfo.InvariantCulture)));
             Assert.That(attack.GetComponent<CanvasGroup>().alpha, Is.EqualTo(1f));
 
