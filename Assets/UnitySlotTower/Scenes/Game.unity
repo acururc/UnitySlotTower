@@ -13405,6 +13405,11 @@ MonoBehaviour:
   gaugeBackColor: {r: 0.05, g: 0.05, b: 0.06, a: 1}
   unitGaugeColor: {r: 0.24705882, g: 0.6392157, b: 0.9098039, a: 1}
   enemyGaugeColor: {r: 0.8784314, g: 0.27058825, b: 0.22745098, a: 1}
+  maxShotSeconds: 0.2
+  arrowSize: {x: 0.05, y: 0.05, z: 0.38}
+  arrowColor: {r: 1, g: 0.95, b: 0.7, a: 1}
+  enemyShotSize: 0.15
+  enemyShotColor: {r: 1, g: 0.45, b: 0.85, a: 1}
 --- !u!1 &251760184
 GameObject:
   m_ObjectHideFlags: 0
