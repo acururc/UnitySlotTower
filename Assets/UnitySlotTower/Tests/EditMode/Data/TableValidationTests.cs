@@ -323,11 +323,11 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("D-63: 設定が欠けた抽選表はエラー")]
-        public void Missing_Slot_Setting_Is_An_Error()
+        [Description("出目が重複する抽選表はエラー")]
+        public void Duplicate_Slot_Outcome_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files[SlotPatterns.FileName] = WithoutLinesStartingWith(files[SlotPatterns.FileName], "4,");
+            files[SlotPatterns.FileName] = files[SlotPatterns.FileName].Replace("bar,4", "coin,4");
 
             var report = GameDataValidator.ValidateAll(files);
 
@@ -335,11 +335,11 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("D-60: 合計が20でない設定はエラー（設定1のハズレ 4 → 5 で21）")]
-        public void Slot_Setting_Not_Totalling_20_Is_An_Error()
+        [Description("D-60: 個数の合計が20でない抽選表はエラー")]
+        public void Slot_Table_Not_Totalling_20_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files[SlotPatterns.FileName] = files[SlotPatterns.FileName].Replace("1,miss,4", "1,miss,5");
+            files[SlotPatterns.FileName] = files[SlotPatterns.FileName].Replace("coin,4", "coin,5");
 
             var report = GameDataValidator.ValidateAll(files);
 
@@ -350,7 +350,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Unknown_Slot_Outcome_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files[SlotPatterns.FileName] = files[SlotPatterns.FileName].Replace("1,bar,2", "1,seven,2");
+            files[SlotPatterns.FileName] = files[SlotPatterns.FileName].Replace("bar,4", "seven,4");
 
             var report = GameDataValidator.ValidateAll(files);
 

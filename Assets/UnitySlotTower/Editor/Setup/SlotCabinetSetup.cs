@@ -22,14 +22,14 @@ namespace UnitySlotTower.Editor.Setup
         private const string InputActionsPath = "Assets/InputSystem_Actions.inputactions";
         private const int CellCount = 5;
         private const string PaylineName = "Payline Mark";
-        private const string FixedSpinsName = "Fixed Spins Icon";
+        private const string LegacyIconName = "Fixed Spins Icon";
         private const string ReelCustomName = "Reel Custom";
 
         // T348 で消す旧筐体の部品（ストップボタン・ボーナス・払い出し）。
         private static readonly string[] RemovedParts =
             { "Stop Button 1", "Stop Button 2", "Stop Button 3", "Bonus Lamp", "Bonus Games", "Payout" };
 
-        // 回数固定の印はコインのアイコンと同じ場所に重ねる（どちらか一方だけ出る）。
+        // コインと旧表示の印の位置。
         private static readonly Vector2 CoinIconMin = new Vector2(0.76f, 0.261f);
         private static readonly Vector2 CoinIconMax = new Vector2(0.819f, 0.362f);
 
@@ -70,7 +70,7 @@ namespace UnitySlotTower.Editor.Setup
 
             var coin = CreateImage("Coin Icon", slotArea, CoinIconMin, CoinIconMax, new Color(1f, 0.82f, 0.2f), _knob, true);
             var credit = CreateNumber("Credit", slotArea, new Vector2(0.823f, 0.252f), new Vector2(0.986f, 0.371f), Color.white);
-            var fixedSpins = CreateFixedSpinsIcon(slotArea);
+            var legacyIcon = CreateLegacyIcon(slotArea);
 
             var serialized = new SerializedObject(cabinet);
             SetTable(serialized, "gameConfigTable", "game_config.csv");
@@ -83,7 +83,7 @@ namespace UnitySlotTower.Editor.Setup
             SetArray(serialized.FindProperty("reels"), reels);
             serialized.FindProperty("reelWindow").objectReferenceValue = window;
             serialized.FindProperty("coinIcon").objectReferenceValue = coin;
-            serialized.FindProperty("fixedSpinsIcon").objectReferenceValue = fixedSpins;
+            serialized.FindProperty("fixedSpinsIcon").objectReferenceValue = legacyIcon;
             serialized.FindProperty("creditText").objectReferenceValue = credit;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
@@ -95,7 +95,7 @@ namespace UnitySlotTower.Editor.Setup
 
         /// <summary>
         /// 旧筐体を T348 の筐体に作り直す: ストップボタン・ボーナスのランプと残りゲーム数・払い出し・カスタム画面の残骸を消し、
-        /// コマの図柄を新しい6図柄の順に作り直し、回数固定の印を足して参照をつなぎ直す。何度実行しても同じ結果になる。
+        /// コマの図柄を新しい6図柄の順に作り直し、旧表示の印への参照を保つ。何度実行しても同じ結果になる。
         /// </summary>
         [MenuItem("Tools/UnitySlotTower/Setup/Rebuild Slot Cabinet (T348)")]
         private static void Rebuild()
@@ -146,15 +146,12 @@ namespace UnitySlotTower.Editor.Setup
                 }
             }
 
-            var fixedSpins = slotArea.Find(FixedSpinsName)?.gameObject;
-            if (fixedSpins == null)
-            {
-                fixedSpins = CreateFixedSpinsIcon(slotArea);
-            }
+            var existingIcon = slotArea.Find(LegacyIconName);
+            var legacyIcon = existingIcon != null ? existingIcon.gameObject : CreateLegacyIcon(slotArea);
 
             var serialized = new SerializedObject(cabinet);
             serialized.FindProperty("reelWindow").objectReferenceValue = window;
-            serialized.FindProperty("fixedSpinsIcon").objectReferenceValue = fixedSpins;
+            serialized.FindProperty("fixedSpinsIcon").objectReferenceValue = legacyIcon;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             var missing = 0;
@@ -179,10 +176,10 @@ namespace UnitySlotTower.Editor.Setup
             _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontPath);
         }
 
-        // 回数固定の印: 赤い枠に白いリール3本（小さなスロット窓）。文字を使わない（FR-003）。最初は隠しておく。
-        private static GameObject CreateFixedSpinsIcon(RectTransform slotArea)
+        // 旧表示の印: 赤い枠に白いリール3本（小さなスロット窓）。文字を使わない（FR-003）。最初は隠しておく。
+        private static GameObject CreateLegacyIcon(RectTransform slotArea)
         {
-            var frame = CreateImage(FixedSpinsName, slotArea, CoinIconMin, CoinIconMax, new Color(0.85f, 0.2f, 0.2f), _box, false);
+            var frame = CreateImage(LegacyIconName, slotArea, CoinIconMin, CoinIconMax, new Color(0.85f, 0.2f, 0.2f), _box, false);
             for (var i = 0; i < SlotMachine.ReelCount; i++)
             {
                 var left = 0.14f + i * 0.255f;

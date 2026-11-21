@@ -20,7 +20,7 @@ namespace UnitySlotTower.Tests.EditMode.Slot
             Machine(Enumerable.Repeat(outcome, 20).ToArray(), new CoinWallet(coins), seed);
 
         private static SlotMachine Machine(IReadOnlyList<SlotSymbol?> patterns, CoinWallet wallet, ulong seed = 1) =>
-            new SlotMachine(SlotTestRules.Reels(), patterns, wallet, 3, new SeededRandom(seed));
+            new SlotMachine(SlotTestRules.Reels(), patterns, wallet, 1, new SeededRandom(seed));
 
         private static SlotSymbol[] Row(SlotMachine machine, int row) =>
             Enumerable.Range(0, SlotMachine.ReelCount).Select(reel => machine.Visible(reel, row)).ToArray();
@@ -28,7 +28,7 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         private static bool Aligned(SlotSymbol[] row) => row.All(s => s == row[0]);
 
         [Test]
-        [Description("AC-041: 回すとコインが3枚減る")]
+        [Description("AC-107: 回すとコインが1枚減る")]
         public void Lever_Spends_The_Bet()
         {
             var wallet = new CoinWallet(10);
@@ -36,19 +36,19 @@ namespace UnitySlotTower.Tests.EditMode.Slot
 
             machine.TryLever();
 
-            Assert.That(wallet.Coins, Is.EqualTo(7));
+            Assert.That(wallet.Coins, Is.EqualTo(9));
         }
 
         [Test]
-        [Description("AC-041: コインが3枚未満だと回せず、コインは減らない")]
+        [Description("AC-107: コインが0枚だと回せず、コインは減らない")]
         public void Lever_Without_Enough_Coins_Is_Rejected()
         {
-            var wallet = new CoinWallet(2);
+            var wallet = new CoinWallet(0);
             var machine = Machine(new SlotSymbol?[] { null }, wallet);
 
             var result = machine.TryLever();
 
-            Assert.That((result, wallet.Coins, machine.IsSpinning), Is.EqualTo((LeverResult.NotEnoughCoins, 2, false)));
+            Assert.That((result, wallet.Coins, machine.IsSpinning), Is.EqualTo((LeverResult.NotEnoughCoins, 0, false)));
         }
 
         [Test]
@@ -61,7 +61,7 @@ namespace UnitySlotTower.Tests.EditMode.Slot
 
             var result = machine.TryLever();
 
-            Assert.That((result, wallet.Coins), Is.EqualTo((LeverResult.Spinning, 7)));
+            Assert.That((result, wallet.Coins), Is.EqualTo((LeverResult.Spinning, 9)));
         }
 
         [Test]
@@ -179,55 +179,38 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         }
 
         [Test]
-        [Description("AC-041, D-68: 回数固定ではコインが減らない")]
-        public void Fixed_Spins_Do_Not_Spend_Coins()
+        public void Lever_Continues_While_Coins_Last()
         {
-            var wallet = new CoinWallet(10);
-            var machine = Machine(new SlotSymbol?[] { null }, wallet);
-            machine.StartFixedSpins(6);
-
-            machine.TryLever();
-
-            Assert.That((wallet.Coins, machine.FixedSpinsLeft), Is.EqualTo((10, (int?)5)));
-        }
-
-        [Test]
-        [Description("AC-041, D-68: 回数固定は決まった回数で止まり、コインがあっても回せない")]
-        public void Fixed_Spins_Stop_After_The_Count()
-        {
-            var wallet = new CoinWallet(10);
-            var machine = Machine(new SlotSymbol?[] { null }, wallet);
-            machine.StartFixedSpins(2);
-            for (var i = 0; i < 2; i++)
+            var wallet = new CoinWallet(100);
+            var machine = Machine(new SlotSymbol?[] { SlotSymbol.Red7 }, wallet);
+            for (var i = 0; i < 100; i++)
             {
-                machine.TryLever();
+                Assert.That(machine.TryLever(), Is.EqualTo(LeverResult.Started));
                 machine.Settle();
             }
 
-            Assert.That((machine.TryLever(), wallet.Coins), Is.EqualTo((LeverResult.NoSpinsLeft, 10)));
+            Assert.That((wallet.Coins, machine.TryLever()), Is.EqualTo((0, LeverResult.NotEnoughCoins)));
+        }
+
+        [TestCase(SlotSymbol.Red7)]
+        [TestCase(null)]
+        public void Filter_Leaves_Only_The_Allowed_Pattern(SlotSymbol? allowed)
+        {
+            var machine = Machine(new SlotSymbol?[] { SlotSymbol.Blue7, allowed }, new CoinWallet(50));
+            for (var i = 0; i < 50; i++)
+            {
+                machine.TryLever(symbol => symbol != SlotSymbol.Blue7);
+                Assert.That(machine.Outcome, Is.EqualTo(allowed));
+                machine.Settle();
+            }
         }
 
         [Test]
-        [Description("D-68: 回数固定でもコインが0枚で回せる")]
-        public void Fixed_Spins_Work_Without_Coins()
+        public void Empty_Filter_Falls_Back_To_The_Table()
         {
-            var machine = Machine(new SlotSymbol?[] { null }, new CoinWallet(0));
-            machine.StartFixedSpins(1);
-
-            Assert.That(machine.TryLever(), Is.EqualTo(LeverResult.Started));
-        }
-
-        [Test]
-        public void Ending_Fixed_Spins_Goes_Back_To_Coins()
-        {
-            var wallet = new CoinWallet(10);
-            var machine = Machine(new SlotSymbol?[] { null }, wallet);
-            machine.StartFixedSpins(1);
-            machine.EndFixedSpins();
-
-            machine.TryLever();
-
-            Assert.That((wallet.Coins, machine.FixedSpinsLeft), Is.EqualTo((7, (int?)null)));
+            var machine = Machine(SlotSymbol.Coin);
+            Assert.That(machine.TryLever(_ => false), Is.EqualTo(LeverResult.Started));
+            Assert.That(machine.Outcome, Is.EqualTo(SlotSymbol.Coin));
         }
 
         [Test]

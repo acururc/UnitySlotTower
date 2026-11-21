@@ -263,7 +263,6 @@ namespace UnitySlotTower.Battle
 
         /// <summary>
         /// 戦闘マス（<paramref name="node"/>）に入る。種類と階が合う出現を選んで開始の演出に入り、フィールドの表示をそのマップに差し替える。
-        /// 回数固定（<see cref="Encounter.FixedSpins"/>）を筐体へ渡す（0 ならコインで回す）。
         /// </summary>
         public void BeginNode(RunState state, RouteNode node)
         {
@@ -275,7 +274,6 @@ namespace UnitySlotTower.Battle
             var kind = RouteNodeKinds.Get(node.Kind).Encounter
                 ?? throw new ArgumentException($"戦闘マスではない: {node.Kind}", nameof(node));
             var encounter = state.PickEncounter(_encounters, kind, node.Floor, _random);
-            slotCabinet.SetFixedSpins(encounter.FixedSpins);
             var map = fieldView.LoadMap(encounter.MapId);
             if (Field != null) Field.BaseReached -= OnBaseReached;
             NodeKind = node.Kind;

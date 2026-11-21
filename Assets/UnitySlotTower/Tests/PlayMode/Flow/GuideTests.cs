@@ -68,8 +68,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             _mouse = InputSystem.AddDevice<Mouse>("Test Mouse");
 
             GuideOverlay.DisabledForTests = false;
-            // 当たりでスキルのゲージや所持金が変わると、テストの想定より先に別の題目が出てしまうので必ずハズレにする。
-            SlotCabinet.RandomOverride = new AlwaysMissRandom();
+            // スキルのゲージや所持金が変わらないよう、バーを出す。
+            SlotCabinet.RandomOverride = new BarPatternRandom();
             yield return LoadGame(false);
         }
 

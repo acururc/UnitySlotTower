@@ -33,7 +33,6 @@ namespace UnitySlotTower.Core.Battle
     /// 1つの戦闘マスの進行（FR-010, FR-013〜016, FR-019、plan 17.2）。開始の演出 → 戦闘（1ウェーブ）→ 終了。
     /// ライフ・お金・強化・ストック・スキルゲージは <see cref="RunState"/> を直接書き換え、戦闘（バー・コインの倍率を含む）・召喚・配置操作は
     /// このマスだけのもの。終了時に配置中の味方を種類ごとにストックへ足し、報酬を加える。ボスマスの終了でクリア。
-    /// 回数固定（<see cref="Encounter.FixedSpins"/>）は Runtime がスロット（<see cref="SlotMachine.StartFixedSpins"/>）へ渡す。
     /// </summary>
     public sealed class BattleNodeRun
     {

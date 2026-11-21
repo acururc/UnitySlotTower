@@ -39,7 +39,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("plan 16.2・17.1: コイン15・所持金250円・2枚賭け・ライフ10")]
+        [Description("plan 16.2・17.1: コイン3・所持金250円・1枚賭け・ライフ10")]
         public void Project_Table_Holds_Planned_Initial_Values()
         {
             var text = File.ReadAllText(Path.Combine(TablePaths.Root, "game_config.csv"));
@@ -48,7 +48,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
 
             Assert.That((config.InitialCoins, config.InitialMoney, config.Bet, config.Life, config.DeployLimit,
                     config.RetreatRefundRate),
-                Is.EqualTo((15, 250, 2, 10, 8, 0.5)));
+                Is.EqualTo((3, 250, 1, 10, 8, 0.5)));
         }
 
         [Test]

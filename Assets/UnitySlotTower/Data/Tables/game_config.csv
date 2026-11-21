@@ -1,7 +1,7 @@
 ﻿key,value
-initial_coins,15
+initial_coins,3
 initial_money,250
-bet,2
+bet,1
 life,10
 deploy_limit,8
 retreat_refund_rate,0.5

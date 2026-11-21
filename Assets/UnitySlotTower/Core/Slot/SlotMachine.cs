@@ -15,13 +15,10 @@ namespace UnitySlotTower.Core.Slot
 
         /// <summary>コインが掛け金未満。</summary>
         NotEnoughCoins,
-
-        /// <summary>回数固定の戦闘で残り回数が 0。</summary>
-        NoSpinsLeft,
     }
 
     /// <summary>
-    /// 1台のスロット（FR-040・FR-041、plan 16.3）。レバーで掛け金を払い、20パターンから出目を1つ一様に選んで3本の停止位置を決める。
+    /// 1台のスロット（FR-040・FR-041、plan 16.3）。レバーで掛け金を払い、許可されたパターンから出目を1つ一様に選んで3本の停止位置を決める。
     /// 揃いはその図柄が中段に来る位置、ハズレはどの段（上・中・下）も揃わない組み合わせから一様に選ぶ。
     /// 表示側が3本を止め終えたら <see cref="Settle"/> を呼び、揃った図柄を <see cref="Aligned"/> で通知する。
     /// 一時停止中のレバーの拒否は表示側（Runtime）が受け持つ。
@@ -31,6 +28,7 @@ namespace UnitySlotTower.Core.Slot
         public const int ReelCount = SlotReels.ReelCount;
 
         private readonly SlotSymbol?[] _patterns;
+        private readonly int[] _allowedIndices;
         private readonly CoinWallet _coins;
         private readonly IRandom _random;
         private readonly List<int[]> _missStops = new List<int[]>();
@@ -50,6 +48,7 @@ namespace UnitySlotTower.Core.Slot
                 throw new ArgumentException("抽選表が空", nameof(patterns));
             }
 
+            _allowedIndices = new int[patterns.Count];
             _patterns = new SlotSymbol?[patterns.Count];
             for (var i = 0; i < _patterns.Length; i++)
             {
@@ -73,9 +72,6 @@ namespace UnitySlotTower.Core.Slot
         /// <summary>直近のレバーで決まった出目。揃う図柄、ハズレなら null。</summary>
         public SlotSymbol? Outcome { get; private set; }
 
-        /// <summary>回数固定の戦闘の残り回数（D-68）。回数固定でなければ null。</summary>
-        public int? FixedSpinsLeft { get; private set; }
-
         /// <summary>止まったあとに揃った図柄を通知する（ハズレでは呼ばない）。</summary>
         public event Action<SlotSymbol> Aligned;
 
@@ -85,42 +81,41 @@ namespace UnitySlotTower.Core.Slot
         /// <summary>止まったときに見える図柄。row は上段 -1・中段 0・下段 1。</summary>
         public SlotSymbol Visible(int reel, int row) => Reels[reel].At(_stops[reel] + row);
 
-        /// <summary>この後のレバーをコインを使わない回数固定にする（D-68）。</summary>
-        public void StartFixedSpins(int count)
-        {
-            if (count < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count), count, "回数は 0 以上");
-            }
-
-            FixedSpinsLeft = count;
-        }
-
-        /// <summary>回数固定を終え、コインで回す状態に戻す。</summary>
-        public void EndFixedSpins() => FixedSpinsLeft = null;
-
-        public LeverResult TryLever()
+        /// <summary>出せるパターンから等確率で選ぶ。ハズレは常に候補とし、候補がなければ表全体から選ぶ。</summary>
+        public LeverResult TryLever(Func<SlotSymbol, bool> canAppear = null)
         {
             if (IsSpinning)
             {
                 return LeverResult.Spinning;
             }
 
-            if (FixedSpinsLeft.HasValue)
-            {
-                if (FixedSpinsLeft.Value <= 0)
-                {
-                    return LeverResult.NoSpinsLeft;
-                }
-
-                FixedSpinsLeft--;
-            }
-            else if (!_coins.TrySpend(Bet))
+            if (_coins.Coins < Bet)
             {
                 return LeverResult.NotEnoughCoins;
             }
 
-            Outcome = _patterns[_random.NextInt(0, _patterns.Length)];
+            var allowedCount = 0;
+            if (canAppear != null)
+            {
+                for (var i = 0; i < _patterns.Length; i++)
+                {
+                    var pattern = _patterns[i];
+                    if (!pattern.HasValue || canAppear(pattern.Value))
+                    {
+                        _allowedIndices[allowedCount++] = i;
+                    }
+                }
+            }
+
+            if (!_coins.TrySpend(Bet))
+            {
+                return LeverResult.NotEnoughCoins;
+            }
+
+            var index = allowedCount == 0
+                ? _random.NextInt(0, _patterns.Length)
+                : _allowedIndices[_random.NextInt(0, allowedCount)];
+            Outcome = _patterns[index];
             if (Outcome.HasValue)
             {
                 for (var reel = 0; reel < ReelCount; reel++)

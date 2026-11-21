@@ -63,7 +63,7 @@ namespace UnitySlotTower.Core.Guide
         public bool SlotSpinning;
         /// <summary>このプレイでリールを回した回数。</summary>
         public int SpinCount;
-        /// <summary>レバーを引ける（コインか回数固定が足りる）。</summary>
+        /// <summary>レバーを引ける（掛け金を払える）。</summary>
         public bool CanLever;
         /// <summary>ゲージが満タンで、いま発動できる職の操作バーの位置（0 始まり）。なければ -1。</summary>
         public int SkillSlot;

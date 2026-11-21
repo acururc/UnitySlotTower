@@ -77,8 +77,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
             _keyboard = InputSystem.AddDevice<Keyboard>("Test Keyboard");
             _mouse = InputSystem.AddDevice<Mouse>("Test Mouse");
-            // 当たりの払い出しで所持コインが揺れないよう、スロットは必ずハズレにする。
-            SlotCabinet.RandomOverride = new AlwaysMissRandom();
+            // スロットの結果をバーに固定する。
+            SlotCabinet.RandomOverride = new BarPatternRandom();
             SceneManager.sceneLoaded += ReplaceWaves;
         }
 
@@ -146,10 +146,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return Click(GameObject.Find("Skill Gauge 1").transform);
             Assert.That(_battle.SkillActivations, Is.EqualTo(activations + 1), "ゲージのクリックでスキルが発動しない");
 
-            // スロット: レバーのクリック。最初の戦闘は回数固定なので残り回数が減る。リールは自動で止まる。
-            var spins = _cabinet.FixedSpinsLeft;
+            // スロット: レバーのクリック。1回でコインが1枚減る。リールは自動で止まる。
+            var coinsBeforeSpin = _cabinet.Wallet.Coins;
             yield return Click(_cabinet.LeverRect);
-            Assert.That((_cabinet.IsSpinning, _cabinet.FixedSpinsLeft), Is.EqualTo((true, spins - 1)), "レバーのクリックで回らない");
+            Assert.That((_cabinet.IsSpinning, _cabinet.Wallet.Coins), Is.EqualTo((true, coinsBeforeSpin - 1)), "レバーのクリックで回らない");
             yield return WaitForReelsToStop();
 
             // 一時停止ボタン → 「?」で早見表 → ◀ で閉じる → 一時停止ボタンで再開。

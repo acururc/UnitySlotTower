@@ -110,8 +110,7 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Bool("is_boss"),
                 ColumnRule.Int(WaveSchedule.CountColumn, 1, 50),
                 ColumnRule.Float(WaveSchedule.IntervalColumn, 0, 60)),
-            new TableSchema(SlotPatterns.FileName, new[] { "setting", "outcome" },
-                ColumnRule.Int("setting", 1, SlotPatterns.SettingCount),
+            new TableSchema(SlotPatterns.FileName, new[] { "outcome" },
                 ColumnRule.Enum("outcome", OutcomeIds),
                 ColumnRule.Int("count", 0, SlotPatterns.PatternCount)),
             new TableSchema(SlotReels.FileName, new[] { "reel", "index" },
@@ -293,7 +292,7 @@ namespace UnitySlotTower.Core.Data
             }
         }
 
-        /// <summary>設定1〜6がそろい、各設定の合計が20であることを <see cref="SlotPatterns"/> で確かめる（D-60）。</summary>
+        /// <summary>出目の個数の合計が20であることを <see cref="SlotPatterns"/> で確かめる（D-60）。</summary>
         private static void ValidateSlotPatterns(CsvTable table, ValidationReport report)
         {
             try

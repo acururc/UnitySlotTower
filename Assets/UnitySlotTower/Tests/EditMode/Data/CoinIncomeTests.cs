@@ -37,7 +37,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [TestCase(12)]
-        [Description("D-86、plan 17.1: コインを使う戦闘（回数固定でない）はどれも、1戦闘のコインの期待値 ÷ 掛け金が目安の回数以上")]
+        [Description("D-86、plan 17.1: 各戦闘で、1戦闘のコインの期待値 ÷ 掛け金が目安の回数以上")]
         public void Every_Coin_Battle_Yields_Enough_Spins(int minimumSpins)
         {
             var files = TablePaths.ReadAll();
@@ -47,11 +47,6 @@ namespace UnitySlotTower.Tests.EditMode.Data
             var checkedCount = 0;
             foreach (var encounter in encounters.All)
             {
-                if (encounter.FixedSpins > 0)
-                {
-                    continue;
-                }
-
                 var spins = ExpectedCoinsPerEncounter(files, encounter) / bet;
                 TestContext.WriteLine($"{encounter.Id}: {spins:0.0} 回");
                 Assert.That(spins, Is.GreaterThanOrEqualTo(minimumSpins), encounter.Id);
@@ -62,8 +57,8 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("AC-019、plan 17.1: 2枚賭け、両替は 10 円 = 1 コイン、一番安いキャラは 100 円くらい")]
-        public void Project_Money_Is_Yen_Scale_With_Bet_Two_And_Ten_Yen_Per_Coin()
+        [Description("AC-019、plan 17.1: 1枚賭け、両替は 10 円 = 1 コイン、一番安いキャラは 100 円くらい")]
+        public void Project_Money_Is_Yen_Scale_With_Bet_One_And_Ten_Yen_Per_Coin()
         {
             var files = TablePaths.ReadAll();
             var config = GameConfig.Load(Parse(files, GameConfig.FileName));
@@ -76,7 +71,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
                 cheapest = System.Math.Min(cheapest, unit.Cost);
             }
 
-            Assert.That((config.Bet, rules.ExchangeMoneyPerCoin), Is.EqualTo((2, 10)));
+            Assert.That((config.Bet, rules.ExchangeMoneyPerCoin), Is.EqualTo((1, 10)));
             Assert.That(cheapest, Is.InRange(80, 150));
         }
     }

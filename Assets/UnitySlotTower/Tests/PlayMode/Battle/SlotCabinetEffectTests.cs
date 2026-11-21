@@ -98,7 +98,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        [Description("AC-046: 揃いで中段が光って効果の行き先へ光が飛び、ハズレでは出ない。演出中も敵が進み、レバーを引ける")]
+        [Description("AC-046: 揃いで中段が光って効果の行き先へ光が飛ぶ。演出中も敵が進み、レバーを引ける")]
         public IEnumerator Aligning_Plays_The_Effect_Toward_Its_Target_Without_Stopping_The_Battle()
         {
             yield return LoadGame();
@@ -107,6 +107,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             var status = Object.FindAnyObjectByType<OperationBarStatus>();
 
             // バー → 攻撃力の倍率。演出中に敵が進み、レバーを引ける。
+            _cabinet.Wallet.Add(1);
             var attackScale = status.AttackRateRect.localScale;
             yield return SpinAndStopAll();
             Assert.That((effect.PlayCount, effect.LastSymbol, effect.LastTarget),
@@ -149,13 +150,6 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             Assert.That((effect.LastSymbol, gauge), Is.EqualTo((color, true)), "色7はその色の職のスキルゲージへ飛ぶ");
             yield return WaitForEffect(effect);
-
-            // ハズレ → 演出なし。
-            var count = effect.PlayCount;
-            Select(null);
-            yield return SpinAndStopAll();
-            yield return null;
-            Assert.That((effect.PlayCount, effect.IsPlaying), Is.EqualTo((count, false)), "ハズレでは演出を出さない");
         }
 
         private FixedRandom _random;
@@ -172,14 +166,14 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                 yield return null;
             }
 
-            Assert.That(_battle?.Field, Is.Not.Null, "Game シーンの戦闘が始まらない");
+            Assert.That(_battle.Field, Is.Not.Null, "Game シーンの戦闘が始まらない");
             yield return RouteTestUtil.WaitForIntro(_battle);
             Select(SlotSymbol.Bar);
             yield return null;
             _reels = _cabinet.GetComponentsInChildren<SlotReelView>();
         }
 
-        // この難易度の20パターンからその出目（null はハズレ）の番号を選ぶ。
+        // 20パターンからその出目（null はハズレ）の番号を選ぶ。
         private void Select(SlotSymbol? outcome)
         {
             _random.Index = _random.IndexOf(_cabinet, outcome);

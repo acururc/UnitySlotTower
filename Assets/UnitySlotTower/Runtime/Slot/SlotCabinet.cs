@@ -16,7 +16,7 @@ namespace UnitySlotTower.Slot
 {
     /// <summary>
     /// 下部のスロット筐体（plan 16.3・16.8）。レバー（クリックか Space）で回し、3本は左から自動で止まる。止まり終えたら
-    /// <see cref="SlotMachine.Settle"/> で揃った図柄を通知する。コインの数、回数固定の戦闘ではその代わりに残り回数を出し、
+    /// <see cref="SlotMachine.Settle"/> で揃った図柄を通知する。コインの数を出し、
     /// 回せないときはそのアイコンを点滅させる。ルート画面ではルート選びのモード（<see cref="BeginRouteChoice"/>、D-75）で使う。
     /// </summary>
     public sealed class SlotCabinet : MonoBehaviour
@@ -43,9 +43,9 @@ namespace UnitySlotTower.Slot
         [SerializeField] private SlotReelView[] reels = new SlotReelView[SlotMachine.ReelCount];
         [SerializeField] private RectTransform reelWindow;
         [SerializeField] private Graphic coinIcon;
-        [Tooltip("回数固定の戦闘でコインのアイコンの代わりに出す印（plan 16.8）。")]
+        [Tooltip("旧表示の印。常に非表示。")]
         [SerializeField] private GameObject fixedSpinsIcon;
-        [Tooltip("コインの数。回数固定の戦闘では残り回数を出す。")]
+        [Tooltip("コインの数。")]
         [SerializeField] private TMP_Text creditText;
 
         [Header("Route choice (D-75)")]
@@ -97,7 +97,7 @@ namespace UnitySlotTower.Slot
         /// <summary>slot_rules.csv の値。Awake で読む。</summary>
         public SlotRules Rules { get; private set; }
 
-        /// <summary>このプレイの難易度の20パターン（ハズレは null）。早見表に使う。Awake で読む。</summary>
+        /// <summary>全ステージ共通の20パターン（ハズレは null）。早見表に使う。Awake で読む。</summary>
         public IReadOnlyList<SlotSymbol?> Patterns { get; private set; }
 
         /// <summary>3本が止まり終えて図柄が揃ったときに、その図柄を通知する（FR-042）。</summary>
@@ -109,12 +109,11 @@ namespace UnitySlotTower.Slot
         /// <summary>このプレイでリールを回した回数。</summary>
         public int SpinCount { get; private set; }
 
-        /// <summary>いまレバーを引けば回るか（回数固定なら残り回数、そうでなければコイン）。</summary>
-        public bool CanLever => _machine != null &&
-            (_machine.FixedSpinsLeft.HasValue ? _machine.FixedSpinsLeft.Value > 0 : _wallet.Coins >= _bet);
+        /// <summary>掛け金を払えるか。</summary>
+        public bool CanLever => _wallet != null && _wallet.Coins >= _bet;
 
-        /// <summary>回数固定の戦闘の残り回数。コインで回しているときは null（D-68）。</summary>
-        public int? FixedSpinsLeft => _machine?.FixedSpinsLeft;
+        /// <summary>今出せる図柄か。T602 でスロット効果から設定する。null は全図柄を許可する。</summary>
+        public Func<SlotSymbol, bool> OutcomeFilter { get; set; }
 
         /// <summary>1回に賭けるコインの枚数（game_config の bet）。</summary>
         public int Bet => _bet;
@@ -159,23 +158,7 @@ namespace UnitySlotTower.Slot
         }
 
         /// <summary>
-        /// 戦闘マスの回数固定を設定する（<c>Encounter.FixedSpins</c>）。1以上ならその回数だけコインを使わずに回せ、
-        /// 0 ならコインで回す状態に戻す。
-        /// </summary>
-        public void SetFixedSpins(int count)
-        {
-            if (count > 0)
-            {
-                _machine.StartFixedSpins(count);
-            }
-            else
-            {
-                _machine.EndFixedSpins();
-            }
-        }
-
-        /// <summary>
-        /// ルート選びのモードに入る（D-75・D-90、plan 17.8）。入った時点でコインを使わずに回し始め（回数固定も減らない、レバーは
+        /// ルート選びのモードに入る（D-75・D-90、plan 17.8）。入った時点でコインを使わずに回し始め（レバーは
         /// 何もしない）、リールは自動で止まらない。行き先のあるリール（<paramref name="directions"/> が true）をクリックすると
         /// そのリールが先に止まり、残りは <see cref="RouteStopIntervalSeconds"/> 間隔で左から順に止まって
         /// <see cref="RouteReelChosen"/> を通知する。図柄の効果はない（Core の <see cref="SlotMachine"/> を通さない）。
@@ -323,12 +306,17 @@ namespace UnitySlotTower.Slot
 
         private void Awake()
         {
+            if (fixedSpinsIcon != null)
+            {
+                fixedSpinsIcon.SetActive(false);
+            }
+
             setting = GameSession.SelectedSetting ?? setting;
             try
             {
                 var config = GameConfig.Load(Parse(GameConfig.FileName, gameConfigTable));
                 Rules = SlotRules.Load(Parse(SlotRules.FileName, rulesTable));
-                Patterns = SlotPatterns.Load(Parse(SlotPatterns.FileName, patternsTable)).For(setting);
+                Patterns = SlotPatterns.Load(Parse(SlotPatterns.FileName, patternsTable)).Patterns;
                 _reels = SlotReels.Load(Parse(SlotReels.FileName, reelsTable));
                 var problems = _reels.Problems();
                 if (problems.Count > 0)
@@ -419,7 +407,7 @@ namespace UnitySlotTower.Slot
             }
 
             var now = Time.timeAsDouble;
-            switch (_machine.TryLever())
+            switch (_machine.TryLever(OutcomeFilter))
             {
                 case LeverResult.Started:
                     SpinCount++;
@@ -431,7 +419,6 @@ namespace UnitySlotTower.Slot
 
                     break;
                 case LeverResult.NotEnoughCoins:
-                case LeverResult.NoSpinsLeft:
                     _coinBlinkUntil = now + CoinBlinkSeconds;
                     break;
             }
@@ -464,20 +451,9 @@ namespace UnitySlotTower.Slot
                 UpdateRouteChoice(now);
             }
 
-            // 回数固定ならコインの代わりに残り回数を出す。回せなかったときは出ている方のアイコンを点滅させる。
-            var fixedSpins = _machine.FixedSpinsLeft;
             var blink = now < _coinBlinkUntil && (int)(now * 10) % 2 == 0;
-            coinIcon.enabled = !fixedSpins.HasValue && !blink;
-            if (fixedSpinsIcon != null)
-            {
-                var show = fixedSpins.HasValue && !blink;
-                if (fixedSpinsIcon.activeSelf != show)
-                {
-                    fixedSpinsIcon.SetActive(show);
-                }
-            }
-
-            var credit = fixedSpins ?? _wallet.Coins;
+            coinIcon.enabled = !blink;
+            var credit = _wallet.Coins;
             if (credit != _shownCredit)
             {
                 _shownCredit = credit;

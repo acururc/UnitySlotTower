@@ -15,7 +15,7 @@ using UnitySlotTower.Ui;
 
 namespace UnitySlotTower.Tests.PlayMode.Flow
 {
-    [Description("T350b (FR-010, FR-017, D-75): 戦闘マスの後にルート画面が開き、筐体のリールで次のマスを選ぶ（コイン・回数固定は減らない）")]
+    [Description("T350b (FR-010, FR-017, D-75): 戦闘マスの後にルート画面が開き、筐体のリールで次のマスを選ぶ（コインは減らない）")]
     public sealed class RouteChoiceTests
     {
         // どの戦闘マスも各ウェーブ近接の敵1体だけ。
@@ -157,7 +157,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var state = _run.State;
             var current = state.Current;
             var coins = state.Coins.Coins;
-            var fixedSpins = _cabinet.FixedSpinsLeft;
             var spins = _cabinet.SpinCount;
 
             yield return RouteTestUtil.WaitForRouteSpin(_cabinet);
@@ -165,9 +164,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             _cabinet.LeverRect.GetComponent<Button>().onClick.Invoke();
             yield return WaitReal(2.5f);
             Assert.That((_cabinet.IsSpinning, _run.IsChoosingRoute), Is.EqualTo((true, true)), "ルート選びのリールが自動で止まった");
-            // 回数固定は次の戦闘マスの出現で置き換わるので、マスに入る前に確かめる。
-            Assert.That((state.Coins.Coins, _cabinet.FixedSpinsLeft, _cabinet.SpinCount), Is.EqualTo((coins, fixedSpins, spins)),
-                "ルート選びでコインか回数固定か回した回数が変わった");
+            Assert.That((state.Coins.Coins, _cabinet.SpinCount), Is.EqualTo((coins, spins)),
+                "ルート選びでコインか回した回数が変わった");
 
             var reels = (SlotReelView[])Field("reels");
             var reel = RouteTestUtil.PreferredReel(current);
@@ -330,7 +328,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var state = _run.State;
             var node = state.Current;
             var coins = state.Coins.Coins;
-            var fixedSpins = _cabinet.FixedSpinsLeft;
             var chosen = -1;
             void OnChosen(int reel) => chosen = reel;
             _cabinet.RouteReelChosen += OnChosen;
@@ -355,8 +352,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
                 Assert.That((chosen, _cabinet.IsChoosingRoute, _cabinet.IsSpinning, Dim(0).activeSelf, PickButton(1).gameObject.activeSelf),
                     Is.EqualTo((1, false, false, false, false)), "行き先のあるリールで止まり終えない");
-                Assert.That((state.Coins.Coins, _cabinet.FixedSpinsLeft, state.Current, _run.IsChoosingRoute),
-                    Is.EqualTo((coins, fixedSpins, node, false)));
+                Assert.That((state.Coins.Coins, state.Current, _run.IsChoosingRoute),
+                    Is.EqualTo((coins, node, false)));
             }
             finally
             {

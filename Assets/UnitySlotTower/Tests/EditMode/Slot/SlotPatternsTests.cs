@@ -9,90 +9,34 @@ namespace UnitySlotTower.Tests.EditMode.Slot
     {
         private static SlotPatterns Project() => SlotPatterns.Load(SlotTestRules.ProjectTable(SlotPatterns.FileName));
 
-        private static string Csv(string rows)
-        {
-            // 設定2〜6は全部ハズレ（20）で埋め、rows で設定1を書く。
-            var csv = "setting,outcome,count\n" + rows;
-            for (var s = 2; s <= 6; s++)
-            {
-                csv += $"{s},miss,20\n";
-            }
-
-            return csv;
-        }
-
-        private static SlotPatterns Load(string csv) => SlotPatterns.Load(CsvParser.Parse(SlotPatterns.FileName, csv));
+        private static SlotPatterns Load(string rows) =>
+            SlotPatterns.Load(CsvParser.Parse(SlotPatterns.FileName, "outcome,count\n" + rows));
 
         [Test]
-        [Description("plan 16.3: 設定1は 色7 各3・ハズレ4・バー2・コイン2")]
-        public void Project_Setting_1_Has_The_Planned_Counts()
+        public void Project_Table_Has_The_Planned_Counts()
         {
-            var patterns = Project();
-
-            Assert.That(new[]
-                {
-                    patterns.Count(1, SlotSymbol.Red7), patterns.Count(1, SlotSymbol.Blue7), patterns.Count(1, SlotSymbol.Green7),
-                    patterns.Count(1, SlotSymbol.Yellow7), patterns.Count(1, null), patterns.Count(1, SlotSymbol.Bar),
-                    patterns.Count(1, SlotSymbol.Coin),
-                },
-                Is.EqualTo(new[] { 3, 3, 3, 3, 4, 2, 2 }));
+            var table = Project();
+            Assert.That(table.Patterns.Count, Is.EqualTo(20));
+            Assert.That(Enumerable.Range(0, SlotSymbols.Count).Select(i => table.Count((SlotSymbol)i)),
+                Is.EqualTo(new[] { 3, 3, 3, 3, 4, 4 }));
+            Assert.That(table.Count(null), Is.Zero);
         }
 
         [Test]
-        [Description("plan 16.3: 設定6は 色7 各2・ハズレ10・バー1・コイン1")]
-        public void Project_Setting_6_Has_The_Planned_Counts()
+        public void Patterns_Start_With_Misses_Then_Follow_Symbol_Order()
         {
-            var patterns = Project();
-
-            Assert.That(new[]
-                {
-                    patterns.Count(6, SlotSymbol.Red7), patterns.Count(6, SlotSymbol.Yellow7), patterns.Count(6, null),
-                    patterns.Count(6, SlotSymbol.Bar), patterns.Count(6, SlotSymbol.Coin),
-                },
-                Is.EqualTo(new[] { 2, 2, 10, 1, 1 }));
+            var table = Load("coin,1\nred7,1\nmiss,18\n");
+            Assert.That(table.Patterns, Is.EqualTo(Enumerable.Repeat<SlotSymbol?>(null, 18)
+                .Concat(new SlotSymbol?[] { SlotSymbol.Red7, SlotSymbol.Coin })));
         }
 
-        [Test]
-        [Description("D-60: 各設定の表は20パターン")]
-        public void Every_Project_Setting_Has_20_Patterns()
+        [TestCase("coin,5\ncoin,15")]
+        [TestCase("coin,-1\nred7,21")]
+        [TestCase("miss,19")]
+        [TestCase("seven,20")]
+        public void Invalid_Table_Is_Rejected(string rows)
         {
-            var patterns = Project();
-
-            Assert.That(Enumerable.Range(1, 6).Select(s => patterns.For(s).Count), Has.All.EqualTo(20));
-        }
-
-        [Test]
-        public void Patterns_List_Each_Outcome_As_Many_Times_As_Its_Count()
-        {
-            var patterns = Load(Csv("1,coin,5\n1,miss,15\n"));
-
-            Assert.That((patterns.For(1).Count(o => o == SlotSymbol.Coin), patterns.For(1).Count(o => o == null)),
-                Is.EqualTo((5, 15)));
-        }
-
-        [Test]
-        [Description("D-60: 合計が20でない設定は読めない")]
-        public void Setting_Not_Totalling_20_Is_Rejected()
-        {
-            Assert.Throws<CsvFormatException>(() => Load(Csv("1,coin,5\n1,miss,14\n")));
-        }
-
-        [Test]
-        public void Missing_Setting_Is_Rejected()
-        {
-            Assert.Throws<CsvFormatException>(() => Load("setting,outcome,count\n1,miss,20\n"));
-        }
-
-        [Test]
-        public void Unknown_Outcome_Is_Rejected()
-        {
-            Assert.Throws<CsvFormatException>(() => Load(Csv("1,seven,5\n1,miss,15\n")));
-        }
-
-        [Test]
-        public void Duplicate_Outcome_In_A_Setting_Is_Rejected()
-        {
-            Assert.Throws<CsvFormatException>(() => Load(Csv("1,coin,5\n1,coin,5\n1,miss,10\n")));
+            Assert.Throws<CsvFormatException>(() => Load(rows));
         }
     }
 }

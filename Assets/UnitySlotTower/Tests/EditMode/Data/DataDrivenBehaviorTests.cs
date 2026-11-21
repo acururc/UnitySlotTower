@@ -84,7 +84,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         {
             var patterns = SlotPatterns.Load(Parse(files, SlotPatterns.FileName));
             var reels = SlotReels.Load(Parse(files, SlotReels.FileName));
-            var machine = new SlotMachine(reels, patterns.For(1), new CoinWallet(spins * 3), 3, new SeededRandom(7));
+            var machine = new SlotMachine(reels, patterns.Patterns, new CoinWallet(spins), 1, new SeededRandom(7));
             var hits = 0;
             for (var i = 0; i < spins; i++)
             {
@@ -140,12 +140,12 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("抽選表: slot_patterns.csv の設定1で red7 3→6・miss 4→1（合計20のまま）")]
+        [Description("抽選表: slot_patterns.csv  で red7 3→6・bar 4→1（合計20のまま）")]
         public void Slot_Odds_Follow_Slot_Patterns_Csv()
         {
             var changed = TablePaths.ReadAll();
-            Set(changed, SlotPatterns.FileName, "count", "6", ("setting", "1"), ("outcome", "red7"));
-            Set(changed, SlotPatterns.FileName, "count", "1", ("setting", "1"), ("outcome", "miss"));
+            Set(changed, SlotPatterns.FileName, "count", "6", ("outcome", "red7"));
+            Set(changed, SlotPatterns.FileName, "count", "1", ("outcome", "bar"));
             AssertValid(changed);
 
             const int spins = 2000;
