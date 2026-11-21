@@ -11,8 +11,9 @@ namespace UnitySlotTower.Flow
 {
     /// <summary>
     /// 文字なし説明の表示（T403・T351、FR-004、plan 16.10）。進行は <see cref="GuideSequence"/> が決め、ここは毎フレーム様子を渡して
-    /// 結果を描く: 対象の周りだけを残して画面を薄暗くし（暗い部分はクリックを通さない）、対象を光る枠で囲み、
-    /// 手（白い指先の三角と、押した所に広がる輪）のアニメで操作を示す。向き選びでは4方向の矢印も出す。
+    /// 結果を描く: 対象の周りだけを残して画面を薄暗くし、対象を光る枠で囲み、手（白い指先の三角と、押した所に広がる輪）の
+    /// アニメで操作を示す。示すのはおすすめだけで、暗い部分もクリックを通す（FR-083）。題目は右上の × で閉じられる。
+    /// 向き選びでは4方向の矢印と、敵の来る方向へ動く手を出す。
     /// 説明中は戦闘の時間を止める（<see cref="BattleController.IsHeldByGuide"/>）。ショップ・回復の画面中は出さない。
     /// </summary>
     [DefaultExecutionOrder(-20)]
@@ -23,6 +24,9 @@ namespace UnitySlotTower.Flow
         // 押して閉じる説明（足止め・マスの中身）は、出てすぐの押下を数えない（Claude の仮置き）。
         private const float MinTapSeconds = 0.6f;
         private const float PanelGap = 24f;
+        // 閉じるボタン（×）の大きさと、向き選びの手が道を探す距離（マス、Claude の仮置き）。
+        private const float CloseSize = 96f;
+        private const int FacingPathReach = 3;
 
         [SerializeField] private BattleController battle;
         [SerializeField] private UnitPlacementInput placementInput;
@@ -74,6 +78,9 @@ namespace UnitySlotTower.Flow
         private RectTransform _blockPanel;
         private RectTransform _routePanel;
         private readonly RectTransform[] _blockArrows = new RectTransform[2];
+        // T426 の閉じるボタン（初めて説明を出すときに作る）。押されたら次の Update で Dismissed として渡す。
+        private RectTransform _close;
+        private bool _dismissRequested;
 
         /// <summary>テスト用: true のあいだに読み込まれた Game シーンでは説明を出さない（既存の操作テストを妨げないため）。</summary>
         public static bool DisabledForTests { get; set; }
@@ -90,6 +97,12 @@ namespace UnitySlotTower.Flow
             {
                 var icon = unitIcons[i] != null ? unitIcons[i].GetComponent<UnitBarIcon>() : null;
                 _skillButtons[i] = icon != null ? icon.SkillButtonRect : null;
+            }
+
+            // 暗幕・枠・説明文はクリックを止めない（FR-083: 示した以外の対象も押せる）。
+            foreach (var graphic in root.GetComponentsInChildren<Graphic>(true))
+            {
+                graphic.raycastTarget = false;
             }
 
             root.gameObject.SetActive(false);
@@ -120,7 +133,9 @@ namespace UnitySlotTower.Flow
 
             var observation = Observe(run);
             observation.Tapped = IsTapToClose(_shownHint) && Time.unscaledTime - _hintStarted >= MinTapSeconds
-                && Pointer.current != null && Pointer.current.press.wasPressedThisFrame;
+                && Pointer.current != null && Pointer.current.press.wasPressedThisFrame && !IsPointerOnClose();
+            observation.Dismissed = _dismissRequested;
+            _dismissRequested = false;
             var hint = _sequence.Update(observation);
             battle.IsHeldByGuide = _sequence.HoldsBattle;
             battle.FullRefundRetreat = _sequence.ShowsRetreat;
@@ -128,6 +143,11 @@ namespace UnitySlotTower.Flow
             {
                 _shownHint = hint;
                 _hintStarted = Time.unscaledTime;
+                if (hint != GuideHint.None && _close == null)
+                {
+                    BuildClose();
+                }
+
                 root.gameObject.SetActive(hint != GuideHint.None);
                 ShowPictures(hint);
                 if (caption != null && hint != GuideHint.None)
@@ -189,7 +209,8 @@ namespace UnitySlotTower.Flow
                 Intro = run.Phase == WavePhase.Intro,
                 BattleNode = battle.NodeCount,
                 Deploy = run.Deployment.Phase,
-                CanSummon = units.Count > 0 && run.Summoner.Check(units[0].Id) == SummonResult.Summoned,
+                // どの味方でも召喚できれば召喚の説明を出す（手は召喚できる最初の札を示す、FR-083）。
+                CanSummon = SummonSlot(run) >= 0,
                 FieldUnits = alive,
                 UnitSelected = placementInput.SelectedUnit != null,
                 SlotSpinning = slotCabinet.IsSpinning,
@@ -204,6 +225,152 @@ namespace UnitySlotTower.Flow
         }
 
         private static bool IsTapToClose(GuideHint hint) => hint == GuideHint.Block || hint == GuideHint.RouteNodes;
+
+        // 操作バーのうち、いま召喚できる最初の味方の位置。なければ -1。
+        private int SummonSlot(BattleNodeRun run)
+        {
+            var units = battle.Units.All;
+            for (var slot = 0; slot < units.Count && slot < unitIcons.Length; slot++)
+            {
+                if (run.Summoner.Check(units[slot].Id) == SummonResult.Summoned)
+                {
+                    return slot;
+                }
+            }
+
+            return -1;
+        }
+
+        private bool IsPointerOnClose()
+        {
+            if (_close == null || !_close.gameObject.activeInHierarchy)
+            {
+                return false;
+            }
+
+            return RectTransformUtility.RectangleContainsScreenPoint(_close, Pointer.current.position.ReadValue(), UiCamera);
+        }
+
+        private Camera UiCamera => _canvas != null && _canvas.renderMode != RenderMode.ScreenSpaceOverlay ? _canvas.worldCamera : null;
+
+        // 閉じるボタン: 暗い丸に白い ×（Claude の仮置き）。押したら選択を外す（Space・Enter で押し直さない）。
+        private void BuildClose()
+        {
+            _close = RouteNodeIcons.CreateRect("Close Button", root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f));
+            _close.pivot = new Vector2(0.5f, 0.5f);
+            _close.sizeDelta = new Vector2(CloseSize, CloseSize);
+            var image = _close.gameObject.AddComponent<Image>();
+            image.sprite = routeScreen.KnobSprite;
+            image.color = new Color(0.08f, 0.09f, 0.12f, 0.92f);
+            var outline = _close.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(1f, 1f, 1f, 0.7f);
+            outline.effectDistance = new Vector2(3f, -3f);
+            var button = _close.gameObject.AddComponent<Button>();
+            button.targetGraphic = image;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            button.onClick.AddListener(() =>
+            {
+                _dismissRequested = true;
+                if (UnityEngine.EventSystems.EventSystem.current != null)
+                {
+                    UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(null);
+                }
+            });
+
+            for (var i = 0; i < 2; i++)
+            {
+                var bar = RouteNodeIcons.CreateRect(i == 0 ? "Cross A" : "Cross B", _close, new Vector2(0.5f, 0.5f),
+                    new Vector2(0.5f, 0.5f));
+                bar.sizeDelta = new Vector2(CloseSize * 0.5f, CloseSize * 0.09f);
+                bar.localEulerAngles = new Vector3(0f, 0f, i == 0 ? 45f : -45f);
+                var cross = bar.gameObject.AddComponent<Image>();
+                cross.color = Color.white;
+                cross.raycastTarget = false;
+            }
+
+            _close.SetAsLastSibling();
+        }
+
+        // × を穴（板があれば板を含む）の右上の角の少し外に置き、説明文がそれを避けるよう穴に含める。
+        private void PlaceClose()
+        {
+            var area = root.rect;
+            const float margin = 12f;
+            var half = CloseSize * 0.5f;
+            var x = Mathf.Clamp(_hole.xMax + half * 0.5f, area.xMin + half + margin, area.xMax - half - margin);
+            var y = Mathf.Clamp(_hole.yMax + half * 0.5f, area.yMin + half + margin, area.yMax - half - margin);
+            _close.anchoredPosition = new Vector2(x, y);
+            _hole = Rect.MinMaxRect(Mathf.Min(_hole.xMin, x - half), Mathf.Min(_hole.yMin, y - half),
+                Mathf.Max(_hole.xMax, x + half), Mathf.Max(_hole.yMax, y + half));
+        }
+
+        // 向き選びの手の行き先: 置くマスから一番近い道のマスの、出口側の隣へ向かう方向（4方向に丸める、plan 19.7）。
+        // 近くに道がなければ右。
+        private Vector2 FacingHandTarget(BattleNodeRun run, GridPoint cell, Rect cellRect)
+        {
+            var fallback = cellRect.center + Vector2.right * cellRect.width;
+            MapPath nearest = null;
+            var index = -1;
+            var best = FacingPathReach + 1;
+            var paths = run.Map.Paths;
+            for (var p = 0; p < paths.Count; p++)
+            {
+                var cells = paths[p].Cells;
+                for (var i = 0; i < cells.Count; i++)
+                {
+                    var distance = System.Math.Abs(cells[i].X - cell.X) + System.Math.Abs(cells[i].Y - cell.Y);
+                    // 同じ距離なら地上の道を優先する。
+                    if (distance < best || distance == best && nearest != null && nearest.IsAir && !paths[p].IsAir)
+                    {
+                        best = distance;
+                        nearest = paths[p];
+                        index = i;
+                    }
+                }
+            }
+
+            if (nearest == null)
+            {
+                return fallback;
+            }
+
+            var path = nearest.Cells;
+            var exitSide = path[System.Math.Max(index - 1, 0)];
+            var dx = exitSide.X - cell.X;
+            var dy = exitSide.Y - cell.Y;
+            if (dx == 0 && dy == 0 && index + 1 < path.Count)
+            {
+                // 出口のマスに置いた: 道を逆にたどる向き。
+                dx = path[index].X - path[index + 1].X;
+                dy = path[index].Y - path[index + 1].Y;
+            }
+
+            if (dx == 0 && dy == 0)
+            {
+                return fallback;
+            }
+
+            int sx = 0, sy = 0;
+            if (System.Math.Abs(dx) >= System.Math.Abs(dy))
+            {
+                sx = System.Math.Sign(dx);
+            }
+            else
+            {
+                sy = System.Math.Sign(dy);
+            }
+
+            var from = fieldView.CellTopToWorld(cell);
+            var step = fieldView.PositionToWorld(cell.X + sx, cell.Y + sy, false) - fieldView.PositionToWorld(cell.X, cell.Y, false);
+            return WorldToLocal(from + step);
+        }
+
+        private Vector2 WorldToLocal(Vector3 world)
+        {
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(root, battleCamera.WorldToScreenPoint(world), UiCamera,
+                out var point);
+            return point;
+        }
 
         // 地上の味方に止められている地上の敵（最初の1体）。
         private static BattleEnemy BlockedEnemy(BattleNodeRun run)
@@ -249,7 +416,7 @@ namespace UnitySlotTower.Flow
             switch (hint)
             {
                 case GuideHint.Summon:
-                    TapTarget(UiRect(unitIcons[0]), t, dimmed);
+                    TapTarget(UiRect(unitIcons[Mathf.Max(0, SummonSlot(run))]), t, dimmed);
                     break;
                 case GuideHint.Place:
                 {
@@ -260,11 +427,12 @@ namespace UnitySlotTower.Flow
                 }
                 case GuideHint.Facing:
                 {
-                    var cell = CellRect(run.Deployment.Cursor);
+                    var cursor = run.Deployment.Cursor;
+                    var cell = CellRect(cursor);
                     var around = new Rect(cell.center - cell.size * 1.5f, cell.size * 3f);
                     ShowTarget(around, dimmed);
                     SetArrows(true, cell);
-                    Drag(cell.center, cell.center + Vector2.right * cell.width, t);
+                    Drag(cell.center, FacingHandTarget(run, cursor, cell), t);
                     break;
                 }
                 case GuideHint.Lever:
@@ -307,6 +475,7 @@ namespace UnitySlotTower.Flow
                 }
             }
 
+            PlaceClose();
             PlaceCaption();
         }
 

@@ -296,6 +296,124 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(_battle.Field.Tick, Is.GreaterThan(0L), "説明を閉じれば進む");
         }
 
+        [UnityTest]
+        [Description("T426 / FR-083, AC-064: 示されていない札も暗幕に遮られずに押せて、その札を置いても召喚の題目が終わる")]
+        public IEnumerator Another_Card_Through_The_Dim_Also_Ends_The_Deploy_Topic()
+        {
+            yield return null;
+            Assert.That(_guide.Current, Is.EqualTo(GuideHint.Summon));
+            var units = _battle.Units.All;
+            var other = -1;
+            for (var slot = 1; slot < units.Count && other < 0; slot++)
+            {
+                if (_battle.Run.Summoner.Check(units[slot].Id) == SummonResult.Summoned)
+                {
+                    other = slot;
+                }
+            }
+
+            Assert.That(other, Is.GreaterThan(0), "1番目以外に召喚できる札がない");
+            yield return Click(GameObject.Find("Unit Icon " + (other + 1)).transform);
+            Assert.That((_guide.Current, _battle.Deployment.Selected?.Id), Is.EqualTo((GuideHint.Place, units[other].Id)),
+                "示されていない札を押せない");
+
+            var deployment = _battle.Deployment;
+            var map = _battle.Run.Map;
+            var placed = false;
+            for (var y = 0; y < map.Height && !placed; y++)
+            {
+                for (var x = 0; x < map.Width && !placed; x++)
+                {
+                    if (deployment.CanPlace(new GridPoint(x, y)))
+                    {
+                        deployment.SetCursor(new GridPoint(x, y));
+                        deployment.ChooseCell();
+                        deployment.SetFacing(Facing.Right);
+                        placed = deployment.Confirm() == SummonResult.Summoned;
+                    }
+                }
+            }
+
+            Assert.That(placed, Is.True, "置けない");
+            yield return null;
+            Assert.That((_guide.Sequence.IsDone(GuideTopic.Deploy), _guide.Current), Is.EqualTo((true, GuideHint.Lever)),
+                "ほかの札を置いても召喚の題目が終わらない");
+        }
+
+        [UnityTest]
+        [Description("T426 / FR-083, AC-064: × で操作せずに次の題目へ進み、戦闘も止まったままにならない")]
+        public IEnumerator Close_Button_Skips_The_Topic()
+        {
+            yield return null;
+            Assert.That(_guide.Current, Is.EqualTo(GuideHint.Summon));
+            var close = _guide.transform.Find("Overlay/Close Button");
+            Assert.That(close, Is.Not.Null, "閉じるボタンがない");
+            yield return Click(close);
+            Assert.That((_guide.Sequence.IsDone(GuideTopic.Deploy), _guide.Current, _battle.Field.Units.Count),
+                Is.EqualTo((true, GuideHint.Lever, 0)), "× で召喚の題目を閉じるとスロットへ（置かずに）");
+
+            yield return Click(close);
+            Assert.That((_guide.Sequence.IsDone(GuideTopic.Slot), _guide.Current, _battle.IsHeldByGuide, _cabinet.SpinCount),
+                Is.EqualTo((true, GuideHint.None, false, 0)), "× でスロットの題目も閉じ、戦闘が進む（レバーは引かない）");
+        }
+
+        [UnityTest]
+        [Description("T426 / FR-083, AC-064: 向き選びの手は、道の上に置いたときその道の出口側（敵の来る方向）へ動く")]
+        public IEnumerator Facing_Hand_Points_Toward_The_Exit_Side_Of_The_Path()
+        {
+            yield return null;
+            var deployment = _battle.Deployment;
+            Assert.That(deployment.Select("tank"), Is.EqualTo(SummonResult.Summoned));
+            MapPath path = null;
+            foreach (var candidate in _battle.Run.Map.Paths)
+            {
+                if (!candidate.IsAir)
+                {
+                    path = candidate;
+                    break;
+                }
+            }
+
+            Assert.That(path, Is.Not.Null, "地上の道がない");
+            var index = -1;
+            for (var i = 2; i < path.Cells.Count - 1 && index < 0; i++)
+            {
+                if (deployment.CanPlace(path.Cells[i]))
+                {
+                    index = i;
+                }
+            }
+
+            Assert.That(index, Is.GreaterThan(0), "道の上にタンクを置けるマスがない");
+            deployment.SetCursor(path.Cells[index]);
+            deployment.ChooseCell();
+            yield return null;
+            Assert.That(_guide.Current, Is.EqualTo(GuideHint.Facing));
+
+            var from = (Vector2)_camera.WorldToScreenPoint(_fieldView.CellTopToWorld(path.Cells[index]));
+            var exitSide = (Vector2)_camera.WorldToScreenPoint(_fieldView.CellTopToWorld(path.Cells[index - 1]));
+            var expected = (exitSide - from).normalized;
+
+            // 手の動き（押して動かして離す）のうち、マスの中心から一番離れた所の方向を見る。
+            var hand = (RectTransform)_guide.transform.Find("Overlay/Hand");
+            var farthest = from;
+            var limit = Time.realtimeSinceStartup + 2.2f;
+            while (Time.realtimeSinceStartup < limit)
+            {
+                var screen = RectTransformUtility.WorldToScreenPoint(null, hand.position);
+                if ((screen - from).sqrMagnitude > (farthest - from).sqrMagnitude)
+                {
+                    farthest = screen;
+                }
+
+                yield return null;
+            }
+
+            Assert.That(Vector2.Dot((farthest - from).normalized, expected), Is.GreaterThan(0.9f),
+                $"手が敵の来る方向へ動かない（手 {farthest - from}、出口側 {expected}）");
+            deployment.Cancel();
+        }
+
         private IEnumerator LoadGame(bool shortWaves)
         {
             if (shortWaves)

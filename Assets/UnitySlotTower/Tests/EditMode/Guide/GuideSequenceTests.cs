@@ -374,5 +374,74 @@ namespace UnitySlotTower.Tests.EditMode.Guide
 
             Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None));
         }
+
+        [Test]
+        [Description("FR-083, AC-064: × で操作せずに題目を終え、次の題目へ進む。同じ題目は二度と出ない")]
+        public void Dismiss_Ends_The_Topic_Without_The_Operation()
+        {
+            var guide = new GuideSequence();
+            var o = Ready();
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Summon));
+
+            o.Dismissed = true;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Lever), "召喚を閉じるとスロットへ");
+            Assert.That(guide.IsDone(GuideTopic.Deploy), Is.True);
+
+            o.Dismissed = false;
+            o.Deploy = DeployPhase.ChoosingCell;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Lever), "閉じた召喚の説明（マス選び）は二度と出ない");
+        }
+
+        [Test]
+        [Description("FR-083, AC-064: 撤退の題目は × で閉じると全額返還も終わる")]
+        public void Dismissing_Retreat_Ends_Full_Refund()
+        {
+            var o = Ready();
+            var guide = AfterSlot(ref o);
+            o.BattleNode = 2;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.SelectUnit));
+            Assert.That(guide.ShowsRetreat, Is.True);
+
+            o.Dismissed = true;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None));
+            Assert.That((guide.ShowsRetreat, guide.IsDone(GuideTopic.Retreat)), Is.EqualTo((false, true)));
+        }
+
+        [Test]
+        [Description("FR-083, AC-064: ルートは × で凡例を閉じると選び方へ、もう一度 × で題目を終える。凡例と選び方は同時に出ない")]
+        public void Dismissing_Route_Legend_Moves_To_The_Pick_Then_Ends()
+        {
+            var guide = new GuideSequence();
+            var o = Ready();
+            o.ChoosingRoute = true;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RouteNodes));
+
+            o.Dismissed = true;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.RoutePick), "凡例を閉じると選び方");
+            Assert.That(guide.IsDone(GuideTopic.Route), Is.False);
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.None), "選び方も閉じるとルートの題目は終わり");
+            Assert.That(guide.IsDone(GuideTopic.Route), Is.True);
+        }
+
+        [Test]
+        [Description("FR-083: 示した以外の操作でも進む（強化はどの種類でも、スキルはどの職でも）")]
+        public void Upgrade_And_Skill_End_With_Any_Target()
+        {
+            var o = Ready();
+            var guide = AfterSlot(ref o);
+            o.UpgradeSlot = 0;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Upgrade));
+            o.UpgradeLevels = 1; // 示した 0 番ではない種類を強化した
+            o.UpgradeSlot = 0;
+            guide.Update(o);
+            Assert.That(guide.IsDone(GuideTopic.Upgrade), Is.True);
+
+            o.UpgradeSlot = -1;
+            o.SkillSlot = 2;
+            Assert.That(guide.Update(o), Is.EqualTo(GuideHint.Skill));
+            o.SkillActivations = 1; // 示した 2 番ではない職のスキル
+            guide.Update(o);
+            Assert.That(guide.IsDone(GuideTopic.Skill), Is.True);
+        }
     }
 }

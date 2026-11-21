@@ -58,14 +58,14 @@ namespace UnitySlotTower.Editor.Setup
             var guide = host.gameObject.AddComponent<GuideOverlay>();
             var root = CreateRect("Overlay", host, Vector2.zero, Vector2.one);
 
-            // 暗幕（上・下・左・右）。クリックを遮る。
+            // 暗幕（上・下・左・右）。クリックは通す（FR-083、実行時も GuideOverlay.Awake で切る）。
             var dims = new RectTransform[4];
             string[] dimNames = { "Dim Top", "Dim Bottom", "Dim Left", "Dim Right" };
             for (var i = 0; i < dims.Length; i++)
             {
                 var dim = CreateFloating(dimNames[i], root, Vector2.zero).gameObject.AddComponent<Image>();
                 dim.color = DimColor;
-                dim.raycastTarget = true;
+                dim.raycastTarget = false;
                 dims[i] = dim.rectTransform;
             }
 

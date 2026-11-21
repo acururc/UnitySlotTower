@@ -77,11 +77,13 @@ namespace UnitySlotTower.Core.Guide
         public bool GroundBlocked;
         /// <summary>このフレームに、見せている説明を押した（見せてから短い時間は数えない: 表示側で決める）。</summary>
         public bool Tapped;
+        /// <summary>このフレームに、見せている説明の閉じるボタン（×）を押した（FR-083）。</summary>
+        public bool Dismissed;
     }
 
     /// <summary>
     /// 文字なし説明の進行（FR-004、plan 16.10）。毎フレーム様子を受け取り、見せる説明を返す。
-    /// 各題目は、その操作を初めて使う場面で一度だけ出し、示した操作を実際に行うと終わる。説明中は戦闘の時間を止める
+    /// 各題目は、その操作を初めて使う場面で一度だけ出し、その種類の操作をどの対象で行っても、または × で閉じても終わる（FR-083）。説明中は戦闘の時間を止める
     /// （<see cref="HoldsBattle"/>）。示した操作ができなくなったら（コイン不足など）終えずに引っ込め、また条件がそろえば出す。
     /// 一時停止中・ショップなどの画面中・戦闘マスの開始の演出中は隠すだけで進めない。ルート選びのあいだは戦闘の題目を出さない。
     /// ゲームを読み込み直す（リトライ）と最初から（ユーザー決定: 毎プレイ）。
@@ -123,12 +125,17 @@ namespace UnitySlotTower.Core.Guide
             if (_active is GuideTopic active)
             {
                 // ルートは中身の絵を押してから行き先のリールの説明に進む（D-91）。
-                if (active == GuideTopic.Route && Current == GuideHint.RouteNodes && o.Tapped)
+                if (active == GuideTopic.Route && Current == GuideHint.RouteNodes && (o.Tapped || o.Dismissed))
                 {
                     _routeNodesSeen = true;
                 }
-
-                if (IsCompleted(active, o))
+                else if (o.Dismissed && Current != GuideHint.None)
+                {
+                    // × は操作せずにその題目を終える（FR-083）。ルートの凡例は閉じると選び方へ（上）。
+                    _done[(int)active] = true;
+                    _active = null;
+                }
+                else if (IsCompleted(active, o))
                 {
                     _done[(int)active] = true;
                     _active = null;
