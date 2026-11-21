@@ -2,14 +2,13 @@
 
 ## 現在の作業
 
-更新: 2026-11-21 Asia/Tokyo / 状態: **spec 002（タワーディフェンス主体への転換）を承認し、plan・tasks を作成済み。実装は未着手。** 次: T601 から順に（M1 は Core の EditMode 先行、`tdd` スキル）。
+更新: 2026-11-22 Asia/Tokyo / 状態: **spec 002 の実装中。T601 完了（f62d6b2、EditMode 650/650・PlayMode 86 成功/失敗0）。** 次: T602（`SlotEffects` と `Battlefield` への組み込み。除外の関数は `SlotCabinet.OutcomeFilter` につなぐ）。M1 は Core の EditMode 先行（`tdd` スキル）。Codex に委任し、Claude が差分レビューと Unity 検証。
 - 対象: [`spec.md`](../../specs/002-td-focus/spec.md)（2026-11-21 承認、sha256 `24ce711235c4`、E-01〜E-30・FR-101〜FR-117・AC-101〜AC-113）、[`plan.md`](../../specs/002-td-focus/plan.md)、[`tasks.md`](../../specs/002-td-focus/tasks.md)（T601〜T617）。元は 2026-11-21 の第三者プレイ後のメモ `変更.txt`（リポジトリ直下、未追跡）。001 の spec は土台で、食い違いは 002 が優先。
 - 承認の範囲: spec 002 全体（Claude 提案の E-23〜E-30 を含む）。plan の 4章の数値・マップの割り当て・`stages.csv`/`stage_waves.csv` の形・最低ダメージ1・buff_rate 2.0・強化倍率は Claude の仮置きで承認の対象外。
 - ユーザーの主な決定: ルート・ショップ・回復・無料ストック・説明・ガイドヒント・難易度・スキルを削除。全8ステージを順に。ステージ1はチュートリアル（全滅で次のウェーブ）、2以降は全滅を待たない。持ち越しはライフ・コイン・強化・所持金。無料の1体はステージ1だけ。召喚費用は今のまま。ウェーブ数は出さない。ハズレなし（一旦）。
 - 001 の残り: T399・T429（ユーザーの通しプレイ）と M5（T501〜T505）は 002 で前提が変わる。T501 のデザインの方向（サブモニター案など）は未決定のまま。
-- ブランチ: `feature/002-td-focus`（`feature/001-t402-result` の先、main より約115コミット先）。spec はコミット済み、plan・tasks・この HANDOFF もコミット予定。
-- 未追跡: `Assets/_Recovery/`（Unity の復旧シーン4つ、11/21。触っていない、ユーザーに扱いを確認中）、`変更.txt`。
-- Unity 接続: この会話では起動していない（前回 2026-11-21 T427 の後に停止を確認済み）。
+- ブランチ: `feature/002-td-focus`（main より約117コミット先）。spec・plan・tasks・HANDOFF はコミット済み。
+- Unity 接続: 2026-11-22 T601 の検証後に停止を確認済み（ポート 8080 閉）。Editor は開いたまま。PlayMode 全件は Editor が非フォーカスだと約5〜10分かかり、poll のループが先に切れることがある（同じ job_id で poll し直す）。
 
 ### 作業の注意（001 から引き継ぐもの）
 - テストの手順: scratchpad のスクリプトで refresh→25秒→code execute でコンパイル確認→`tests --async`→poll（[`UNITY_AUTOMATION.md`](UNITY_AUTOMATION.md) の Tests 節）。PlayMode 全件は約5分。poll が切れたら同じ job_id で poll し直す（バックグラウンドの poll はメモリ不足で止まった前例があり、前景のループで待つ）。「tests did not start within timeout」でも走っていることがあるので、`isPlaying` が false に戻るのを待ってから再送する。
