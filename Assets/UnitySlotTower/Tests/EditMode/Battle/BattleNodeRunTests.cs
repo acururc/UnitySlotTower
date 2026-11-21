@@ -34,7 +34,6 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         private static readonly EncounterTable EncounterFixtures =
             EncounterTable.Load(CsvParser.Parse(EncounterTable.FileName, Encounters));
 
-        private static readonly SkillTable Skills = BattleFixtures.LoadSkills();
 
         private GameConfig _config;
         private RunState _state;
@@ -475,17 +474,15 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("FR-112, E-14: 色7はその場の効果を出し、スキルゲージはためない")]
-        public void Color_Seven_Applies_Its_Effect_Without_Filling_Gauges()
+        [Description("FR-112: 色7はその場の効果を出す")]
+        public void Color_Seven_Applies_Its_Effect()
         {
             var run = Create();
 
             run.ApplySlot(SlotSymbol.Blue7);
             run.ApplySlot(SlotSymbol.Yellow7);
 
-            Assert.That((run.Field.Effects.IsStopped, run.Field.Effects.IsPoisoned,
-                _state.Gauges.Level(SlotSymbol.Blue7) + _state.Gauges.Level(SlotSymbol.Yellow7)),
-                Is.EqualTo((true, true, 0)));
+            Assert.That((run.Field.Effects.IsStopped, run.Field.Effects.IsPoisoned), Is.EqualTo((true, true)));
         }
 
         [Test]
@@ -511,19 +508,6 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("AC-042: バーとコインはゲージをためない")]
-        public void Bar_And_Coin_Do_Not_Fill_Gauges()
-        {
-            var run = Create();
-
-            run.ApplySlot(SlotSymbol.Bar);
-            run.ApplySlot(SlotSymbol.Coin);
-
-            Assert.That(_state.Gauges.Level(SlotSymbol.Red7) + _state.Gauges.Level(SlotSymbol.Blue7) +
-                _state.Gauges.Level(SlotSymbol.Green7) + _state.Gauges.Level(SlotSymbol.Yellow7), Is.EqualTo(0));
-        }
-
-        [Test]
         [Description("E-16: バー・コインの効果は戦闘ごとに新しくなる（持ち越さない）")]
         public void Boosts_Reset_For_The_Next_Node()
         {
@@ -535,109 +519,6 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var next = Next();
 
             Assert.That((next.Field.Effects.AttackRate, next.Field.Effects.MoneyRate), Is.EqualTo((1.0, 1.0)));
-        }
-
-        private void FillGauge(SlotSymbol color)
-        {
-            while (!_state.Gauges.IsFull(color))
-            {
-                _state.Gauges.Add(color);
-            }
-        }
-
-        [Test]
-        [Description("AC-023: 満タンで配置1体以上なら発動し、ゲージが0になり、配置中のタンクに効果が付く")]
-        public void Full_Gauge_Activates_The_Skill_And_Empties_The_Gauge()
-        {
-            var run = Create();
-            Place(run, "tank", 1, 0);
-            SkipIntro(run);
-            FillGauge(SlotSymbol.Yellow7);
-
-            var result = run.TryActivateSkill(Skills.For(SlotSymbol.Yellow7));
-
-            Assert.That((result, _state.Gauges.Level(SlotSymbol.Yellow7), run.Field.Units[0].SkillStepsLeft),
-                Is.EqualTo((SkillResult.Activated, 0, 600)));
-        }
-
-        [Test]
-        public void Skill_Can_Be_Activated_While_Fighting()
-        {
-            var run = Create();
-            Place(run, "tank", 1, 0);
-            run.Advance(IntroSteps + 10);
-            FillGauge(SlotSymbol.Yellow7);
-
-            Assert.That(run.TryActivateSkill(Skills.For(SlotSymbol.Yellow7)), Is.EqualTo(SkillResult.Activated));
-        }
-
-        [Test]
-        [Description("AC-016, plan 17.2: 開始の演出のあいだはスキルを拒否し、ゲージは満タンのまま")]
-        public void Skill_During_The_Intro_Is_Refused()
-        {
-            var run = Create();
-            Place(run, "tank", 1, 0);
-            FillGauge(SlotSymbol.Yellow7);
-
-            var result = run.TryActivateSkill(Skills.For(SlotSymbol.Yellow7));
-
-            Assert.That((result, _state.Gauges.IsFull(SlotSymbol.Yellow7)), Is.EqualTo((SkillResult.NotInBattle, true)));
-        }
-
-        [Test]
-        [Description("AC-023: 満タンでなければ発動せず、ゲージも効果も変わらない")]
-        public void Gauge_Not_Full_Refuses_And_Changes_Nothing()
-        {
-            var run = Create();
-            Place(run, "tank", 1, 0);
-            SkipIntro(run);
-            _state.Gauges.Add(SlotSymbol.Yellow7);
-
-            var result = run.TryActivateSkill(Skills.For(SlotSymbol.Yellow7));
-
-            Assert.That((result, _state.Gauges.Level(SlotSymbol.Yellow7), run.Field.Units[0].SkillStepsLeft),
-                Is.EqualTo((SkillResult.NotFull, 1, 0)));
-        }
-
-        [Test]
-        [Description("AC-023: その職が配置されていなければ発動せず、ゲージは満タンのまま")]
-        public void No_Placed_Unit_Refuses_And_Keeps_The_Gauge()
-        {
-            var run = Create();
-            Place(run, "sword", 1, 0);
-            SkipIntro(run);
-            FillGauge(SlotSymbol.Yellow7);
-
-            var result = run.TryActivateSkill(Skills.For(SlotSymbol.Yellow7));
-
-            Assert.That((result, _state.Gauges.IsFull(SlotSymbol.Yellow7)), Is.EqualTo((SkillResult.NoUnits, true)));
-        }
-
-        [Test]
-        [Description("plan 16.4: 戦闘中でない（ゲームオーバー後）なら発動せず、ゲージは満タンのまま")]
-        public void Skill_After_Game_Over_Is_Refused()
-        {
-            var run = Create(life: 1);
-            Place(run, "buffer", 1, 1);
-            PlayNode(run);
-            Assert.That(run.Phase, Is.EqualTo(WavePhase.GameOver), "ゲームオーバーにならない");
-            FillGauge(SlotSymbol.Green7);
-
-            var result = run.TryActivateSkill(Skills.For(SlotSymbol.Green7));
-
-            Assert.That((result, _state.Gauges.IsFull(SlotSymbol.Green7)), Is.EqualTo((SkillResult.NotInBattle, true)));
-        }
-
-        [Test]
-        [Description("plan 16.4: 戦闘マスを終えた後も発動しない")]
-        public void Skill_After_The_Node_Is_Refused()
-        {
-            var run = Create();
-            Place(run, "tank", 1, 0);
-            PlayNode(run);
-            FillGauge(SlotSymbol.Yellow7);
-
-            Assert.That(run.TryActivateSkill(Skills.For(SlotSymbol.Yellow7)), Is.EqualTo(SkillResult.NotInBattle));
         }
 
         // 0 秒に1体、5 秒に2体の fodder（計3体）。

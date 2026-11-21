@@ -14,11 +14,10 @@ namespace UnitySlotTower.Core.Run
     /// </summary>
     public sealed class RunState
     {
-        /// <param name="slotRules">スロットの値（スキルゲージの段数など）。</param>
+        /// <param name="slotRules">スロットの値。</param>
         public RunState(GameConfig config, UnitUpgradeTable upgradeTable, SlotRules slotRules)
         {
             SlotRules = slotRules ?? throw new ArgumentNullException(nameof(slotRules));
-            Gauges = new SkillGauges(slotRules.GaugeMax);
             Coins = new CoinWallet(config.InitialCoins);
             Money = new CoinWallet(config.InitialMoney);
             MaxLife = config.Life;
@@ -50,9 +49,6 @@ namespace UnitySlotTower.Core.Run
 
         /// <summary>スロットの値。戦闘マスごとの <see cref="SlotEffects"/> もこれで作る。</summary>
         public SlotRules SlotRules { get; }
-
-        /// <summary>色ごとのスキルゲージ（plan 16.4）。戦闘マスをまたいで残る。</summary>
-        public SkillGauges Gauges { get; }
 
         /// <summary>ライフが 0 になった（FR-013）。</summary>
         public bool IsGameOver => Life <= 0;

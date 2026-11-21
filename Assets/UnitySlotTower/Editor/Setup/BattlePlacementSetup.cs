@@ -93,7 +93,7 @@ namespace UnitySlotTower.Editor.Setup
             Debug.Log("[SlotTower Setup] 配置操作と操作バーの仮アイコンを作成した。");
         }
 
-        /// <summary>既にある戦闘の進行に、後から足した表（encounters.csv: T345、skills.csv: T349、stages.csv・stage_waves.csv: T605）を設定してシーンを保存する。</summary>
+        /// <summary>既にある戦闘の進行に、後から足した表（stages.csv・stage_waves.csv: T605）を設定してシーンを保存する。</summary>
         [MenuItem("Tools/UnitySlotTower/Setup/Assign Battle Tables")]
         private static void AssignBattleTables()
         {
@@ -104,7 +104,6 @@ namespace UnitySlotTower.Editor.Setup
                 return;
             }
 
-            Assign(battle, "skillsTable", Table(SkillTable.FileName));
             Assign(battle, "stagesTable", Table(StageTable.FileName));
             Assign(battle, "stageWavesTable", Table(WaveSchedule.StageWavesFileName));
             EditorSceneManager.MarkSceneDirty(battle.gameObject.scene);

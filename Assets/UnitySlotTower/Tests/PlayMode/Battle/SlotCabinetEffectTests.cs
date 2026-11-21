@@ -128,27 +128,20 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Coin, status.MoneyRateRect)));
             yield return WaitForEffect(effect);
 
-            // 色7 → その色の職のスキルゲージ。
+            // 色7 → 行き先はまだない（スキルゲージは削除。上端の帯の効果のアイコンは T611）。
             SlotSymbol? color = null;
             foreach (var c in new[] { SlotSymbol.Red7, SlotSymbol.Blue7, SlotSymbol.Green7, SlotSymbol.Yellow7 })
             {
-                if (color == null && effect.TargetOf(c) != null && _random.IndexOf(_cabinet, c) >= 0)
+                if (color == null && _random.IndexOf(_cabinet, c) >= 0)
                 {
                     color = c;
                 }
             }
 
-            Assert.That(color, Is.Not.Null, "スキルゲージのある色7が抽選表にない");
+            Assert.That(color, Is.Not.Null, "色7が抽選表にない");
             Select(color.Value);
             yield return SpinAndStopAll();
-            // スキルゲージはアイコンの子ではなく操作バーの別の部品なので、その色のアイコンの SkillButtonRect と比べる。
-            var gauge = false;
-            foreach (var icon in Object.FindObjectsByType<UnitBarIcon>(FindObjectsSortMode.None))
-            {
-                gauge |= icon.HasSkillColor(color.Value) && effect.LastTarget != null && icon.SkillButtonRect == effect.LastTarget;
-            }
-
-            Assert.That((effect.LastSymbol, gauge), Is.EqualTo((color, true)), "色7はその色の職のスキルゲージへ飛ぶ");
+            Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo((color, (RectTransform)null)), "色7の行き先はまだない");
             yield return WaitForEffect(effect);
         }
 

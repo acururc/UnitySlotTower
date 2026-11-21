@@ -62,7 +62,6 @@ namespace UnitySlotTower.Editor.Setup
 
                 BuildUnitIcon(icon, x, battle, input);
                 BuildUpgradeIcon(bar, i, x, battle, input);
-                BuildSkillGauge(bar, i, x, icon.GetComponent<UnitBarIcon>());
             }
 
             BuildStatus(bar, battle, input);
@@ -113,10 +112,6 @@ namespace UnitySlotTower.Editor.Setup
 
                 SetAnchors(icon, new Vector2(x, 0.38f), new Vector2(x + IconWidth, 0.94f));
                 SetAnchors(upgrade, new Vector2(x, 0.06f), new Vector2(x + IconWidth, 0.34f));
-                if (bar.Find($"Skill Gauge {i + 1}") == null)
-                {
-                    BuildSkillGauge(bar, i, x, icon.GetComponent<UnitBarIcon>());
-                }
             }
 
             SetAnchors(status.GetComponent<RectTransform>(), new Vector2(StatusLeft, 0f), Vector2.one);
@@ -125,55 +120,16 @@ namespace UnitySlotTower.Editor.Setup
                 BuildRates(bar, status);
             }
 
-            Assign(battle, "skillsTable",
-                AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/UnitySlotTower/Data/Tables/skills.csv"));
             EditorSceneManager.MarkSceneDirty(bar.gameObject.scene);
             EditorSceneManager.SaveScene(bar.gameObject.scene);
-            Debug.Log("[SlotTower Setup] 操作バーを作り直した（スキルゲージ・倍率、旧効果の表示を削除）。");
+            Debug.Log("[SlotTower Setup] 操作バーを作り直した（倍率、旧効果の表示を削除）。");
         }
 
         private const float IconWidth = 0.1f;
         private const float StatusLeft = 0.655f;
 
-        // 味方の列（アイコン・強化・ゲージ）の左端。
+        // 味方の列（アイコン・強化）の左端。
         private static float ColumnX(int slot) => 0.02f + slot * 0.135f;
-
-        /// <summary>アイコンの右に縦長のスキルゲージ（5点、下から点く）を作る。アイコン本体とは別のボタン（plan 16.8）。</summary>
-        private static void BuildSkillGauge(RectTransform bar, int slot, float x, UnitBarIcon barIcon)
-        {
-            var left = x + IconWidth + 0.003f;
-            var button = CreateButton($"Skill Gauge {slot + 1}", bar, new Vector2(left, 0.06f), new Vector2(left + 0.026f, 0.94f),
-                new Color(0.12f, 0.12f, 0.14f));
-            var rect = button.GetComponent<RectTransform>();
-            var dots = new Object[MaxLevel];
-            for (var level = 0; level < MaxLevel; level++)
-            {
-                var bottom = 0.05f + level * 0.185f;
-                var dot = CreateImage($"Dot {level + 1}", rect, new Vector2(0.12f, bottom), new Vector2(0.88f, bottom + 0.15f),
-                    new Color(1f, 1f, 1f, 0.15f), _knob);
-                dot.preserveAspect = true;
-                dots[level] = dot;
-            }
-
-            var serialized = new SerializedObject(barIcon);
-            serialized.FindProperty("skillButton").objectReferenceValue = button;
-            serialized.FindProperty("skillBackground").objectReferenceValue = button.GetComponent<Image>();
-            var dotProperty = serialized.FindProperty("gaugeDots");
-            dotProperty.arraySize = dots.Length;
-            for (var i = 0; i < dots.Length; i++)
-            {
-                dotProperty.GetArrayElementAtIndex(i).objectReferenceValue = dots[i];
-            }
-
-            var colorProperty = serialized.FindProperty("gaugeColors");
-            colorProperty.arraySize = SlotSymbolArt.SevenColors.Length;
-            for (var i = 0; i < SlotSymbolArt.SevenColors.Length; i++)
-            {
-                colorProperty.GetArrayElementAtIndex(i).colorValue = SlotSymbolArt.SevenColors[i];
-            }
-
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-        }
 
         /// <summary>バーの攻撃力倍率（攻撃力の印）とコインの所持金倍率（所持金の印）を上下2段で置く（plan 16.8）。</summary>
         private static void BuildRates(RectTransform bar, OperationBarStatus status)

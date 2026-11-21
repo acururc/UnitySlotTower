@@ -127,33 +127,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         [UnityTest]
-        public IEnumerator Skill_Hint_Points_At_The_Full_Gauge_And_A_Click_Activates_It()
-        {
-            yield return null;
-            Assert.That(Place("tank"), Is.True, "タンクを置けない");
-            yield return null;
-            Assert.That(_guide.Current, Is.EqualTo(GuideHint.Lever));
-
-            // スロットの題目のあいだにタンクの色（黄）のゲージを満タンにしておくと、リールが止まった後にスキルの題目が出る。
-            Assert.That(_battle.Skills.TryGetColor("tank", out var color), Is.True);
-            var gauges = _battle.Run.State.Gauges;
-            while (!gauges.IsFull(color))
-            {
-                gauges.Add(color);
-            }
-
-            yield return Click(_cabinet.LeverRect);
-            yield return WaitForReels();
-            Assert.That((_guide.Current, _guide.Sequence.TargetSlot, _battle.IsHeldByGuide),
-                Is.EqualTo((GuideHint.Skill, 0, true)), "満タンのゲージ（タンク = 操作バーの1番目）を指して戦闘を止める");
-
-            var gauge = GameObject.Find("Unit Icon 1").GetComponent<UnitBarIcon>().SkillButtonRect;
-            yield return Click(gauge);
-            Assert.That((_battle.SkillActivations, gauges.Level(color), _guide.Current, _guide.Sequence.IsDone(GuideTopic.Skill)),
-                Is.EqualTo((1, 0, GuideHint.None, true)), "ゲージを押すと発動して説明を閉じる");
-        }
-
-        [UnityTest]
         [Description("FR-004, D-91")]
         public IEnumerator Block_Hint_Points_At_The_Stopped_Enemy_And_Closes_On_A_Click()
         {

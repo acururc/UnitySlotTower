@@ -245,20 +245,6 @@ namespace UnitySlotTower.Editor.Setup
             triangle.raycastTarget = false;
         }
 
-        // スキルの印: 本体の札の下にゲージの点5つ（色は実行時にスキルの色）。
-        internal static void SkillMark(RectTransform row, SerializedProperty element, float height)
-        {
-            var mark = CreateRect("Skill Mark", row, new Vector2(0.025f, 0.06f), new Vector2(0.055f + 0.6f * height * Square, 0.28f));
-            var dots = GaugeDots(mark, Color.white, 5);
-            element.FindPropertyRelative("skillMark").objectReferenceValue = mark.gameObject;
-            var property = element.FindPropertyRelative("skillDots");
-            property.arraySize = dots.Length;
-            for (var i = 0; i < dots.Length; i++)
-            {
-                property.GetArrayElementAtIndex(i).objectReferenceValue = dots[i];
-            }
-        }
-
         // 攻撃のアイコン枠に、バッファーのときだけ出すアイコンを重ねる。
         internal static void AddBuffIcon(RectTransform atkIcon, SerializedProperty element)
         {
@@ -315,7 +301,6 @@ namespace UnitySlotTower.Editor.Setup
                 var atk = Stat(row, element, "atkText", 0.5f, 2, line, AttackIcon);
                 element.FindPropertyRelative("attackIcon").objectReferenceValue = atk.gameObject;
                 AddBuffIcon((RectTransform)atk.parent, element);
-                SkillMark(row, element, height);
                 Stat(row, element, "defText", 0.5f, 1, line, DefenseIcon);
                 Stat(row, element, "intervalText", 0.5f, 0, line, (parent) => Clock(parent, Vector2.zero, Vector2.one));
                 Stat(row, element, "blockText", 0.75f, 3, line, BlockIcon);

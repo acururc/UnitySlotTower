@@ -28,7 +28,6 @@ namespace UnitySlotTower.Battle
         [SerializeField] private TextAsset wavesTable;
         [SerializeField] private TextAsset stagesTable;
         [SerializeField] private TextAsset stageWavesTable;
-        [SerializeField] private TextAsset skillsTable;
 
         [SerializeField] private BattleFieldView fieldView;
         [Tooltip("揃った図柄を受け取るスロット筐体。")]
@@ -63,9 +62,6 @@ namespace UnitySlotTower.Battle
 
         /// <summary>味方の攻撃範囲（一時停止中の説明の範囲図にも使う: T404）。</summary>
         public UnitRanges Ranges { get; private set; }
-
-        /// <summary>色7とスキルの対応（skills.csv: T349）。操作バーのゲージが職から色を引く。</summary>
-        public SkillTable Skills { get; private set; }
 
         /// <summary>いまの戦闘マス。戦闘マスが変わると別のものになる。最初の戦闘マスに入るまで null。</summary>
         public BattleNodeRun Run { get; private set; }
@@ -123,7 +119,6 @@ namespace UnitySlotTower.Battle
             _waves = Parse(WaveSchedule.FileName, wavesTable);
             _stages = StageTable.Load(Parse(StageTable.FileName, stagesTable));
             _stageWaves = Parse(WaveSchedule.StageWavesFileName, stageWavesTable);
-            Skills = SkillTable.Load(Parse(SkillTable.FileName, skillsTable));
             _random = new SeededRandom((ulong)DateTime.UtcNow.Ticks);
             _clock = new SimulationClock { IsPaused = IsPaused };
             slotCabinet.Aligned += OnSlotAligned;
@@ -218,29 +213,6 @@ namespace UnitySlotTower.Battle
 
         /// <summary>説明の撤退の題目を表示中は true（D-56）。このあいだの撤退は召喚コストの全額を返す。</summary>
         public bool FullRefundRetreat { get; set; }
-
-        /// <summary>このシーン（1回のプレイ）でスキルを発動した回数（説明の進行に使う）。</summary>
-        public int SkillActivations { get; private set; }
-
-        /// <summary>
-        /// その色のスキルを発動する（操作バーのゲージのクリック、FR-029）。一時停止中・ゲーム終了後は受け付けない（AC-011）。
-        /// ほかの条件（満タン・配置1体以上・戦闘中）は <see cref="BattleNodeRun.TryActivateSkill"/>。発動したら true。
-        /// </summary>
-        public bool TryActivateSkill(SlotSymbol color)
-        {
-            if (IsInputBlocked || Run == null || Skills == null)
-            {
-                return false;
-            }
-
-            if (Run.TryActivateSkill(Skills.For(color)) != SkillResult.Activated)
-            {
-                return false;
-            }
-
-            SkillActivations++;
-            return true;
-        }
 
         private void UpdateSlotLock()
         {

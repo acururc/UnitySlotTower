@@ -39,10 +39,6 @@ namespace UnitySlotTower.Flow
             [Tooltip("バッファーで攻撃アイコンの代わりに出すアイコン（数字は倍率）。")]
             [FormerlySerializedAs("healIcon")]
             public GameObject buffIcon;
-            [Tooltip("スキルの印（ゲージの点）。スキルのない職では隠す。")]
-            public GameObject skillMark;
-            [Tooltip("スキルの印の点。スキルの色に塗る。")]
-            public Image[] skillDots = Array.Empty<Image>();
             public TMP_Text hpText;
             public TMP_Text atkText;
             public TMP_Text defText;
@@ -242,28 +238,6 @@ namespace UnitySlotTower.Flow
                     row.atkText.SetText("{0}", level.AtkOf(unit));
                 }
 
-                var skillColor = default(SlotSymbol);
-                var hasSkill = battle.Skills != null && battle.Skills.TryGetColor(unit.Id, out skillColor);
-                if (row.skillMark != null)
-                {
-                    row.skillMark.SetActive(hasSkill);
-                    if (hasSkill)
-                    {
-                        for (var d = 0; d < row.skillDots.Length; d++)
-                        {
-                            row.skillDots[d].color = SevenColor(skillColor);
-                        }
-                    }
-                }
-
-                var jobBody = row.skillMark != null ? row.skillMark.transform.parent.Find("Body") as RectTransform : null;
-                if (hasSkill && jobBody != null && jobBody.Find("Help Skill Picture") == null)
-                {
-                    // 戦闘の札と同じく、職の札の右上にスキルの絵（T389）。
-                    var art = SkillPictures.Rect("Help Skill Picture", jobBody, new Vector2(0.66f, 0.66f), new Vector2(0.98f, 0.98f));
-                    SkillPictures.Create(art, skillColor, SevenColor(skillColor), row.skillDots.Length > 0 ? row.skillDots[0].sprite : null);
-                }
-
                 row.defText.SetText("{0}", level.DefOf(unit));
                 row.intervalText.SetText("{0:1}", (float)unit.AttackInterval);
                 BlockText.Show(row.blockText, unit.Block);
@@ -316,19 +290,6 @@ namespace UnitySlotTower.Flow
                         break;
                     default:
                         effect.SetText("+1");
-                        var card = s < jobCards.Length ? jobCards[s] : null;
-                        if (card != null && battle.Skills != null)
-                        {
-                            var unitId = battle.Skills.For(symbol).UnitId;
-                            for (var i = 0; i < units.Count && i < unitRows.Length; i++)
-                            {
-                                if (units[i].Id == unitId)
-                                {
-                                    card.color = unitRows[i].bodyColor;
-                                }
-                            }
-                        }
-
                         break;
                 }
             }

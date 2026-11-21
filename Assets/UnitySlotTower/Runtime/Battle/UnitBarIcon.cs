@@ -39,31 +39,7 @@ namespace UnitySlotTower.Battle
         [Tooltip("待ち時間の残り秒数の字の大きさ（T355）。")]
         [SerializeField] private float cooldownFontSize = 44f;
 
-        [Header("Skill gauge (T349)")]
-        [Tooltip("この職の色のスキルゲージ。アイコン本体とは別のボタンで、満タンで光り、押すと発動する。")]
-        [SerializeField] private Button skillButton;
-        [SerializeField] private Image skillBackground;
-        [Tooltip("下から順に1段ずつ点ける。")]
-        [SerializeField] private Image[] gaugeDots;
-        [Tooltip("色7の順（赤・青・緑・黄）の、点いた点の色。")]
-        [SerializeField] private Color[] gaugeColors =
-        {
-            new Color(0.9f, 0.05f, 0.1f),
-            new Color(0.15f, 0.35f, 0.95f),
-            new Color(0.1f, 0.65f, 0.2f),
-            new Color(0.95f, 0.75f, 0.05f),
-        };
-        [SerializeField] private Color emptyDotColor = new Color(1f, 1f, 1f, 0.15f);
-        [Tooltip("満タンのとき背景をこの色との間で点滅させる。")]
-        [SerializeField] private Color fullGlowColor = new Color(1f, 0.95f, 0.55f);
-        [SerializeField] private float glowSpeed = 6f;
-        [Tooltip("ゲージの上のスキルの効果の絵を置く矩形（T385）。絵は実行時に作る。")]
-        [SerializeField] private RectTransform skillArt;
-        [Tooltip("一時停止中にゲージを押すと出すスキルの説明（T385）。")]
-        [SerializeField] private SkillHelpPanel skillHelp;
-
         private Color _bodyColor;
-        private Color _skillBackgroundColor;
         private int _shownCost = -1;
         private int _shownStock = -1;
         private enum CardState { Unknown, Placeable, Money, Cooldown, Blocked }
@@ -71,23 +47,13 @@ namespace UnitySlotTower.Battle
         private int _shownBlock = -1;
         private bool _shownFrameStock;
         private bool _wasRejecting;
-        private int _shownLevel = -1;
-        private bool _shownFull;
-        private bool _hasSkill;
-        private SlotSymbol _skillColor;
         private TMP_Text _cooldownText;
         private int _shownSeconds = -1;
         private float _rejectUntil;
         private bool _rejectMoney;
 
-        /// <summary>スキルゲージのボタン（説明で指す）。なければ null。</summary>
-        public RectTransform SkillButtonRect => skillButton != null ? (RectTransform)skillButton.transform : null;
-
         /// <summary>職の絵（説明で写す: T369）。</summary>
         public Image Body => body;
-
-        /// <summary>このアイコンのスキルゲージがその色7のものか（揃った時の演出の行き先: T366）。</summary>
-        public bool HasSkillColor(SlotSymbol color) => _hasSkill && _skillColor == color;
 
         /// <summary>待ち時間の残り秒数（切り上げ）の文字。待ち時間がないときは隠す（T355）。</summary>
         public TMP_Text CooldownText => _cooldownText;
@@ -98,11 +64,6 @@ namespace UnitySlotTower.Battle
         private void Awake()
         {
             _bodyColor = body.color;
-            if (skillBackground != null)
-            {
-                _skillBackgroundColor = skillBackground.color;
-            }
-
             _cooldownText = CreateCooldownText();
         }
 
@@ -129,40 +90,6 @@ namespace UnitySlotTower.Battle
             return text;
         }
 
-        private void OnEnable()
-        {
-            if (skillButton != null)
-            {
-                skillButton.onClick.AddListener(ActivateSkill);
-            }
-        }
-
-        private void OnDisable()
-        {
-            if (skillButton != null)
-            {
-                skillButton.onClick.RemoveListener(ActivateSkill);
-            }
-        }
-
-        // 拒否（満タンでない・配置0人・一時停止中）なら何も起きない（AC-023・AC-011）。
-        // 一時停止中はスキルの説明を出す（T385、AC-053。発動はしない）。
-        private void ActivateSkill()
-        {
-            if (!_hasSkill)
-            {
-                return;
-            }
-
-            if (battle.IsPaused && skillHelp != null)
-            {
-                skillHelp.Open(_skillColor, battle.Units.All[slot].Id, JobArt, JobColor, gaugeColors[(int)_skillColor], Knob);
-                return;
-            }
-
-            battle.TryActivateSkill(_skillColor);
-        }
-
         /// <summary>札の職の絵（T384 の Job Art）。なければ null。</summary>
         public RectTransform JobArt => body.transform.Find("Job Art") as RectTransform;
 
@@ -171,8 +98,6 @@ namespace UnitySlotTower.Battle
 
         /// <summary>札の職の色（暗くする前の本体の色）。</summary>
         public Color JobColor => _bodyColor;
-
-        private Sprite Knob => gaugeDots != null && gaugeDots.Length > 0 ? gaugeDots[0].sprite : null;
 
         public void OnPointerDown(PointerEventData eventData)
         {
@@ -282,56 +207,6 @@ namespace UnitySlotTower.Battle
 
             var selected = battle.Deployment.Selected;
             selectedFrame.enabled = selected != null && selected.Id == unit.Id;
-            UpdateSkillGauge(unit.Id);
-        }
-
-        private void UpdateSkillGauge(string unitId)
-        {
-            if (skillButton == null || battle.Skills == null)
-            {
-                return;
-            }
-
-            if (!_hasSkill)
-            {
-                _hasSkill = battle.Skills.TryGetColor(unitId, out _skillColor);
-                if (!_hasSkill)
-                {
-                    skillButton.gameObject.SetActive(false);
-                    return;
-                }
-
-                if (skillArt != null)
-                {
-                    SkillPictures.Create(skillArt, _skillColor, gaugeColors[(int)_skillColor], Knob);
-                }
-            }
-
-            var gauges = battle.Run.State.Gauges;
-            var level = gauges.Level(_skillColor);
-            if (level != _shownLevel)
-            {
-                _shownLevel = level;
-                var on = gaugeColors[(int)_skillColor];
-                for (var i = 0; i < gaugeDots.Length; i++)
-                {
-                    gaugeDots[i].color = i < level ? on : emptyDotColor;
-                }
-            }
-
-            var full = gauges.IsFull(_skillColor);
-            if (full)
-            {
-                // 一時停止中も点滅は続ける（押しても発動しないが、満タンであることは見せる）。
-                var t = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * glowSpeed);
-                skillBackground.color = Color.Lerp(_skillBackgroundColor, fullGlowColor, t);
-            }
-            else if (_shownFull)
-            {
-                skillBackground.color = _skillBackgroundColor;
-            }
-
-            _shownFull = full;
         }
     }
 }

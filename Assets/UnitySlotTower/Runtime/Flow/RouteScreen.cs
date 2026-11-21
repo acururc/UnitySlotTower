@@ -95,7 +95,6 @@ namespace UnitySlotTower.Flow
         private readonly HashSet<RouteNode> _reachable = new HashSet<RouteNode>();
         private readonly Stack<RouteNode> _walk = new Stack<RouteNode>();
         private readonly List<RectTransform> _pulsing = new List<RectTransform>();
-        private readonly int[] _shownGauges = new int[ColorCount];
         private RouteMap _builtFor;
         private Vector2 _builtSize;
         private IReadOnlyList<RouteNode> _visited;
@@ -497,31 +496,6 @@ namespace UnitySlotTower.Flow
             {
                 _shownCoins = _state.Coins.Coins;
                 coinsText.SetText("{0}", _shownCoins);
-            }
-
-            if (gaugeDots == null || gaugeDots.Length < ColorCount)
-            {
-                return;
-            }
-
-            var perColor = gaugeDots.Length / ColorCount;
-            for (var c = 0; c < ColorCount; c++)
-            {
-                var level = _state.Gauges.Level((SlotSymbol)c);
-                if (!force && level == _shownGauges[c])
-                {
-                    continue;
-                }
-
-                _shownGauges[c] = level;
-                for (var k = 0; k < perColor; k++)
-                {
-                    var dot = gaugeDots[c * perColor + k];
-                    dot.gameObject.SetActive(k < _state.Gauges.Max);
-                    var color = dot.color;
-                    color.a = k < level ? 1f : emptyDotAlpha;
-                    dot.color = color;
-                }
             }
         }
 

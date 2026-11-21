@@ -60,12 +60,12 @@ namespace UnitySlotTower.Battle
         /// <summary>これまでに始めた演出の数（テスト用）。</summary>
         public int PlayCount { get; private set; }
 
-        /// <summary>直近の演出の図柄と行き先。行き先がなければ（その色の職がいない）null。</summary>
+        /// <summary>直近の演出の図柄と行き先。行き先がなければ null。</summary>
         public SlotSymbol? LastSymbol { get; private set; }
 
         public RectTransform LastTarget { get; private set; }
 
-        /// <summary>図柄の効果の行き先。色7でその色の職がいなければ null。</summary>
+        /// <summary>図柄の効果の行き先。色7はまだ null。</summary>
         public RectTransform TargetOf(SlotSymbol symbol)
         {
             switch (symbol)
@@ -76,14 +76,7 @@ namespace UnitySlotTower.Battle
                     return status.MoneyRateRect;
             }
 
-            foreach (var icon in icons)
-            {
-                if (icon != null && icon.isActiveAndEnabled && icon.HasSkillColor(symbol) && icon.SkillButtonRect != null)
-                {
-                    return icon.SkillButtonRect;
-                }
-            }
-
+            // 色7の行き先（上端の帯の効果のアイコン）は T611 で足す。
             return null;
         }
 

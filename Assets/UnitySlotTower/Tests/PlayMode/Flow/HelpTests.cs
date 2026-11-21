@@ -110,18 +110,13 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 "コイン: 所持金 ×1.1（上限 ×1.5）");
             Assert.That(effects[(int)SlotSymbol.Red7].text, Is.EqualTo("+1"), "色7: ゲージ+1");
             var rows = (HelpScreen.UnitRow[])Field(help, "unitRows");
-            var jobs = (UnityEngine.UI.Image[])Field(help, "jobCards");
-            Assert.That(jobs[(int)SlotSymbol.Red7].color, Is.EqualTo(rows[1].bodyColor), "赤7 の札は剣士（操作バーの2番目）の色");
 
-            // 下半分: バッファーは攻撃の代わりに倍率、全員にスキルの印。
+            // 下半分: バッファーは攻撃の代わりに倍率。
             var buffer = rows[3];
             Assert.That((buffer.attackIcon.activeSelf, buffer.buffIcon.activeSelf, buffer.atkText.text),
                 Is.EqualTo((false, true, "×2.0")), "バッファーの行に倍率が出ない"); // T604: buff_rate 2.0
             Assert.That((rows[0].attackIcon.activeSelf, rows[0].buffIcon.activeSelf), Is.EqualTo((true, false)));
-            foreach (var row in rows)
-            {
-                Assert.That(row.skillMark.activeSelf, Is.True, "スキルの印がない");
-            }
+            Assert.That(System.Linq.Enumerable.Any(help.transform.GetComponentsInChildren<Transform>(true), t => t.name == "Skill Mark"), Is.False, "スキルの印が残っている");
             foreach (var text in help.GetComponentsInChildren<TMP_Text>(true))
             {
                 // 文字あり版のラベル（T352）は対象外。文字なし版では描かれないことだけ確かめる。

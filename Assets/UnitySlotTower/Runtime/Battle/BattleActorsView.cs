@@ -98,10 +98,7 @@ namespace UnitySlotTower.Battle
             public float Center;
             public Transform Gauge;
             public Transform Fill;
-            public Transform SkillMark;
             public float BodyBottom;
-            public float HeadHeight;
-            public bool SkillReady;
             public int Hp = -1;
             public int Seen;
             public Renderer Body;
@@ -178,7 +175,7 @@ namespace UnitySlotTower.Battle
 
             var shot = TakeShot(true);
             shot.TargetEnemy = enemy;
-            Fire(shot, AimPoint(unit), AimPoint(enemy), unit.Definition.AttackInterval * unit.IntervalRate);
+            Fire(shot, AimPoint(unit), AimPoint(enemy), unit.Definition.AttackInterval);
         }
 
         private void OnEnemyAttacked(BattleEnemy enemy, BattleUnit unit)
@@ -308,7 +305,6 @@ namespace UnitySlotTower.Battle
 
                 actor.Seen = frame;
                 UpdateGauge(actor, unit.Hp, unit.MaxHp);
-                UpdateSkillMark(actor, unit.Definition.Id);
             }
 
             _goneUnits.Clear();
@@ -382,11 +378,7 @@ namespace UnitySlotTower.Battle
             nose.localPosition = new Vector3(0f, height * 0.5f, look.size.z * 0.5f + 0.1f);
 
             var actor = CreateActor(root, 0f, unitGaugeColor, body, look.color);
-            actor.HeadHeight = height;
             actor.Center = height * 0.5f;
-            actor.SkillMark = CreatePrimitive(PrimitiveType.Quad, "Skill Ready", root, UiStyle.Ready);
-            actor.SkillMark.localScale = new Vector3(0.22f, 0.22f, 1f);
-            actor.SkillMark.gameObject.SetActive(false);
             return actor;
         }
 
@@ -459,25 +451,6 @@ namespace UnitySlotTower.Battle
             fill.localPosition = new Vector3(0f, 0f, -0.01f);
             return new Actor { Root = root, Gauge = gauge, Fill = fill, BodyBottom = bottom,
                 Body = body.GetComponent<Renderer>(), BodyColor = bodyColor };
-        }
-
-        private void UpdateSkillMark(Actor actor, string unitId)
-        {
-            var ready = battle.Skills != null && battle.Run != null &&
-                battle.Skills.TryGetColor(unitId, out var skillColor) && battle.Run.State.Gauges.IsFull(skillColor);
-            if (actor.SkillReady != ready)
-            {
-                actor.SkillReady = ready;
-                actor.SkillMark.gameObject.SetActive(ready);
-            }
-            if (!ready) return;
-
-            actor.SkillMark.localPosition = Vector3.up *
-                (actor.HeadHeight + 0.28f + 0.04f * Mathf.Sin(Time.unscaledTime * 2f));
-            if (battleCamera != null)
-            {
-                actor.SkillMark.rotation = battleCamera.transform.rotation * Quaternion.Euler(0f, 0f, 45f);
-            }
         }
 
         private void UpdateGauge(Actor actor, int hp, int maxHp)

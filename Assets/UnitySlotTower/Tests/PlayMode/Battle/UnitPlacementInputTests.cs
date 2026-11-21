@@ -311,68 +311,14 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        [Description("AC-023: ゲージが満タンのときゲージをクリックすると、配置中のその職にスキルが付き、ゲージが0になる")]
-        public IEnumerator Clicking_A_Full_Skill_Gauge_Activates_The_Skill_And_Empties_It()
-        {
-            var tank = default(BattleUnit);
-            yield return PlaceTank(placed => tank = placed);
-            var color = FillGaugeOf("tank");
-
-            yield return Click(GameObject.Find("Skill Gauge 1").transform);
-
-            Assert.That((_battle.Run.State.Gauges.Level(color), tank.SkillStepsLeft > 0), Is.EqualTo((0, true)));
-        }
-
-        [UnityTest]
-        [Description("AC-023: その職が配置0人なら、満タンのゲージをクリックしても発動せずゲージは減らない")]
-        public IEnumerator Clicking_A_Full_Skill_Gauge_Without_Units_Does_Nothing()
-        {
-            var color = FillGaugeOf("tank");
-
-            yield return Click(GameObject.Find("Skill Gauge 1").transform);
-
-            Assert.That(_battle.Run.State.Gauges.IsFull(color), Is.True);
-        }
-
-        [UnityTest]
-        [Description("AC-011・AC-053: 一時停止中は満タンのゲージをクリックしても発動せず、そのスキルの説明が出て、一時停止を解くと閉じる")]
-        public IEnumerator Clicking_A_Full_Skill_Gauge_While_Paused_Does_Nothing()
-        {
-            var tank = default(BattleUnit);
-            yield return PlaceTank(placed => tank = placed);
-            var color = FillGaugeOf("tank");
-            var help = Object.FindAnyObjectByType<SkillHelpPanel>();
-            var opened = (false, default(Core.Slot.SlotSymbol?));
-            _battle.SetPaused(true);
-            try
-            {
-                yield return Click(GameObject.Find("Skill Gauge 1").transform);
-                opened = (help.IsOpen, help.Shown);
-            }
-            finally
-            {
-                _battle.SetPaused(false);
-            }
-
-            yield return null;
-            Assert.That((_battle.Run.State.Gauges.IsFull(color), tank.SkillStepsLeft), Is.EqualTo((true, 0)));
-            Assert.That(opened, Is.EqualTo((true, (Core.Slot.SlotSymbol?)color)), "一時停止中に押すとそのスキルの説明が出る");
-            Assert.That(help.IsOpen, Is.False, "一時停止を解くと説明が閉じる");
-        }
-
-        [UnityTest]
-        [Description("AC-053: 札と向き選びと詳細の板にブロック数（止めない職は ×）、ゲージと詳細の板にスキルの絵が出る")]
-        public IEnumerator Block_Count_And_Skill_Art_Show_On_Cards_Facing_And_Detail()
+        [Description("AC-053: 札と向き選びと詳細の板にブロック数（止めない職は ×）が出る。スキルのゲージと絵はない（AC-112）")]
+        public IEnumerator Block_Count_Shows_On_Cards_Facing_And_Detail()
         {
             var tankBlock = _battle.Units.Get("tank").Block.ToString();
             Assert.That((Text(GameObject.Find("Card Frame 1").transform, "Block/Value"),
                     Text(GameObject.Find("Card Frame 3").transform, "Block/Value")),
                 Is.EqualTo((tankBlock, "×")), "札のブロック数（弓は止めないので ×）");
-            for (var slot = 1; slot <= 4; slot++)
-            {
-                Assert.That(GameObject.Find($"Skill Gauge {slot}").transform.Find("Skill Art/Skill Art"), Is.Not.Null,
-                    $"ゲージ {slot} にスキルの絵がない");
-            }
+            Assert.That(GameObject.Find("Skill Gauge 1"), Is.Null, "スキルゲージが残っている");
 
             var badge = Object.FindAnyObjectByType<PlacementBlockBadge>();
             yield return Tap(Key.Digit1);
@@ -391,8 +337,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return MouseAt(CellScreen(target), false);
             yield return null;
             var detail = Object.FindAnyObjectByType<UnitDetailPanel>();
-            Assert.That((detail.IsShown, detail.ShownSkillArt != null, Text(detail.transform, "Content/Block/Icon/Value")),
-                Is.EqualTo((true, true, tankBlock)), "配置済みの味方を押すと詳細にブロック数とスキルの絵が出る");
+            Assert.That((detail.IsShown, Text(detail.transform, "Content/Block/Icon/Value"), detail.transform.Find("Content/Skill")),
+                Is.EqualTo((true, tankBlock, (Transform)null)), "配置済みの味方を押すと詳細にブロック数が出て、スキルの枠はない");
         }
 
         [UnityTest]
@@ -436,18 +382,6 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return Tap(Key.Enter);
             Assert.That(_battle.Field.Units.Count, Is.EqualTo(1), "タンクを置けない");
             placed(_battle.Field.Units[0]);
-        }
-
-        private Core.Slot.SlotSymbol FillGaugeOf(string unitId)
-        {
-            Assert.That(_battle.Skills.TryGetColor(unitId, out var color), Is.True, unitId);
-            var gauges = _battle.Run.State.Gauges;
-            for (var i = 0; i < gauges.Max; i++)
-            {
-                gauges.Add(color);
-            }
-
-            return color;
         }
 
         private static string Text(Transform parent, string child) =>

@@ -64,8 +64,8 @@ namespace UnitySlotTower.Editor.Setup
 
             // 撤退は選んだ味方の詳細の板へ（T384）。
             UnitDetailSetup.Build(root, (RectTransform)status.transform, bar, _font);
-            // 文字なし版の説明の部品（T385）。
-            SkillHelpSetup.Build(root, bar);
+            // 向きを選んでいる間のブロック数の印（T385）。
+            PlacementBadgeSetup.Build(root, bar);
 
             RestyleActors();
             // UiPanel は CanvasRenderer がないと描かれない（RequireComponent を足す前に作ったものを補う）。
@@ -199,7 +199,6 @@ namespace UnitySlotTower.Editor.Setup
             var left = CardLeft + slot * CardStep;
             var icon = bar.Find($"Unit Icon {slot + 1}") as RectTransform;
             var upgrade = bar.Find($"Upgrade Icon {slot + 1}") as RectTransform;
-            var gauge = bar.Find($"Skill Gauge {slot + 1}") as RectTransform;
             if (icon == null)
             {
                 Debug.LogWarning($"[SlotTower Setup] Unit Icon {slot + 1} がない。");
@@ -369,12 +368,6 @@ namespace UnitySlotTower.Editor.Setup
                         Anchor(pip, new Vector2(x, 0.1f), new Vector2(x + 0.13f, 0.26f));
                     }
                 }
-            }
-
-            if (gauge != null)
-            {
-                // 上の 160〜218 px はスキルの絵（T385、SkillHelpSetup）。
-                Px(gauge, left + 306f, 20f, left + 337f, 156f);
             }
 
             var barIcon = icon.GetComponent<UnitBarIcon>();

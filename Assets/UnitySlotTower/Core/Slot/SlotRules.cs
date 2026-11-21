@@ -13,9 +13,6 @@ namespace UnitySlotTower.Core.Slot
         /// <summary>リールが1本止まってから次が止まるまでの秒数。</summary>
         public double StopIntervalSeconds { get; private set; }
 
-        /// <summary>スキルゲージの満タンの段数（plan 16.4）。</summary>
-        public int GaugeMax { get; private set; }
-
         /// <summary>バー1回ぶんの攻撃力の上がり幅（0.1 なら +10%）。</summary>
         public int RedDamage { get; private set; }
         public double BlueStopSeconds { get; private set; }
@@ -41,7 +38,6 @@ namespace UnitySlotTower.Core.Slot
             {
                 FirstStopSeconds = values.GetDouble("first_stop_seconds"),
                 StopIntervalSeconds = values.GetDouble("stop_interval_seconds"),
-                GaugeMax = values.GetInt("gauge_max"),
                 RedDamage = values.GetInt("red_damage"),
                 BlueStopSeconds = values.GetDouble("blue_stop_seconds"),
                 GreenHealRate = values.GetDouble("green_heal_rate"),

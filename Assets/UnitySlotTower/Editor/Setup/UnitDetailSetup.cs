@@ -124,12 +124,12 @@ namespace UnitySlotTower.Editor.Setup
             Box(copy, 0f, 10f, 104f, 68f);
             blockText = copy.Find("Value").GetComponent<TMP_Text>();
 
-            // スキル（T385）: 職のスキルの絵（UnitDetailPanel が実行時に作る）。
-            var skill = Ensure(content, "Skill");
-            Box(skill, 1006f, 0f, 1126f, 124f);
-            Label(skill, "bar_skill", retreat);
-            var skillArt = Ensure(skill, "Art");
-            Box(skillArt, 0f, 4f, 100f, 74f);
+            // スキルはなくなった（spec 002 FR-114）。前に作った枠は消す。
+            var oldSkill = content.Find("Skill");
+            if (oldSkill != null)
+            {
+                Object.DestroyImmediate(oldSkill.gameObject);
+            }
 
             // 撤退ボタン: 帯から板の右端へ。×印・名前（文字あり版）・戻る額。
             retreat.SetParent(content, false);
@@ -179,7 +179,6 @@ namespace UnitySlotTower.Editor.Setup
             serialized.FindProperty("atkText").objectReferenceValue = atkText;
             serialized.FindProperty("blockText").objectReferenceValue = blockText;
             serialized.FindProperty("refundText").objectReferenceValue = refund;
-            serialized.FindProperty("skillArt").objectReferenceValue = skillArt;
             serialized.ApplyModifiedPropertiesWithoutUndo();
             // 保存時は隠す（Awake でも隠す）。
             content.gameObject.SetActive(false);

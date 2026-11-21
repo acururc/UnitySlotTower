@@ -21,21 +21,6 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             Assert.That(field.Enemies[0].Hp, Is.EqualTo(hp));
         }
 
-        [TestCase("archer", 1, 400)]
-        [TestCase("sword", 0, 1150)]
-        [Description("AC-056: 即時スキル攻撃にも同じ耐性を適用")]
-        public void Battlefield_Skill_Attack_Respects_Ranged_Resistance(string unitId, int y, int damage)
-        {
-            var field = ResistantHeavyField();
-            field.AddUnit(BattleFixtures.LoadUnits().Get(unitId), new GridPoint(1, y), Facing.Right);
-            field.Advance(45);
-            var before = field.Enemies[0].Hp;
-            var skill = BattleFixtures.LoadSkills(BattleFixtures.Skills.Replace(
-                "red7,sword,", $"red7,{unitId},"));
-            field.ActivateSkill(skill.For(SlotSymbol.Red7));
-            Assert.That(before - field.Enemies[0].Hp, Is.EqualTo(damage));
-        }
-
         private static Battlefield ResistantHeavyField()
         {
             var lines = BattleFixtures.Enemies.TrimEnd().Split('\n');

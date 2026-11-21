@@ -77,7 +77,6 @@ namespace UnitySlotTower.Editor.Setup
                 }
 
                 DestroyChild(row, "Skill Mark");
-                HelpScreenSetup.SkillMark(row, element, HelpScreenSetup.UnitRowHeight);
 
                 var attack = (GameObject)element.FindPropertyRelative("attackIcon").objectReferenceValue;
                 var atkIcon = (RectTransform)attack.transform.parent;

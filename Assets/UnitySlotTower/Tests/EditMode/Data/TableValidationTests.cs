@@ -412,30 +412,6 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("plan 16.4: スキルの職が units.csv にないとエラー")]
-        public void Skill_With_Unknown_Unit_Is_An_Error()
-        {
-            var files = TablePaths.ReadAll();
-            files["skills.csv"] = files["skills.csv"].Replace("red7,sword,", "red7,healer,");
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            Assert.That(report.Errors.Select(e => e.File), Does.Contain("skills.csv"));
-        }
-
-        [Test]
-        [Description("plan 16.4: 色7のどれかが欠けたスキル表はエラー")]
-        public void Skill_Table_Missing_A_Color_Is_An_Error()
-        {
-            var files = TablePaths.ReadAll();
-            files["skills.csv"] = WithoutLinesStartingWith(files["skills.csv"], "green7,");
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            Assert.That(report.Errors.Select(e => e.File), Does.Contain("skills.csv"));
-        }
-
-        [Test]
         public void Wave_Of_An_Unknown_Stage_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
@@ -525,18 +501,6 @@ namespace UnitySlotTower.Tests.EditMode.Data
         {
             var files = TablePaths.ReadAll();
             files["shop_items.csv"] += "gauge_ghost,gauge,ghost,20,1\n";
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            Assert.That(report.Errors.Select(e => e.File), Does.Contain("shop_items.csv"));
-        }
-
-        [Test]
-        [Description("plan 16.2: ゲージの品の職にはスキルが要る")]
-        public void Shop_Gauge_Item_Of_A_Unit_Without_A_Skill_Is_An_Error()
-        {
-            var files = TablePaths.ReadAll();
-            files["skills.csv"] = files["skills.csv"].Replace("green7,buffer,", "green7,tank,");
 
             var report = GameDataValidator.ValidateAll(files);
 

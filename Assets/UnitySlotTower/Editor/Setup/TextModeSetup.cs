@@ -408,10 +408,6 @@ namespace UnitySlotTower.Editor.Setup
                     Label(Child(row, stats[s]), "stat_" + stats[s], Vector2.zero, new Vector2(0f, 1f), new Vector2(-nameWidth - 6f, 0f),
                         new Vector2(-6f, 0f), 36f).Text.alignment = TextAlignmentOptions.Left;
                 }
-
-                // スキルの説明は行の下の段（範囲図の左端から右端まで1行）。
-                Label(row, "skill_" + unitId, new Vector2(TextModeLayoutSetup.HelpRangeLeft, 0f),
-                    new Vector2(0.99f, TextModeLayoutSetup.HelpSkillLineTop), Vector2.zero, Vector2.zero, 36f).Text.alignment = TextAlignmentOptions.Left;
             }
 
             // 図柄の行の説明は効果の右（1行）。

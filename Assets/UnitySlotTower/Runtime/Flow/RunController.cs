@@ -42,9 +42,8 @@ namespace UnitySlotTower.Flow
         // ここから下は T609 で消す旧ショップ・回復の画面がコンパイルできるようにだけ残す（画面は開かない）。
         public RouteRules Rules { get; private set; }
         public ShopTable ShopTable { get; private set; }
-        public SkillTable Skills => battle.Skills;
         public int LastHealed => 0;
-        public Shop CreateShop() => new Shop(ShopTable, Rules.ShopSlots, State, battle.Skills, _random);
+        public Shop CreateShop() => new Shop(ShopTable, Rules.ShopSlots, State, _random);
         public Exchange CreateExchange() => new Exchange(State, slotCabinet.Bet, Rules.ExchangeMoneyPerCoin);
 
         private void Start()

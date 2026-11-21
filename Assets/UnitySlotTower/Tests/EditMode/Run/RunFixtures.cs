@@ -34,12 +34,12 @@ namespace UnitySlotTower.Tests.EditMode.Run
         }
 
         /// <summary>強化は <see cref="BattleFixtures.Upgrades"/>（sword は3段階、tank は強化なし）、ゲージは5段。</summary>
-        public static RunState CreateRun(int coins = 15, int money = 30, int life = 10, int gaugeMax = 5)
+        public static RunState CreateRun(int coins = 15, int money = 30, int life = 10)
         {
             var config = GameConfig.Load(CsvParser.Parse(GameConfig.FileName,
                 $"key,value\ninitial_coins,{coins}\ninitial_money,{money}\nbet,3\nlife,{life}\n" +
                 "deploy_limit,8\nretreat_refund_rate,0.5\nintro_seconds,2\nplacement_time_scale,0.1\nwave_gap_seconds,1\n"));
-            return new RunState(config, BattleFixtures.LoadUpgrades(), SlotTestRules.Create(gaugeMax: gaugeMax));
+            return new RunState(config, BattleFixtures.LoadUpgrades(), SlotTestRules.Create());
         }
     }
 }

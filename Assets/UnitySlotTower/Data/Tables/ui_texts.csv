@@ -26,7 +26,6 @@ bar_retreat,撤退
 detail_hp,体力
 detail_atk,攻撃力
 detail_block,ブロック
-bar_skill,スキル
 bar_attack_rate,攻撃力
 bar_money_rate,獲得金
 cabinet_lever,レバー（Space）
@@ -56,10 +55,8 @@ rest_healed,ライフが {0} 回復した
 rest_full,ライフは満タン（回復なし）
 shop_title,ショップ
 shop_stock,無料ストック
-shop_gauge,スキルゲージ
 shop_upgrade,強化
 shop_stock_desc,無料で1体置く
-shop_gauge_desc,ゲージ+1段
 shop_upgrade_desc,1段強くなる
 shop_buy_coins,所持金でコインを買う
 shop_sell_coins,コインを所持金に替える
@@ -80,10 +77,6 @@ stat_interval,攻撃間隔
 stat_block,ブロック数
 stat_cost,コスト
 stat_cooldown,再配置の待ち
-skill_tank,スキル：10秒 ブロック+1・被ダメージ半分
-skill_sword,スキル：範囲の敵全員に攻撃力×3
-skill_archer,スキル：8秒 攻撃が速くなる
-skill_buffer,スキル：10秒 味方の攻撃力アップが強くなる
 slot_miss,ハズレ：効果なし
 slot_red7,赤7：剣士のスキルゲージ+1
 slot_blue7,青7：弓兵のスキルゲージ+1
@@ -114,8 +107,6 @@ guide_routepick,行きたい道の回っているリールを押す
 guide_block,敵を足止めできるのは地上の近接職だけ（数字は止められる数）。押して閉じる
 guide_routenodes,マスの印で中身が分かる。押して次へ
 battle_end,戦闘終了
-skill_help_off,スキルなし
-skill_help_on,スキル中
 pause_home,タイトル
 pause_question,タイトルに戻りますか？
 pause_yes,戻る

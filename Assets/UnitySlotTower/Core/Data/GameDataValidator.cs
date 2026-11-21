@@ -29,7 +29,6 @@ namespace UnitySlotTower.Core.Data
         {
             ColumnRule.Float("first_stop_seconds", 0, 60),
             ColumnRule.Float("stop_interval_seconds", 0, 60),
-            ColumnRule.Int("gauge_max", 1, 100),
             ColumnRule.Int("red_damage", 0, 100000),
             ColumnRule.Float("blue_stop_seconds", 0, 600),
             ColumnRule.Float("green_heal_rate", 0, 10),
@@ -134,15 +133,6 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Int("reel", 0, SlotReels.ReelCount - 1),
                 ColumnRule.Int("index", 0, SlotReels.ReelLength - 1),
                 ColumnRule.Enum("symbol", SlotSymbols.Ids)),
-            new TableSchema(SkillTable.FileName, new[] { "color" },
-                ColumnRule.Enum("color", SkillTable.ColorIds),
-                ColumnRule.Id("unit_id"),
-                ColumnRule.Float("duration", 0, 60),
-                ColumnRule.Int("block_add", 0, 10),
-                ColumnRule.Float("damage_taken_rate", 0.05, 1),
-                ColumnRule.Float("damage_rate", 0, 10),
-                ColumnRule.Float("interval_rate", 0.1, 1),
-                ColumnRule.Float("buff_add", 0, 5)),
             new TableSchema(ShopTable.FileName, new[] { "id" },
                 ColumnRule.Id("id"),
                 ColumnRule.Enum("kind", ShopTable.KindIds),
@@ -222,10 +212,7 @@ namespace UnitySlotTower.Core.Data
             ValidateEncounters(tables[EncounterTable.FileName], tables[StageTable.FileName], routeTable, report);
             ValidateSlotPatterns(tables[SlotPatterns.FileName], report);
             ValidateSlotReels(tables[SlotReels.FileName], report);
-            TableValidator.ValidateReference(tables[SkillTable.FileName], "unit_id", tables["units.csv"], "id", report);
-            ValidateSkills(tables[SkillTable.FileName], report);
             TableValidator.ValidateReference(tables[ShopTable.FileName], "unit_id", tables["units.csv"], "id", report);
-            ValidateShopGauges(tables[ShopTable.FileName], tables[SkillTable.FileName], report);
             ValidateUiTexts(tables[UiTexts.FileName], report);
             return report;
         }
@@ -269,26 +256,6 @@ namespace UnitySlotTower.Core.Data
             }
         }
 
-        /// <summary>ゲージの品の職にスキル（skills.csv の unit_id）があることを確かめる（plan 16.2）。</summary>
-        private static void ValidateShopGauges(CsvTable shop, CsvTable skills, ValidationReport report)
-        {
-            var skilled = new HashSet<string>();
-            foreach (var row in skills.Rows)
-            {
-                skilled.Add(row.Get("unit_id"));
-            }
-
-            var gauge = ShopTable.KindIds[(int)ShopItemKind.Gauge];
-            foreach (var row in shop.Rows)
-            {
-                if (row.Get("kind") == gauge && !skilled.Contains(row.Get("unit_id")))
-                {
-                    report.Add(row.Error("unit_id", $"ゲージの品の職 '{row.Get("unit_id")}' にスキルがない").Error);
-                }
-            }
-        }
-
-        /// <summary>key,value 表を検証し、エラーがなければ表を返す（なければ null）。</summary>
         private static CsvTable ValidateKeyValueFile(IReadOnlyDictionary<string, string> files, string fileName,
             IReadOnlyList<ColumnRule> keys, ValidationReport report)
         {
@@ -301,19 +268,6 @@ namespace UnitySlotTower.Core.Data
             var before = report.Errors.Count;
             TableValidator.ValidateKeyValues(table, keys, report);
             return report.Errors.Count == before ? table : null;
-        }
-
-        /// <summary>色7の4色がそろっていることを <see cref="SkillTable"/> で確かめる（plan 16.4）。</summary>
-        private static void ValidateSkills(CsvTable table, ValidationReport report)
-        {
-            try
-            {
-                SkillTable.Load(table);
-            }
-            catch (CsvFormatException ex)
-            {
-                report.Add(ex.Error);
-            }
         }
 
         /// <summary>出目の個数の合計が20であることを <see cref="SlotPatterns"/> で確かめる（D-60）。</summary>

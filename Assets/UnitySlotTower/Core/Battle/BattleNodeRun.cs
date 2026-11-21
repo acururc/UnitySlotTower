@@ -9,7 +9,7 @@ namespace UnitySlotTower.Core.Battle
 {
     public enum WavePhase
     {
-        /// <summary>開始の演出（FR-019、plan 17.2）。戦闘の時間は進まず、スキルは拒否する（ほかの操作の拒否は Runtime）。</summary>
+        /// <summary>開始の演出（FR-019、plan 17.2）。戦闘の時間は進まない（操作の拒否は Runtime）。</summary>
         Intro,
         Fighting,
         /// <summary>この戦闘マスを終えた（報酬は済んでいる）。</summary>
@@ -17,21 +17,9 @@ namespace UnitySlotTower.Core.Battle
         GameOver,
     }
 
-    /// <summary><see cref="BattleNodeRun.TryActivateSkill"/> の結果（plan 16.4、AC-023）。</summary>
-    public enum SkillResult
-    {
-        Activated,
-        /// <summary>その色のゲージが満タンでない。</summary>
-        NotFull,
-        /// <summary>その職が1体も配置されていない。</summary>
-        NoUnits,
-        /// <summary>戦闘中でない（開始の演出中・終了後・ゲームオーバー）。</summary>
-        NotInBattle,
-    }
-
     /// <summary>
     /// 1つの戦闘マスの進行（FR-010, FR-013〜016, FR-019、plan 17.2）。開始の演出 → 戦闘（1ウェーブ）→ 終了。
-    /// ライフ・お金・強化・スキルゲージは <see cref="RunState"/> を直接書き換え、戦闘（バー・コインの倍率を含む）・召喚・配置操作は
+    /// ライフ・お金・強化は <see cref="RunState"/> を直接書き換え、戦闘（バー・コインの倍率を含む）・召喚・配置操作は
     /// このマスだけのもの（spec 002 FR-105・FR-106: 配置と効果は持ち越さない）。ステージ1では最初の1体が無料（FR-108）。
     /// 終了時に報酬を加える。ボスマスの終了でクリア。
     /// </summary>
@@ -126,36 +114,11 @@ namespace UnitySlotTower.Core.Battle
         public event Action Ended;
 
         /// <summary>
-        /// 揃った図柄の効果をこの戦闘にすぐ出す（FR-112、<see cref="Battlefield.ApplySlot"/>）。スキルゲージはもうたまらない（E-14）。
+        /// 揃った図柄の効果をこの戦闘にすぐ出す（FR-112、<see cref="Battlefield.ApplySlot"/>）。
         /// </summary>
         public void ApplySlot(SlotSymbol symbol)
         {
             Field.ApplySlot(symbol);
-        }
-
-        /// <summary>
-        /// スキルを発動する（FR-029、AC-023）。戦闘中で、その色のゲージが満タンで、その職が1体以上配置されているときだけ、
-        /// 配置中の全員に効果を出してゲージを0に戻す。拒否なら何も変えない。一時停止中の拒否は Runtime（T349）。
-        /// </summary>
-        public SkillResult TryActivateSkill(SkillDefinition skill)
-        {
-            if (Phase != WavePhase.Fighting)
-            {
-                return SkillResult.NotInBattle;
-            }
-
-            if (!State.Gauges.IsFull(skill.Color))
-            {
-                return SkillResult.NotFull;
-            }
-
-            if (!Field.ActivateSkill(skill))
-            {
-                return SkillResult.NoUnits;
-            }
-
-            State.Gauges.Clear(skill.Color);
-            return SkillResult.Activated;
         }
 
         /// <summary>

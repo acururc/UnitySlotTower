@@ -6,8 +6,8 @@ namespace UnitySlotTower.Battle
 {
     /// <summary>
     /// 文字なしの説明の短いループのアニメ（T385、FR-072、plan 18.5）。左に本拠地（青）、その右に味方、右から敵が歩いてくる1本の道。
-    /// <see cref="Block"/>: 止められる数だけ敵が味方の前で止まり、残りの1体は通り抜けて本拠地が赤く光る（足止めの説明・タンクのスキル）。
-    /// <see cref="Hit"/>: 1体の敵を一定の間隔で殴り（遠距離は弾を飛ばし）、体力のバーが減る（攻撃のスキル）。
+    /// <see cref="Block"/>: 止められる数だけ敵が味方の前で止まり、残りの1体は通り抜けて本拠地が赤く光る（足止めの説明）。
+    /// <see cref="Hit"/>: 1体の敵を一定の間隔で殴り（遠距離は弾を飛ばし）、体力のバーが減る。
     /// 一時停止中・説明中も動くよう unscaled の時間で進める。絵は仮（M5 で素材に差し替える）。
     /// </summary>
     public sealed class DemoLane : MonoBehaviour
@@ -76,13 +76,13 @@ namespace UnitySlotTower.Battle
             lane._stopX = ranged ? 0.66f : AllyRight + 0.01f;
             var enemy = Enemy(rect, 0);
             lane._enemies.Add(enemy);
-            var back = SkillPictures.Image("Hp Back", enemy, new Vector2(-0.1f, 1.08f), new Vector2(1.1f, 1.22f), HpBackColor, null);
-            lane._hpFill = SkillPictures.Image("Hp", back.rectTransform, Vector2.zero, Vector2.one, HpColor, null);
+            var back = Image("Hp Back", enemy, new Vector2(-0.1f, 1.08f), new Vector2(1.1f, 1.22f), HpBackColor, null);
+            lane._hpFill = Image("Hp", back.rectTransform, Vector2.zero, Vector2.one, HpColor, null);
             lane._hpFill.type = UnityEngine.UI.Image.Type.Filled;
             lane._hpFill.fillMethod = UnityEngine.UI.Image.FillMethod.Horizontal;
             if (ranged)
             {
-                lane._shot = SkillPictures.Image("Shot", rect, Vector2.zero, Vector2.zero, ShotColor, null).rectTransform;
+                lane._shot = Image("Shot", rect, Vector2.zero, Vector2.zero, ShotColor, null).rectTransform;
             }
 
             lane.Restart();
@@ -95,16 +95,16 @@ namespace UnitySlotTower.Battle
 
         private static DemoLane Create(RectTransform parent, RectTransform allyArt, Color allyColor, Mode mode)
         {
-            var rect = SkillPictures.Rect("Demo Lane", parent, Vector2.zero, Vector2.one);
-            SkillPictures.Image("Road", rect, new Vector2(0f, 0.12f), new Vector2(1f, 0.2f), new Color(1f, 1f, 1f, 0.12f), null);
+            var rect = Rect("Demo Lane", parent, Vector2.zero, Vector2.one);
+            Image("Road", rect, new Vector2(0f, 0.12f), new Vector2(1f, 0.2f), new Color(1f, 1f, 1f, 0.12f), null);
             var lane = rect.gameObject.AddComponent<DemoLane>();
             lane._mode = mode;
-            lane._home = SkillPictures.Image("Home", rect, new Vector2(0f, 0.12f), new Vector2(0.05f, 0.8f), HomeColor, null);
-            lane._ally = SkillPictures.Rect("Ally", rect, new Vector2(AllyLeft, 0.12f), new Vector2(AllyRight, 0.95f));
+            lane._home = Image("Home", rect, new Vector2(0f, 0.12f), new Vector2(0.05f, 0.8f), HomeColor, null);
+            lane._ally = Rect("Ally", rect, new Vector2(AllyLeft, 0.12f), new Vector2(AllyRight, 0.95f));
             if (allyArt != null)
             {
                 // 札と同じ: 職の色の下地の上に職の形（Job Art）。
-                var back = SkillPictures.Image("Back", lane._ally, Vector2.zero, Vector2.one, allyColor, null);
+                var back = Image("Back", lane._ally, Vector2.zero, Vector2.one, allyColor, null);
                 var art = (RectTransform)Instantiate(allyArt, back.rectTransform, false).transform;
                 art.name = "Art";
                 art.anchorMin = Vector2.zero;
@@ -117,7 +117,7 @@ namespace UnitySlotTower.Battle
             }
             else
             {
-                SkillPictures.Image("Art", lane._ally, new Vector2(0.15f, 0f), new Vector2(0.85f, 0.8f), HomeColor, null);
+                Image("Art", lane._ally, new Vector2(0.15f, 0f), new Vector2(0.85f, 0.8f), HomeColor, null);
             }
 
             return lane;
@@ -126,9 +126,9 @@ namespace UnitySlotTower.Battle
         // 赤紫の箱に白い目（説明の絵の敵と同じ形）。
         private static RectTransform Enemy(RectTransform lane, int index)
         {
-            var body = SkillPictures.Image($"Enemy {index + 1}", lane, Vector2.zero, Vector2.zero, EnemyColor, null);
-            SkillPictures.Image("Eye Left", body.rectTransform, new Vector2(0.18f, 0.5f), new Vector2(0.4f, 0.78f), Color.white, null);
-            SkillPictures.Image("Eye Right", body.rectTransform, new Vector2(0.6f, 0.5f), new Vector2(0.82f, 0.78f), Color.white, null);
+            var body = Image($"Enemy {index + 1}", lane, Vector2.zero, Vector2.zero, EnemyColor, null);
+            Image("Eye Left", body.rectTransform, new Vector2(0.18f, 0.5f), new Vector2(0.4f, 0.78f), Color.white, null);
+            Image("Eye Right", body.rectTransform, new Vector2(0.6f, 0.5f), new Vector2(0.82f, 0.78f), Color.white, null);
             return body.rectTransform;
         }
 
@@ -268,6 +268,26 @@ namespace UnitySlotTower.Battle
 
             enemy.anchorMin = new Vector2(x, y);
             enemy.anchorMax = new Vector2(x + EnemyWidth, y + 0.5f);
+        }
+
+        private static RectTransform Rect(string name, RectTransform parent, Vector2 min, Vector2 max)
+        {
+            var rect = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
+            rect.SetParent(parent, false);
+            rect.gameObject.layer = parent.gameObject.layer;
+            rect.anchorMin = min;
+            rect.anchorMax = max;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            return rect;
+        }
+
+        private static Image Image(string name, RectTransform parent, Vector2 min, Vector2 max, Color color, Sprite sprite)
+        {
+            var image = Rect(name, parent, min, max).gameObject.AddComponent<UnityEngine.UI.Image>();
+            image.sprite = sprite;
+            image.color = color;
+            image.raycastTarget = false;
+            return image;
         }
     }
 }

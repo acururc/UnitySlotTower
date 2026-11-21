@@ -137,12 +137,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return Click(GameObject.Find("Upgrade Icon 1").transform);
             Assert.That(_battle.Upgrades.Level("tank"), Is.EqualTo(2), "強化アイコンで強化できない");
 
-            // スキル: 満タンのゲージをクリック（ゲージを貯める部分は操作の確認の対象外なので直接満たす）。
-            FillGaugeOf("tank");
-            var activations = _battle.SkillActivations;
-            yield return Click(GameObject.Find("Skill Gauge 1").transform);
-            Assert.That(_battle.SkillActivations, Is.EqualTo(activations + 1), "ゲージのクリックでスキルが発動しない");
-
             // スロット: レバーのクリック。1回でコインが1枚減る。リールは自動で止まる。
             var coinsBeforeSpin = _cabinet.Wallet.Coins;
             yield return Click(_cabinet.LeverRect);
@@ -238,16 +232,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
         // 初期コイン（30）では召喚（15）と強化（20）を両方は払えないので、強化の分だけ足す（操作の確認が目的）。
         private void AddUpgradeCoins() => _battle.Wallet.Add(_battle.Upgrades.NextCost("tank").Value);
-
-        private void FillGaugeOf(string unitId)
-        {
-            Assert.That(_battle.Skills.TryGetColor(unitId, out var color), Is.True, unitId);
-            var gauges = _battle.Run.State.Gauges;
-            for (var i = 0; i < gauges.Max; i++)
-            {
-                gauges.Add(color);
-            }
-        }
 
         private IEnumerator WaitForNextStage()
         {

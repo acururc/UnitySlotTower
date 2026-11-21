@@ -30,15 +30,6 @@ namespace UnitySlotTower.Battle
         [SerializeField] private TMP_Text blockText;
         [Tooltip("撤退で戻る額。")]
         [SerializeField] private TMP_Text refundText;
-        [Tooltip("スキルの効果の絵を置く矩形（T385）。絵は職ごとに実行時に作って出し入れする。")]
-        [SerializeField] private RectTransform skillArt;
-        [Tooltip("色7の順（赤・青・緑・黄）のスキルの色。")]
-        [SerializeField] private Color[] skillColors;
-        [Tooltip("スキルの絵の丸。")]
-        [SerializeField] private Sprite knob;
-
-        private readonly System.Collections.Generic.Dictionary<string, GameObject> _skillArts =
-            new System.Collections.Generic.Dictionary<string, GameObject>();
 
         private BattleUnit _shownUnit;
         private int _shownSlot = -2;
@@ -77,7 +68,6 @@ namespace UnitySlotTower.Battle
                 _shownUnit = unit;
                 _shownLevel = _shownHp = _shownMaxHp = _shownAtk = _shownBlock = _shownRefund = -1;
                 ShowJob(SlotOf(unit.Definition.Id));
-                ShowSkill(unit.Definition.Id);
             }
 
             var level = battle.Upgrades?.Level(unit.Definition.Id) ?? 0;
@@ -134,45 +124,6 @@ namespace UnitySlotTower.Battle
             for (var i = 0; i < jobArts.Length; i++)
             {
                 jobArts[i].SetActive(i == slot);
-            }
-        }
-
-        // 職のスキルの絵だけ出す（初めて選んだ職の絵はそのとき作る）。
-        private void ShowSkill(string unitId)
-        {
-            if (skillArt == null || battle.Skills == null)
-            {
-                return;
-            }
-
-            if (!_skillArts.ContainsKey(unitId) && battle.Skills.TryGetColor(unitId, out var color))
-            {
-                var tint = skillColors != null && (int)color < skillColors.Length ? skillColors[(int)color] : Color.white;
-                var art = SkillPictures.Create(skillArt, color, tint, knob);
-                art.name = "Skill Art " + unitId;
-                _skillArts[unitId] = art.gameObject;
-            }
-
-            foreach (var pair in _skillArts)
-            {
-                pair.Value.SetActive(pair.Key == unitId);
-            }
-        }
-
-        /// <summary>出しているスキルの絵（テスト用、なければ null）。</summary>
-        public GameObject ShownSkillArt
-        {
-            get
-            {
-                foreach (var pair in _skillArts)
-                {
-                    if (pair.Value.activeSelf)
-                    {
-                        return pair.Value;
-                    }
-                }
-
-                return null;
             }
         }
 

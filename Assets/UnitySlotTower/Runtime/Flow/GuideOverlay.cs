@@ -68,7 +68,6 @@ namespace UnitySlotTower.Flow
 
         private readonly GuideSequence _sequence = new GuideSequence();
         private readonly Vector3[] _corners = new Vector3[4];
-        private readonly RectTransform[] _skillButtons = new RectTransform[4];
         private Canvas _canvas;
         private GuideHint _shownHint = (GuideHint)(-1);
         private float _hintStarted;
@@ -93,12 +92,6 @@ namespace UnitySlotTower.Flow
         private void Awake()
         {
             _canvas = root.GetComponentInParent<Canvas>();
-            for (var i = 0; i < unitIcons.Length && i < _skillButtons.Length; i++)
-            {
-                var icon = unitIcons[i] != null ? unitIcons[i].GetComponent<UnitBarIcon>() : null;
-                _skillButtons[i] = icon != null ? icon.SkillButtonRect : null;
-            }
-
             // 暗幕・枠・説明文はクリックを止めない（FR-083: 示した以外の対象も押せる）。
             foreach (var graphic in root.GetComponentsInChildren<Graphic>(true))
             {
@@ -176,9 +169,7 @@ namespace UnitySlotTower.Flow
             }
 
             var upgradeSlot = -1;
-            var skillSlot = -1;
             var levels = 0;
-            var fighting = run.Phase == WavePhase.Fighting;
             for (var slot = 0; slot < units.Count; slot++)
             {
                 var id = units[slot].Id;
@@ -188,13 +179,6 @@ namespace UnitySlotTower.Flow
                     && run.Upgrades.Check(id) == UpgradeResult.Upgraded)
                 {
                     upgradeSlot = slot;
-                }
-
-                // 発動できる条件（plan 16.4）: 満タン・その職が配置中・戦闘中。
-                if (skillSlot < 0 && fighting && deployed && slot < _skillButtons.Length && _skillButtons[slot] != null
-                    && battle.Skills != null && battle.Skills.TryGetColor(id, out var color) && run.State.Gauges.IsFull(color))
-                {
-                    skillSlot = slot;
                 }
             }
 
@@ -216,8 +200,8 @@ namespace UnitySlotTower.Flow
                 SlotSpinning = slotCabinet.IsSpinning,
                 SpinCount = slotCabinet.SpinCount,
                 CanLever = slotCabinet.CanLever,
-                SkillSlot = skillSlot,
-                SkillActivations = battle.SkillActivations,
+                // スキルはなくなった（spec 002 FR-114）。説明そのものは T610 で消す。
+                SkillSlot = -1,
                 UpgradeSlot = upgradeSlot,
                 UpgradeLevels = levels,
                 GroundBlocked = BlockedEnemy(run) != null,
@@ -441,9 +425,6 @@ namespace UnitySlotTower.Flow
                 case GuideHint.Spinning:
                     // リールは自動で止まる（plan 16.3）。止まるまでリール窓を見せる。
                     ShowTarget(UiRect(slotCabinet.ReelWindowRect), dimmed);
-                    break;
-                case GuideHint.Skill:
-                    TapTarget(UiRect(_skillButtons[Mathf.Clamp(_sequence.TargetSlot, 0, _skillButtons.Length - 1)]), t, dimmed);
                     break;
                 case GuideHint.RoutePick:
                     // どの行き先も選べるよう、行き先のある矢印をまとめて穴にし、手はそのうち1つを押す。

@@ -7,10 +7,9 @@ using UnitySlotTower.Core.Slot;
 
 namespace UnitySlotTower.Core.Run
 {
-    /// <summary>ショップの品の種類: 無料ストック1体・スキルゲージ1段・強化1段。</summary>
+    /// <summary>ショップの品の種類: 強化1段。</summary>
     public enum ShopItemKind
     {
-        Gauge,
         Upgrade,
     }
 
@@ -29,7 +28,7 @@ namespace UnitySlotTower.Core.Run
         public string Id { get; }
         public ShopItemKind Kind { get; }
 
-        /// <summary>対象の職（ゲージはその職のスキルの色）。</summary>
+        /// <summary>対象の職。</summary>
         public string UnitId { get; }
 
         /// <summary>値段（所持金）。強化の品では使わず、その職の次の強化費用になる。</summary>
@@ -45,7 +44,7 @@ namespace UnitySlotTower.Core.Run
         public const string FileName = "shop_items.csv";
 
         /// <summary>kind 列の値（<see cref="ShopItemKind"/> の順）。</summary>
-        public static readonly string[] KindIds = { "gauge", "upgrade" };
+        public static readonly string[] KindIds = { "upgrade" };
 
         private readonly List<ShopItem> _items = new List<ShopItem>();
 
@@ -110,15 +109,13 @@ namespace UnitySlotTower.Core.Run
     public sealed class Shop
     {
         private readonly RunState _run;
-        private readonly SkillTable _skills;
         private readonly List<ShopItem> _offers = new List<ShopItem>();
         private readonly List<bool> _sold = new List<bool>();
 
         /// <param name="slots">並ぶ品の数（route_rules.csv の <c>shop_slots</c>）。重みが正の品がそれより少なければ全部。</param>
-        public Shop(ShopTable table, int slots, RunState run, SkillTable skills, IRandom random)
+        public Shop(ShopTable table, int slots, RunState run, IRandom random)
         {
             _run = run ?? throw new ArgumentNullException(nameof(run));
-            _skills = skills ?? throw new ArgumentNullException(nameof(skills));
             if (table == null)
             {
                 throw new ArgumentNullException(nameof(table));
@@ -186,7 +183,6 @@ namespace UnitySlotTower.Core.Run
             switch (item.Kind)
             {
                 case ShopItemKind.Upgrade when _run.Upgrades.NextCost(item.UnitId) == null:
-                case ShopItemKind.Gauge when _run.Gauges.IsFull(ColorOf(item)):
                     return ShopResult.Unavailable;
             }
 
@@ -205,10 +201,6 @@ namespace UnitySlotTower.Core.Run
             var item = _offers[index];
             switch (item.Kind)
             {
-                case ShopItemKind.Gauge:
-                    _run.Money.TrySpend(item.Price);
-                    _run.Gauges.Add(ColorOf(item));
-                    break;
                 case ShopItemKind.Upgrade:
                     _run.Upgrades.TryUpgrade(item.UnitId);
                     break;
@@ -217,10 +209,5 @@ namespace UnitySlotTower.Core.Run
             _sold[index] = true;
             return result;
         }
-
-        private SlotSymbol ColorOf(ShopItem item) =>
-            _skills.TryGetColor(item.UnitId, out var color)
-                ? color
-                : throw new InvalidOperationException($"ゲージの品 '{item.Id}' の職 '{item.UnitId}' にスキルがない");
     }
 }

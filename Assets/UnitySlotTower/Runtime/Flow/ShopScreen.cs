@@ -60,7 +60,6 @@ namespace UnitySlotTower.Flow
             new List<(Button, CanvasGroup, TMP_Text, NudgeArrow)>();
 
         private RunState _state;
-        private SkillTable _skills;
         private CanvasGroup _buyGroup;
         private CanvasGroup _sellGroup;
         private NudgeArrow _buyArrow;
@@ -134,7 +133,6 @@ namespace UnitySlotTower.Flow
         protected override void OnOpen(RunController run, RouteNode node)
         {
             _state = run.State;
-            _skills = run.Skills;
             Shop = run.CreateShop();
             Exchange = run.CreateExchange();
             buyCoinsMoneyText.SetText(NumericText.YenFormat, Exchange.MoneyPerTrade);
@@ -243,34 +241,21 @@ namespace UnitySlotTower.Flow
         {
             switch (kind)
             {
-                case ShopItemKind.Gauge:
-                    return "shop_gauge";
                 default:
                     return "shop_upgrade";
             }
         }
 
-        // 職の色の台に白い印。ゲージ＝点、強化＝上向きの三角。
+        // 台に白い上向きの三角（強化）。
         private void BuildIcon(RectTransform icon, ShopItem item)
         {
-            var plateColor = _skills != null && _skills.TryGetColor(item.UnitId, out var color) && (int)color < sevenColors.Length
-                ? sevenColors[(int)color]
-                : Color.gray;
+            var plateColor = Color.gray;
             var plate = RouteNodeIcons.CreateImage("Plate", icon, Vector2.zero, Vector2.one, plateColor,
-                item.Kind == ShopItemKind.Gauge ? knobSprite : boxSprite);
+                boxSprite);
             plate.preserveAspect = true;
             var rect = plate.rectTransform;
             switch (item.Kind)
             {
-                case ShopItemKind.Gauge:
-                    for (var k = 0; k < 3; k++)
-                    {
-                        var x = 0.22f + k * 0.2f;
-                        RouteNodeIcons.CreateImage($"Dot {k + 1}", rect, new Vector2(x, 0.4f), new Vector2(x + 0.16f, 0.6f),
-                            Color.white, knobSprite).preserveAspect = true;
-                    }
-
-                    break;
                 case ShopItemKind.Upgrade:
                     var arrow = RouteNodeIcons.CreateRect("Up", rect, new Vector2(0.2f, 0.2f), new Vector2(0.8f, 0.8f));
                     arrow.localEulerAngles = new Vector3(0f, 0f, 90f);

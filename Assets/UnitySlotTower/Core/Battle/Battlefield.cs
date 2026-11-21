@@ -51,11 +51,11 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>
         /// 攻撃に使う攻撃力。基礎×強化（<see cref="BattleUnit.Atk"/>、四捨五入済み）× バッファー × バーを最後に四捨五入する
-        /// （plan 16.4 の掛け順。<paramref name="skillRate"/> はスキルの範囲攻撃の倍率で、バーの後に掛ける）。
+        /// （plan 16.4 の掛け順）。
         /// </summary>
-        private int EffectiveAtk(BattleUnit unit, double skillRate = 1)
+        private int EffectiveAtk(BattleUnit unit)
         {
-            var rate = BuffRateOf(unit) * skillRate;
+            var rate = BuffRateOf(unit);
             if (Effects != null)
             {
                 rate *= Effects.AttackRate;
@@ -190,55 +190,6 @@ namespace UnitySlotTower.Core.Battle
             }
         }
 
-        /// <summary>スキル（FR-029、plan 16.4）。配置中のその職の全員に効く。その職が1体もいなければ何もせず false。</summary>
-        /// <remarks>
-        /// 効果時間は発動時にいた個体だけに付き、戦闘ステップ（<see cref="Advance"/>）でだけ減る。
-        /// <see cref="SkillDefinition.DamageRate"/> があれば、その場で範囲内（ブロック中を含む）の敵全員に1回ずつ攻撃し、倒れた敵はすぐ消す。
-        /// </remarks>
-        public bool ActivateSkill(SkillDefinition skill)
-        {
-            var activated = false;
-            foreach (var unit in _units)
-            {
-                if (!unit.IsAlive || unit.Definition.Id != skill.UnitId)
-                {
-                    continue;
-                }
-
-                activated = true;
-                unit.StartSkill(skill);
-                if (skill.DamageRate > 0)
-                {
-                    SkillAttack(unit, skill.DamageRate);
-                }
-            }
-
-            if (activated && skill.DamageRate > 0)
-            {
-                RemoveDefeatedEnemies();
-            }
-
-            return activated;
-        }
-
-        /// <summary>範囲内（ブロック中を含む）で狙える敵全員に、攻撃力×<paramref name="rate"/> で1回ずつ攻撃する。通常攻撃の間隔は変えない。</summary>
-        private void SkillAttack(BattleUnit unit, double rate)
-        {
-            var atk = EffectiveAtk(unit, rate);
-            if (atk <= 0)
-            {
-                return;
-            }
-            foreach (var enemy in _enemies)
-            {
-                if (enemy.IsAlive && CanTarget(unit, enemy))
-                {
-                    enemy.TakeDamage(Damage.Calculate(atk, enemy.Definition.Def,
-                        unit.Definition.Role, enemy.Definition.RangedDamageRate));
-                }
-            }
-        }
-
         /// <summary>HP0 で味方が消えたとき（FR-024）。撤退では呼ばれない。</summary>
         public event Action<BattleUnit> UnitFell;
 
@@ -246,7 +197,7 @@ namespace UnitySlotTower.Core.Battle
         public event Action<MapPath> EnemySpawned;
         public event Action<GridPoint> BaseReached;
 
-        /// <summary>通常攻撃の通知（弾の見た目用、FR-082）。ダメージを入れた後に呼ぶ。スキルと範囲攻撃では呼ばれない。</summary>
+        /// <summary>通常攻撃の通知（弾の見た目用、FR-082）。ダメージを入れた後に呼ぶ。範囲攻撃では呼ばれない。</summary>
         public event Action<BattleUnit, BattleEnemy> UnitAttacked;
         public event Action<BattleEnemy, BattleUnit> EnemyAttacked;
 
@@ -264,7 +215,7 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>
         /// 1 ステップごとに 出現 → 移動（ゴール到着で退場・ライフ減少） → 敵の攻撃 → HP0 の味方の消滅 → 味方の行動
-        /// → 毒 → HP0 の敵の消滅（ドロップ） の順で処理し、スキルと出目の効果の残り時間を1ステップ減らす。
+        /// → 毒 → HP0 の敵の消滅（ドロップ） の順で処理し、出目の効果の残り時間を1ステップ減らす。
         /// 停止中（青7）は移動と敵の攻撃を飛ばす。ゲームオーバーになったら残りのステップは進めない。
         /// </summary>
         public void Advance(int steps)
@@ -288,16 +239,7 @@ namespace UnitySlotTower.Core.Battle
                 }
 
                 RemoveDefeatedEnemies();
-                TickSkills();
                 Tick++;
-            }
-        }
-
-        private void TickSkills()
-        {
-            foreach (var unit in _units)
-            {
-                unit.TickSkill();
             }
         }
 
@@ -528,7 +470,7 @@ namespace UnitySlotTower.Core.Battle
                     unit.Definition.Role, target.Definition.RangedDamageRate));
 
                 unit.AttackCooldownSteps = (int)Math.Round(
-                    unit.Definition.AttackInterval * unit.IntervalRate * SimulationClock.StepsPerSecond);
+                    unit.Definition.AttackInterval * SimulationClock.StepsPerSecond);
                 UnitAttacked?.Invoke(unit, target);
             }
         }

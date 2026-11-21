@@ -69,7 +69,6 @@ namespace UnitySlotTower.Editor.Setup
         // 味方の行（行の割合）: 左に本体の札と職名とスキルの印、範囲図、数値2列（各4段 50 px）、下の段にスキルの説明。
         internal const float HelpRangeLeft = 0.165f;
         internal const float HelpRangeRight = 0.335f;
-        internal const float HelpSkillLineTop = 52f / HelpUnitRowHeight;
         // 数値の列の左端（アイコン）と数字の左端。名前はその間。
         internal static readonly float[] HelpStatColumns = { 0.35f, 0.66f };
         private static readonly float[] HelpStatValueLefts = { 0.505f, 0.86f };
@@ -143,9 +142,8 @@ namespace UnitySlotTower.Editor.Setup
         private static void HelpUnitRow(RectTransform row)
         {
             const float h = HelpUnitRowHeight;
-            // 本体の札 150 px の正方形（上）、その下に職名（TextModeSetup）、いちばん下にスキルの印。
+            // 本体の札 150 px の正方形（上）、その下に職名（TextModeSetup）。
             SetRect(Child(row, "Body"), new Vector2(0.035f, 159f / h), new Vector2(0.035f + 150f / 1440f, 309f / h));
-            SetRect(Child(row, "Skill Mark"), new Vector2(0.02f, 8f / h), new Vector2(0.14f, 48f / h));
             SetRect(Child(row, "Range"), new Vector2(HelpRangeLeft, 58f / h), new Vector2(HelpRangeRight, 309f / h));
 
             // 左の列は上から HP・攻撃・防御・攻撃間隔、右の列は ブロック・コスト・待ち時間（シーンと同じ並び）。段は下の 60 px より上に 65 px ずつ。
@@ -415,9 +413,6 @@ namespace UnitySlotTower.Editor.Setup
             var card = Child(bar, $"Card Frame {slot + 1}");
             // 札の枠は 220 px（操作バーの 10〜230 px）。
             SetRect(Child(card, "Block"), new Vector2(158f / 347f, (160f - 10f) / 220f), new Vector2(262f / 347f, (218f - 10f) / 220f));
-            // ゲージの上はスキルの絵（T385）。
-            SetRect(Child(bar, $"Skill Gauge {slot + 1}"), new Vector2((left + 310f) / width, 20f / barHeight),
-                new Vector2((left + 340f) / width, 156f / barHeight));
         }
 
         // 帯（T383、Top Band の子）: ライフ・残りの敵・所持金（左）、倍率（中、BuildRates）、撤退・倍速・一時停止（右）。名前は数字の上。

@@ -74,7 +74,6 @@ namespace UnitySlotTower.Tests.EditMode.Ui
             foreach (var row in units.Rows)
             {
                 Need("unit_" + row.Get("id"));
-                Need("skill_" + row.Get("id"));
             }
 
             foreach (var symbol in SlotSymbols.Ids)
@@ -82,7 +81,7 @@ namespace UnitySlotTower.Tests.EditMode.Ui
                 Need("slot_" + symbol);
             }
 
-            foreach (var id in new[] { "slot_miss", "shop_stock", "shop_gauge", "shop_upgrade", "detail_hp", "detail_atk", "detail_block", "battle_end", "skill_help_off", "skill_help_on" })
+            foreach (var id in new[] { "slot_miss", "shop_stock", "shop_upgrade", "detail_hp", "detail_atk", "detail_block", "battle_end" })
             {
                 Need(id);
             }

@@ -114,7 +114,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(ShownIds(), Does.Not.Contain("help_units_heading"));
             help.UnitTab.onClick.Invoke();
             yield return null;
-            Assert.That(ShownIds(), Does.Contain("help_units_heading").And.Contain("help_col_range").And.Contain("stat_hp").And.Contain("skill_sword"));
+            Assert.That(ShownIds(), Does.Contain("help_units_heading").And.Contain("help_col_range").And.Contain("stat_hp"));
             Assert.That(ShownIds(), Does.Not.Contain("help_slot_heading"));
             help.CloseButton.onClick.Invoke();
             yield return null;
@@ -123,10 +123,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             help.OpenButton.onClick.Invoke();
             yield return null;
             Assert.That(help.IsOpen, Is.True, "文字あり版で開き直せない");
-            var skillPictures = 0;
-            foreach (var rect in help.GetComponentsInChildren<RectTransform>(true))
-                if (rect.name == "Help Skill Picture") skillPictures++;
-            Assert.That(skillPictures, Is.EqualTo(4), "早見表を開き直すとスキルの絵が増えるか、職の絵が足りない");
 
             GameSession.SetTextMode(false);
             yield return null;
@@ -194,14 +190,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(ShownIds(), Does.Contain("pause_question").And.Contain("pause_yes").And.Contain("pause_no"));
             Readable("タイトル確認", problems);
             quit.CancelButton.onClick.Invoke();
-            yield return Settle();
-            var skillHelp = Object.FindAnyObjectByType<SkillHelpPanel>();
-            GameObject.Find("Skill Gauge 1").GetComponent<Button>().onClick.Invoke();
-            yield return Settle();
-            Assert.That(skillHelp.IsOpen, Is.True, "タンクのスキル説明が開かない");
-            Assert.That(ShownIds(), Does.Contain("skill_tank").And.Contain("skill_help_off").And.Contain("skill_help_on"));
-            Readable("スキルの説明", problems);
-            skillHelp.Close();
             yield return Settle();
             var help = Object.FindAnyObjectByType<HelpScreen>();
             help.Open();

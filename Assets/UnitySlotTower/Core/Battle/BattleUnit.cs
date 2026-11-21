@@ -34,42 +34,11 @@ namespace UnitySlotTower.Core.Battle
         public int Hp { get; private set; }
         public bool IsAlive => Hp > 0;
 
-        /// <summary>効果時間中のスキル（plan 16.4）。なければ null。</summary>
-        public SkillDefinition Skill { get; private set; }
+        /// <summary>ブロック数。</summary>
+        public int Block => Definition.Block;
 
-        /// <summary>スキルの効果時間の残りステップ数。0 なら効果なし。</summary>
-        public int SkillStepsLeft { get; private set; }
-
-        /// <summary>いまのブロック数（スキルの効果時間中は <see cref="SkillDefinition.BlockAdd"/> を足す）。</summary>
-        public int Block => Definition.Block + (Skill?.BlockAdd ?? 0);
-
-        /// <summary>攻撃間隔に掛ける倍率（スキルの効果時間中だけ1以外）。</summary>
-        public double IntervalRate => Skill?.IntervalRate ?? 1;
-
-        /// <summary>バッファーとしての倍率（スキルの効果時間中は <see cref="SkillDefinition.BuffAdd"/> を足す）。</summary>
-        internal double BuffRate => Definition.BuffRate + (Skill?.BuffAdd ?? 0);
-
-        /// <summary>効果時間を付ける（効果中なら残りを最初からにする）。効果時間0のスキルでは何も付けない。</summary>
-        internal void StartSkill(SkillDefinition skill)
-        {
-            var steps = skill.DurationSteps;
-            if (steps <= 0)
-            {
-                return;
-            }
-
-            Skill = skill;
-            SkillStepsLeft = steps;
-        }
-
-        /// <summary>効果時間を1ステップ減らし、0 になったら効果を外す。</summary>
-        internal void TickSkill()
-        {
-            if (SkillStepsLeft > 0 && --SkillStepsLeft == 0)
-            {
-                Skill = null;
-            }
-        }
+        /// <summary>バッファーとしての倍率。</summary>
+        internal double BuffRate => Definition.BuffRate;
 
         /// <summary>ブロック中の敵のブロック消費の合計。<see cref="UnitDefinition.Block"/> を超えない。</summary>
         public int BlockUsed { get; internal set; }
@@ -90,14 +59,8 @@ namespace UnitySlotTower.Core.Battle
             return false;
         }
 
-        /// <summary>スキルの効果時間中は <see cref="SkillDefinition.DamageTakenRate"/> を掛ける（四捨五入）。</summary>
         internal void TakeDamage(int damage)
         {
-            if (Skill != null)
-            {
-                damage = (int)Math.Round(damage * Skill.DamageTakenRate, MidpointRounding.AwayFromZero);
-            }
-
             Hp = Hp > damage ? Hp - damage : 0;
         }
 

@@ -1,7 +1,6 @@
 key,value
 first_stop_seconds,0.6
 stop_interval_seconds,0.4
-gauge_max,5
 red_damage,5
 blue_stop_seconds,3
 green_heal_rate,0.5
