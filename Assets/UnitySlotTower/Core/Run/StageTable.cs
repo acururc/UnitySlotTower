@@ -17,12 +17,13 @@ namespace UnitySlotTower.Core.Run
     /// <summary>stages.csv の1行。</summary>
     public sealed class StageDefinition
     {
-        internal StageDefinition(int number, string mapId, WaveMode mode, string bossId)
+        internal StageDefinition(int number, string mapId, WaveMode mode, string bossId, double enemyHpRate = 1)
         {
             Number = number;
             MapId = mapId;
             Mode = mode;
             BossId = bossId;
+            EnemyHpRate = enemyHpRate;
         }
 
         /// <summary>1から始まるステージ番号。</summary>
@@ -33,6 +34,9 @@ namespace UnitySlotTower.Core.Run
 
         /// <summary>最後のウェーブに出るボスの敵 id（FR-104）。ボスのいないステージは null。</summary>
         public string BossId { get; }
+
+        /// <summary>このステージの敵（ボスを含む）の HP の倍率（T617）。enemy_hp_rate 列がなければ 1。</summary>
+        public double EnemyHpRate { get; }
     }
 
     /// <summary>ステージの表（FR-101〜FR-104、plan 2.1）。ステージ番号で引く。</summary>
@@ -45,6 +49,9 @@ namespace UnitySlotTower.Core.Run
 
         /// <summary>boss 列でボスがいないことを表す値。</summary>
         public const string NoBoss = "none";
+
+        /// <summary>敵の HP の倍率の列（T617、省略可）。</summary>
+        public const string EnemyHpRateColumn = "enemy_hp_rate";
 
         private readonly List<StageDefinition> _stages = new List<StageDefinition>();
 
@@ -110,9 +117,15 @@ namespace UnitySlotTower.Core.Run
                     throw row.Error("wave_mode", $"進み方は {string.Join("/", ModeIds)} のどれか: '{row.Get("wave_mode")}'");
                 }
 
+                var hpRate = table.HasColumn(EnemyHpRateColumn) ? row.GetDouble(EnemyHpRateColumn) : 1;
+                if (!(hpRate > 0))
+                {
+                    throw row.Error(EnemyHpRateColumn, $"敵の HP の倍率は0より大きい: {hpRate}");
+                }
+
                 var boss = row.Get("boss");
                 result._stages.Add(new StageDefinition(number, row.Get("map_id"), (WaveMode)modeIndex,
-                    boss == NoBoss ? null : boss));
+                    boss == NoBoss ? null : boss, hpRate));
             }
 
             return result;

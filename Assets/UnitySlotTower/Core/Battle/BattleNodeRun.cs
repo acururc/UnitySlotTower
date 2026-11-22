@@ -48,7 +48,10 @@ namespace UnitySlotTower.Core.Battle
             _introStepsLeft = _introSteps;
             Phase = _introSteps > 0 ? WavePhase.Intro : WavePhase.Fighting;
             _fieldLife = state.Life;
-            Field = new Battlefield(waves, ranges, _fieldLife, random, new SlotEffects(state.SlotRules));
+            Field = new Battlefield(waves, ranges, _fieldLife, random, new SlotEffects(state.SlotRules))
+            {
+                EnemyHpRate = stage.EnemyHpRate,
+            };
             Summoner = new UnitSummoner(units, Wallet, config.DeployLimit, config.RetreatRefundRate,
                 state.FreeSummons);
             Deployment = new UnitDeployment(Map, units, ranges, Summoner, Field, Upgrades);

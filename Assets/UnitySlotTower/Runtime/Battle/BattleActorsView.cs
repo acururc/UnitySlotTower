@@ -341,7 +341,7 @@ namespace UnitySlotTower.Battle
 
                 actor.Seen = frame;
                 actor.Root.position = fieldView.PositionToWorld(enemy.X, enemy.Y, enemy.Definition.IsAir);
-                UpdateGauge(actor, enemy.Hp, enemy.Definition.MaxHp);
+                UpdateGauge(actor, enemy.Hp, enemy.MaxHp);
             }
 
             _goneEnemies.Clear();

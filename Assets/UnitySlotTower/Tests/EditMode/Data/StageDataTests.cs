@@ -38,6 +38,16 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
+        [Description("T617: 敵の HP の倍率はステージ1・2が1で、後ろのステージほど下がらない（値はプレイで調整）")]
+        public void Enemy_Hp_Rate_Is_One_For_Stages_1_And_2_And_Never_Drops()
+        {
+            var rates = Stages().Stages.Select(s => s.EnemyHpRate).ToArray();
+
+            Assert.That((rates[0], rates[1]), Is.EqualTo((1.0, 1.0)));
+            Assert.That(rates, Is.Ordered.Ascending);
+        }
+
+        [Test]
         [Description("FR-103: ステージ1は 1体 → 2体 → 3体 → 長め（6体以上）のウェーブ")]
         public void Stage_1_Waves_Grow_One_Two_Three_Then_Long()
         {

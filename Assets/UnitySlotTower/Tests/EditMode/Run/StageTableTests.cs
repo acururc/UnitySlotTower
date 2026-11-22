@@ -53,5 +53,26 @@ namespace UnitySlotTower.Tests.EditMode.Run
 
             Assert.That((error.Line, error.Column), Is.EqualTo((3, 1)));
         }
+
+        [Test]
+        [Description("T617: enemy_hp_rate 列でステージごとの敵の HP の倍率を読み、列がなければ 1")]
+        public void Enemy_Hp_Rate_Is_Read_And_Defaults_To_One()
+        {
+            var table = StageTable.Load(CsvParser.Parse(StageTable.FileName,
+                "stage,map_id,wave_mode,boss,enemy_hp_rate\n1,first,clear,none,1\n2,battle_a,timed,none,2.5\n"));
+
+            Assert.That((table.Get(1).EnemyHpRate, table.Get(2).EnemyHpRate, Load("1,first,clear,none\n").Get(1).EnemyHpRate),
+                Is.EqualTo((1.0, 2.5, 1.0)));
+        }
+
+        [Test]
+        [Description("T617: 敵の HP の倍率が0以下ならその升の誤り")]
+        public void Non_Positive_Enemy_Hp_Rate_Is_An_Error_At_Its_Cell()
+        {
+            var error = Assert.Throws<CsvFormatException>(() => StageTable.Load(CsvParser.Parse(StageTable.FileName,
+                "stage,map_id,wave_mode,boss,enemy_hp_rate\n1,first,clear,none,0\n"))).Error;
+
+            Assert.That((error.Line, error.Column), Is.EqualTo((2, 5)));
+        }
     }
 }

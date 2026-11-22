@@ -8,11 +8,12 @@ namespace UnitySlotTower.Core.Battle
     /// </summary>
     public sealed class BattleEnemy
     {
-        internal BattleEnemy(EnemyDefinition definition, MapPath path)
+        internal BattleEnemy(EnemyDefinition definition, MapPath path, double hpRate = 1)
         {
             Definition = definition;
             Path = path;
-            Hp = definition.MaxHp;
+            MaxHp = Math.Max(1, (int)Math.Round(definition.MaxHp * hpRate, MidpointRounding.AwayFromZero));
+            Hp = MaxHp;
             X = path.Cells[0].X;
             Y = path.Cells[0].Y;
         }
@@ -20,6 +21,9 @@ namespace UnitySlotTower.Core.Battle
         public EnemyDefinition Definition { get; }
         public MapPath Path { get; }
         public int Hp { get; private set; }
+
+        /// <summary>出現時の HP。enemies.csv の max_hp にステージの倍率（T617）を掛けて四捨五入した値。</summary>
+        public int MaxHp { get; }
 
         /// <summary>出現口から進んだ距離（マス）。</summary>
         public double Distance { get; private set; }

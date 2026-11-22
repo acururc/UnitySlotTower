@@ -282,5 +282,17 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
             Assert.That(field.Enemies[0].X, Is.GreaterThan(1.5));
         }
+
+        [Test]
+        [Description("T617: 出現する敵の HP は max_hp × ステージの倍率を四捨五入した値（フィクスチャの近距離は HP1000）")]
+        public void Spawned_Enemy_Hp_Uses_The_Stage_Rate()
+        {
+            var field = BattleFixtures.CreateField("0,melee,S1,g,0\n");
+            field.EnemyHpRate = 1.2345;
+
+            field.Advance(1);
+
+            Assert.That((field.Enemies[0].MaxHp, field.Enemies[0].Hp), Is.EqualTo((1235, 1235)));
+        }
     }
 }

@@ -46,6 +46,9 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>この戦闘の出目の効果（FR-112）。null なら効果なし。</summary>
         public SlotEffects Effects { get; }
 
+        /// <summary>出現する敵の HP の倍率（T617、stages.csv の enemy_hp_rate）。</summary>
+        public double EnemyHpRate { get; set; } = 1;
+
         /// <summary>このステージのウェーブの進行（FR-102）。</summary>
         public WaveProgress Waves { get; }
 
@@ -249,7 +252,7 @@ namespace UnitySlotTower.Core.Battle
             Waves.Step(_enemies.Count, _due);
             foreach (var spawn in _due)
             {
-                _enemies.Add(new BattleEnemy(spawn.Enemy, spawn.Path)
+                _enemies.Add(new BattleEnemy(spawn.Enemy, spawn.Path, EnemyHpRate)
                 {
                     AreaCooldownSteps = StepsOf(spawn.Enemy.AreaInterval),
                 });
