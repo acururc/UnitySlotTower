@@ -111,6 +111,7 @@ namespace UnitySlotTower.Editor.Setup
             var component = frame.gameObject.AddComponent<SlotCabinetLights>();
             var serialized = new SerializedObject(component);
             serialized.FindProperty("cabinet").objectReferenceValue = cabinet;
+            serialized.FindProperty("waveOrigin").objectReferenceValue = window;
             SetArray(serialized.FindProperty("lights"), lights);
             SetArray(serialized.FindProperty("glows"), glows);
             SetArray(serialized.FindProperty("windowLights"), windowLights);

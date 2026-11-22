@@ -180,7 +180,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        [Description("AC-110（T614、FR-116）: 中身は外枠の内側に縮み、外枠の LED は普段流れ、揃うと出目の色で点滅して流れに戻る")]
+        [Description("AC-110（T614、FR-116）: 中身は外枠の内側に縮み、LED は普段落ち着いて光り、揃うとリール窓から出目の色の波が広がって普段に戻る")]
         public IEnumerator Cabinet_Frame_Lights_Flow_And_Flash_On_Align()
         {
             yield return LoadGame();
@@ -197,7 +197,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                 Assert.That(graphic.raycastTarget, Is.False, $"外枠の {graphic.name} がクリックを受ける");
             }
 
-            // 普段: 実時間で光が流れる（どれかの LED の色が変わる）。
+            // 普段: 実時間でゆっくり明るさが揺れる（どれかの LED の色が変わる）。
             var before = new Color[lights.LightCount];
             var windowBefore = new Color[lights.WindowLightCount];
             for (var i = 0; i < before.Length; i++) before[i] = lights.LightColor(i);
@@ -215,6 +215,12 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return SpinAndStopAll();
             Assert.That((lights.IsFlashing, lights.FlashSymbol), Is.EqualTo((true, (SlotSymbol?)SlotSymbol.Green7)),
                 "揃っても LED が出目の色で光らない");
+            // 波はリール窓から広がる: 窓の LED のほうが外枠の LED より中心に近い。
+            var nearestWindow = float.MaxValue;
+            var nearestFrame = float.MaxValue;
+            for (var i = 0; i < lights.WindowLightCount; i++) nearestWindow = Mathf.Min(nearestWindow, lights.WindowLightDistance(i));
+            for (var i = 0; i < lights.LightCount; i++) nearestFrame = Mathf.Min(nearestFrame, lights.LightDistance(i));
+            Assert.That(nearestWindow, Is.LessThan(nearestFrame), "光の波がリール窓から広がらない");
             var until = Time.realtimeSinceStartup + 5f;
             while (lights.IsFlashing && Time.realtimeSinceStartup < until)
             {

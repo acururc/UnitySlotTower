@@ -120,6 +120,12 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 board.Play(symbol);
                 lights.Flash(symbol); // 外枠の LED も出目の色で光る（T614、FR-116）。
                 yield return Capture(prefix + "-board-" + symbol.ToString().ToLowerInvariant(), BoardMoment);
+                if (symbol == SlotSymbol.Red7)
+                {
+                    // 外枠の光の波がリール窓から広がる途中（T614）。
+                    yield return Capture(prefix + "-wave-red7-2", 0.25f);
+                    yield return Capture(prefix + "-wave-red7-3", 0.6f);
+                }
                 while (board.IsPlaying)
                 {
                     yield return null;
