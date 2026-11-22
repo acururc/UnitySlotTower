@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
 using UnitySlotTower.Core.Layout;
 using UnitySlotTower.Layout;
@@ -32,6 +33,7 @@ namespace UnitySlotTower.Editor.Setup
         private const float WindowGlowSize = 42f;
         private const float StripSegment = 40f;
         private const float StripWidth = 16f;
+        private const float CameraFov = 26f;
 
         // 台は戦闘のマップ（原点付近）から遠く離し、台のカメラの奥行きも短くして互いに写り込まないようにする。
         private static readonly Vector3 ModelOrigin = new Vector3(0f, 0f, -1000f);
@@ -43,7 +45,6 @@ namespace UnitySlotTower.Editor.Setup
         private static Material _gloss;
         private static Material _chrome;
         private static Material _gunmetal;
-        private static Material _grille;
         private static Material _light;
 
         [MenuItem("Tools/UnitySlotTower/Setup/Build Cabinet Frame (T614)")]
@@ -90,6 +91,7 @@ namespace UnitySlotTower.Editor.Setup
             var model = new GameObject(ModelName).transform;
             model.position = ModelOrigin;
             var camera = CreateCamera(model, layout);
+            CreateLighting(model);
             var strips = new List<Renderer>();
             BuildCabinet(model, content, center, slotArea, window, strips);
             var (windowLights, windowGlows) = BuildWindowLights(window);
@@ -128,20 +130,24 @@ namespace UnitySlotTower.Editor.Setup
             var layoutSerialized = new SerializedObject(layout);
             var battle = (Camera)layoutSerialized.FindProperty("battleCamera").objectReferenceValue;
 
+            // 画角の狭い遠近法で真正面から写す。z = 0 の面が基準解像度の画面にぴったり重なる距離に置くので、z = 0 に置いた
+            // 部品の位置は UI と一致し、手前に張り出した部品は中心から外へ少し大きく写って側面（奥行き）が見える。
+            var distance = PortraitLayout.ReferenceHeight / 200f / Mathf.Tan(CameraFov * 0.5f * Mathf.Deg2Rad);
             var go = new GameObject("Cabinet Camera", typeof(Camera));
             go.transform.SetParent(model, false);
-            go.transform.localPosition = new Vector3(0f, 0f, -30f);
+            go.transform.localPosition = new Vector3(0f, 0f, -distance);
             go.transform.localRotation = Quaternion.identity;
             var camera = go.GetComponent<Camera>();
-            camera.orthographic = true;
-            camera.orthographicSize = PortraitLayout.ReferenceHeight / 200f;
-            camera.nearClipPlane = 1f;
-            camera.farClipPlane = 60f;
+            camera.orthographic = false;
+            camera.fieldOfView = CameraFov;
+            camera.nearClipPlane = distance - 10f;
+            camera.farClipPlane = distance + 10f;
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = Color.black;
             camera.depth = battle != null ? battle.depth - 0.5f : -0.5f;
-            camera.allowHDR = false;
+            camera.allowHDR = true;
             camera.allowMSAA = true;
+            camera.GetUniversalAdditionalCameraData().renderPostProcessing = true; // 台の光の帯だけを Bloom でにじませる
 
             layoutSerialized.FindProperty("cabinetCamera").objectReferenceValue = camera;
             layoutSerialized.ApplyModifiedPropertiesWithoutUndo();
@@ -150,8 +156,66 @@ namespace UnitySlotTower.Editor.Setup
             return camera;
         }
 
-        // 実機の台（黒い本体・上の銀のアーチと V 字の飾り・左右の柱の青い光の帯・銀のボタン台・リールを囲む角ばった光の枠）を
-        // 参考にした仮の形。座標は画面の中心を原点にした基準解像度の px（上が +y）、z は手前がマイナス。
+        // z の面に置いた物を画面の基準解像度の位置に写すための倍率（手前ほど大きく写るので縮める）。
+        private static float OnScreen(float z)
+        {
+            var distance = PortraitLayout.ReferenceHeight / 200f / Mathf.Tan(CameraFov * 0.5f * Mathf.Deg2Rad);
+            return (distance + z) / distance;
+        }
+
+        // 台だけを照らすライト（届く範囲を短くし、遠く離れた戦闘のマップには届かない）と、台のカメラだけが使う Bloom。
+        private static void CreateLighting(Transform model)
+        {
+            PointLight(model, "Key Light", new Vector3(-7f, 9f, -14f), new Color(1f, 0.96f, 0.9f), 60f);
+            PointLight(model, "Fill Light", new Vector3(8f, -4f, -12f), new Color(0.6f, 0.75f, 1f), 20f);
+            PointLight(model, "Top Light", new Vector3(0f, 13f, -4f), Color.white, 25f);
+
+            var path = $"{MaterialFolder}/Cabinet Bloom.asset";
+            var profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(path);
+            if (profile == null)
+            {
+                profile = ScriptableObject.CreateInstance<VolumeProfile>();
+                AssetDatabase.CreateAsset(profile, path);
+            }
+
+            if (!profile.TryGet<Bloom>(out var bloom))
+            {
+                bloom = profile.Add<Bloom>(true);
+                bloom.name = "Bloom";
+                AssetDatabase.AddObjectToAsset(bloom, profile);
+            }
+
+            bloom.active = true;
+            bloom.intensity.Override(1.2f);
+            bloom.threshold.Override(1.6f);
+            bloom.scatter.Override(0.7f);
+            EditorUtility.SetDirty(bloom);
+            EditorUtility.SetDirty(profile);
+            AssetDatabase.SaveAssets();
+
+            // 戦闘カメラと背景カメラは後処理を使わない（renderPostProcessing が off）ので、この全体の Volume は台のカメラだけに効く。
+            var volume = new GameObject("Cabinet Bloom Volume", typeof(Volume)).GetComponent<Volume>();
+            volume.transform.SetParent(model, false);
+            volume.isGlobal = true;
+            volume.priority = 10f;
+            volume.sharedProfile = profile;
+        }
+
+        private static void PointLight(Transform model, string name, Vector3 at, Color color, float intensity)
+        {
+            var light = new GameObject(name, typeof(Light)).GetComponent<Light>();
+            light.transform.SetParent(model, false);
+            light.transform.localPosition = at;
+            light.type = LightType.Point;
+            light.color = color;
+            light.intensity = intensity;
+            light.range = 45f;
+            light.shadows = LightShadows.None;
+        }
+
+        // 実機の台（黒い本体・上の銀のアーチと V 字の飾り・左右の柱の青い光の帯・張り出した銀のボタン台・リールを囲む角ばった光の枠）
+        // を参考にした仮の形（ロゴやスピーカーは作らない）。座標は画面の中心を原点にした基準解像度の px（上が +y）、
+        // z は単位で手前がマイナス。奥の面を z = 0 にそろえ、手前へ張り出させて側面を見せる。
         private static void BuildCabinet(Transform model, Vector2 content, Vector2 center, RectTransform slotArea, RectTransform window,
             List<Renderer> strips)
         {
@@ -166,7 +230,6 @@ namespace UnitySlotTower.Editor.Setup
             float SlotY(float y) => bottom + y * scale;
             var deckBottom = SlotY(526f);
             var deckTop = SlotY(714f);
-            var lcdBottom = SlotY(slotHeight);
 
             var windowMin = window.anchorMin;
             var windowMax = window.anchorMax;
@@ -176,80 +239,71 @@ namespace UnitySlotTower.Editor.Setup
             var winT = SlotY(windowMax.y * slotHeight);
 
             var body = Group(model, "Body");
-            Box(body, "Back", new Vector2(-w, -h), new Vector2(w, h), 0.6f, 0.5f, _body);
-            Box(body, "Pillar Left", new Vector2(-w, -h + 40f), new Vector2(left, top), -0.3f, 0.9f, _gloss);
-            Box(body, "Pillar Right", new Vector2(right, -h + 40f), new Vector2(w, top), -0.3f, 0.9f, _gloss);
-            Box(body, "Pillar Edge Left", new Vector2(left - 14f, bottom), new Vector2(left - 4f, top), -0.8f, 0.2f, _chrome);
-            Box(body, "Pillar Edge Right", new Vector2(right + 4f, bottom), new Vector2(right + 14f, top), -0.8f, 0.2f, _chrome);
+            Box(body, "Back", new Vector2(-w - 120f, -h - 160f), new Vector2(w + 120f, h + 160f), 0f, 0.5f, _body);
+            Box(body, "Pillar Left", new Vector2(-w - 80f, -h), new Vector2(left, top), -2.4f, 2.4f, _gloss);
+            Box(body, "Pillar Right", new Vector2(right, -h), new Vector2(w + 80f, top), -2.4f, 2.4f, _gloss);
+            Box(body, "Pillar Plate Left", new Vector2(-w - 40f, bottom + 30f), new Vector2(left - 26f, top - 20f), -2.8f, 0.4f, _gloss);
+            Box(body, "Pillar Plate Right", new Vector2(right + 26f, bottom + 30f), new Vector2(w + 40f, top - 20f), -2.8f, 0.4f, _gloss);
 
-            // 上のアーチ: 銀の帯の上に黒い冠（ロゴの場所）、左右から真ん中へ下がる V 字の銀の飾り、その下に青い光の帯。
+            // 上のアーチ: 張り出した銀の帯と、左右から真ん中へ下がる V 字の飾り、その下に青い光の帯。
             var arch = Group(model, "Arch");
-            Box(arch, "Arch Base", new Vector2(-w, top), new Vector2(w, h), -0.4f, 1.2f, _chrome);
-            Box(arch, "Crown", new Vector2(-380f, top + 20f), new Vector2(380f, h - 22f), -1.1f, 0.4f, _gloss);
-            Cylinder(arch, "Crown Dome", new Vector2(0f, h - 30f), new Vector2(820f, 120f), -1.2f, _gloss);
-            Bar(arch, "V Left", new Vector2(-w + 10f, h - 20f), new Vector2(-210f, top + 18f), 34f, -1.3f, 0.3f, _chrome);
-            Bar(arch, "V Right", new Vector2(w - 10f, h - 20f), new Vector2(210f, top + 18f), 34f, -1.3f, 0.3f, _chrome);
-            Speaker(arch, "Speaker Left", new Vector2(-520f, top + 90f));
-            Speaker(arch, "Speaker Right", new Vector2(520f, top + 90f));
+            Box(arch, "Arch Base", new Vector2(-w - 80f, top), new Vector2(w + 80f, h + 120f), -2.2f, 2.2f, _chrome);
+            Box(arch, "Arch Inset", new Vector2(-260f, top + 40f), new Vector2(260f, h + 40f), -2.4f, 0.2f, _gloss);
+            Bar(arch, "V Left", new Vector2(-w - 20f, h + 20f), new Vector2(-250f, top + 20f), 40f, -2.8f, 0.6f, _chrome);
+            Bar(arch, "V Right", new Vector2(w + 20f, h + 20f), new Vector2(250f, top + 20f), 40f, -2.8f, 0.6f, _chrome);
 
             var lights = Group(model, "Light Strips");
-            Strip(lights, strips, new Vector2(-w + 30f, h - 60f), new Vector2(-230f, top + 4f), -1.4f);
-            Strip(lights, strips, new Vector2(w - 30f, h - 60f), new Vector2(230f, top + 4f), -1.4f);
-            Strip(lights, strips, new Vector2(-230f, top + 4f), new Vector2(230f, top + 4f), -1.4f);
+            Strip(lights, strips, new Vector2(-w + 10f, h - 40f), new Vector2(-260f, top + 52f), -2.9f);
+            Strip(lights, strips, new Vector2(w - 10f, h - 40f), new Vector2(260f, top + 52f), -2.9f);
+            Strip(lights, strips, new Vector2(-250f, top + 14f), new Vector2(250f, top + 14f), -2.5f);
 
             // 柱: 外側に縦の光の帯（上でアーチへ向かって内に曲がる）、下の段（リールの下パネル）の横は角ばった光の枠。
             foreach (var side in new[] { -1f, 1f })
             {
-                Strip(lights, strips, new Vector2(side * (w - 22f), deckTop), new Vector2(side * (w - 22f), top - 60f), -0.8f);
-                Strip(lights, strips, new Vector2(side * (w - 22f), top - 60f), new Vector2(side * (w - 60f), top + 30f), -0.8f);
-                Strip(lights, strips, new Vector2(side * (w - 20f), deckBottom - 10f), new Vector2(side * (w - 56f), deckBottom - 80f), -0.8f);
-                Strip(lights, strips, new Vector2(side * (w - 56f), deckBottom - 80f), new Vector2(side * (w - 56f), bottom + 70f), -0.8f);
-                Strip(lights, strips, new Vector2(side * (w - 56f), bottom + 70f), new Vector2(side * (w - 20f), bottom + 10f), -0.8f);
+                Strip(lights, strips, new Vector2(side * (w - 14f), deckTop), new Vector2(side * (w - 14f), top - 60f), -2.9f);
+                Strip(lights, strips, new Vector2(side * (w - 14f), top - 60f), new Vector2(side * (w - 50f), top + 10f), -2.9f);
+                Strip(lights, strips, new Vector2(side * (w - 10f), deckBottom - 10f), new Vector2(side * (w - 46f), deckBottom - 80f), -2.9f);
+                Strip(lights, strips, new Vector2(side * (w - 46f), deckBottom - 80f), new Vector2(side * (w - 46f), bottom + 70f), -2.9f);
+                Strip(lights, strips, new Vector2(side * (w - 46f), bottom + 70f), new Vector2(side * (w - 10f), bottom + 10f), -2.9f);
             }
 
-            // 液晶のふち（戦闘画面と札の外側、柱の内側の銀の縁の上端と下端）。
-            var lcd = Group(model, "LCD Bezel");
-            Box(lcd, "Top", new Vector2(left - 14f, top), new Vector2(right + 14f, top + 12f), -1.0f, 0.2f, _gunmetal);
-            Box(lcd, "Bottom", new Vector2(left - 14f, lcdBottom - 6f), new Vector2(right + 14f, lcdBottom + 4f), -1.0f, 0.2f, _gunmetal);
-
-            // ボタン台: 手前に張り出した銀の台（レバー・コインの UI がこの上に載る）と前の縁。
+            // ボタン台: 大きく手前に張り出した銀の台（レバー・コインの UI がこの上に載る）と、その前面の濃い板。
             var deck = Group(model, "Button Deck");
-            Box(deck, "Deck", new Vector2(left - 30f, deckBottom), new Vector2(right + 30f, deckTop), -1.6f, 1.3f, _chrome);
-            Box(deck, "Deck Face", new Vector2(left - 10f, deckBottom + 16f), new Vector2(right + 10f, deckTop - 14f), -2.0f, 0.1f, _gunmetal);
-            Box(deck, "Deck Lip", new Vector2(left - 40f, deckBottom - 18f), new Vector2(right + 40f, deckBottom), -1.8f, 1.0f, _gloss);
+            Box(deck, "Deck", new Vector2(left - 40f, deckBottom), new Vector2(right + 40f, deckTop), -3.4f, 3.4f, _chrome);
+            // 前面の濃い板はレバー・コインの UI の真後ろに写るよう、手前に出た分だけ縮めて置く（白い字を明るい銀に重ねない）。
+            var faceScale = OnScreen(-3.5f);
+            Box(deck, "Deck Face", new Vector2(left - 10f, deckBottom + 6f) * faceScale, new Vector2(right + 10f, deckTop - 6f) * faceScale, -3.5f, 0.1f, _gunmetal);
 
-            // リールの下パネル: 黒い板にリール窓の銀のふちと、左右の角ばった光の枠。
+            // リールの下パネル: 黒い板にリール窓の銀のふち（手前に張り出す）と、左右の角ばった光の枠。
             var lower = Group(model, "Lower Panel");
-            Box(lower, "Panel", new Vector2(left, bottom), new Vector2(right, deckBottom - 18f), -0.5f, 0.3f, _gloss);
-            const float bezel = 32f;
-            const float rim = 18f;
-            Box(lower, "Bezel Top", new Vector2(winL - bezel - rim, winT + bezel), new Vector2(winR + bezel + rim, winT + bezel + rim), -0.9f, 0.3f, _chrome);
-            Box(lower, "Bezel Bottom", new Vector2(winL - bezel - rim, winB - bezel - rim), new Vector2(winR + bezel + rim, winB - bezel), -0.9f, 0.3f, _chrome);
-            Box(lower, "Bezel Left", new Vector2(winL - bezel - rim, winB - bezel), new Vector2(winL - bezel, winT + bezel), -0.9f, 0.3f, _chrome);
-            Box(lower, "Bezel Right", new Vector2(winR + bezel, winB - bezel), new Vector2(winR + bezel + rim, winT + bezel), -0.9f, 0.3f, _chrome);
+            Box(lower, "Panel", new Vector2(left, bottom), new Vector2(right, deckBottom), -0.6f, 0.6f, _gloss);
+            const float bezel = 30f;
+            const float rim = 22f;
+            const float bezelZ = -1.6f;
+            Box(lower, "Bezel Top", new Vector2(winL - bezel - rim, winT + bezel), new Vector2(winR + bezel + rim, winT + bezel + rim), bezelZ, 1f, _chrome);
+            Box(lower, "Bezel Bottom", new Vector2(winL - bezel - rim, winB - bezel - rim), new Vector2(winR + bezel + rim, winB - bezel), bezelZ, 1f, _chrome);
+            Box(lower, "Bezel Left", new Vector2(winL - bezel - rim, winB - bezel), new Vector2(winL - bezel, winT + bezel), bezelZ, 1f, _chrome);
+            Box(lower, "Bezel Right", new Vector2(winR + bezel, winB - bezel), new Vector2(winR + bezel + rim, winT + bezel), bezelZ, 1f, _chrome);
             foreach (var side in new[] { -1f, 1f })
             {
                 var inner = side < 0f ? winL - bezel - rim - 40f : winR + bezel + rim + 40f;
                 var outer = inner + side * 70f;
-                Strip(lights, strips, new Vector2(outer, winT + 20f), new Vector2(inner, winT - 40f), -0.9f);
-                Strip(lights, strips, new Vector2(inner, winT - 40f), new Vector2(inner, winB + 40f), -0.9f);
-                Strip(lights, strips, new Vector2(inner, winB + 40f), new Vector2(outer, winB - 20f), -0.9f);
+                Strip(lights, strips, new Vector2(outer, winT + 20f), new Vector2(inner, winT - 40f), -1.0f);
+                Strip(lights, strips, new Vector2(inner, winT - 40f), new Vector2(inner, winB + 40f), -1.0f);
+                Strip(lights, strips, new Vector2(inner, winB + 40f), new Vector2(outer, winB - 20f), -1.0f);
             }
 
-            // 下の縁と足（スピーカーの網）。
+            // 下の縁（足）。
             var foot = Group(model, "Foot");
-            Box(foot, "Base", new Vector2(-w, -h), new Vector2(w, bottom), -0.4f, 0.8f, _gloss);
-            Box(foot, "Grille", new Vector2(-300f, -h + 8f), new Vector2(300f, bottom - 8f), -0.9f, 0.2f, _grille);
+            Box(foot, "Base", new Vector2(-w - 80f, -h - 120f), new Vector2(w + 80f, bottom), -1.4f, 1.4f, _gloss);
         }
 
-        private static void Speaker(Transform parent, string name, Vector2 at)
-        {
-            Cylinder(parent, name, at, new Vector2(120f, 120f), -1.3f, _grille);
-        }
-
-        // 光の帯を StripSegment ごとの短い部品に分けて並べる（波が帯を伝わって見えるように）。
+        // 光の帯を StripSegment ごとの短い部品に分けて並べる（波が帯を伝わって見えるように）。from・to は画面に写る位置（px）で、
+        // 手前に出た分だけ縮めて置く。
         private static void Strip(Transform parent, List<Renderer> strips, Vector2 from, Vector2 to, float z)
         {
+            from *= OnScreen(z);
+            to *= OnScreen(z);
             var count = Mathf.Max(1, Mathf.RoundToInt(Vector2.Distance(from, to) / StripSegment));
             for (var k = 0; k < count; k++)
             {
@@ -276,15 +330,6 @@ namespace UnitySlotTower.Editor.Setup
             go.transform.localPosition = new Vector3((min.x + max.x) * 0.005f, (min.y + max.y) * 0.005f, z + depth * 0.5f);
             go.transform.localScale = new Vector3((max.x - min.x) / 100f, (max.y - min.y) / 100f, depth);
             return go.GetComponent<Renderer>();
-        }
-
-        // 正面を向けた円柱（size は横・縦の px、楕円にもなる）。
-        private static void Cylinder(Transform parent, string name, Vector2 at, Vector2 size, float z, Material material)
-        {
-            var go = Primitive(PrimitiveType.Cylinder, parent, name, material);
-            go.transform.localPosition = new Vector3(at.x / 100f, at.y / 100f, z + 0.15f);
-            go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            go.transform.localScale = new Vector3(size.x / 100f, 0.15f, size.y / 100f);
         }
 
         private static GameObject Primitive(PrimitiveType type, Transform parent, string name, Material material)
@@ -314,11 +359,10 @@ namespace UnitySlotTower.Editor.Setup
                 AssetDatabase.CreateFolder("Assets/UnitySlotTower/Art/Materials", "Cabinet");
             }
 
-            _body = LitMaterial("Cabinet Body", new Color(0.03f, 0.03f, 0.04f), 0f, 0.3f);
-            _gloss = LitMaterial("Cabinet Gloss", new Color(0.06f, 0.06f, 0.08f), 0.2f, 0.85f);
-            _chrome = LitMaterial("Cabinet Chrome", new Color(0.78f, 0.8f, 0.84f), 0.9f, 0.8f);
-            _gunmetal = LitMaterial("Cabinet Gunmetal", new Color(0.3f, 0.32f, 0.36f), 0.8f, 0.7f);
-            _grille = LitMaterial("Cabinet Grille", new Color(0.12f, 0.12f, 0.13f), 0.3f, 0.4f);
+            _body = LitMaterial("Cabinet Body", new Color(0.02f, 0.02f, 0.03f), 0f, 0.2f);
+            _gloss = LitMaterial("Cabinet Gloss", new Color(0.02f, 0.02f, 0.03f), 0f, 0.15f);
+            _chrome = LitMaterial("Cabinet Chrome", new Color(0.6f, 0.62f, 0.66f), 0.9f, 0.7f);
+            _gunmetal = LitMaterial("Cabinet Gunmetal", new Color(0.12f, 0.13f, 0.15f), 0.6f, 0.5f);
             _light = UnlitMaterial("Cabinet Light", new Color(0.25f, 0.6f, 1f));
             AssetDatabase.SaveAssets();
         }

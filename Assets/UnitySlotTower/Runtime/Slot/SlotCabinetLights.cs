@@ -71,6 +71,9 @@ namespace UnitySlotTower.Slot
         [Range(0f, 1f)]
         [SerializeField] private float glowAlpha = 0.75f;
 
+        [Tooltip("台の光の帯の明るさの倍率（1 より大きいと台のカメラの Bloom でにじむ）。")]
+        [SerializeField] private float stripIntensity = 2.5f;
+
         private float _time;
         private float _flashTime;
         private float _flashLeft;
@@ -273,7 +276,7 @@ namespace UnitySlotTower.Slot
                 var d = _stripDistance != null && i < _stripDistance.Length ? _stripDistance[i] : 1f;
                 var color = Mix(idle, d, level, after, out _);
                 _stripColors[i] = color;
-                _block.SetColor(BaseColorId, color);
+                _block.SetColor(BaseColorId, new Color(color.r * stripIntensity, color.g * stripIntensity, color.b * stripIntensity, 1f));
                 strips[i].SetPropertyBlock(_block);
             }
         }
