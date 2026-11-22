@@ -1,9 +1,0 @@
-id,kind,map_id,min_floor,max_floor,fixed_spins,reward_money,reward_coins,weight
-first,first,first,1,1,6,80,6,1
-battle_a,battle,battle_a,2,7,0,80,6,7
-battle_b,battle,battle_b,2,7,0,80,6,7
-battle_c,battle,battle_c,2,7,0,80,6,7
-elite_a,elite,elite_a,3,7,0,200,12,1
-boss_a,boss,boss_a,1,99,0,0,0,1
-battle_d,battle,battle_d,2,7,0,80,6,26
-battle_e,battle,battle_e,2,7,0,80,6,26

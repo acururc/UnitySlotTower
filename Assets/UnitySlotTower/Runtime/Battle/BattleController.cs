@@ -136,8 +136,8 @@ namespace UnitySlotTower.Battle
             (Run.Phase == WavePhase.GameOver || (Run.IsRunCleared && _completionReported));
 
         /// <summary>
-        /// 戦闘側の操作（配置・撤退・強化・スキル）を受け付けないか。一時停止中・ゲーム終了後・開始の演出中（AC-016）・
-        /// 戦闘マスの終了後（ルート画面: T350b）。
+        /// 戦闘側の操作（配置・撤退・強化）を受け付けないか。一時停止中・ゲーム終了後・開始の演出中（AC-016）・
+        /// ステージの終了後（勝利の帯から次のステージまで）。
         /// </summary>
         public bool IsInputBlocked => IsPaused || IsShowingVictory || IsFinished || IsInIntro || (Run != null && Run.Phase == WavePhase.Completed);
 
@@ -280,7 +280,7 @@ namespace UnitySlotTower.Battle
             NodeBegan?.Invoke();
         }
 
-        // 開始の演出の印（旧ルートのマスの種類の絵を使う。T609 でステージの表示に替える）。
+        // 開始の演出の印（旧ルートのマスの種類の絵を流用: 最初・通常・中ボス・ボス）。
         private static string IntroKind(StageDefinition stage, bool isFinal)
         {
             if (stage.Number == 1) return RouteNodeKinds.First;

@@ -8,7 +8,6 @@ using UnitySlotTower.Core.Economy;
 using UnitySlotTower.Core.Run;
 using UnitySlotTower.Core.Simulation;
 using UnitySlotTower.Core.Slot;
-using UnitySlotTower.Tests.EditMode.Run;
 
 namespace UnitySlotTower.Tests.EditMode.Data
 {
@@ -107,17 +106,6 @@ namespace UnitySlotTower.Tests.EditMode.Data
             return boosts.AttackRate;
         }
 
-        private static int MoneyPaidForCoins(IReadOnlyDictionary<string, string> files)
-        {
-            var rules = RouteRules.Load(Parse(files, RouteRules.FileName));
-            var run = RunFixtures.CreateRun(coins: 15, money: 300);
-            Assert.That(new Exchange(run, 2, rules.ExchangeMoneyPerCoin).TryBuyCoins(), Is.True);
-            return 300 - run.Money.Coins;
-        }
-
-        private static RouteMap Route(IReadOnlyDictionary<string, string> files, ulong seed) =>
-            RouteGenerator.Generate(RouteRules.Load(Parse(files, RouteRules.FileName)), new SeededRandom(seed));
-
         private static string FirstSpawnEnemy(IReadOnlyDictionary<string, string> files)
         {
             var map = BattleMap.Load("first", files[BattleMap.MapFileName("first")], Parse(files, "map_paths.csv"));
@@ -165,29 +153,6 @@ namespace UnitySlotTower.Tests.EditMode.Data
 
             Assert.That((AttackRateAfterOneBar(TablePaths.ReadAll()), AttackRateAfterOneBar(changed)),
                 Is.EqualTo((2.0, 3.0)));
-        }
-
-        [Test]
-        [Description("両替レート: route_rules.csv の exchange_money_per_coin 10 → 15（コイン2枚の値段 20 → 30）")]
-        public void Exchange_Rate_Follows_Route_Rules_Csv()
-        {
-            var changed = TablesWith(RouteRules.FileName, "value", "15", ("key", "exchange_money_per_coin"));
-
-            Assert.That((MoneyPaidForCoins(TablePaths.ReadAll()), MoneyPaidForCoins(changed)), Is.EqualTo((20, 30)));
-        }
-
-        [Test]
-        [Description("ルート生成: route_rules.csv の floors 8 → 6（列は3に固定: D-88）")]
-        public void Route_Height_Follows_Route_Rules_Csv()
-        {
-            var changed = TablesWith(RouteRules.FileName, "value", "6", ("key", "floors"));
-
-            for (ulong seed = 1; seed <= 20; seed++)
-            {
-                Assert.That((Route(TablePaths.ReadAll(), seed).Floors, Route(changed, seed).Floors),
-                    Is.EqualTo((8, 6)));
-                Assert.That(Route(changed, seed).Boss.Floor, Is.EqualTo(6), $"seed {seed}");
-            }
         }
 
         [Test]

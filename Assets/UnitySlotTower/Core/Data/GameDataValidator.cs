@@ -97,16 +97,6 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Int("step", 1, 1000),
                 ColumnRule.Int("x", 0, 99),
                 ColumnRule.Int("y", 0, 99)),
-            new TableSchema(EncounterTable.FileName, new[] { "id" },
-                ColumnRule.Id("id"),
-                ColumnRule.Enum("kind", EncounterTable.KindIds),
-                ColumnRule.Id("map_id"),
-                ColumnRule.Int("min_floor", 1, 99),
-                ColumnRule.Int("max_floor", 1, 99),
-                ColumnRule.Int("fixed_spins", 0, 100),
-                ColumnRule.Int("reward_money", 0, 100000),
-                ColumnRule.Int("reward_coins", 0, 100000),
-                ColumnRule.Int("weight", 1, int.MaxValue)),
             new TableSchema(StageTable.FileName, new[] { "stage" },
                 ColumnRule.Int("stage", 1, 99),
                 ColumnRule.Id("map_id"),
@@ -133,12 +123,6 @@ namespace UnitySlotTower.Core.Data
                 ColumnRule.Int("reel", 0, SlotReels.ReelCount - 1),
                 ColumnRule.Int("index", 0, SlotReels.ReelLength - 1),
                 ColumnRule.Enum("symbol", SlotSymbols.Ids)),
-            new TableSchema(ShopTable.FileName, new[] { "id" },
-                ColumnRule.Id("id"),
-                ColumnRule.Enum("kind", ShopTable.KindIds),
-                ColumnRule.Id("unit_id"),
-                ColumnRule.Int("price", 0, 100000),
-                ColumnRule.Int("weight", 0, 10000)),
             new TableSchema(UiTexts.FileName, new[] { "id" },
                 ColumnRule.Id("id"),
                 ColumnRule.Text("ja")),
@@ -160,7 +144,6 @@ namespace UnitySlotTower.Core.Data
 
             ValidateKeyValueFile(files, GameConfig.FileName, GameConfigKeys, report);
             ValidateKeyValueFile(files, SlotRules.FileName, SlotRuleKeys, report);
-            var routeTable = ValidateKeyValueFile(files, RouteRules.FileName, RouteRuleKeys(), report);
 
             foreach (var schema in Schemas)
             {
@@ -172,15 +155,10 @@ namespace UnitySlotTower.Core.Data
                 }
             }
 
-            // 検証するマップはステージ（stages.csv）と出現表（encounters.csv）が使うもの（plan 16.6、002 plan 2.1）。
+            // 検証するマップはステージ（stages.csv）が使うもの（plan 16.6、002 plan 2.1）。
             var maps = new List<string>();
-            foreach (var fileName in new[] { StageTable.FileName, EncounterTable.FileName })
+            if (tables.TryGetValue(StageTable.FileName, out var mapRows))
             {
-                if (!tables.TryGetValue(fileName, out var mapRows))
-                {
-                    continue;
-                }
-
                 foreach (var row in mapRows.Rows)
                 {
                     var name = row.Get("map_id");
@@ -209,38 +187,10 @@ namespace UnitySlotTower.Core.Data
             var battleMaps = ValidateMapPaths(files, tables["map_paths.csv"], maps, report);
             ValidateStages(tables[StageTable.FileName], tables["waves.csv"], tables[WaveSchedule.StageWavesFileName],
                 tables["enemies.csv"], battleMaps, report);
-            ValidateEncounters(tables[EncounterTable.FileName], tables[StageTable.FileName], routeTable, report);
             ValidateSlotPatterns(tables[SlotPatterns.FileName], report);
             ValidateSlotReels(tables[SlotReels.FileName], report);
-            TableValidator.ValidateReference(tables[ShopTable.FileName], "unit_id", tables["units.csv"], "id", report);
             ValidateUiTexts(tables[UiTexts.FileName], report);
             return report;
-        }
-
-        /// <summary>
-        /// route_rules.csv のキー（plan 16.7）。重みのキーはマスの種類の登録表から作るので、
-        /// 登録にある種類の重みがない・登録にない種類の重みがある、のどちらもエラーになる（D-69）。
-        /// </summary>
-        private static List<ColumnRule> RouteRuleKeys()
-        {
-            var keys = new List<ColumnRule>
-            {
-                ColumnRule.Int("floors", RouteRules.MinFloors, 30),
-                ColumnRule.Int("columns", RouteRules.GridColumns, RouteRules.GridColumns),
-                ColumnRule.Int("elite_min_floor", 1, 99),
-                ColumnRule.Int("rest_heal", 0, 1000),
-                ColumnRule.Int("shop_slots", 0, 10),
-                ColumnRule.Int("exchange_money_per_coin", 1, 10000),
-            };
-            foreach (var kind in RouteNodeKinds.All)
-            {
-                if (kind.IsWeighted)
-                {
-                    keys.Add(ColumnRule.Int(kind.WeightKey, 0, 10000));
-                }
-            }
-
-            return keys;
         }
 
         /// <summary>文字あり版の文言が空でないことを確かめる（plan 16.9）。</summary>
@@ -372,135 +322,6 @@ namespace UnitySlotTower.Core.Data
             }
 
             return true;
-        }
-
-        /// <summary>
-        /// 出現表の組み合わせ（plan 16.6）: 強敵・ボスのマップは専用、各行のマップを使うステージがある（ステージの流れの T607 までは
-        /// 戦闘マスのマップのステージのウェーブで戦う）、ルートの各階に置かれうる戦闘マスの種類に合う行がある。
-        /// </summary>
-        private static void ValidateEncounters(CsvTable encounterTable, CsvTable stageTable, CsvTable routeTable,
-            ValidationReport report)
-        {
-            EncounterTable encounters;
-            try
-            {
-                encounters = EncounterTable.Load(encounterTable);
-            }
-            catch (CsvFormatException ex)
-            {
-                report.Add(ex.Error);
-                return;
-            }
-
-            ValidateDedicatedMaps(encounterTable, encounters, report);
-            ValidateEncounterStages(encounterTable, stageTable, report);
-            if (routeTable == null)
-            {
-                return;
-            }
-
-            RouteRules rules;
-            try
-            {
-                rules = RouteRules.Load(routeTable);
-            }
-            catch (CsvFormatException ex)
-            {
-                report.Add(ex.Error);
-                return;
-            }
-
-            ValidateFloorCoverage(encounters, rules, report);
-        }
-
-        private static bool IsBossKind(EncounterKind kind) => kind == EncounterKind.Elite || kind == EncounterKind.Boss;
-
-        /// <summary>強敵・ボスのマップを最初の戦闘・通常の戦闘で使っていればエラー（FR-018）。</summary>
-        private static void ValidateDedicatedMaps(CsvTable table, EncounterTable encounters, ValidationReport report)
-        {
-            var dedicated = new HashSet<string>();
-            foreach (var encounter in encounters.All)
-            {
-                if (IsBossKind(encounter.Kind))
-                {
-                    dedicated.Add(encounter.MapId);
-                }
-            }
-
-            foreach (var row in table.Rows)
-            {
-                var encounter = encounters.Get(row.Get("id"));
-                if (!IsBossKind(encounter.Kind) && dedicated.Contains(encounter.MapId))
-                {
-                    report.Add(row.Error("map_id", $"マップ '{encounter.MapId}' は強敵・ボスの専用").Error);
-                }
-            }
-        }
-
-        /// <summary>出現表の各行のマップを使うステージがある（なければ戦闘マスのウェーブが決まらない）。</summary>
-        private static void ValidateEncounterStages(CsvTable encounterTable, CsvTable stageTable, ValidationReport report)
-        {
-            StageTable stages;
-            try
-            {
-                stages = StageTable.Load(stageTable);
-            }
-            catch (CsvFormatException)
-            {
-                return; // ValidateStages で報告済み。
-            }
-
-            foreach (var row in encounterTable.Rows)
-            {
-                var mapId = row.Get("map_id");
-                if (stages.FindByMap(mapId) == null)
-                {
-                    report.Add(row.Error("map_id", $"マップ '{mapId}' を使うステージが {StageTable.FileName} にない").Error);
-                }
-            }
-        }
-
-        /// <summary>
-        /// ルートの生成（plan 16.7）が置きうる戦闘マスの種類と階のすべてに、出現表の行があることを確かめる。
-        /// 1階は first、最上階は boss、間の階は通常（重みが全部0のときの代わりでもある）と、重みが正の戦闘マスの種類
-        /// （強敵は elite_min_floor 以上）。
-        /// </summary>
-        private static void ValidateFloorCoverage(EncounterTable encounters, RouteRules rules, ValidationReport report)
-        {
-            RequireEncounter(encounters, EncounterKind.First, 1, report);
-            RequireEncounter(encounters, EncounterKind.Boss, rules.Floors, report);
-            var restFloor = rules.Floors - 1;
-            for (var floor = 2; floor < restFloor; floor++)
-            {
-                foreach (var kind in RouteNodeKinds.All)
-                {
-                    if (!kind.IsWeighted || !kind.Encounter.HasValue)
-                    {
-                        continue;
-                    }
-
-                    var placed = kind.Id == RouteNodeKinds.Battle || rules.WeightOf(kind.Id) > 0;
-                    if (placed && (kind.Id != RouteNodeKinds.Elite || floor >= rules.EliteMinFloor))
-                    {
-                        RequireEncounter(encounters, kind.Encounter.Value, floor, report);
-                    }
-                }
-            }
-        }
-
-        private static void RequireEncounter(EncounterTable encounters, EncounterKind kind, int floor,
-            ValidationReport report)
-        {
-            foreach (var encounter in encounters.All)
-            {
-                if (encounter.Kind == kind && encounter.IsOnFloor(floor))
-                {
-                    return;
-                }
-            }
-
-            report.Add(new CsvError(EncounterTable.FileName, 0, 0,
-                $"{EncounterTable.KindIds[(int)kind]} の {floor} 階に合う戦闘マスがない（{RouteRules.FileName} のルートで置かれうる）"));
         }
 
         private static void ValidateMapIds(CsvTable paths, List<string> maps, ValidationReport report)

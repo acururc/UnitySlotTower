@@ -26,7 +26,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         {
             _runInBackground = Application.runInBackground;
             Application.runInBackground = true;
-            RunController.SeedOverride = 12345;
             SceneManager.sceneLoaded += StageTestUtil.UseShortWaves;
             try
             {
@@ -52,7 +51,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         [TearDown]
         public void TearDown()
         {
-            RunController.SeedOverride = null;
             Time.timeScale = 1f;
             Application.runInBackground = _runInBackground;
         }
@@ -73,7 +71,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var begun = new List<int> { _battle.StageNumber };
             var maps = new List<string> { _fieldView.Map.Id };
             var unitsAtStart = new List<int> { _battle.Field.Units.Count };
-            var otherScreens = 0;
             void OnBegan(int stage)
             {
                 begun.Add(stage);
@@ -88,7 +85,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             for (var i = 0; i < 8 && !_battle.IsFinished; i++)
             {
                 yield return StageTestUtil.FinishStage(_battle);
-                otherScreens += OtherScreensOpen();
             }
 
             _run.StageBegan -= OnBegan;
@@ -99,7 +95,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(unitsAtStart, Is.All.EqualTo(0), "ステージの開始時に味方が残っている");
             Assert.That((_battle.Run.IsRunCleared, _battle.IsFinished, result != null && result.IsOpen, result != null && result.IsClear),
                 Is.EqualTo((true, true, true, true)), "ステージ8のクリアでクリアのリザルトにならない");
-            Assert.That(otherScreens, Is.Zero, "途中でルート・ショップ・回復の画面が開いた");
+            Assert.That(OldScreens(), Is.Empty, "ルート・ショップ・回復の画面が残っている");
         }
 
         [UnityTest]
@@ -144,21 +140,19 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
         }
 
-        // 旧ルート・ショップ・回復の画面（T609 で消す）のうち開いている数。
-        private static int OtherScreensOpen()
+        // 削除したルート・ショップ・回復の画面とルート選びのリールの部品（spec 002 FR-117）がシーンに残っていれば、その名前。
+        private static List<string> OldScreens()
         {
-            var count = 0;
-            foreach (var route in Object.FindObjectsByType<RouteScreen>(FindObjectsInactive.Include))
+            var names = new List<string>();
+            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
-                if (route.IsOpen) count++;
+                if (t.name is "Route Screen" or "Shop Screen" or "Rest Screen" or "Route Pick" or "Route Dim")
+                {
+                    names.Add(t.name);
+                }
             }
 
-            foreach (var screen in Object.FindObjectsByType<NodeScreen>(FindObjectsInactive.Include))
-            {
-                if (screen.IsOpen) count++;
-            }
-
-            return count;
+            return names;
         }
 
         [UnityTest]

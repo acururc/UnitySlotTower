@@ -95,8 +95,7 @@ namespace UnitySlotTower.Editor.Setup
         /// <summary>
         /// 既にある Game シーンを戦闘 50%・下部 50% にする（T368、D-87、plan 17.9。旧 T317 の 6:4）。
         /// 操作バーは 240 px に高くし（中の部品は割合なので一緒に大きくなる）、筐体はリール窓を大きくして窓の下にレバー・コインを置く。
-        /// ルート画面は操作バーの下端から上を覆い、行き先の札をリールの真上に置き直す（文字なし版の値。文字あり版は Build Text Mode Layout）。
-        /// 何度実行しても同じ配置になる。
+            /// 何度実行しても同じ配置になる。
         /// </summary>
         [MenuItem(MenuRoot + "Apply Half Layout (T368)")]
         private static void ApplyHalfLayout()
@@ -104,17 +103,14 @@ namespace UnitySlotTower.Editor.Setup
             var bar = GameObject.Find("Operation Bar")?.GetComponent<RectTransform>();
             var slot = GameObject.Find("Slot Area")?.GetComponent<RectTransform>();
             var camera = GameObject.Find("Battle Camera")?.GetComponent<Camera>();
-            var route = GameObject.Find("Route Screen")?.GetComponent<RectTransform>();
-            var cabinet = Object.FindAnyObjectByType<UnitySlotTower.Slot.SlotCabinet>(FindObjectsInactive.Include);
-            if (bar == null || slot == null || camera == null || route == null || cabinet == null)
+            if (bar == null || slot == null || camera == null)
             {
-                Debug.LogError("[SlotTower Setup] Game シーンの Operation Bar / Slot Area / Battle Camera / Route Screen / SlotCabinet が見つからない。");
+                Debug.LogError("[SlotTower Setup] Game シーンの Operation Bar / Slot Area / Battle Camera が見つからない。");
                 return;
             }
 
             SetAnchors(bar, new Vector2(0f, PortraitLayout.SlotAreaTop), new Vector2(1f, 1f - (float)PortraitLayout.BattleHeightRatio));
             SetAnchors(slot, Vector2.zero, new Vector2(1f, PortraitLayout.SlotAreaTop));
-            SetAnchors(route, new Vector2(0f, PortraitLayout.SlotAreaTop), Vector2.one);
 
             // 注視点はマップの中心（原点）のまま。俯角は T357 で 55°。実行時は BattleFieldView が BattleCameraFit で置き直す。
             camera.fieldOfView = (float)UnitySlotTower.Core.Battle.BattleCameraFit.DefaultVerticalFovDegrees;
@@ -150,49 +146,9 @@ namespace UnitySlotTower.Editor.Setup
             SetAnchors((RectTransform)slot.Find("Payline Mark Right"), new Vector2(windowMax.x + 0.005f, y - half),
                 new Vector2(windowMax.x + 0.035f, y + half));
 
-            // ルートの行き先の札（RouteScreenSetup と同じ幅）の中心をリールの真上に。文字あり版の値は Build Text Mode Layout が文字なし版の中心から作る。
-            Canvas.ForceUpdateCanvases();
-            var reels = RouteScreenSetup.ReelRects(cabinet);
-            for (var i = 0; i < reels.Length; i++)
-            {
-                var card = FindDeep(route, $"Direction {i + 1}");
-                if (card == null)
-                {
-                    Debug.LogError($"[SlotTower Setup] Route Screen / Direction {i + 1} が見つからない。");
-                    return;
-                }
-
-                var center = RouteScreenSetup.CenterX(reels[i], (RectTransform)card.parent);
-                var layout = card.GetComponent<UnitySlotTower.Ui.TextModeLayout>();
-                var noText = layout != null ? layout.NoText : default;
-                card.anchorMin = new Vector2(center - 0.08f, card.anchorMin.y);
-                card.anchorMax = new Vector2(center + 0.08f, card.anchorMax.y);
-                if (layout != null)
-                {
-                    noText.anchorMin.x = card.anchorMin.x;
-                    noText.anchorMax.x = card.anchorMax.x;
-                    Undo.RecordObject(layout, "Half Layout");
-                    layout.Configure(layout.Affected, noText, layout.Text);
-                    EditorUtility.SetDirty(layout);
-                }
-            }
-
             EditorSceneManager.MarkSceneDirty(slot.gameObject.scene);
             EditorSceneManager.SaveScene(slot.gameObject.scene);
             Debug.Log("[SlotTower Setup] Game シーンを戦闘 50%・下部 50% の配置にした。");
-        }
-
-        private static RectTransform FindDeep(Transform parent, string name)
-        {
-            foreach (var child in parent.GetComponentsInChildren<RectTransform>(true))
-            {
-                if (child.name == name)
-                {
-                    return child;
-                }
-            }
-
-            return null;
         }
 
         private static void SetAnchors(RectTransform rect, Vector2 anchorMin, Vector2 anchorMax)

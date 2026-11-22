@@ -29,9 +29,7 @@ namespace UnitySlotTower.Editor.Setup
         private const string UnitsPath = "Assets/UnitySlotTower/Data/Tables/units.csv";
         private const string LabelPrefix = "Text Label ";
         private const string CaptionName = "Text Label Caption";
-        private const string OfferTemplateName = "Text Label Offer Template";
         private const string TextModeButtonName = "Text Mode Button";
-        public const string RouteLegendName = "Text Mode Legend";
 
         private static TMP_FontAsset _font;
         private static TextAsset _table;
@@ -190,141 +188,9 @@ namespace UnitySlotTower.Editor.Setup
             var intro = Object.FindAnyObjectByType<BattleIntroView>(FindObjectsInactive.Include);
             Below(Child((RectTransform)intro.transform, "Play"), "battle_start", 84f, 64f);
 
-            AddRouteLabels(root);
-            AddNodeLabels(root);
             AddResultLabels(root);
             AddHelpLabels(root, units);
             AddGuideCaption(root);
-        }
-
-        private static void AddRouteLabels(RectTransform root)
-        {
-            var screen = root.GetComponentInChildren<RouteScreen>(true);
-            var serialized = new SerializedObject(screen);
-            var panel = ((GameObject)serialized.FindProperty("panel").objectReferenceValue).GetComponent<RectTransform>();
-            var status = Child(panel, "Status");
-            IconTag(Child(status, "Life Icon"), "life", 18f);
-            IconTag(Child(status, "Money Icon"), "money", 18f);
-            IconTag(Child(status, "Coin Icon"), "coins", 18f);
-            Label(panel, "route_title", new Vector2(0.3f, 0.87f), new Vector2(0.7f, 0.915f), Vector2.zero, Vector2.zero, 32f);
-
-            // T359d: スキルゲージの名前（文字あり版の帯の上の段、点の上）。帯の大きさは TextModeLayoutSetup が変える。
-            Label(status, "route_gauge", new Vector2(0.64f, 0.55f), new Vector2(0.99f, 0.97f), Vector2.zero, Vector2.zero, 40f);
-
-            var labels = serialized.FindProperty("directionLabels");
-            var descriptions = serialized.FindProperty("directionDescriptions");
-            labels.arraySize = 3;
-            descriptions.arraySize = 3;
-            for (var i = 0; i < 3; i++)
-            {
-                var button = Child(panel, $"Direction {i + 1}");
-                // 文言は行き先に合わせて RouteScreen が入れる。位置は文字あり版の札の中（TextModeLayoutSetup）。
-                var label = Above(button, string.Empty, 36f, 24f, "direction");
-                labels.GetArrayElementAtIndex(i).objectReferenceValue = label;
-
-                // T359d: 札の方向と短い説明（札の割合。札の大きさは TextModeLayoutSetup が変える）。
-                Label(button, DirectionIds[i], new Vector2(0f, 0.47f), new Vector2(1f, 0.65f), Vector2.zero, Vector2.zero, 36f);
-                var description = Label(button, string.Empty, new Vector2(0f, 0.03f), new Vector2(1f, 0.25f), Vector2.zero, Vector2.zero,
-                    36f, LabelPrefix + "description");
-                descriptions.GetArrayElementAtIndex(i).objectReferenceValue = description;
-            }
-
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-            AddRouteLegend(panel, (Sprite)serialized.FindProperty("knobSprite").objectReferenceValue,
-                (Sprite)serialized.FindProperty("boxSprite").objectReferenceValue);
-        }
-
-        private static readonly string[] DirectionIds = { "route_dir_left", "route_dir_center", "route_dir_right" };
-
-        private static readonly string[] LegendKinds =
-            { RouteNodeKinds.Battle, RouteNodeKinds.Elite, RouteNodeKinds.Shop, RouteNodeKinds.Rest, RouteNodeKinds.Boss };
-
-        /// <summary>
-        /// T359d: マスの種類の凡例（マップの右、アイコン・名前・短い説明）。アイコンは文字なし版でも描かれる絵なので、
-        /// 全体を CanvasGroup の濃さ 0 で隠して保存し、TextModeLayoutSetup が文字あり版だけ出す（Visibility）。
-        /// 位置は文字あり版の位置（Route Screen の割合と px）。
-        /// </summary>
-        private static void AddRouteLegend(RectTransform panel, Sprite knob, Sprite box)
-        {
-            DestroyChild(panel, RouteLegendName);
-            var legend = Rect(RouteLegendName, panel, new Vector2(0.68f, 0.265f), new Vector2(0.99f, 0.875f));
-            var group = legend.gameObject.AddComponent<CanvasGroup>();
-            group.alpha = 0f;
-            group.blocksRaycasts = false;
-            group.interactable = false;
-            var background = legend.gameObject.AddComponent<Image>();
-            UiSkin.Apply(background, UiStyle.SectionFill, UiStyle.PanelBorder);
-            background.raycastTarget = false;
-
-            const float headerHeight = 70f;
-            // 説明は1行（7字以内、札の幅にも1行で入る）。Noto Sans JP は行が高い（36 で約 52 px）。
-            const float entryHeight = 134f;
-            Label(legend, "route_legend", new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -headerHeight), Vector2.zero, 48f);
-            for (var k = 0; k < LegendKinds.Length; k++)
-            {
-                var kind = LegendKinds[k];
-                var top = -headerHeight - k * entryHeight;
-                var entry = Rect($"Entry {kind}", legend, new Vector2(0f, 1f), Vector2.one);
-                entry.offsetMin = new Vector2(0f, top - entryHeight);
-                entry.offsetMax = new Vector2(0f, top);
-
-                var frame = Rect("Icon", entry, new Vector2(0f, 1f), new Vector2(0f, 1f));
-                frame.offsetMin = new Vector2(8f, -96f);
-                frame.offsetMax = new Vector2(96f, -8f);
-                RouteNodeIcons.Create(frame, kind, knob, box).raycastTarget = false;
-
-                var name = Label(entry, "node_" + kind, new Vector2(0f, 1f), Vector2.one, new Vector2(104f, -60f), new Vector2(-8f, -4f), 40f);
-                name.Text.alignment = TextAlignmentOptions.Left;
-                var description = Label(entry, "node_" + kind + "_desc", new Vector2(0f, 1f), Vector2.one, new Vector2(104f, -120f),
-                    new Vector2(-8f, -62f), 36f);
-                description.Text.alignment = TextAlignmentOptions.Left;
-            }
-        }
-
-        private static void AddNodeLabels(RectTransform root)
-        {
-            var rest = root.GetComponentInChildren<RestScreen>(true);
-            // T359e: 位置は文字あり版のもの（部品の文字あり版の位置は TextModeLayoutSetup.BuildNodeScreens）。字は 36 以上。
-            var restPanel = PanelOf(rest);
-            Label(restPanel, "rest_title", new Vector2(0.25f, 0.82f), new Vector2(0.75f, 0.88f), Vector2.zero, Vector2.zero, 56f);
-            DestroyChild(restPanel, LabelPrefix + "rest_healed");
-            // 回復量の文は RestScreen が開くたびに入れる（「ライフが 2 回復した」）。
-            var healed = Label(restPanel, string.Empty, new Vector2(0.05f, 0.45f), new Vector2(0.95f, 0.51f), Vector2.zero, Vector2.zero,
-                48f, LabelPrefix + "healed");
-            LeftOf(Child(restPanel, "Life Icon"), "life");
-            RightOf(Child(restPanel, "Back"), "back");
-            var restSerialized = new SerializedObject(rest);
-            restSerialized.FindProperty("healedLabel").objectReferenceValue = healed;
-            restSerialized.ApplyModifiedPropertiesWithoutUndo();
-
-            var shop = root.GetComponentInChildren<ShopScreen>(true);
-            var shopPanel = PanelOf(shop);
-            var status = Child(shopPanel, "Status");
-            // 名前の位置と大きさは TextModeLayoutSetup（ルートの帯と同じ置き方）。
-            IconTag(Child(status, "Money Icon"), "money", 18f);
-            IconTag(Child(status, "Coin Icon"), "coins", 18f);
-            Label(shopPanel, "shop_title", new Vector2(0.4f, 0.835f), new Vector2(0.7f, 0.895f), Vector2.zero, Vector2.zero, 56f);
-            var exchange = Child(shopPanel, "Exchange");
-            var serialized = new SerializedObject(shop);
-            TradeLabels(Child(exchange, "Buy Coins"), "shop_buy_coins", serialized.FindProperty("buyCoinsRateLabel"));
-            TradeLabels(Child(exchange, "Sell Coins"), "shop_sell_coins", serialized.FindProperty("sellCoinsRateLabel"));
-            RightOf(Child(shopPanel, "Back"), "back");
-
-            // 品の札は開くたびに作られるので、ひな形を非表示で置き、ShopScreen が札ごとに複製する（札の上に 職名・品の名前・短い説明 の3行）。
-            DestroyChild(shopPanel, OfferTemplateName);
-            var template = Label(shopPanel, string.Empty, new Vector2(0f, 0.725f), new Vector2(1f, 0.995f), Vector2.zero, Vector2.zero,
-                40f, OfferTemplateName);
-            template.gameObject.SetActive(false);
-            serialized.FindProperty("offerLabelTemplate").objectReferenceValue = template;
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-        }
-
-        // 両替のボタン: 上に名前、下に数字の入った文（ShopScreen が入れる）。真ん中の絵と数字は TextModeLayoutSetup が寄せる。
-        private static void TradeLabels(RectTransform button, string id, SerializedProperty rateLabel)
-        {
-            Label(button, id, new Vector2(0f, 0.8f), new Vector2(1f, 0.98f), Vector2.zero, Vector2.zero, 40f);
-            rateLabel.objectReferenceValue = Label(button, string.Empty, new Vector2(0f, 0.05f), new Vector2(1f, 0.32f), Vector2.zero,
-                Vector2.zero, 40f, LabelPrefix + "rate");
         }
 
         private static void AddResultLabels(RectTransform root)

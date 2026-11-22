@@ -78,7 +78,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         {
             GuideOverlay.DisabledForTests = true;
             SlotCabinet.RandomOverride = null;
-            RunController.SeedOverride = null;
             Time.timeScale = 1f;
             InputSystem.RemoveDevice(_keyboard);
             InputSystem.RemoveDevice(_mouse);

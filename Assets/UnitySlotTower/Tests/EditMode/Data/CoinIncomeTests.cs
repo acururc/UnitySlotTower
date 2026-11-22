@@ -15,12 +15,11 @@ namespace UnitySlotTower.Tests.EditMode.Data
             CsvParser.Parse(file, files[file]);
 
         [Test]
-        [Description("AC-019、plan 17.1: 1枚賭け、両替は 10 円 = 1 コイン、一番安いキャラは 100 円くらい")]
-        public void Project_Money_Is_Yen_Scale_With_Bet_One_And_Ten_Yen_Per_Coin()
+        [Description("AC-019、plan 17.1: 1枚賭け、一番安いキャラは 100 円くらい")]
+        public void Project_Money_Is_Yen_Scale_With_Bet_One()
         {
             var files = TablePaths.ReadAll();
             var config = GameConfig.Load(Parse(files, GameConfig.FileName));
-            var rules = RouteRules.Load(Parse(files, RouteRules.FileName));
             var units = UnitTable.Load(Parse(files, UnitTable.FileName));
 
             var cheapest = int.MaxValue;
@@ -29,7 +28,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
                 cheapest = System.Math.Min(cheapest, unit.Cost);
             }
 
-            Assert.That((config.Bet, rules.ExchangeMoneyPerCoin), Is.EqualTo((1, 10)));
+            Assert.That(config.Bet, Is.EqualTo(1));
             Assert.That(cheapest, Is.InRange(80, 150));
         }
     }

@@ -215,19 +215,6 @@ namespace UnitySlotTower.Tests.EditMode.Data
             Assert.That(errors, Is.EqualTo(new[] { "0", "1.5" }));
         }
 
-        [TestCase(0)]
-        [TestCase(-1)]
-        public void Nonpositive_Encounter_Weight_Fails_Validation(int weight)
-        {
-            var files = TablePaths.ReadAll();
-            files[EncounterTable.FileName] = files[EncounterTable.FileName].Replace("battle_a,battle,battle_a,2,7,0,80,6,7",
-                $"battle_a,battle,battle_a,2,7,0,80,6,{weight}");
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            Assert.That(report.Errors.Select(e => (e.File, e.Column)), Does.Contain((EncounterTable.FileName, 9)));
-        }
-
         [Test]
         public void Ui_Texts_With_A_Duplicate_Id_Or_Empty_Text_Fail()
         {
@@ -424,90 +411,6 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("plan 16.6: 出現表の種類は first/battle/elite/boss のどれか")]
-        public void Encounter_Unknown_Kind_Is_An_Error()
-        {
-            var files = TablePaths.ReadAll();
-            files[EncounterTable.FileName] = files[EncounterTable.FileName].Replace("battle_a,battle,", "battle_a,shop,");
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            Assert.That(report.Errors.Select(e => (e.File, e.Column)), Does.Contain((EncounterTable.FileName, 2)));
-        }
-
-        [Test]
-        [Description("plan 16.6: 出現表が使うマップのファイルがなければエラー")]
-        public void Encounter_With_A_Missing_Map_Is_An_Error()
-        {
-            var files = TablePaths.ReadAll();
-            files[EncounterTable.FileName] = files[EncounterTable.FileName].Replace("battle_a,battle,battle_a,", "battle_a,battle,s9,");
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            Assert.That(report.Errors.Select(e => e.File), Does.Contain("maps/s9.csv"));
-        }
-
-        [Test]
-        [Description("T605: 出現表の行のマップを使うステージがなければエラー（その戦闘マスのウェーブが決まらない）")]
-        public void Encounter_Map_Without_A_Stage_Is_An_Error()
-        {
-            var files = TablePaths.ReadAll();
-            files[StageTable.FileName] = files[StageTable.FileName].Replace("7,battle_e,", "7,battle_d,");
-            var line = files[EncounterTable.FileName].Split('\n').ToList().FindIndex(l => l.StartsWith("battle_e,")) + 1;
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain((EncounterTable.FileName, line, 3)));
-        }
-
-        [Test]
-        [Description("D-69: 登録表の種類の重みが route_rules にない")]
-        public void Route_Rules_Missing_A_Registered_Weight_Is_An_Error()
-        {
-            var files = TablePaths.ReadAll();
-            files["route_rules.csv"] = WithoutLinesStartingWith(files["route_rules.csv"], "weight_shop,");
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            Assert.That(report.Errors.Select(e => e.File), Does.Contain("route_rules.csv"));
-        }
-
-        [Test]
-        [Description("D-88, plan 17.7: route_rules の columns は 3 だけ")]
-        public void Route_Rules_With_Columns_Other_Than_Three_Is_An_Error()
-        {
-            var files = TablePaths.ReadAll();
-            files["route_rules.csv"] = WithoutLinesStartingWith(files["route_rules.csv"], "columns,") + "columns,4\n";
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            Assert.That(report.Errors.Select(e => e.File), Does.Contain("route_rules.csv"));
-        }
-
-        [Test]
-        [Description("D-69: 登録表にない種類の重みが route_rules にある")]
-        public void Route_Rules_With_An_Unregistered_Weight_Is_An_Error()
-        {
-            var files = TablePaths.ReadAll();
-            files["route_rules.csv"] += "weight_casino,5\n";
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            Assert.That(report.Errors.Select(e => e.File), Does.Contain("route_rules.csv"));
-        }
-
-        [Test]
-        public void Shop_Item_Of_An_Unknown_Unit_Is_An_Error()
-        {
-            var files = TablePaths.ReadAll();
-            files["shop_items.csv"] += "gauge_ghost,gauge,ghost,20,1\n";
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            Assert.That(report.Errors.Select(e => e.File), Does.Contain("shop_items.csv"));
-        }
-
-        [Test]
         [Description("D-71・plan 16.6: 横9〜10×縦4〜5 を外れるマップはエラー（6行目を足す）")]
         public void Map_Outside_The_Size_Range_Is_An_Error()
         {
@@ -517,44 +420,6 @@ namespace UnitySlotTower.Tests.EditMode.Data
             var report = GameDataValidator.ValidateAll(files);
 
             Assert.That(report.Errors.Select(e => e.File), Does.Contain("maps/first.csv"));
-        }
-
-        [Test]
-        [Description("plan 16.6: ルートの階（10階なら通常・強敵は8階まで）に合う戦闘マスがなければエラー")]
-        public void Encounters_Not_Covering_Every_Route_Floor_Are_An_Error()
-        {
-            var files = TablePaths.ReadAll();
-            files[RouteRules.FileName] = files[RouteRules.FileName].Replace("floors,8", "floors,10");
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            var messages = report.Errors.Where(e => e.File == EncounterTable.FileName).Select(e => e.Message).ToList();
-            Assert.That(messages, Has.Some.Contains("battle の 8 階"));
-            Assert.That(messages, Has.Some.Contains("elite の 8 階"));
-        }
-
-        [Test]
-        [Description("plan 16.6: 強敵の重みが正なのに強敵の戦闘マスがなければエラー")]
-        public void Missing_Elite_Encounter_Is_An_Error()
-        {
-            var files = WithoutElite(TablePaths.ReadAll());
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            Assert.That(report.Errors.Where(e => e.File == EncounterTable.FileName).Select(e => e.Message),
-                Has.Some.Contains("elite"));
-        }
-
-        [Test]
-        [Description("plan 16.6: 強敵の重みが0なら強敵の戦闘マスはなくてよい")]
-        public void Elite_Encounter_Is_Not_Needed_When_Its_Weight_Is_0()
-        {
-            var files = WithoutElite(TablePaths.ReadAll());
-            files[RouteRules.FileName] = files[RouteRules.FileName].Replace("weight_elite,14", "weight_elite,0");
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            Assert.That(report.IsValid, Is.True, report.ToString());
         }
 
         [Test]
@@ -581,19 +446,6 @@ namespace UnitySlotTower.Tests.EditMode.Data
             var report = GameDataValidator.ValidateAll(files);
 
             Assert.That(report.Errors.Select(e => (e.File, e.Line)), Does.Contain(("waves.csv", line)));
-        }
-
-        [Test]
-        [Description("FR-018・AC-014: 強敵・ボスのマップは専用（最初の戦闘・通常の戦闘で使うとエラー）")]
-        public void Elite_Or_Boss_Map_Used_By_A_Normal_Battle_Is_An_Error()
-        {
-            var files = TablePaths.ReadAll();
-            files[EncounterTable.FileName] += "battle_d,battle,boss_a,2,7,0,10,3,1\n";
-            var line = files[EncounterTable.FileName].TrimEnd('\n').Split('\n').Length;
-
-            var report = GameDataValidator.ValidateAll(files);
-
-            Assert.That(report.Errors.Select(e => (e.File, e.Line)), Does.Contain((EncounterTable.FileName, line)));
         }
 
         [Test]
@@ -680,14 +532,6 @@ namespace UnitySlotTower.Tests.EditMode.Data
             var report = GameDataValidator.ValidateAll(files);
 
             Assert.That(report.Errors.Select(e => (e.File, e.Line, e.Column)), Does.Contain((StageTable.FileName, 3, 3)));
-        }
-
-        private static System.Collections.Generic.Dictionary<string, string> WithoutElite(
-            System.Collections.Generic.Dictionary<string, string> files)
-        {
-            // マップ elite_a はステージ4が使うので、出現表の行だけを消す。
-            files[EncounterTable.FileName] = WithoutLinesStartingWith(files[EncounterTable.FileName], "elite_a,");
-            return files;
         }
 
         private static string WithoutLinesStartingWith(string text, string prefix) =>

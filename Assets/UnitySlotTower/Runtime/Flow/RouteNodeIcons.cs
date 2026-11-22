@@ -8,7 +8,7 @@ using UnitySlotTower.Core.Run;
 namespace UnitySlotTower.Flow
 {
     /// <summary>
-    /// ルートのマスの種類ごとのアイコン（plan 16.7、D-69 の Runtime 側の登録表）。文字を使わず、丸い台の色と白い印で見分ける。
+    /// ステージの開始の演出の印（<see cref="RouteNodeKinds"/>、旧ルートのマスの絵の名残）と、実行時に UI を作る小さな部品。文字を使わず、丸い台の色と白い印で見分ける。
     /// 種類を増やすときは <see cref="Builders"/> に1行足す（登録のない種類は灰色の丸）。絵は仮（M5 で素材に差し替える）。
     /// </summary>
     public static class RouteNodeIcons
@@ -16,8 +16,6 @@ namespace UnitySlotTower.Flow
         private static readonly Color BattleColor = new Color(0.8f, 0.25f, 0.2f);
         private static readonly Color EliteColor = new Color(0.55f, 0.2f, 0.7f);
         private static readonly Color BossColor = new Color(0.45f, 0.05f, 0.08f);
-        private static readonly Color ShopColor = new Color(0.95f, 0.7f, 0.15f);
-        private static readonly Color RestColor = new Color(0.2f, 0.65f, 0.35f);
         private static readonly Color UnknownColor = new Color(0.5f, 0.5f, 0.55f);
 
         private static readonly Dictionary<string, Action<RectTransform, Sprite>> Builders =
@@ -34,8 +32,6 @@ namespace UnitySlotTower.Flow
                     }
                 },
                 { RouteNodeKinds.Boss, Crown },
-                { RouteNodeKinds.Shop, Bag },
-                { RouteNodeKinds.Rest, Cross },
             };
 
         /// <summary>その種類の台の色。</summary>
@@ -45,8 +41,6 @@ namespace UnitySlotTower.Flow
             RouteNodeKinds.Battle => BattleColor,
             RouteNodeKinds.Elite => EliteColor,
             RouteNodeKinds.Boss => BossColor,
-            RouteNodeKinds.Shop => ShopColor,
-            RouteNodeKinds.Rest => RestColor,
             _ => UnknownColor,
         };
 
@@ -87,22 +81,6 @@ namespace UnitySlotTower.Flow
             }
 
             CreateImage("Crown Base", plate, new Vector2(0.24f, 0.3f), new Vector2(0.76f, 0.44f), Color.white, box);
-        }
-
-        // 袋: 四角い胴と持ち手。
-        private static void Bag(RectTransform plate, Sprite box)
-        {
-            CreateImage("Bag", plate, new Vector2(0.27f, 0.22f), new Vector2(0.73f, 0.62f), Color.white, box);
-            CreateImage("Handle Left", plate, new Vector2(0.36f, 0.6f), new Vector2(0.42f, 0.78f), Color.white, box);
-            CreateImage("Handle Right", plate, new Vector2(0.58f, 0.6f), new Vector2(0.64f, 0.78f), Color.white, box);
-            CreateImage("Handle Top", plate, new Vector2(0.36f, 0.73f), new Vector2(0.64f, 0.79f), Color.white, box);
-        }
-
-        // 回復: 白い十字。
-        private static void Cross(RectTransform plate, Sprite box)
-        {
-            CreateImage("Cross V", plate, new Vector2(0.42f, 0.2f), new Vector2(0.58f, 0.8f), Color.white, box);
-            CreateImage("Cross H", plate, new Vector2(0.2f, 0.42f), new Vector2(0.8f, 0.58f), Color.white, box);
         }
 
         internal static RectTransform CreateRect(string name, RectTransform parent, Vector2 anchorMin, Vector2 anchorMax)

@@ -112,7 +112,7 @@ namespace UnitySlotTower.Editor.Setup
             serialized.FindProperty("placementInput").objectReferenceValue = input;
             serialized.FindProperty("slotCabinet").objectReferenceValue = cabinet;
             serialized.FindProperty("fieldView").objectReferenceValue = field;
-            WireRoute(serialized);
+            WireRun(serialized);
             serialized.FindProperty("battleCamera").objectReferenceValue =
                 new SerializedObject(input).FindProperty("battleCamera").objectReferenceValue;
             SetSlotTargets(serialized.FindProperty("unitIcons"), Object.FindObjectsByType<UnitBarIcon>(FindObjectsInactive.Include, FindObjectsSortMode.None));
@@ -138,14 +138,14 @@ namespace UnitySlotTower.Editor.Setup
             Debug.Log("[SlotTower Setup] 文字なし説明を作成した。");
         }
 
-        /// <summary>ルートの説明（T351）のため、進行とルート画面に結ぶ。どちらも見つかったら true。</summary>
-        internal static bool WireRoute(SerializedObject guide)
+        /// <summary>進行に結び、閉じるボタンと説明の絵に使う丸・四角の絵（組み込みの UI の絵）を入れる。進行が見つかったら true。</summary>
+        internal static bool WireRun(SerializedObject guide)
         {
             var run = Object.FindAnyObjectByType<RunController>(FindObjectsInactive.Include);
-            var route = Object.FindAnyObjectByType<RouteScreen>(FindObjectsInactive.Include);
             guide.FindProperty("runController").objectReferenceValue = run;
-            guide.FindProperty("routeScreen").objectReferenceValue = route;
-            return run != null && route != null;
+            guide.FindProperty("knobSprite").objectReferenceValue = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
+            guide.FindProperty("boxSprite").objectReferenceValue = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+            return run != null;
         }
 
         // 各アイコンの slot（units.csv の並び）の位置に入れる。

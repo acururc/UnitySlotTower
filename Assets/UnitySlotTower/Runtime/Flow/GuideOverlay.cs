@@ -34,7 +34,10 @@ namespace UnitySlotTower.Flow
         [SerializeField] private BattleFieldView fieldView;
         [SerializeField] private Camera battleCamera;
         [SerializeField] private RunController runController;
-        [SerializeField] private RouteScreen routeScreen;
+        [Tooltip("丸の絵（閉じるボタン・説明の絵）。")]
+        [SerializeField] private Sprite knobSprite;
+        [Tooltip("四角の絵（説明の絵）。")]
+        [SerializeField] private Sprite boxSprite;
 
         [Header("Targets")]
         [Tooltip("操作バーの味方アイコン（units.csv の並び）。")]
@@ -75,7 +78,6 @@ namespace UnitySlotTower.Flow
         // T369 で実行時に作る部品（初めて要るときに作る）。
         private RectTransform _blocker;
         private RectTransform _blockPanel;
-        private RectTransform _routePanel;
         private readonly RectTransform[] _blockArrows = new RectTransform[2];
         // T426 の閉じるボタン（初めて説明を出すときに作る）。押されたら次の Update で Dismissed として渡す。
         private RectTransform _close;
@@ -208,7 +210,7 @@ namespace UnitySlotTower.Flow
             };
         }
 
-        private static bool IsTapToClose(GuideHint hint) => hint == GuideHint.Block || hint == GuideHint.RouteNodes;
+        private static bool IsTapToClose(GuideHint hint) => hint == GuideHint.Block;
 
         // 操作バーのうち、いま召喚できる最初の味方の位置。なければ -1。
         private int SummonSlot(BattleNodeRun run)
@@ -244,7 +246,7 @@ namespace UnitySlotTower.Flow
             _close.pivot = new Vector2(0.5f, 0.5f);
             _close.sizeDelta = new Vector2(CloseSize, CloseSize);
             var image = _close.gameObject.AddComponent<Image>();
-            image.sprite = routeScreen.KnobSprite;
+            image.sprite = knobSprite;
             image.color = new Color(0.08f, 0.09f, 0.12f, 0.92f);
             var outline = _close.gameObject.AddComponent<Outline>();
             outline.effectColor = new Color(1f, 1f, 1f, 0.7f);
@@ -426,11 +428,6 @@ namespace UnitySlotTower.Flow
                     // リールは自動で止まる（plan 16.3）。止まるまでリール窓を見せる。
                     ShowTarget(UiRect(slotCabinet.ReelWindowRect), dimmed);
                     break;
-                case GuideHint.RoutePick:
-                    // どの行き先も選べるよう、行き先のある矢印をまとめて穴にし、手はそのうち1つを押す。
-                    ShowTarget(RouteArrowsRect(), dimmed);
-                    Tap(UiRect(RoutePickTarget()).center, Mathf.Repeat(t, TapSeconds));
-                    break;
                 case GuideHint.Upgrade:
                     TapTarget(UiRect(upgradeIcons[Mathf.Clamp(_sequence.TargetSlot, 0, upgradeIcons.Length - 1)]), t, dimmed);
                     break;
@@ -443,17 +440,6 @@ namespace UnitySlotTower.Flow
                 case GuideHint.Block:
                     DrawBlock(run, t, dimmed);
                     break;
-                case GuideHint.RouteNodes:
-                {
-                    // マップの上の方に一覧を出し、手でその板を押して見せる（押すと行き先のリールの説明へ）。
-                    var area = root.rect;
-                    var size = _routePanel.sizeDelta;
-                    var panel = new Rect(area.center.x - size.x * 0.5f, area.yMax - area.height * 0.08f - size.y, size.x, size.y);
-                    ShowTarget(panel, dimmed);
-                    Place(_routePanel, panel);
-                    Tap(new Vector2(panel.xMax - 80f, panel.yMin + 60f), Mathf.Repeat(t, TapSeconds));
-                    break;
-                }
             }
 
             PlaceClose();
@@ -510,8 +496,7 @@ namespace UnitySlotTower.Flow
         private void ShowPictures(GuideHint hint)
         {
             var block = hint == GuideHint.Block;
-            var nodes = hint == GuideHint.RouteNodes;
-            if ((block || nodes) && _blocker == null)
+            if (block && _blocker == null)
             {
                 BuildPictures();
             }
@@ -522,11 +507,10 @@ namespace UnitySlotTower.Flow
             }
 
             // 押して閉じる説明のあいだは、穴の中も含めて下の画面に押下を通さない。
-            SetActive(_blocker, block || nodes);
+            SetActive(_blocker, block);
             SetActive(_blockPanel, block);
             SetActive(_blockArrows[0], block);
             SetActive(_blockArrows[1], block);
-            SetActive(_routePanel, nodes);
         }
 
         private static void SetActive(Component target, bool active)
@@ -539,8 +523,8 @@ namespace UnitySlotTower.Flow
 
         private void BuildPictures()
         {
-            var knob = routeScreen.KnobSprite;
-            var box = routeScreen.BoxSprite;
+            var knob = knobSprite;
+            var box = boxSprite;
             _blocker = RouteNodeIcons.CreateRect("Tap Blocker", root, Vector2.zero, Vector2.one);
             var blocker = _blocker.gameObject.AddComponent<Image>();
             blocker.color = Color.clear;
@@ -574,10 +558,6 @@ namespace UnitySlotTower.Flow
                 _blockArrows[i].localEulerAngles = new Vector3(0f, 0f, -90f);
                 _blockArrows[i].name = i == 0 ? "Block Arrow Unit" : "Block Arrow Enemy";
             }
-
-            _routePanel = GuidePictures.RoutePanel(root, knob, box);
-            _routePanel.sizeDelta = new Vector2(GuidePictures.RoutePanelWidth,
-                GuidePictures.RouteRowHeight * GuidePictures.RouteKinds.Length);
 
             // 手と輪は板より前に出す。
             ripple.SetAsLastSibling();
@@ -758,48 +738,6 @@ namespace UnitySlotTower.Flow
             }
 
             return 0;
-        }
-
-        private Rect RouteArrowsRect()
-        {
-            var arrows = routeScreen.ArrowButtons;
-            var any = false;
-            var union = default(Rect);
-            for (var reel = 0; reel < arrows.Count; reel++)
-            {
-                if (!slotCabinet.HasRouteDirection(reel))
-                {
-                    continue;
-                }
-
-                var rect = UiRect(arrows[reel].transform);
-                union = any ? Rect.MinMaxRect(Mathf.Min(union.xMin, rect.xMin), Mathf.Min(union.yMin, rect.yMin),
-                    Mathf.Max(union.xMax, rect.xMax), Mathf.Max(union.yMax, rect.yMax)) : rect;
-                any = true;
-            }
-
-            return any ? union : UiRect(RoutePickTarget());
-        }
-
-        // 行き先のあるリールの矢印（中央を優先、なければ左から）。
-        private Transform RoutePickTarget()
-        {
-            var arrows = routeScreen.ArrowButtons;
-            const int center = 1;
-            if (center < arrows.Count && slotCabinet.HasRouteDirection(center))
-            {
-                return arrows[center].transform;
-            }
-
-            for (var reel = 0; reel < arrows.Count; reel++)
-            {
-                if (slotCabinet.HasRouteDirection(reel))
-                {
-                    return arrows[reel].transform;
-                }
-            }
-
-            return arrows[center].transform;
         }
 
         private static GridPoint FirstUnitCell(BattleNodeRun run)

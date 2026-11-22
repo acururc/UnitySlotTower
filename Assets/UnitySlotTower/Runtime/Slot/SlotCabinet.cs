@@ -17,7 +17,7 @@ namespace UnitySlotTower.Slot
     /// <summary>
     /// 下部のスロット筐体（plan 16.3・16.8）。レバー（クリックか Space）で回し、3本は左から自動で止まる。止まり終えたら
     /// <see cref="SlotMachine.Settle"/> で揃った図柄を通知する。コインの数を出し、
-    /// 回せないときはそのアイコンを点滅させる。ルート画面ではルート選びのモード（<see cref="BeginRouteChoice"/>、D-75）で使う。
+    /// 回せないときはそのアイコンを点滅させる。
     /// </summary>
     public sealed class SlotCabinet : MonoBehaviour
     {
@@ -45,12 +45,6 @@ namespace UnitySlotTower.Slot
         [Tooltip("コインの数。")]
         [SerializeField] private TMP_Text creditText;
 
-        [Header("Route choice (D-75)")]
-        [Tooltip("ルート選びのモードで各リールに重ねる透明のボタン（左・中・右）。クリックでそのリールを止める。")]
-        [SerializeField] private Button[] routeReelButtons = new Button[SlotMachine.ReelCount];
-        [Tooltip("行き先のないリールを暗くする覆い（左・中・右）。")]
-        [SerializeField] private GameObject[] routeReelDims = new GameObject[SlotMachine.ReelCount];
-
         private const double CoinBlinkSeconds = 1.0;
 
         private SlotMachine _machine;
@@ -63,16 +57,6 @@ namespace UnitySlotTower.Slot
 
         // 回転中の各リールを止める時刻。止める指示を出したら null。
         private readonly double?[] _stopAt = new double?[SlotMachine.ReelCount];
-
-        // ルート選びのモード（D-75）。null ならモード外。
-        private bool[] _routeDirections;
-        private bool _routeSpinning;
-        private int _routePick = -1;
-        private readonly double?[] _routeStopAt = new double?[SlotMachine.ReelCount];
-        private bool _routeOthersScheduled;
-
-        /// <summary>ルート選びで、止めたリールが止まった後に残りのリールを左から順に止める間隔（秒、plan 17.8）。</summary>
-        public const double RouteStopIntervalSeconds = 0.15;
 
         /// <summary>
         /// テスト用: null でなければ、この後に読み込まれる筐体の抽選にこの乱数を使う（既定は時刻から作る）。
@@ -115,25 +99,6 @@ namespace UnitySlotTower.Slot
         /// <summary>直近のレバーで決まった出目。揃う図柄、ハズレなら null。</summary>
         public SlotSymbol? Outcome => _machine?.Outcome;
 
-        /// <summary>ルート選びのモード中か（<see cref="BeginRouteChoice"/> から行き先が決まるまで）。</summary>
-        public bool IsChoosingRoute => _routeDirections != null;
-
-        /// <summary>ルート選びのモードでレバーを引いてリールが回っている（止めるリールを選べる、または止まる途中）。</summary>
-        public bool IsRouteSpinning => _routeSpinning;
-
-        /// <summary>ルート選びのモードで止めたリールの番号。止めるまで null。</summary>
-        public int? RoutePick => _routePick >= 0 ? _routePick : (int?)null;
-
-        /// <summary>ルート選びのモードでそのリールに行き先があるか。モード外は false。</summary>
-        public bool HasRouteDirection(int reel) =>
-            _routeDirections != null && reel >= 0 && reel < _routeDirections.Length && _routeDirections[reel];
-
-        /// <summary>
-        /// ルート選びのモードで、止めたリールが見た目の上で止まり終えたときにその番号（0=左・1=中・2=右）を通知する。
-        /// 通知の時点でモードは終わっている。
-        /// </summary>
-        public event Action<int> RouteReelChosen;
-
         public RectTransform LeverRect => (RectTransform)leverButton.transform;
         /// <summary>そのリール（0=左・1=中・2=右）の中段のマス（FR-044 の演出で光らせる）。</summary>
         public RectTransform ReelCenterCell(int reel) => reels[reel].CenterCell;
@@ -149,153 +114,6 @@ namespace UnitySlotTower.Slot
             _machine = new SlotMachine(_reels, Patterns, _wallet, _bet,
                 RandomOverride ?? new SeededRandom((ulong)DateTime.UtcNow.Ticks));
             _machine.Aligned += symbol => Aligned?.Invoke(symbol);
-        }
-
-        /// <summary>
-        /// ルート選びのモードに入る（D-75・D-90、plan 17.8）。入った時点でコインを使わずに回し始め（レバーは
-        /// 何もしない）、リールは自動で止まらない。行き先のあるリール（<paramref name="directions"/> が true）をクリックすると
-        /// そのリールが先に止まり、残りは <see cref="RouteStopIntervalSeconds"/> 間隔で左から順に止まって
-        /// <see cref="RouteReelChosen"/> を通知する。図柄の効果はない（Core の <see cref="SlotMachine"/> を通さない）。
-        /// 通常の回転が止まり終わる前に呼ばれたら、止まり終えてから回し始める。
-        /// </summary>
-        public void BeginRouteChoice(IReadOnlyList<bool> directions)
-        {
-            if (directions == null || directions.Count != SlotMachine.ReelCount)
-            {
-                throw new ArgumentException($"行き先は {SlotMachine.ReelCount} 本分", nameof(directions));
-            }
-
-            var any = false;
-            var copy = new bool[directions.Count];
-            for (var i = 0; i < copy.Length; i++)
-            {
-                copy[i] = directions[i];
-                any |= copy[i];
-            }
-
-            if (!any)
-            {
-                throw new ArgumentException("行き先のあるリールがない", nameof(directions));
-            }
-
-            _routeDirections = copy;
-            _routeSpinning = false;
-            _routePick = -1;
-            _routeOthersScheduled = false;
-            Array.Clear(_routeStopAt, 0, _routeStopAt.Length);
-            ShowRoutePicks();
-            TryStartRouteSpin();
-        }
-
-        // ルート選びのリールを回し始める。通常の回転が止まり終わっていなければ、止まり終えた後の Update でもう一度呼ぶ。
-        private void TryStartRouteSpin()
-        {
-            if (!IsChoosingRoute || _routeSpinning || _machine == null || _machine.IsSpinning || AnyReelSpinning())
-            {
-                return;
-            }
-
-            _routeSpinning = true;
-            foreach (var reel in reels)
-            {
-                reel.StartSpin();
-            }
-        }
-
-        /// <summary>
-        /// ルート選びのモードで、そのリールを止める（リールのクリック・ルート画面の矢印）。回っている行き先のあるリールだけ。
-        /// 止めたら true。残りのリールは、このリールが止まった後に順に止まる。
-        /// </summary>
-        public bool PickRouteReel(int reel)
-        {
-            if (InputLocked || !_routeSpinning || _routePick >= 0 || !HasRouteDirection(reel))
-            {
-                return false;
-            }
-
-            _routePick = reel;
-            // 選んだリールは見た目だけの乱数の位置まで滑らせる。
-            reels[reel].StopAt(UnityEngine.Random.Range(0, _reels[reel].Length));
-            return true;
-        }
-
-        // 止めたリールが止まり終えたら、残りを左から順に間隔を空けてその場（次のコマ）で止め、全部止まったら通知する。
-        private void UpdateRouteChoice(double now)
-        {
-            if (!_routeSpinning)
-            {
-                TryStartRouteSpin();
-                return;
-            }
-
-            if (_routePick < 0)
-            {
-                return;
-            }
-
-            if (!_routeOthersScheduled)
-            {
-                if (reels[_routePick].IsSpinning)
-                {
-                    return;
-                }
-
-                var order = 1;
-                for (var i = 0; i < reels.Length; i++)
-                {
-                    if (i != _routePick)
-                    {
-                        _routeStopAt[i] = now + order++ * RouteStopIntervalSeconds;
-                    }
-                }
-
-                _routeOthersScheduled = true;
-            }
-
-            var allIssued = true;
-            for (var i = 0; i < reels.Length; i++)
-            {
-                if (_routeStopAt[i].HasValue && now >= _routeStopAt[i].Value)
-                {
-                    reels[i].StopAt(reels[i].PressPosition);
-                    _routeStopAt[i] = null;
-                }
-
-                allIssued &= !_routeStopAt[i].HasValue;
-            }
-
-            if (allIssued && !AnyReelSpinning())
-            {
-                var pick = _routePick;
-                EndRouteChoice();
-                RouteReelChosen?.Invoke(pick);
-            }
-        }
-
-        private void EndRouteChoice()
-        {
-            _routeDirections = null;
-            _routeSpinning = false;
-            _routePick = -1;
-            _routeOthersScheduled = false;
-            Array.Clear(_routeStopAt, 0, _routeStopAt.Length);
-            ShowRoutePicks();
-        }
-
-        private void ShowRoutePicks()
-        {
-            for (var i = 0; i < routeReelButtons.Length; i++)
-            {
-                if (routeReelButtons[i] != null)
-                {
-                    routeReelButtons[i].gameObject.SetActive(IsChoosingRoute);
-                }
-
-                if (i < routeReelDims.Length && routeReelDims[i] != null)
-                {
-                    routeReelDims[i].SetActive(IsChoosingRoute && !_routeDirections[i]);
-                }
-            }
         }
 
         private void Awake()
@@ -343,23 +161,6 @@ namespace UnitySlotTower.Slot
                 Deselect();
                 OnLever();
             });
-
-            for (var i = 0; i < routeReelButtons.Length; i++)
-            {
-                if (routeReelButtons[i] == null)
-                {
-                    continue;
-                }
-
-                var reel = i;
-                routeReelButtons[i].onClick.AddListener(() =>
-                {
-                    Deselect();
-                    PickRouteReel(reel);
-                });
-            }
-
-            ShowRoutePicks();
         }
 
         private void OnEnable()
@@ -391,10 +192,10 @@ namespace UnitySlotTower.Slot
             }
         }
 
-        // 回転中のレバーは無視する（plan 16.3）。ルート選びではリールが自動で回るのでレバーは何もしない（D-90）。
+        // 回転中のレバーは無視する（plan 16.3）。
         private void OnLever()
         {
-            if (InputLocked || HeldByScreen || IsSpinning || IsChoosingRoute)
+            if (InputLocked || HeldByScreen || IsSpinning)
             {
                 return;
             }
@@ -438,10 +239,6 @@ namespace UnitySlotTower.Slot
                 {
                     _machine.Settle();
                 }
-            }
-            else if (IsChoosingRoute)
-            {
-                UpdateRouteChoice(now);
             }
 
             var blink = now < _coinBlinkUntil && (int)(now * 10) % 2 == 0;

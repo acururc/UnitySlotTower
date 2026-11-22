@@ -17,7 +17,6 @@ namespace UnitySlotTower.Editor.Setup
             Canvas.ForceUpdateCanvases();
             var inside = 0;
             var standalone = 0;
-            var legends = 0;
             foreach (var root in scene.GetRootGameObjects())
             {
                 foreach (var label in root.GetComponentsInChildren<TextModeLabel>(true))
@@ -34,19 +33,12 @@ namespace UnitySlotTower.Editor.Setup
                     serialized.ApplyModifiedPropertiesWithoutUndo();
                     if (isInside) inside++; else standalone++;
                 }
-
-                foreach (var image in root.GetComponentsInChildren<Image>(true))
-                {
-                    if (image.name != TextModeSetup.RouteLegendName) continue;
-                    UiSkin.Apply(image, UiStyle.SectionFill, UiStyle.PanelBorder);
-                    legends++;
-                }
             }
 
             HelpScreenSetup.RestyleUnits();
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
-            Debug.Log($"[T389] 中: {inside}, 単独: {standalone}, 凡例: {legends}");
+            Debug.Log($"[T389] 中: {inside}, 単独: {standalone}");
         }
 
         internal static UiPanel AddBackground(GameObject target)

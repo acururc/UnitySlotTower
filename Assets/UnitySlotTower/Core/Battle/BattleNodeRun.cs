@@ -12,16 +12,16 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>開始の演出（FR-019、plan 17.2）。戦闘の時間は進まない（操作の拒否は Runtime）。</summary>
         Intro,
         Fighting,
-        /// <summary>この戦闘マスを終えた（報酬は済んでいる）。</summary>
+        /// <summary>このステージを終えた。</summary>
         Completed,
         GameOver,
     }
 
     /// <summary>
-    /// 1つの戦闘マスの進行（FR-010, FR-013〜016, FR-019、plan 17.2）。開始の演出 → 戦闘（1ウェーブ）→ 終了。
+    /// 1つのステージの戦闘の進行（FR-010, FR-013〜016, FR-019、plan 17.2、spec 002 FR-101）。開始の演出 → 戦闘（1ウェーブ）→ 終了。
     /// ライフ・お金・強化は <see cref="RunState"/> を直接書き換え、戦闘（バー・コインの倍率を含む）・召喚・配置操作は
-    /// このマスだけのもの（spec 002 FR-105・FR-106: 配置と効果は持ち越さない）。ステージ1では最初の1体が無料（FR-108）。
-    /// 終了時に報酬を加える。ボスマスの終了でクリア。
+    /// このステージだけのもの（spec 002 FR-105・FR-106: 配置と効果は持ち越さない）。ステージ1では最初の1体が無料（FR-108）。
+    /// 報酬はなく、最後のステージの終了でクリア。
     /// </summary>
     public sealed class BattleNodeRun
     {
@@ -32,24 +32,6 @@ namespace UnitySlotTower.Core.Battle
         private int _introStepsLeft;
         private readonly bool _isFinal;
 
-        /// <param name="map">この戦闘マスのマップ（<see cref="Encounter.MapId"/>）。</param>
-        /// <param name="wave">この戦闘マスの出現内容。</param>
-        public BattleNodeRun(GameConfig config, UnitTable units, UnitRanges ranges, RunState state, Encounter encounter,
-            BattleMap map, WaveSchedule wave, IRandom random)
-            : this(config, units, ranges, state, encounter, map, new WaveProgress(wave, WaveMode.Timed, 0), random)
-        {
-        }
-
-        /// <param name="map">この戦闘マスのマップ（<see cref="Encounter.MapId"/>）。</param>
-        /// <param name="waves">このステージのウェーブの進行（FR-102）。</param>
-        public BattleNodeRun(GameConfig config, UnitTable units, UnitRanges ranges, RunState state, Encounter encounter,
-            BattleMap map, WaveProgress waves, IRandom random)
-            : this(config, units, ranges, state, map, waves, random)
-        {
-            Encounter = encounter ?? throw new ArgumentNullException(nameof(encounter));
-            _isFinal = encounter.Kind == EncounterKind.Boss;
-        }
-
         /// <summary>
         /// ステージの戦闘（spec 002 FR-101、T607）。報酬はなく、<paramref name="isFinal"/>（最後のステージ）を終えたときだけクリア。
         /// </summary>
@@ -57,16 +39,10 @@ namespace UnitySlotTower.Core.Battle
         /// <param name="waves">このステージのウェーブの進行（FR-102）。</param>
         public BattleNodeRun(GameConfig config, UnitTable units, UnitRanges ranges, RunState state, StageDefinition stage,
             bool isFinal, BattleMap map, WaveProgress waves, IRandom random)
-            : this(config, units, ranges, state, map, waves, random)
-        {
-            Stage = stage ?? throw new ArgumentNullException(nameof(stage));
-            _isFinal = isFinal;
-        }
-
-        private BattleNodeRun(GameConfig config, UnitTable units, UnitRanges ranges, RunState state,
-            BattleMap map, WaveProgress waves, IRandom random)
         {
             State = state ?? throw new ArgumentNullException(nameof(state));
+            Stage = stage ?? throw new ArgumentNullException(nameof(stage));
+            _isFinal = isFinal;
             Map = map ?? throw new ArgumentNullException(nameof(map));
             _introSteps = Math.Max(0, (int)Math.Round(config.IntroSeconds * SimulationClock.StepsPerSecond));
             _introStepsLeft = _introSteps;
@@ -78,10 +54,7 @@ namespace UnitySlotTower.Core.Battle
             Deployment = new UnitDeployment(Map, units, ranges, Summoner, Field, Upgrades);
         }
 
-        /// <summary>旧ルートの戦闘マスの出現（ステージから作ったときは null。T609 で消す）。</summary>
-        public Encounter Encounter { get; }
-
-        /// <summary>このステージ（旧ルートの戦闘マスから作ったときは null）。</summary>
+        /// <summary>このステージ。</summary>
         public StageDefinition Stage { get; }
 
         public WavePhase Phase { get; private set; }
@@ -89,7 +62,7 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>開始の演出の進み具合（0 から 1、表示用）。演出がなければ 1。</summary>
         public double IntroProgress => _introSteps == 0 ? 1d : 1d - (double)_introStepsLeft / _introSteps;
 
-        /// <summary>最後のステージ（旧ルートではボスマス）を終えた（spec 002 FR-101）。</summary>
+        /// <summary>最後のステージを終えた（spec 002 FR-101）。</summary>
         public bool IsRunCleared => Phase == WavePhase.Completed && _isFinal;
 
         /// <summary>ゲーム1回分の状態（plan 16.2）。</summary>
@@ -182,15 +155,9 @@ namespace UnitySlotTower.Core.Battle
             }
         }
 
-        /// <summary>報酬を加える（plan 16.2）。配置中の味方はストックにならない（spec 002 FR-106）。</summary>
+        /// <summary>ステージを終える。配置中の味方はストックにならない（spec 002 FR-106）。</summary>
         private void End()
         {
-            // ステージには報酬がない（plan 2.1）。旧ルートの戦闘マスだけ出現の報酬を加える。
-            if (Encounter != null)
-            {
-                State.Money.Add(Encounter.RewardMoney);
-                State.Coins.Add(Encounter.RewardCoins);
-            }
             Phase = WavePhase.Completed;
             Ended?.Invoke();
         }

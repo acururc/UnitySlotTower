@@ -30,8 +30,6 @@ namespace UnitySlotTower.Editor.Setup
                 count += ApplyTo(icon, box, knob);
             }
 
-            count += ApplyUnder<RouteScreen>(box, knob);
-            count += ApplyUnder<ShopScreen>(box, knob);
             count += ApplyUnder<ResultScreen>(box, knob);
 
             if (count == 0)

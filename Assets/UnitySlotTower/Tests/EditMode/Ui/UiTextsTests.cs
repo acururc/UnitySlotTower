@@ -67,7 +67,7 @@ namespace UnitySlotTower.Tests.EditMode.Ui
 
             foreach (var kind in RouteNodeKinds.All)
             {
-                Need("node_" + kind.Id);
+                Need("node_" + kind);
             }
 
             var units = CsvParser.Parse("units.csv", File.ReadAllText(Path.Combine(TablePaths.Root, "units.csv")));
@@ -81,7 +81,7 @@ namespace UnitySlotTower.Tests.EditMode.Ui
                 Need("slot_" + symbol);
             }
 
-            foreach (var id in new[] { "slot_miss", "shop_stock", "shop_upgrade", "detail_hp", "detail_atk", "detail_block", "battle_end" })
+            foreach (var id in new[] { "slot_miss", "detail_hp", "detail_atk", "detail_block", "battle_end" })
             {
                 Need(id);
             }

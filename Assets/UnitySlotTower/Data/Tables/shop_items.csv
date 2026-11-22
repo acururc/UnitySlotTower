@@ -1,5 +1,0 @@
-id,kind,unit_id,price,weight
-upgrade_tank,upgrade,tank,0,1
-upgrade_sword,upgrade,sword,0,1
-upgrade_archer,upgrade,archer,0,1
-upgrade_buffer,upgrade,buffer,0,1

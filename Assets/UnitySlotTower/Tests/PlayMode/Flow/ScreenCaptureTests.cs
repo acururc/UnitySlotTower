@@ -57,7 +57,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         {
             GameSession.SetTextMode(false);
             GuideOverlay.DisabledForTests = true;
-            RunController.SeedOverride = null;
             Time.timeScale = 1f;
             Application.runInBackground = _runInBackground;
             Debug.Log($"[ScreenCapture] {_folder}");
@@ -82,7 +81,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return Capture(prefix + "-title");
 
             // 戦闘（最初の説明が出ている状態）と早見表。
-            RunController.SeedOverride = 1;
             GuideOverlay.DisabledForTests = false;
             var battle = default(BattleController);
             yield return LoadGame(b => battle = b);

@@ -24,9 +24,9 @@ namespace UnitySlotTower.Editor.Setup
             }
 
             var guideObject = new SerializedObject(guide);
-            if (!GuideOverlaySetup.WireRoute(guideObject))
+            if (!GuideOverlaySetup.WireRun(guideObject))
             {
-                Debug.LogError("[SlotTower Setup] RunController か RouteScreen が見つからない。");
+                Debug.LogError("[SlotTower Setup] RunController が見つからない。");
                 return;
             }
 

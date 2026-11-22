@@ -33,13 +33,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             "1,3,melee,S1,first_g1,0\n2,0,melee,S1,battle_a_g1,0\n3,0,melee,S1,battle_b_g1,0\n5,0,melee,S1,battle_c_g1,0\n6,0,melee,S1,battle_d_g1,0\n7,0,melee,S1,battle_e_g1,0\n2,3,melee,S1,battle_a_g1,0\n3,3,melee,S1,battle_b_g1,0\n5,3,melee,S1,battle_c_g1,0\n6,3,melee,S1,battle_d_g1,0\n7,3,melee,S1,battle_e_g1,0\n" +
             "8,0,melee,S1,boss_a_g1,0\n8,3,melee,S1,boss_a_g1,0\n";
 
-        // クリア用: 全6ウェーブとも近接の敵1体だけ。
-        private const string WinningWaves =
-            "stage,time,enemy_id,spawn,path_id,is_boss\n" +
-            "1,0,melee,S1,first_g1,0\n1,3,melee,S1,first_g1,0\n2,0,melee,S1,battle_a_g1,0\n3,0,melee,S1,battle_b_g1,0\n5,0,melee,S1,battle_c_g1,0\n6,0,melee,S1,battle_d_g1,0\n7,0,melee,S1,battle_e_g1,0\n2,3,melee,S1,battle_a_g1,0\n3,3,melee,S1,battle_b_g1,0\n5,3,melee,S1,battle_c_g1,0\n6,3,melee,S1,battle_d_g1,0\n7,3,melee,S1,battle_e_g1,0\n" +
-            "4,0,melee,S1,elite_a_g1,0\n4,3,melee,S1,elite_a_g1,0\n" +
-            "8,0,melee,S1,boss_a_g1,0\n8,3,melee,S1,boss_a_g1,0\n";
-
         private static string _waves;
         private HitRandom _random;
 
@@ -56,7 +49,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         {
             SceneManager.sceneLoaded -= ReplaceWaves;
             _waves = null;
-            RunController.SeedOverride = null;
             SlotCabinet.RandomOverride = null;
             Time.timeScale = 1f;
         }
@@ -109,16 +101,11 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         [UnityTest]
         public IEnumerator Clear_Result_Shows_No_Letters()
         {
-            _waves = WinningWaves;
+            _waves = StageTestUtil.ShortWaves;
             var battle = default(BattleController);
             yield return LoadGame(b => battle = b);
-            // 8ステージでは敵1体ずつでもライフ 10 では足りないため、ステージごとにライフを戻す。
-            var run = Object.FindAnyObjectByType<RunController>();
-            void Refill() => run.State.Heal(run.State.MaxLife);
-            battle.NodeBegan += Refill;
-
+            // どのステージも敵1体だけなので、味方を置かなくてもライフ 10 のうち 8 を失ってクリアする。
             yield return PlayUntilFinished(battle);
-            battle.NodeBegan -= Refill;
             Assert.That(battle.Run.Phase, Is.EqualTo(WavePhase.Completed));
             AssertNoLetters("リザルト（クリア）");
         }

@@ -46,9 +46,6 @@ namespace UnitySlotTower.Editor.Setup
             var root = (RectTransform)cabinet.transform.parent;
             BuildBattleHud(root);
             BuildCabinetLabels((RectTransform)cabinet.transform);
-            BuildRoute(root);
-            BuildShop(root);
-            BuildRest(root);
             BuildResult(root);
             BuildHelp(root);
         }
@@ -171,48 +168,8 @@ namespace UnitySlotTower.Editor.Setup
             }
         }
 
-        // --- T359e ショップ・回復・リザルト ---
-        // 3つとも Portrait Root いっぱい（1440×1920 px）。値はその割合。ラベルは TextModeSetup が文字あり版の位置で作る。
-
-        /// <summary>
-        /// ショップ: 上の帯を「名前＋絵と数字」の2段に（ルートと同じ）、見出しはアイコンの右に 56、品の札を広げて上に3行の名前と説明
-        /// （札の中の絵は ShopScreen が下げる）、両替のボタンは上に名前・真ん中に絵と数字・下に文（plan 16.13）。
-        /// </summary>
-        private static void BuildShop(RectTransform root)
-        {
-            var panel = PanelOf(root.GetComponentInChildren<ShopScreen>(true));
-            var status = Child(panel, "Status");
-            SetRect(status, new Vector2(0f, 0.9f), Vector2.one);
-            var stripHeight = 0.1f * 1920f;
-            RouteItem(Child(status, "Money Icon"), Child(status, "Money"), "money", 0.01f, 0.2f, stripHeight);
-            RouteItem(Child(status, "Coin Icon"), Child(status, "Coins"), "coins", 0.21f, 0.4f, stripHeight);
-
-            SetRect(Child(panel, "Header"), new Vector2(0.3f, 0.835f), new Vector2(0.4f, 0.895f));
-            SetRect(Child(panel, "Offers"), new Vector2(0.04f, 0.45f), new Vector2(0.96f, 0.82f));
-            var exchange = Child(panel, "Exchange");
-            SetRect(exchange, new Vector2(0.03f, 0.15f), new Vector2(0.97f, 0.43f));
-            TradeButton(Child(exchange, "Buy Coins"), "Money Icon", "Coin Icon");
-            TradeButton(Child(exchange, "Sell Coins"), "Coin Icon", "Money Icon");
-        }
-
-        // 両替のボタンの真ん中の段（上の名前 0.8〜、下の文 〜0.32 の間）: 払う側の絵と数字 → 受け取る側の絵と数字。横の位置は変えない。
-        private static void TradeButton(RectTransform button, string fromIcon, string toIcon)
-        {
-            SetRect(Child(button, fromIcon), new Vector2(0.04f, 0.42f), new Vector2(0.18f, 0.7f));
-            SetRect(Child(button, "From"), new Vector2(0.19f, 0.36f), new Vector2(0.4f, 0.78f));
-            SetRect(Child(button, "Arrow"), new Vector2(0.43f, 0.47f), new Vector2(0.55f, 0.67f));
-            SetRect(Child(button, toIcon), new Vector2(0.58f, 0.42f), new Vector2(0.72f, 0.7f));
-            SetRect(Child(button, "To"), new Vector2(0.73f, 0.36f), new Vector2(0.96f, 0.78f));
-        }
-
-        /// <summary>回復: アイコンの下に回復量の文（TextModeSetup）、その下に「+2」、さらに下に名前付きのライフ（名前は絵の左）。</summary>
-        private static void BuildRest(RectTransform root)
-        {
-            var panel = PanelOf(root.GetComponentInChildren<RestScreen>(true));
-            SetRect(Child(panel, "Healed"), new Vector2(0.3f, 0.36f), new Vector2(0.7f, 0.44f));
-            SetRect(Child(panel, "Life Icon"), new Vector2(0.44f, 0.26f), new Vector2(0.52f, 0.33f));
-            SetRect(Child(panel, "Life"), new Vector2(0.54f, 0.25f), new Vector2(0.74f, 0.34f));
-        }
+        // --- T359e リザルト ---
+        // Portrait Root いっぱい（1440×1920 px）。値はその割合。ラベルは TextModeSetup が文字あり版の位置で作る。
 
         /// <summary>リザルト: 数字の行を右に寄せて左に名前（48）を入れる。ボタンの三角は上に寄せて下に名前（40）。</summary>
         private static void BuildResult(RectTransform root)
@@ -239,84 +196,6 @@ namespace UnitySlotTower.Editor.Setup
 
         private static RectTransform PanelOf(Component screen) =>
             ((GameObject)new SerializedObject(screen).FindProperty("panel").objectReferenceValue).GetComponent<RectTransform>();
-
-        // --- T359d ルート ---
-
-        // Route Screen は Portrait Root の y SlotAreaTop〜1（1440×1200 px）。値はその割合。
-        private const float RouteHeight = (1f - PortraitLayout.SlotAreaTop) * PortraitLayout.ReferenceHeight;
-        private const float RouteStripBottom = 0.88f;
-        private const float RouteMapLeft = 0.02f;
-        private const float RouteMapRight = 0.66f;
-        // 札の高さ 約 288 px（T368 でルート画面が 1306→1200 px になったので 0.22 から上げた）。
-        private const float RouteCardTop = 0.24f;
-        private const float RouteCardHalfWidth = 0.093f;
-        private const float RouteFont = 40f;
-        private const float RouteTitleFont = 56f;
-
-        /// <summary>
-        /// ルート画面: 上の帯を「名前＋数字」の2段に、マップを左に寄せて右に凡例（TextModeSetup が作る）、
-        /// 行き先は各リールの真上の札（上から 矢印とアイコン・方向・マスの名前・短い説明）にする（plan 16.13）。
-        /// </summary>
-        private static void BuildRoute(RectTransform root)
-        {
-            var screen = root.GetComponentInChildren<RouteScreen>(true);
-            var panel = ((GameObject)new SerializedObject(screen).FindProperty("panel").objectReferenceValue).GetComponent<RectTransform>();
-
-            var status = Child(panel, "Status");
-            SetRect(status, new Vector2(0f, RouteStripBottom), Vector2.one);
-            var stripHeight = (1f - RouteStripBottom) * RouteHeight;
-            RouteItem(Child(status, "Life Icon"), Child(status, "Life"), "life", 0.01f, 0.2f, stripHeight);
-            RouteItem(Child(status, "Money Icon"), Child(status, "Money"), "money", 0.21f, 0.4f, stripHeight);
-            RouteItem(Child(status, "Coin Icon"), Child(status, "Coins"), "coins", 0.41f, 0.6f, stripHeight);
-            for (var c = 0; c < 4; c++)
-            {
-                var left = 0.64f + c * 0.087f;
-                SetRect(Child(status, $"Gauge {c + 1}"), new Vector2(left, 0.10f), new Vector2(left + 0.08f, 0.44f));
-            }
-
-            // 見出しはマップの上、凡例の見出しと同じ段。
-            SetLabel(Child(panel, "Text Label route_title"), new Vector2(RouteMapLeft, 0.815f), new Vector2(RouteMapRight, 0.875f),
-                Vector2.zero, Vector2.zero, RouteTitleFont);
-            SetRect(Child(panel, "Map"), new Vector2(RouteMapLeft, RouteCardTop + 0.015f), new Vector2(RouteMapRight, 0.81f));
-            Set(Child(panel, TextModeSetup.RouteLegendName).gameObject, TextModeLayout.Parts.Visibility, s =>
-            {
-                s.hidden = false;
-                return s;
-            });
-
-            for (var i = 0; i < 3; i++)
-            {
-                var card = Child(panel, $"Direction {i + 1}");
-                // 札の中心は文字なし版と同じ（リールの真上）。幅はリールの幅（280 px）に収める。
-                Set(card.gameObject, TextModeLayout.Parts.Rect, s =>
-                {
-                    var center = (s.anchorMin.x + s.anchorMax.x) / 2f;
-                    s.anchorMin = new Vector2(center - RouteCardHalfWidth, 0f);
-                    s.anchorMax = new Vector2(center + RouteCardHalfWidth, RouteCardTop);
-                    s.offsetMin = new Vector2(0f, 8f);
-                    s.offsetMax = Vector2.zero;
-                    return s;
-                });
-                // 札（約 268×279 px）: 上から 矢印とアイコン・方向（TextModeSetup）・マスの名前・短い説明（TextModeSetup）。
-                SetRect(Child(card, "Arrow"), new Vector2(0.06f, 0.69f), new Vector2(0.46f, 0.96f));
-                SetRect(Child(card, "Target"), new Vector2(0.52f, 0.67f), new Vector2(0.92f, 0.98f));
-                SetLabel(Child(card, "Text Label direction"), new Vector2(0f, 0.25f), new Vector2(1f, 0.47f), Vector2.zero, Vector2.zero,
-                    RouteFont);
-            }
-        }
-
-        // ルートの帯の1項目: 下の段に絵と数字、上の段に名前（名前は絵の子なので絵の左上を基準に置く）。
-        private static void RouteItem(RectTransform icon, RectTransform value, string id, float left, float right, float stripHeight)
-        {
-            const float iconWidth = 0.042f;
-            const float iconBottom = 0.06f;
-            const float iconTop = 0.48f;
-            SetRect(icon, new Vector2(left, iconBottom), new Vector2(left + iconWidth, iconTop));
-            SetRect(value, new Vector2(left + iconWidth + 0.004f, 0.02f), new Vector2(right, 0.52f));
-            SetLabel(Child(icon, "Text Label " + id), new Vector2(0f, 1f), new Vector2(0f, 1f),
-                new Vector2(0f, (0.55f - iconTop) * stripHeight), new Vector2((right - left) * 1440f, (0.97f - iconTop) * stripHeight),
-                RouteFont);
-        }
 
         // --- T359c 筐体の外の名前 ---
 

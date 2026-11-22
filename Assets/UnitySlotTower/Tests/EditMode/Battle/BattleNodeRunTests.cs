@@ -18,29 +18,18 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         // fodder（HP1・攻撃0・1マス/秒・コインだけ落とす）は 0 秒に出て約3秒でゴールに着く。行は e,time,enemy_id,spawn,path_id,is_boss（e は stage 列の 1 に置き換えて読む）。
         private const string OneFodder = "e,0,fodder,S1,g,0\n";
 
-        // 通常 e は報酬 所持金10・コイン3、ボス boss は報酬なし、最初 first は回数固定6。
-        private const string Encounters =
-            "id,kind,map_id,min_floor,max_floor,fixed_spins,reward_money,reward_coins\n" +
-            "e,battle,m,1,8,0,10,3\n" +
-            "boss,boss,m,1,99,0,0,0\n" +
-            "first,first,m,1,1,6,10,3\n";
-
         // 10 秒あればどの戦闘も終わる。
         private const int WaveSteps = 600;
 
         // 開始の演出は既定 1 秒。
         private const int IntroSteps = SimulationClock.StepsPerSecond;
 
-        private static readonly EncounterTable EncounterFixtures =
-            EncounterTable.Load(CsvParser.Parse(EncounterTable.FileName, Encounters));
-
-
         private GameConfig _config;
         private RunState _state;
         private string _waveRows;
 
         private BattleNodeRun Create(int money = 100, int coins = 50, int life = 10, int deployLimit = 8,
-            string waveRows = OneFodder, string encounterId = "e", double introSeconds = 1, int stage = 2)
+            string waveRows = OneFodder, bool final = false, double introSeconds = 1, int stage = 2)
         {
             _config = GameConfig.Load(CsvParser.Parse(GameConfig.FileName,
                 $"key,value\ninitial_coins,{coins}\ninitial_money,{money}\nbet,3\nlife,{life}\n" +
@@ -53,21 +42,13 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             }
 
             _waveRows = waveRows;
-            return Next(encounterId);
-        }
-
-        /// <summary>同じ <see cref="RunState"/> で次の戦闘マスに入る（Runtime の流れと同じ）。</summary>
-        private BattleNodeRun Next(string encounterId = "e")
-        {
-            var encounter = EncounterFixtures.Get(encounterId);
-            // 出現はどの戦闘マスでもステージ1の行として読む（行の先頭の "e," を stage 列の "1," にする）。
-            var rows = Regex.Replace(_waveRows, "^e,", "1,", RegexOptions.Multiline);
-            return new BattleNodeRun(_config, BattleFixtures.LoadUnits(), BattleFixtures.LoadRanges(), _state, encounter,
-                BattleFixtures.LoadMap(), BattleFixtures.LoadStageWave(rows, 1),
-                new SeededRandom(1));
+            return Next(final);
         }
 
         /// <summary>同じ <see cref="RunState"/> で、ステージの表の行から戦闘を作る（T607 の Runtime の流れと同じ）。</summary>
+        /// <summary>同じ <see cref="RunState"/> で、いまのステージ（表はステージ1と2だけなので3以上は2の行）の戦闘を作る。</summary>
+        private BattleNodeRun Next(bool isFinal = false) => Stage(System.Math.Min(_state.StageIndex, 2), isFinal);
+
         private BattleNodeRun Stage(int number, bool isFinal)
         {
             var stages = StageTable.Load(CsvParser.Parse(StageTable.FileName,
@@ -217,40 +198,17 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("AC-010: ボスマスを終えるとクリア")]
-        public void Clearing_The_Boss_Node_Clears_The_Run()
-        {
-            var run = Create(encounterId: "boss");
-
-            PlayNode(run);
-
-            Assert.That((run.Phase, run.IsRunCleared), Is.EqualTo((WavePhase.Completed, true)));
-        }
-
-        [Test]
         [Description("AC-010: 最終ボスを倒しても、残りの敵を全滅させるまで終わらない（2026-10-30 ユーザー決定）")]
         public void Defeating_The_Boss_Does_Not_End_The_Node_While_Enemies_Remain()
         {
             // ボス役の fodder は約 0.5 秒で剣士に倒される。雑魚は 5 秒に出る。
-            var run = Create(encounterId: "boss",
+            var run = Create(final: true,
                 waveRows: "e,0,fodder,S1,g,1\ne,5,fodder,S1,g,0\n");
             Place(run, "sword", 1, 0);
 
             run.Advance(IntroSteps + 120);
 
             Assert.That((run.Field.Enemies.Count, run.Phase), Is.EqualTo((0, WavePhase.Fighting)));
-        }
-
-        [Test]
-        [Description("plan 16.2: 戦闘マスを終えると報酬（所持金・コイン）が入る")]
-        public void Completing_The_Node_Adds_The_Reward()
-        {
-            // 誰も置かないので fodder はゴールに着き、何も落とさない。
-            var run = Create(money: 100, coins: 50);
-
-            PlayNode(run);
-
-            Assert.That((_state.Money.Coins, _state.Coins.Coins), Is.EqualTo((110, 53)));
         }
 
         [Test]
@@ -275,14 +233,6 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             PlayNode(run);
 
             Assert.That((_state.Money.Coins, _state.Coins.Coins), Is.EqualTo((100, 50)));
-        }
-
-        [Test]
-        [Description("D-68: 回数固定の回数は出現表の行から読む")]
-        public void Fixed_Spins_Come_From_The_Encounter()
-        {
-            Assert.That((Create(encounterId: "first").Encounter.FixedSpins, Create().Encounter.FixedSpins),
-                Is.EqualTo((6, 0)));
         }
 
         [Test]
@@ -330,7 +280,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("AC-012: 強化・所持金・コインは次のマスに残る")]
+        [Description("AC-012、spec 002 FR-105: 強化・所持金・コインは次のステージに残る（ステージの報酬はない）")]
         public void Upgrades_Money_And_Coins_Carry_Over()
         {
             var first = Create(money: 100, coins: 50);
@@ -340,7 +290,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var next = Next();
 
             Assert.That((next.Upgrades.Level("sword"), next.Wallet.Coins, _state.Coins.Coins),
-                Is.EqualTo((2, 90, 53)));
+                Is.EqualTo((2, 80, 50)));
         }
 
         [TestCase("tank", 1, 0)]

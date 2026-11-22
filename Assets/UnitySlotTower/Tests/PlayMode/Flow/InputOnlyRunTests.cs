@@ -88,7 +88,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             SceneManager.sceneLoaded -= ReplaceWaves;
             _waves = null;
             GameSession.SetTextMode(false);
-            RunController.SeedOverride = null;
             SlotCabinet.RandomOverride = null;
             Time.timeScale = 1f;
             InputSystem.RemoveDevice(_keyboard);

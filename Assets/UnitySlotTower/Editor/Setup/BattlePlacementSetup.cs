@@ -130,7 +130,6 @@ namespace UnitySlotTower.Editor.Setup
 
             var run = Object.FindAnyObjectByType<RunController>(FindObjectsInactive.Include)
                 ?? new GameObject("Run Controller").AddComponent<RunController>();
-            Assign(run, "routeRulesTable", Table(RouteRules.FileName));
             Assign(run, "battle", battle);
             Assign(run, "slotCabinet", cabinet);
             Assign(field, "battleCamera", camera);

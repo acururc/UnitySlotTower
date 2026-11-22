@@ -28,9 +28,6 @@ namespace UnitySlotTower.Editor.Setup
             var root = GameObject.Find("Portrait Root")?.transform;
             if (root != null)
             {
-                count += RestyleRoute(root.Find("Route Screen"));
-                count += RestyleShop(root.Find("Shop Screen"));
-                count += RestyleRest(root.Find("Rest Screen"));
                 count += RestyleHelp(root.Find("Help"));
                 count += RestyleResult(root.Find("Result"));
             }
@@ -55,53 +52,6 @@ namespace UnitySlotTower.Editor.Setup
             var serialized = new SerializedObject(title);
             count += Primary(Ref<Button>(serialized, "startButton"));
             return count;
-        }
-
-        private static int RestyleRoute(Transform screen)
-        {
-            if (screen == null)
-            {
-                return 0;
-            }
-
-            var panel = screen.Find("Panel");
-            var count = Background(panel);
-            count += Skin(panel?.Find("Status"), UiStyle.BandFill, UiStyle.PanelBorder);
-            for (var i = 1; i <= 3; i++)
-            {
-                count += Skin(panel?.Find($"Direction {i}"), UiStyle.ButtonFill, UiStyle.PanelBorder);
-            }
-
-            return count;
-        }
-
-        private static int RestyleShop(Transform screen)
-        {
-            if (screen == null)
-            {
-                return 0;
-            }
-
-            var panel = screen.Find("Panel");
-            var count = Background(panel);
-            count += Skin(panel?.Find("Status"), UiStyle.BandFill, UiStyle.PanelBorder);
-            var exchange = panel?.Find("Exchange");
-            count += Skin(exchange, UiStyle.SectionFill, UiStyle.PanelBorder);
-            count += Skin(exchange?.Find("Buy Coins"), UiStyle.ButtonFill, UiStyle.PanelBorder);
-            count += Skin(exchange?.Find("Sell Coins"), UiStyle.ButtonFill, UiStyle.PanelBorder);
-            count += Back(panel?.Find("Back"));
-            return count;
-        }
-
-        private static int RestyleRest(Transform screen)
-        {
-            if (screen == null)
-            {
-                return 0;
-            }
-
-            var panel = screen.Find("Panel");
-            return Background(panel) + Back(panel?.Find("Back"));
         }
 
         private static int RestyleHelp(Transform screen)

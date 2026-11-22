@@ -50,20 +50,6 @@ namespace UnitySlotTower.Ui
             markImage.preserveAspect = true;
         }
 
-        /// <summary>RectTransform 1つ（親いっぱい）に新しく作ってお札にする。ShopScreen など実行時に作る札用。</summary>
-        public static RectTransform Create(string name, RectTransform parent, Vector2 anchorMin, Vector2 anchorMax, Sprite box,
-            Sprite knob)
-        {
-            var rect = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
-            rect.gameObject.layer = parent.gameObject.layer;
-            rect.SetParent(parent, false);
-            rect.anchorMin = anchorMin;
-            rect.anchorMax = anchorMax;
-            rect.offsetMin = rect.offsetMax = Vector2.zero;
-            Apply(rect.gameObject.AddComponent<Image>(), box, knob);
-            return rect;
-        }
-
         private static RectTransform Child(RectTransform parent, string name)
         {
             var found = parent.Find(name) as RectTransform;

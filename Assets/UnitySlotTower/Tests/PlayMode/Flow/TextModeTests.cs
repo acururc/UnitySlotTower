@@ -45,7 +45,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         {
             GameSession.SetTextMode(false);
             GuideOverlay.DisabledForTests = true;
-            RunController.SeedOverride = null;
             Time.timeScale = 1f;
             Application.runInBackground = _runInBackground;
         }
@@ -174,7 +173,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Readable("タイトル", problems);
 
             // 戦闘（最初の説明が出ている状態）、一時停止中の「?」、早見表。
-            RunController.SeedOverride = 1;
             GuideOverlay.DisabledForTests = false;
             var battle = default(BattleController);
             yield return LoadGame(b => battle = b);

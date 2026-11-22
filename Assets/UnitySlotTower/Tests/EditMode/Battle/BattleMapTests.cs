@@ -57,9 +57,6 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var files = TablePaths.ReadAll();
             Assert.That(GameDataValidator.ValidateAll(files).Errors, Is.Empty);
             var map = ProjectMap(id);
-            var encounter = EncounterTable.Load(CsvParser.Parse(EncounterTable.FileName,
-                files[EncounterTable.FileName])).Get(id);
-            Assert.That((encounter.Kind, encounter.MapId), Is.EqualTo((EncounterKind.Battle, id)));
             var cells = Enumerable.Range(0, map.Width).SelectMany(x =>
                 Enumerable.Range(0, map.Height).Select(y => new GridPoint(x, y))).ToArray();
             Assert.That(cells.Count(c => map.TileAt(c) == MapTile.Spawn), Is.EqualTo(2));

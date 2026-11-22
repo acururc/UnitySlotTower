@@ -32,36 +32,10 @@ cabinet_lever,レバー（Space）
 cabinet_credit,"コイン
 （2枚で1回）"
 cabinet_fixed,回数固定
-route_title,行き先を選ぶ
 node_first,最初の戦闘
 node_battle,戦闘
 node_elite,強敵
-node_shop,ショップ
-node_rest,休憩所
 node_boss,ボス
-node_first_desc,一本道の戦闘
-node_battle_desc,敵の群れと戦う
-node_elite_desc,中ボスで高報酬
-node_shop_desc,品を買う・両替
-node_rest_desc,ライフを回復
-node_boss_desc,倒せばクリア
-route_dir_left,左上へ
-route_dir_center,真上へ
-route_dir_right,右上へ
-route_legend,マスの種類
-route_gauge,スキルゲージ
-rest_title,休憩所
-rest_healed,ライフが {0} 回復した
-rest_full,ライフは満タン（回復なし）
-shop_title,ショップ
-shop_stock,無料ストック
-shop_upgrade,強化
-shop_stock_desc,無料で1体置く
-shop_upgrade_desc,1段強くなる
-shop_buy_coins,所持金でコインを買う
-shop_sell_coins,コインを所持金に替える
-shop_buy_rate,¥{0} → コイン {1}
-shop_sell_rate,コイン {0} → ¥{1}
 result_clear,クリア！
 result_game_over,ゲームオーバー
 result_floor,到達した階
