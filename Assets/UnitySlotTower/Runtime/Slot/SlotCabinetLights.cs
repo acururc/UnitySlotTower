@@ -5,35 +5,32 @@ using UnitySlotTower.Core.Slot;
 namespace UnitySlotTower.Slot
 {
     /// <summary>
-    /// スロット台の外枠とリール窓まわりの LED（T614、FR-116・E-29）。実機の台のように、普段は一色で落ち着いて光り
-    /// （ゆっくり明るさが揺れるだけ）、揃ったときはリール窓の中心から外へ出目の色の光の波が何重かに広がり
-    /// （7 揃いは波が多い）、出目の色の余韻を残して普段の色に戻る。LED の後ろのにじみ・ネオン管・角のランプも同じ波で光る。
+    /// スロット台の光（T614、FR-116・E-29）。台の 3D モデルの光の帯（短い部品に分けた <see cref="strips"/>）と、
+    /// リール窓まわりの UI の LED を同じ計算で光らせる。普段は一色で落ち着いて光り（ゆっくり明るさが揺れるだけ）、
+    /// 揃ったときはリール窓の中心から外へ出目の色の光の波が何重かに広がり（7 揃いは波が多い）、出目の色の余韻を残して
+    /// 普段の色に戻る。波の距離は画面上の px で測る（3D の部品は台のカメラで画面に写した位置）。
     /// 実時間で動く（倍速・一時停止に関係なく光る）。見た目は仮置き（本番は M5）。
     /// </summary>
     public sealed class SlotCabinetLights : MonoBehaviour
     {
+        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+
         [SerializeField] private SlotCabinet cabinet;
+
+        [Tooltip("台の 3D モデルを写すカメラ（光の帯の画面上の位置を測る）。")]
+        [SerializeField] private Camera cabinetCamera;
 
         [Tooltip("波の中心（リール窓）。")]
         [SerializeField] private RectTransform waveOrigin;
 
-        [Tooltip("外枠の LED。左上の角から時計回りの順。")]
-        [SerializeField] private Image[] lights;
-
-        [Tooltip("lights と同じ順の、LED の後ろのにじみ。")]
-        [SerializeField] private Image[] glows;
+        [Tooltip("台の 3D モデルの光の帯の部品（Unlit の _BaseColor を塗る）。")]
+        [SerializeField] private Renderer[] strips;
 
         [Tooltip("リール窓まわりの LED。左上の角から時計回りの順。")]
         [SerializeField] private Image[] windowLights;
 
         [Tooltip("windowLights と同じ順の、LED の後ろのにじみ。")]
         [SerializeField] private Image[] windowGlows;
-
-        [Tooltip("ネオン管と角の大きなランプ。")]
-        [SerializeField] private Graphic[] accents;
-
-        [Tooltip("角の大きなランプの後ろのにじみ。")]
-        [SerializeField] private Image[] accentGlows;
 
         [Tooltip("SlotSymbol の順（赤7・青7・緑7・黄7・バー・コイン）。")]
         [SerializeField] private Color[] symbolColors =
@@ -42,28 +39,27 @@ namespace UnitySlotTower.Slot
             new Color(1f, 0.85f, 0.1f), new Color(0.95f, 0.95f, 1f), new Color(1f, 0.8f, 0.15f),
         };
 
-        [SerializeField] private Color offColor = new Color(0.25f, 0.1f, 0.1f);
-        [SerializeField] private Color idleColor = new Color(1f, 0.72f, 0.32f);
-        [SerializeField] private Color idleAccentColor = new Color(1f, 0.25f, 0.4f);
+        [SerializeField] private Color offColor = new Color(0.02f, 0.05f, 0.12f);
+        [SerializeField] private Color idleColor = new Color(0.25f, 0.6f, 1f);
 
         [Tooltip("普段の明るさ（0〜1）。")]
         [Range(0f, 1f)]
-        [SerializeField] private float idleLevel = 0.6f;
+        [SerializeField] private float idleLevel = 0.7f;
 
         [Tooltip("普段の明るさの揺れの幅。")]
         [Range(0f, 0.5f)]
-        [SerializeField] private float breathAmount = 0.1f;
+        [SerializeField] private float breathAmount = 0.12f;
 
         [Tooltip("普段の明るさが一往復する秒数。")]
         [SerializeField] private float breathSeconds = 3f;
 
-        [Tooltip("波が中心から一番遠い LED まで届く秒数。")]
+        [Tooltip("波が中心から一番遠い光まで届く秒数。")]
         [SerializeField] private float waveTravelSeconds = 0.55f;
 
         [Tooltip("次の波が出るまでの秒数。")]
         [SerializeField] private float waveInterval = 0.28f;
 
-        [Tooltip("波の幅（中心から一番遠い LED までを 1 とした割合）。")]
+        [Tooltip("波の幅（中心から一番遠い光までを 1 とした割合）。")]
         [SerializeField] private float waveWidth = 0.16f;
 
         [SerializeField] private int waveCount = 3;
@@ -80,27 +76,32 @@ namespace UnitySlotTower.Slot
         private float _flashLeft;
         private int _waves;
         private Color _flashColor;
-        private float[] _lightDistance;
+        private float[] _stripDistance;
         private float[] _windowDistance;
-        private float[] _accentDistance;
-        private float[] _accentGlowDistance;
+        private Color[] _stripColors;
+        private MaterialPropertyBlock _block;
         private Texture2D _glowTexture;
         private Sprite _glowSprite;
 
-        public int LightCount => lights != null ? lights.Length : 0;
+        /// <summary>台の光の帯の部品の数。</summary>
+        public int LightCount => strips != null ? strips.Length : 0;
+
         public int WindowLightCount => windowLights != null ? windowLights.Length : 0;
         public bool IsFlashing => _flashLeft > 0f;
         public SlotSymbol? FlashSymbol { get; private set; }
-        public Color LightColor(int index) => lights[index].color;
+        public Color LightColor(int index) => _stripColors != null ? _stripColors[index] : Color.clear;
         public Color WindowLightColor(int index) => windowLights[index].color;
 
-        /// <summary>波の中心からの距離（一番遠い LED を 1）。窓の LED は外枠の LED より先に波が届く。</summary>
-        public float LightDistance(int index) => _lightDistance != null ? _lightDistance[index] : 0f;
+        /// <summary>波の中心からの距離（一番遠い光を 1）。窓の LED は台の光の帯より先に波が届く。</summary>
+        public float LightDistance(int index) => _stripDistance != null ? _stripDistance[index] : 0f;
 
         public float WindowLightDistance(int index) => _windowDistance != null ? _windowDistance[index] : 0f;
 
         private void Awake()
         {
+            _block = new MaterialPropertyBlock();
+            _stripColors = new Color[LightCount];
+
             // にじみの柔らかい丸は実行時に1枚だけ作る（画像アセットを増やさない）。
             const int size = 64;
             _glowTexture = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
@@ -120,9 +121,13 @@ namespace UnitySlotTower.Slot
             _glowTexture.Apply(false, true);
             _glowSprite = Sprite.Create(_glowTexture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
             _glowSprite.name = "LED Glow";
-            AssignSprite(glows, _glowSprite);
-            AssignSprite(windowGlows, _glowSprite);
-            AssignSprite(accentGlows, _glowSprite);
+            for (var i = 0; windowGlows != null && i < windowGlows.Length; i++)
+            {
+                if (windowGlows[i] != null)
+                {
+                    windowGlows[i].sprite = _glowSprite;
+                }
+            }
         }
 
         private void OnDestroy()
@@ -187,14 +192,12 @@ namespace UnitySlotTower.Slot
 
             var level = idleLevel + breathAmount * Mathf.Sin(_time * Mathf.PI * 2f / Mathf.Max(0.1f, breathSeconds));
             var idle = Color.Lerp(offColor, idleColor, level);
-            var idleAccent = Color.Lerp(offColor, idleAccentColor, Mathf.Clamp01(level + 0.25f));
             var after = Afterglow();
-            Paint(lights, glows, _lightDistance, idle, level, after);
-            Paint(windowLights, windowGlows, _windowDistance, idle, level, after);
-            Paint(accents, accentGlows, _accentDistance, _accentGlowDistance, idleAccent, level, after);
+            PaintStrips(idle, level, after);
+            PaintWindow(idle, level, after);
         }
 
-        // 波の最後が一番遠い LED を通り過ぎる時刻。
+        // 波の最後が一番遠い光を通り過ぎる時刻。
         private float WaveEnd() => (_waves - 1) * waveInterval + waveTravelSeconds * (1f + waveWidth * 2f);
 
         // 波のあとの出目の色の残り具合（1→0）。波の途中は 0（波だけで光る）。
@@ -209,7 +212,7 @@ namespace UnitySlotTower.Slot
             return since < 0f ? 0f : 1f - Mathf.Clamp01(since / Mathf.Max(0.01f, afterglowSeconds));
         }
 
-        // 中心からの距離 d（0〜1）の所の波の強さ（0〜1）。波が通った後は出目の色が薄く残る。
+        // 中心からの距離 d（0〜1）の所の波の強さ（0〜1）。波が通った後は trail が 1（出目の色が薄く残る）。
         private float Wave(float d, out float trail)
         {
             trail = 0f;
@@ -247,116 +250,91 @@ namespace UnitySlotTower.Slot
             return color;
         }
 
-        private void Paint(Image[] leds, Image[] halos, float[] distance, Color idle, float level, float after)
+        private void PaintStrips(Color idle, float level, float after)
         {
-            if (leds == null)
+            if (strips == null)
             {
                 return;
             }
 
-            for (var i = 0; i < leds.Length; i++)
+            if (_stripColors == null || _stripColors.Length != strips.Length)
             {
-                var d = distance != null && i < distance.Length ? distance[i] : 0f;
-                var color = Mix(idle, d, level, after, out var brightness);
-                leds[i].color = color;
-                if (halos != null && i < halos.Length && halos[i] != null)
+                _stripColors = new Color[strips.Length];
+            }
+
+            _block ??= new MaterialPropertyBlock();
+            for (var i = 0; i < strips.Length; i++)
+            {
+                if (strips[i] == null)
                 {
-                    halos[i].color = new Color(color.r, color.g, color.b, glowAlpha * brightness * brightness);
+                    continue;
                 }
+
+                var d = _stripDistance != null && i < _stripDistance.Length ? _stripDistance[i] : 1f;
+                var color = Mix(idle, d, level, after, out _);
+                _stripColors[i] = color;
+                _block.SetColor(BaseColorId, color);
+                strips[i].SetPropertyBlock(_block);
             }
         }
 
-        private void Paint(Graphic[] parts, Image[] halos, float[] distance, float[] haloDistance, Color idle, float level,
-            float after)
+        private void PaintWindow(Color idle, float level, float after)
         {
-            for (var i = 0; parts != null && i < parts.Length; i++)
+            if (windowLights == null)
             {
-                if (parts[i] != null)
-                {
-                    var d = distance != null && i < distance.Length ? distance[i] : 1f;
-                    parts[i].color = Mix(idle, d, level, after, out _);
-                }
+                return;
             }
 
-            for (var i = 0; halos != null && i < halos.Length; i++)
+            for (var i = 0; i < windowLights.Length; i++)
             {
-                if (halos[i] != null)
+                var d = _windowDistance != null && i < _windowDistance.Length ? _windowDistance[i] : 0f;
+                var color = Mix(idle, d, level, after, out var brightness);
+                windowLights[i].color = color;
+                if (windowGlows != null && i < windowGlows.Length && windowGlows[i] != null)
                 {
-                    var d = haloDistance != null && i < haloDistance.Length ? haloDistance[i] : 1f;
-                    var color = Mix(idle, d, level, after, out var brightness);
-                    halos[i].color = new Color(color.r, color.g, color.b, glowAlpha * brightness);
+                    windowGlows[i].color = new Color(color.r, color.g, color.b, glowAlpha * brightness * brightness);
                 }
             }
         }
 
+        // 距離は画面上の px（Screen Space Overlay の UI の position は画面の px、3D の部品は台のカメラで画面に写す）。
         private void MeasureDistances()
         {
-            var origin = waveOrigin != null ? waveOrigin.position : transform.position;
+            Vector2 origin = waveOrigin != null ? waveOrigin.position : Vector3.zero;
             var max = 0f;
-            _lightDistance = Measure(lights, origin, ref max);
-            _windowDistance = Measure(windowLights, origin, ref max);
-            _accentDistance = Measure(accents, origin, ref max);
-            _accentGlowDistance = Measure(accentGlows, origin, ref max);
+            _windowDistance = new float[WindowLightCount];
+            for (var i = 0; i < _windowDistance.Length; i++)
+            {
+                _windowDistance[i] = Vector2.Distance(windowLights[i].rectTransform.position, origin);
+                max = Mathf.Max(max, _windowDistance[i]);
+            }
+
+            _stripDistance = new float[LightCount];
+            for (var i = 0; i < _stripDistance.Length; i++)
+            {
+                if (strips[i] == null || cabinetCamera == null)
+                {
+                    continue;
+                }
+
+                Vector2 screen = cabinetCamera.WorldToScreenPoint(strips[i].bounds.center);
+                _stripDistance[i] = Vector2.Distance(screen, origin);
+                max = Mathf.Max(max, _stripDistance[i]);
+            }
+
             if (max <= 0f)
             {
                 return;
             }
 
-            Normalize(_lightDistance, max);
-            Normalize(_windowDistance, max);
-            Normalize(_accentDistance, max);
-            Normalize(_accentGlowDistance, max);
-        }
-
-        private static float[] Measure(Graphic[] parts, Vector3 origin, ref float max)
-        {
-            if (parts == null)
+            for (var i = 0; i < _windowDistance.Length; i++)
             {
-                return null;
+                _windowDistance[i] /= max;
             }
 
-            var result = new float[parts.Length];
-            for (var i = 0; i < parts.Length; i++)
+            for (var i = 0; i < _stripDistance.Length; i++)
             {
-                if (parts[i] == null)
-                {
-                    continue;
-                }
-
-                // ネオン管の帯は長いので、中心ではなく波の中心に一番近い点で測る。
-                var rect = parts[i].rectTransform;
-                var local = rect.InverseTransformPoint(origin);
-                var r = rect.rect;
-                var nearest = rect.TransformPoint(new Vector3(Mathf.Clamp(local.x, r.xMin, r.xMax), Mathf.Clamp(local.y, r.yMin, r.yMax), 0f));
-                var useCenter = r.width < 200f && r.height < 200f;
-                result[i] = Vector3.Distance(useCenter ? rect.position : nearest, origin);
-                max = Mathf.Max(max, result[i]);
-            }
-
-            return result;
-        }
-
-        private static void Normalize(float[] values, float max)
-        {
-            for (var i = 0; values != null && i < values.Length; i++)
-            {
-                values[i] /= max;
-            }
-        }
-
-        private static void AssignSprite(Image[] images, Sprite sprite)
-        {
-            if (images == null)
-            {
-                return;
-            }
-
-            for (var i = 0; i < images.Length; i++)
-            {
-                if (images[i] != null)
-                {
-                    images[i].sprite = sprite;
-                }
+                _stripDistance[i] /= max;
             }
         }
     }
