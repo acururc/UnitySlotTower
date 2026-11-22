@@ -16,9 +16,10 @@ namespace UnitySlotTower.Flow
 {
     /// <summary>
     /// 一時停止中の説明（T404・T351、FR-012、plan 16.10）。一時停止中だけ「?」ボタンを出し、押すと早見表を開く。
-    /// 1ページ目はスロット: 全ステージ共通の20パターンの内訳（ハズレと図柄ごとの %＝個数×5）と効果（色7 → その職とゲージ+1、
-    /// バー → 攻撃力 +10%〔上限〕、コイン → 所持金の倍率〔上限〕。値は slot_rules.csv）。
-    /// 2ページ目は味方: 本体の色とスキルの色、右向きの範囲図、現在の強化段階での HP・攻撃（バッファーは倍率）・防御・攻撃間隔・
+    /// 1ページ目はスロット: 全ステージ共通の20パターンの内訳（ハズレと図柄ごとの %＝個数×5）と効果（T615、spec 002 FR-112:
+    /// 赤7 → 敵全員にダメージ、青7 → 敵の動きが ×0〔秒数〕、緑7 → 味方の HP を回復〔%〕、黄7 → 毒のダメージ〔秒数〕、
+    /// バー → 攻撃力の倍率〔秒数〕、コイン → 所持金の倍率〔上限〕。値は slot_rules.csv）。
+    /// 2ページ目は味方: 本体の色、右向きの範囲図、現在の強化段階での HP・攻撃（バッファーは倍率）・防御・攻撃間隔・
     /// ブロック数・コスト・待ち時間。
     /// キーボードは ?（/）キーで開閉（一時停止していなければ一時停止して開く）。◀ で閉じる。再開すると閉じる。
     /// </summary>
@@ -69,13 +70,9 @@ namespace UnitySlotTower.Flow
         [SerializeField] private TMP_Text[] chanceTexts = new TMP_Text[SlotSymbols.Count];
         [Tooltip("図柄ごとの効果の数値（SlotSymbol の順）。")]
         [SerializeField] private TMP_Text[] effectTexts = new TMP_Text[SlotSymbols.Count];
-        [Tooltip("効果の上限（SlotSymbol の順。上限のない図柄は null）。")]
+        [Tooltip("効果の2つ目の数値（SlotSymbol の順。続く秒数か上限。ない図柄は null）。")]
         [FormerlySerializedAs("secondsTexts")]
         [SerializeField] private TMP_Text[] capTexts = new TMP_Text[SlotSymbols.Count];
-        [Tooltip("色7の行の、その色のスキルを持つ職の札（SlotSymbol の順。色7以外は null）。職の本体の色に塗る。")]
-        [SerializeField] private Image[] jobCards = new Image[SlotSymbols.Count];
-        [Tooltip("色7（赤・青・緑・黄）の色。スキルの印に使う。")]
-        [SerializeField] private Color[] sevenColors = new Color[4];
         [Tooltip("units.csv の並び。")]
         [SerializeField] private UnitRow[] unitRows = Array.Empty<UnitRow>();
         [SerializeField] private Color rangeCellColor = new Color(1f, 0.6f, 0.15f);
@@ -251,17 +248,22 @@ namespace UnitySlotTower.Flow
         private static int Percent(int count, int total) =>
             total > 0 ? (int)Math.Round(count * 100.0 / total, MidpointRounding.AwayFromZero) : 0;
 
-        private Color SevenColor(SlotSymbol color) =>
-            (int)color < sevenColors.Length ? sevenColors[(int)color] : Color.white;
+        private static void SetCap(TMP_Text cap, int seconds)
+        {
+            if (cap != null)
+            {
+                cap.SetText("{0}", seconds);
+            }
+        }
 
-        // 効果の欄（plan 16.4）: 色7 → その職の札とゲージ+1、バー → 攻撃力の上がり幅と上限、コイン → 所持金の倍率と上限。
+        private static int Seconds(double seconds) => (int)Math.Round(seconds, MidpointRounding.AwayFromZero);
+
+        // 効果の欄（T615）: 1つ目の数値は効果の強さ、2つ目は続く秒数（青7・黄7・バー）か上限（コイン）。
         private void RefreshEffects()
         {
             var rules = slotCabinet.Rules;
-            var units = battle.Units.All;
             for (var s = 0; s < SlotSymbols.Count; s++)
             {
-                var symbol = (SlotSymbol)s;
                 var effect = effectTexts[s];
                 var cap = s < capTexts.Length ? capTexts[s] : null;
                 if (effect == null)
@@ -269,27 +271,29 @@ namespace UnitySlotTower.Flow
                     continue;
                 }
 
-                switch (symbol)
+                switch ((SlotSymbol)s)
                 {
+                    case SlotSymbol.Red7:
+                        effect.SetText("-{0}", rules.RedDamage);
+                        break;
+                    case SlotSymbol.Blue7:
+                        effect.SetText("×0");
+                        SetCap(cap, Seconds(rules.BlueStopSeconds));
+                        break;
+                    case SlotSymbol.Green7:
+                        effect.SetText("+{0}%", (int)Math.Round(rules.GreenHealRate * 100, MidpointRounding.AwayFromZero));
+                        break;
+                    case SlotSymbol.Yellow7:
+                        effect.SetText("-{0}", rules.YellowPoisonDamage);
+                        SetCap(cap, Seconds(rules.YellowPoisonSeconds));
+                        break;
                     case SlotSymbol.Bar:
                         effect.SetText("×{0:1}", (float)rules.BarAttackRate);
-                        if (cap != null)
-                        {
-                            // 効果の秒数（文字なし版で使える字だけ。早見表は後で作り直す）。
-                            cap.SetText("{0}", (int)Math.Round(rules.BarSeconds, MidpointRounding.AwayFromZero));
-                        }
-
+                        SetCap(cap, Seconds(rules.BarSeconds));
                         break;
                     case SlotSymbol.Coin:
                         effect.SetText("×{0:1}", (float)(1 + rules.CoinStep));
-                        if (cap != null)
-                        {
-                            cap.SetText("×{0:1}", (float)rules.CoinCap);
-                        }
-
-                        break;
-                    default:
-                        effect.SetText("+1");
+                        if (cap != null) cap.SetText("×{0:1}", (float)rules.CoinCap);
                         break;
                 }
             }

@@ -46,6 +46,7 @@ namespace UnitySlotTower.Editor.Setup
             var effects = CreateRect(EffectsName, band, new Vector2(992f / Width, 0.08f), new Vector2(1176f / Width, 0.92f));
             var stop = BuildEffect(effects, "Stop Effect", SlotSymbol.Blue7, 0f, 0.48f, out var stopRing);
             var poison = BuildEffect(effects, "Poison Effect", SlotSymbol.Yellow7, 0.52f, 1f, out var poisonRing);
+            TextModeSetup.AddSlotEffectLabels(effects); // 文字あり版の名前（T615）
 
             var oldRing = attackIcon.Find(RingName);
             if (oldRing != null)

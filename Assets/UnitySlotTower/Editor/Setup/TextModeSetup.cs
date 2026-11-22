@@ -220,6 +220,16 @@ namespace UnitySlotTower.Editor.Setup
             InsideBottom((RectTransform)menu.CancelButton.transform, "pause_no", 64f, 44f);
         }
 
+        /// <summary>T615: 上端の帯の効果のアイコン（SlotEffectBandSetup が作る）の名前。位置は TextModeLayoutSetup.BuildRates。</summary>
+        internal static void AddSlotEffectLabels(RectTransform effects)
+        {
+            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+            _table = AssetDatabase.LoadAssetAtPath<TextAsset>(TablePath);
+            _texts = UiTexts.Parse(_table.text);
+            Above(Child(effects, "Stop Effect"), "bar_stop", 40f, 32f);
+            Above(Child(effects, "Poison Effect"), "bar_poison", 40f, 32f);
+        }
+
         internal static void AddHelpLabels(RectTransform root)
         {
             _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);

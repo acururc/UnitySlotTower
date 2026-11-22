@@ -123,16 +123,10 @@ namespace UnitySlotTower.Editor.Setup
             SetXIfAny(row, "Chance", 0.08f, 0.175f);
             SetXIfAny(row, "Arrow", 0.185f, 0.2f);
             var effectIcon = 50f * px;
-            foreach (var name in new[] { "Job Card", "Attack Icon", "Coin Icon" })
-            {
-                SetXIfAny(row, name, 0.215f, 0.215f + effectIcon);
-            }
-
-            SetXIfAny(row, "Gauge", 0.255f, 0.365f);
-            var isSeven = row.Find("Gauge") != null;
-            SetXIfAny(row, "Effect", isSeven ? 0.37f : 0.255f, isSeven ? 0.45f : 0.36f);
-            SetXIfAny(row, "Cap Icon", 0.365f, 0.365f + effectIcon);
-            SetXIfAny(row, "Cap", 0.405f, HelpDescriptionLeft - 0.005f);
+            SetXIfAny(row, HelpScreenSetup.EffectIconName, 0.215f, 0.215f + effectIcon);
+            SetXIfAny(row, "Effect", 0.255f, 0.355f);
+            SetXIfAny(row, HelpScreenSetup.CapIconName, 0.367f, 0.367f + effectIcon);
+            SetXIfAny(row, "Cap", 0.407f, HelpDescriptionLeft - 0.005f);
         }
 
         // 味方の行（330 px）の部品。名前は HelpScreenSetup.BuildUnits のもの。
@@ -359,10 +353,20 @@ namespace UnitySlotTower.Editor.Setup
             SetLabel(Child(money, "Text Label bar_money_rate"), new Vector2(0f, 1f), Vector2.one,
                 new Vector2(0f, (NameBottom - ValueTop) * bandHeight), new Vector2(0f, (NameTop - ValueTop) * bandHeight), BandFont);
 
-            // 効果のアイコン（T611、SlotEffectBandSetup）: 倍率と速さのボタンの間。
+            // 効果のアイコン（T611、SlotEffectBandSetup）: 倍率と速さのボタンの間。T615: 名前（停止・毒）を上の段に置き、アイコンは下の段。
             if (band.Find(SlotEffectBandSetup.EffectsName) is RectTransform effects)
             {
-                SetRect(effects, new Vector2(0.628f, 0.08f), new Vector2(0.744f, 0.92f));
+                const float effectsTop = 0.44f;
+                SetRect(effects, new Vector2(0.628f, ValueBottom), new Vector2(0.744f, effectsTop));
+                // 枠は約 70 px なので「停止」（2字）は右へ広げ、「毒」（1字）は右に寄せて重ならないようにする。
+                foreach (var (cell, id, left, right) in new[] { ("Stop Effect", "bar_stop", -6f, 16f), ("Poison Effect", "bar_poison", 10f, -2f) })
+                {
+                    if (effects.Find($"{cell}/Text Label {id}") is RectTransform label)
+                    {
+                        SetLabel(label, new Vector2(0f, 1f), Vector2.one, new Vector2(left, (NameBottom - effectsTop) * bandHeight),
+                            new Vector2(right, (NameTop - effectsTop) * bandHeight), BandFont);
+                    }
+                }
             }
         }
 

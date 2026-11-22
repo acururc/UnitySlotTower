@@ -108,7 +108,14 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 "バー: 攻撃力 ×2（10秒）");
             Assert.That((effects[(int)SlotSymbol.Coin].text, caps[(int)SlotSymbol.Coin].text), Is.EqualTo(("×1.1", "×1.5")),
                 "コイン: 所持金 ×1.1（上限 ×1.5）");
-            Assert.That(effects[(int)SlotSymbol.Red7].text, Is.EqualTo("+1"), "色7: ゲージ+1");
+            // T615: 色7は新しい効果（slot_rules.csv: 赤7 5、青7 3秒、緑7 0.5、黄7 1を5秒）。
+            Assert.That((effects[(int)SlotSymbol.Red7].text, caps[(int)SlotSymbol.Red7] == null), Is.EqualTo(("-5", true)), "赤7: 敵全員に5");
+            Assert.That((effects[(int)SlotSymbol.Blue7].text, caps[(int)SlotSymbol.Blue7].text), Is.EqualTo(("×0", "3")), "青7: 3秒止まる");
+            Assert.That((effects[(int)SlotSymbol.Green7].text, caps[(int)SlotSymbol.Green7] == null), Is.EqualTo(("+50%", true)), "緑7: HP 50%");
+            Assert.That((effects[(int)SlotSymbol.Yellow7].text, caps[(int)SlotSymbol.Yellow7].text), Is.EqualTo(("-1", "5")), "黄7: 毒1を5秒");
+            var slotRows = help.transform.GetComponentsInChildren<Transform>(true);
+            Assert.That(System.Linq.Enumerable.Any(slotRows, t => t.name == "Job Card" || (t.name == "Gauge" && t.parent.parent != null && t.parent.parent.name == "Slot Rows")),
+                Is.False, "スキルゲージの札と点が残っている");
             var rows = (HelpScreen.UnitRow[])Field(help, "unitRows");
 
             // 下半分: バッファーは攻撃の代わりに倍率。

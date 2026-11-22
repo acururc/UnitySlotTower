@@ -20,6 +20,8 @@ detail_atk,攻撃力
 detail_block,ブロック
 bar_attack_rate,攻撃力
 bar_money_rate,獲得金
+bar_stop,停止
+bar_poison,毒
 cabinet_lever,レバー（Space）
 cabinet_fixed,回数固定
 node_first,最初の戦闘
@@ -42,12 +44,12 @@ stat_block,ブロック数
 stat_cost,コスト
 stat_cooldown,再配置の待ち
 slot_miss,ハズレ：効果なし
-slot_red7,赤7：剣士のスキルゲージ+1
-slot_blue7,青7：弓兵のスキルゲージ+1
-slot_green7,緑7：バッファーのスキルゲージ+1
-slot_yellow7,黄7：タンクのスキルゲージ+1
-slot_bar,バー：この戦闘の攻撃力アップ
-slot_coin,コイン：この戦闘の獲得金アップ
+slot_red7,赤7：敵全員にダメージ
+slot_blue7,青7：敵全員がしばらく止まる
+slot_green7,緑7：味方全員のHPを回復
+slot_yellow7,黄7：しばらく敵全員に毒
+slot_bar,バー：しばらく味方の攻撃力アップ
+slot_coin,コイン：このステージの獲得金アップ
 help_tab_slot,スロット
 help_tab_units,味方
 help_slot_heading,スロットの図柄

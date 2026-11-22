@@ -130,8 +130,9 @@ namespace UnitySlotTower.Editor.Setup
         }
 
         // スロット（T351、plan 16.10）: 1行目はハズレ（暗い枠に赤い×）、続いて6図柄。各行は 図柄・20パターン中の %・▶・効果。
-        // 効果: 色7 → その職の札（色は実行時）＋ゲージの点＋「+1」、バー → 攻撃の印「+10%」と上限の印「+50%」、
-        // コイン → コイン「×1.1」と上限の印「×1.5」。
+        // 効果（T615）: 効果の印と数値、続く秒数のある効果は時計と秒数、コインは上限の印と上限。
+        // 赤7 → 爆発と敵「-5」、青7 → 氷の中の敵「×0」と時計「3」、緑7 → HP「+50%」、黄7 → 毒の敵「-1」と時計「5」、
+        // バー → 攻撃の印「×2.0」と時計「10」、コイン → コイン「×1.1」と上限の印「×1.5」。数値は実行時（HelpScreen）。
         internal static void BuildSlot(RectTransform panel, SerializedObject serialized, float top = 0.92f, float height = 0.05f)
         {
             var area = CreateRect(SlotRowsName, panel, Vector2.zero, Vector2.one);
@@ -148,15 +149,7 @@ namespace UnitySlotTower.Editor.Setup
             var chances = serialized.FindProperty("chanceTexts");
             var effects = serialized.FindProperty("effectTexts");
             var caps = serialized.FindProperty("capTexts");
-            var jobs = serialized.FindProperty("jobCards");
-            chances.arraySize = effects.arraySize = caps.arraySize = jobs.arraySize = SlotSymbols.Count;
-            var sevens = serialized.FindProperty("sevenColors");
-            sevens.arraySize = SlotSymbolArt.SevenColors.Length;
-            for (var i = 0; i < SlotSymbolArt.SevenColors.Length; i++)
-            {
-                sevens.GetArrayElementAtIndex(i).colorValue = SlotSymbolArt.SevenColors[i];
-            }
-
+            chances.arraySize = effects.arraySize = caps.arraySize = SlotSymbols.Count;
             for (var s = 0; s < SlotSymbols.Count; s++)
             {
                 var symbol = (SlotSymbol)s;
@@ -174,54 +167,77 @@ namespace UnitySlotTower.Editor.Setup
                 var iconWidth = 0.72f * height * Square;
                 var iconMin = new Vector2(0.43f, 0.14f);
                 var iconMax = new Vector2(0.43f + iconWidth, 0.86f);
-                jobs.GetArrayElementAtIndex(s).objectReferenceValue = null;
                 caps.GetArrayElementAtIndex(s).objectReferenceValue = null;
+                var effectIcon = CreateRect(EffectIconName, row, iconMin, iconMax);
                 switch (symbol)
                 {
+                    case SlotSymbol.Red7:
+                        BlastIcon(effectIcon);
+                        break;
+                    case SlotSymbol.Blue7:
+                        EnemyIcon(effectIcon, IceColor);
+                        break;
+                    case SlotSymbol.Green7:
+                        HpIcon(effectIcon);
+                        break;
+                    case SlotSymbol.Yellow7:
+                        EnemyIcon(effectIcon, PoisonColor);
+                        break;
                     case SlotSymbol.Bar:
-                        AttackIcon(CreateRect("Attack Icon", row, iconMin, iconMax));
+                        AttackIcon(effectIcon);
                         break;
                     case SlotSymbol.Coin:
-                        CreateImage("Coin Icon", row, iconMin, iconMax, SlotSymbolArt.CoinColor, _knob).preserveAspect = true;
+                        CreateImage("Coin", effectIcon, Vector2.zero, Vector2.one, SlotSymbolArt.CoinColor, _knob).preserveAspect = true;
                         break;
-                    default:
-                    {
-                        // その色のスキルを持つ職の札（色は実行時に職の本体の色）と、その色のゲージの点（1つ目だけ点く）。
-                        var job = CreateImage("Job Card", row, iconMin, iconMax, Color.white, _box);
-                        job.type = Image.Type.Sliced;
-                        jobs.GetArrayElementAtIndex(s).objectReferenceValue = job;
-                        GaugeDots(CreateRect("Gauge", row, new Vector2(0.44f + iconWidth, 0.3f), new Vector2(0.68f, 0.7f)),
-                            SlotSymbolArt.SevenColors[s], 1);
-                        break;
-                    }
                 }
 
-                var isSeven = symbol != SlotSymbol.Bar && symbol != SlotSymbol.Coin;
-                var value = CreateText("Effect", row, new Vector2(isSeven ? 0.7f : 0.44f + iconWidth, 0.05f), new Vector2(isSeven ? 0.86f : 0.7f, 0.95f),
-                    Color.white);
-                effects.GetArrayElementAtIndex(s).objectReferenceValue = value;
-                if (!isSeven)
+                effects.GetArrayElementAtIndex(s).objectReferenceValue =
+                    CreateText("Effect", row, new Vector2(0.44f + iconWidth, 0.05f), new Vector2(0.7f, 0.95f), Color.white);
+
+                // 2つ目: 続く秒数（時計）か上限（上限の印）。ない図柄は作らない。
+                var timed = symbol == SlotSymbol.Blue7 || symbol == SlotSymbol.Yellow7 || symbol == SlotSymbol.Bar;
+                if (timed || symbol == SlotSymbol.Coin)
                 {
-                    CapIcon(CreateRect("Cap Icon", row, new Vector2(0.73f, 0.14f), new Vector2(0.73f + iconWidth, 0.86f)));
+                    var capIcon = CreateRect(CapIconName, row, new Vector2(0.73f, 0.14f), new Vector2(0.73f + iconWidth, 0.86f));
+                    if (timed)
+                        Clock(capIcon, Vector2.zero, Vector2.one);
+                    else
+                        CapIcon(capIcon);
                     caps.GetArrayElementAtIndex(s).objectReferenceValue =
                         CreateText("Cap", row, new Vector2(0.74f + iconWidth, 0.05f), new Vector2(0.97f, 0.95f), Color.white);
                 }
             }
         }
 
-        // ゲージの点を横に count 個（plan 16.8 の操作バーと同じ5つ）。lit 個だけ color、残りは暗い。戻り値は点。
-        internal static Image[] GaugeDots(RectTransform parent, Color color, int lit, int count = 5)
-        {
-            var dots = new Image[count];
-            for (var i = 0; i < count; i++)
-            {
-                var dot = CreateImage($"Dot {i + 1}", parent, new Vector2((i + 0.1f) / count, 0f), new Vector2((i + 0.9f) / count, 1f),
-                    i < lit ? color : new Color(1f, 1f, 1f, 0.2f), _knob);
-                dot.preserveAspect = true;
-                dots[i] = dot;
-            }
+        /// <summary>図柄の行の効果の印と、2つ目の数値の印（時計か上限）の名前（TextModeLayoutSetup が位置を決める）。</summary>
+        internal const string EffectIconName = "Effect Icon";
+        internal const string CapIconName = "Cap Icon";
 
-            return dots;
+        private static readonly Color IceColor = new Color(0.55f, 0.85f, 1f);
+        private static readonly Color PoisonColor = new Color(0.7f, 0.9f, 0.2f);
+
+        // 敵: 色の丸（氷・毒）の中に赤い ◀。
+        private static void EnemyIcon(RectTransform parent, Color aura)
+        {
+            CreateImage("Aura", parent, Vector2.zero, Vector2.one, aura, _knob).preserveAspect = true;
+            var enemy = CreateRect("Enemy", parent, new Vector2(0.22f, 0.25f), new Vector2(0.78f, 0.75f));
+            enemy.localEulerAngles = new Vector3(0f, 0f, 180f);
+            var triangle = enemy.gameObject.AddComponent<TriangleGraphic>();
+            triangle.color = new Color(0.9f, 0.3f, 0.3f);
+            triangle.raycastTarget = false;
+        }
+
+        // 爆発: 橙の丸を2つ重ね、中に赤い ◀（敵）。
+        private static void BlastIcon(RectTransform parent)
+        {
+            CreateImage("Burst", parent, Vector2.zero, Vector2.one, new Color(1f, 0.55f, 0.15f), _knob).preserveAspect = true;
+            CreateImage("Core", parent, new Vector2(0.15f, 0.15f), new Vector2(0.85f, 0.85f), new Color(1f, 0.85f, 0.3f), _knob)
+                .preserveAspect = true;
+            var enemy = CreateRect("Enemy", parent, new Vector2(0.25f, 0.28f), new Vector2(0.75f, 0.72f));
+            enemy.localEulerAngles = new Vector3(0f, 0f, 180f);
+            var triangle = enemy.gameObject.AddComponent<TriangleGraphic>();
+            triangle.color = new Color(0.85f, 0.2f, 0.2f);
+            triangle.raycastTarget = false;
         }
 
         // 上限: 上に白い横棒、その下に上向きの ▲（ここまでしか上がらない）。

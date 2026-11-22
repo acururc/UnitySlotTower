@@ -13,7 +13,7 @@ namespace UnitySlotTower.Core.Slot
         /// <summary>リールが1本止まってから次が止まるまでの秒数。</summary>
         public double StopIntervalSeconds { get; private set; }
 
-        /// <summary>バー1回ぶんの攻撃力の上がり幅（0.1 なら +10%）。</summary>
+        /// <summary>赤7で敵全員に与えるダメージ。</summary>
         public int RedDamage { get; private set; }
         public double BlueStopSeconds { get; private set; }
         public double GreenHealRate { get; private set; }
@@ -22,8 +22,6 @@ namespace UnitySlotTower.Core.Slot
         public double YellowPoisonSeconds { get; private set; }
         public double BarAttackRate { get; private set; }
         public double BarSeconds { get; private set; }
-
-        /// <summary>バーによる攻撃力の上がり幅の上限（0.5 なら最大 1.5 倍）。</summary>
 
         /// <summary>コイン1回ぶんの所持金の倍率の上がり幅。</summary>
         public double CoinStep { get; private set; }

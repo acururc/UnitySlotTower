@@ -52,6 +52,40 @@ namespace UnitySlotTower.Editor.Setup
             EditorSceneManager.SaveScene(scene);
         }
 
+        // T615: スロットのページの図柄の行だけ作り直す（味方のページ・タブ・見出しはそのまま）。
+        // 文字あり版のラベルも作り直す。続けて Build Text Mode Layout (T359) を実行する。
+        [MenuItem("Tools/UnitySlotTower/Setup/Rebuild Help Slot Rows (T615)")]
+        private static void RebuildSlotRows()
+        {
+            var scene = SceneManager.GetActiveScene();
+            var portrait = GameObject.Find("Portrait Root");
+            if (Application.isPlaying || scene.name != GameSession.GameScene || portrait == null || portrait.scene != scene)
+            {
+                Debug.LogError("文字なしの保存状態で Game シーンを開いてください。");
+                return;
+            }
+
+            var help = portrait.GetComponentInChildren<HelpScreen>(true);
+            var fields = help != null ? new SerializedObject(help) : null;
+            var panel = fields != null ? fields.FindProperty("panel").objectReferenceValue as GameObject : null;
+            var slotPage = panel != null ? panel.transform.Find("Slot Page") as RectTransform : null;
+            if (slotPage == null)
+            {
+                Debug.LogError("早見表の Slot Page がありません。");
+                return;
+            }
+
+            var old = slotPage.Find(SlotRowsName);
+            if (old != null) Object.DestroyImmediate(old.gameObject);
+            LoadAssets();
+            BuildSlot(slotPage, fields, 0.84f, 0.09f);
+            fields.ApplyModifiedPropertiesWithoutUndo();
+            TextModeSetup.AddHelpLabels((RectTransform)portrait.transform);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log("[SlotTower Setup] 早見表の図柄の行を作り直した（続けて Build Text Mode Layout (T359)）。");
+        }
+
         internal static void BuildPages(RectTransform area, Transform bar, SerializedObject fields)
         {
             var slot = CreateRect("Slot Page", area, Vector2.zero, Vector2.one);
