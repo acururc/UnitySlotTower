@@ -65,7 +65,7 @@ namespace UnitySlotTower.Battle
 
         public RectTransform LastTarget { get; private set; }
 
-        /// <summary>図柄の効果の行き先。色7はまだ null。</summary>
+        /// <summary>図柄の効果の行き先（上端の帯）。その場で終わる赤7・緑7は帯に出ないので null（盤面全体の演出は T613）。</summary>
         public RectTransform TargetOf(SlotSymbol symbol)
         {
             switch (symbol)
@@ -74,9 +74,12 @@ namespace UnitySlotTower.Battle
                     return status.AttackRateRect;
                 case SlotSymbol.Coin:
                     return status.MoneyRateRect;
+                case SlotSymbol.Blue7:
+                    return status.StopEffectRect;
+                case SlotSymbol.Yellow7:
+                    return status.PoisonEffectRect;
             }
 
-            // 色7の行き先（上端の帯の効果のアイコン）は T611 で足す。
             return null;
         }
 

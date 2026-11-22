@@ -10,7 +10,8 @@ namespace UnitySlotTower.Battle
     /// <summary>
     /// 操作バーの状態表示とボタン（T308・T349・T365、plan 16.8・17.2・17.5）: ライフ・所持金・残りの敵の数、
     /// 撤退（T384 から選んだ味方の詳細の板 UnitDetailPanel の中。出し入れは板がする）・一時停止（一時停止中は色を変える）・倍速（×1・×2・×3）、
-    /// この戦闘のバーの攻撃力倍率とコインの所持金倍率（×1.2 など。倍率なしのときは薄く ×1.0）。
+    /// この戦闘のバーの攻撃力倍率とコインの所持金倍率（×1.2 など。倍率なしのときは薄く ×1.0）、
+    /// 時間のある効果（青7の停止・黄7の毒・バーの攻撃力）の残り時間の円（T611、spec 002 FR-113）。
     /// </summary>
     public sealed class OperationBarStatus : MonoBehaviour
     {
@@ -35,6 +36,14 @@ namespace UnitySlotTower.Battle
         [Tooltip("倍速のボタン（FR-011）と倍率の数字（×2）。")]
         [SerializeField] private Button speedButton;
         [SerializeField] private TMP_Text speedText;
+        [Tooltip("青7の停止のアイコン（T611、上端の帯）。発動中だけ濃く、残り時間を円のゲージで出す。")]
+        [SerializeField] private CanvasGroup stopEffectGroup;
+        [SerializeField] private Image stopEffectRing;
+        [Tooltip("黄7の毒のアイコン（T611）。")]
+        [SerializeField] private CanvasGroup poisonEffectGroup;
+        [SerializeField] private Image poisonEffectRing;
+        [Tooltip("バーの攻撃力の残り時間の円（T611、攻撃力の印のまわり）。")]
+        [SerializeField] private Image attackRateRing;
 
         private Color _pauseNormalColor;
         private int _shownLife = -1;
@@ -57,6 +66,27 @@ namespace UnitySlotTower.Battle
 
         /// <summary>コインの所持金倍率の表示（揃った時の演出の行き先: T366）。</summary>
         public RectTransform MoneyRateRect => (RectTransform)moneyRateGroup.transform;
+
+        /// <summary>青7の停止のアイコン（揃った時の演出の行き先: T611）。</summary>
+        public RectTransform StopEffectRect => (RectTransform)stopEffectGroup.transform;
+
+        /// <summary>黄7の毒のアイコン（揃った時の演出の行き先: T611）。</summary>
+        public RectTransform PoisonEffectRect => (RectTransform)poisonEffectGroup.transform;
+
+        /// <summary>停止の残り時間の円の割合（効果がないときは0）。</summary>
+        public float StopRingFill => RingFill(stopEffectRing);
+
+        /// <summary>毒の残り時間の円の割合。</summary>
+        public float PoisonRingFill => RingFill(poisonEffectRing);
+
+        /// <summary>バーの攻撃力の残り時間の円の割合。</summary>
+        public float AttackRingFill => RingFill(attackRateRing);
+
+        /// <summary>停止のアイコンが発動中の濃さか。</summary>
+        public bool IsStopEffectShown => stopEffectGroup.alpha >= 1f;
+
+        /// <summary>毒のアイコンが発動中の濃さか。</summary>
+        public bool IsPoisonEffectShown => poisonEffectGroup.alpha >= 1f;
 
         private void Awake()
         {
@@ -101,6 +131,9 @@ namespace UnitySlotTower.Battle
             var boosts = run.Field.Effects;
             SetRate(attackRateGroup, attackRateText, boosts?.AttackRate ?? 1d, ref _shownAttackRate);
             SetRate(moneyRateGroup, moneyRateText, boosts?.MoneyRate ?? 1d, ref _shownMoneyRate);
+            SetTimer(stopEffectGroup, stopEffectRing, boosts?.StopStepsLeft ?? 0, boosts?.StopSteps ?? 0);
+            SetTimer(poisonEffectGroup, poisonEffectRing, boosts?.PoisonStepsLeft ?? 0, boosts?.PoisonSteps ?? 0);
+            SetTimer(null, attackRateRing, boosts?.AttackStepsLeft ?? 0, boosts?.AttackSteps ?? 0);
 
             if (battle.IsPaused != _shownPaused)
             {
@@ -150,6 +183,36 @@ namespace UnitySlotTower.Battle
             group.alpha = tenths > 10 ? 1f : inactiveRateAlpha;
             text.SetText("×{0:1}", tenths / 10f);
         }
+
+        // 時間のある効果（FR-113）: 発動中はアイコンを濃くし、円のゲージを残り時間の割合だけ出す。ないときは薄くして円を隠す。
+        private void SetTimer(CanvasGroup group, Image ring, int stepsLeft, int steps)
+        {
+            var active = stepsLeft > 0 && steps > 0;
+            if (group != null)
+            {
+                // 一時停止中は同じ場所にタイトルへ戻るボタン（QuitToTitle）が出るので隠す。
+                var alpha = battle.IsPaused ? 0f : active ? 1f : inactiveRateAlpha;
+                if (group.alpha != alpha)
+                {
+                    group.alpha = alpha;
+                }
+            }
+
+            if (ring == null)
+            {
+                return;
+            }
+
+            if (ring.enabled != active)
+            {
+                ring.enabled = active;
+            }
+
+            // fillAmount は値が変わったときだけ描き直しになる。
+            ring.fillAmount = active ? (float)stepsLeft / steps : 0f;
+        }
+
+        private static float RingFill(Image ring) => ring != null && ring.enabled ? ring.fillAmount : 0f;
 
         private static void SetNumber(TMP_Text text, int value, ref int shown, string format = "{0}")
         {

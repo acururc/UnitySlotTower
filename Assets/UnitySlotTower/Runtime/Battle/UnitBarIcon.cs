@@ -52,6 +52,9 @@ namespace UnitySlotTower.Battle
         private float _rejectUntil;
         private bool _rejectMoney;
 
+        /// <summary>費用の字（ステージ1の無料の1回の間は「¥0」: T611）。</summary>
+        public TMP_Text CostText => costText;
+
         /// <summary>職の絵（説明で写す: T369）。</summary>
         public Image Body => body;
 
@@ -134,7 +137,7 @@ namespace UnitySlotTower.Battle
             }
 
             var unit = battle.Units.All[slot];
-            // 無料ストックはない（spec 002 FR-106）。ステージ1の無料の1回の「¥0」は T611 で出す。
+            // 無料ストックはない（spec 002 FR-106）。ステージ1の無料の1回が残っている間は全ての札が「¥0」（FR-108）。
             var free = summoner.FreeSummons > 0;
             if (_shownStock != 0)
             {
@@ -146,10 +149,11 @@ namespace UnitySlotTower.Battle
                 }
             }
 
-            if (unit.Cost != _shownCost)
+            var cost = free ? 0 : unit.Cost;
+            if (cost != _shownCost)
             {
-                _shownCost = unit.Cost;
-                costText.SetText(NumericText.YenFormat, unit.Cost);
+                _shownCost = cost;
+                costText.SetText(NumericText.YenFormat, cost);
             }
 
             if (blockText != null && unit.Block != _shownBlock)
@@ -176,9 +180,10 @@ namespace UnitySlotTower.Battle
                 : result == SummonResult.NotEnoughCoins ? CardState.Money : CardState.Blocked;
             var normal = state == CardState.Placeable ? _bodyColor
                 : _bodyColor * (state == CardState.Cooldown ? UiStyle.CooldownTint : UiStyle.DisabledTint);
-            var costColor = state == CardState.Money ? UiStyle.Danger : UiStyle.TextColor;
+            var costColor = state == CardState.Money ? UiStyle.Danger : free ? UiStyle.Ready : UiStyle.TextColor;
             var hasStock = free;
-            if (state != _shownState || hasStock != _shownFrameStock)
+            var freeChanged = hasStock != _shownFrameStock;
+            if (state != _shownState || freeChanged)
             {
                 if (stateFrame != null)
                 {
@@ -197,7 +202,7 @@ namespace UnitySlotTower.Battle
                 body.color = Color.Lerp(normal, rejectColor, t);
                 costText.color = _rejectMoney ? Color.Lerp(costColor, rejectColor, t) : costColor;
             }
-            else if (state != _shownState || _wasRejecting)
+            else if (state != _shownState || _wasRejecting || freeChanged)
             {
                 body.color = normal;
                 costText.color = costColor;

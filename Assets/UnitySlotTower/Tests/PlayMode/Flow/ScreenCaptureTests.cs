@@ -83,6 +83,11 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var battle = default(BattleController);
             yield return LoadGame(b => battle = b);
             yield return Capture(prefix + "-game");
+            // 時間のある効果が発動中の上端の帯（T611）。
+            battle.Field.Effects.StartStop();
+            battle.Field.Effects.StartPoison();
+            battle.Field.Effects.StartAttack();
+            yield return Capture(prefix + "-effects");
             battle.SetPaused(true);
             var help = Object.FindAnyObjectByType<HelpScreen>();
             help.Open();

@@ -349,6 +349,12 @@ namespace UnitySlotTower.Editor.Setup
             ValueFont(Child(money, "Value"));
             SetLabel(Child(money, "Text Label bar_money_rate"), new Vector2(0f, 1f), Vector2.one,
                 new Vector2(0f, (NameBottom - ValueTop) * bandHeight), new Vector2(0f, (NameTop - ValueTop) * bandHeight), BandFont);
+
+            // 効果のアイコン（T611、SlotEffectBandSetup）: 倍率と速さのボタンの間。
+            if (band.Find(SlotEffectBandSetup.EffectsName) is RectTransform effects)
+            {
+                SetRect(effects, new Vector2(0.628f, 0.08f), new Vector2(0.744f, 0.92f));
+            }
         }
 
         // 帯の1項目: 左に絵、右に数字、上の段に名前（名前は絵の子なので絵の左上を基準に置く）。

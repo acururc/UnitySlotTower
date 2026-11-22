@@ -113,6 +113,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That((effect.PlayCount, effect.LastSymbol, effect.LastTarget),
                 Is.EqualTo((1, (SlotSymbol?)SlotSymbol.Bar, status.AttackRateRect)));
             Assert.That(effect.IsPlaying, Is.True, "止まり終えたら演出が始まる");
+            yield return null;
+            Assert.That(status.AttackRingFill, Is.GreaterThan(0f).And.LessThanOrEqualTo(1f), "攻撃力の残り時間の円が出ない（T611）");
             var tick = _battle.Field.Tick;
             yield return Tap(Key.Space);
             Assert.That(_cabinet.IsSpinning, Is.True, "演出中もレバーを引ける");
@@ -128,20 +130,29 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Coin, status.MoneyRateRect)));
             yield return WaitForEffect(effect);
 
-            // 色7 → 行き先はまだない（スキルゲージは削除。上端の帯の効果のアイコンは T611）。
-            SlotSymbol? color = null;
-            foreach (var c in new[] { SlotSymbol.Red7, SlotSymbol.Blue7, SlotSymbol.Green7, SlotSymbol.Yellow7 })
-            {
-                if (color == null && _random.IndexOf(_cabinet, c) >= 0)
-                {
-                    color = c;
-                }
-            }
-
-            Assert.That(color, Is.Not.Null, "色7が抽選表にない");
-            Select(color.Value);
+            // 青7 → 停止のアイコン、黄7 → 毒のアイコン（T611、上端の帯）。発動中はアイコンが濃く、残り時間の円が出る。
+            _cabinet.Wallet.Add(3);
+            Assert.That((status.IsStopEffectShown, status.StopRingFill), Is.EqualTo((false, 0f)), "揃う前から停止のアイコンが発動中");
+            Select(SlotSymbol.Blue7);
             yield return SpinAndStopAll();
-            Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo((color, (RectTransform)null)), "色7の行き先はまだない");
+            yield return null;
+            Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Blue7, status.StopEffectRect)));
+            Assert.That((status.IsStopEffectShown, status.StopRingFill > 0f && status.StopRingFill <= 1f), Is.EqualTo((true, true)),
+                "停止のアイコンと残り時間の円が出ない");
+            yield return WaitForEffect(effect);
+
+            Select(SlotSymbol.Yellow7);
+            yield return SpinAndStopAll();
+            yield return null;
+            Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Yellow7, status.PoisonEffectRect)));
+            Assert.That((status.IsPoisonEffectShown, status.PoisonRingFill > 0f && status.PoisonRingFill <= 1f), Is.EqualTo((true, true)),
+                "毒のアイコンと残り時間の円が出ない");
+            yield return WaitForEffect(effect);
+
+            // 赤7 → その場の効果なので帯に行き先はない。
+            Select(SlotSymbol.Red7);
+            yield return SpinAndStopAll();
+            Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Red7, (RectTransform)null)));
             yield return WaitForEffect(effect);
         }
 
@@ -169,7 +180,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         // 20パターンからその出目（null はハズレ）の番号を選ぶ。
         private void Select(SlotSymbol? outcome)
         {
-            _random.Index = _random.IndexOf(_cabinet, outcome);
+            var effects = _battle.Field.Effects;
+            _random.Index = _random.IndexOf(_cabinet, outcome, s => effects == null || effects.CanRoll(s));
             Assert.That(_random.Index, Is.GreaterThanOrEqualTo(0), $"抽選表に {outcome?.ToString() ?? "ハズレ"} がない");
         }
 
@@ -227,14 +239,24 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         {
             public int Index;
 
-            public int IndexOf(SlotCabinet cabinet, SlotSymbol? outcome)
+            // 発動中の出目は抽選から外れ、残りのパターンの中で数える（SlotMachine.TryLever の canAppear）。
+            public int IndexOf(SlotCabinet cabinet, SlotSymbol? outcome, System.Func<SlotSymbol, bool> canAppear = null)
             {
+                var allowed = 0;
                 for (var i = 0; i < cabinet.Patterns.Count; i++)
                 {
-                    if (cabinet.Patterns[i] == outcome)
+                    var pattern = cabinet.Patterns[i];
+                    if (pattern.HasValue && canAppear != null && !canAppear(pattern.Value))
                     {
-                        return i;
+                        continue;
                     }
+
+                    if (pattern == outcome)
+                    {
+                        return allowed;
+                    }
+
+                    allowed++;
                 }
 
                 return -1;

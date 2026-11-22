@@ -275,6 +275,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         [UnityTest]
         public IEnumerator Bar_Shows_Cost_Life_Coins_And_Upgrade_Cost_As_Numbers()
         {
+            // 無料の1回の間は札が「¥0」（T611、Cards_Show_Zero_Yen_Until_The_Free_Summon_Is_Used）なので先に使い切る。
+            UseFreeSummonAndFund();
             yield return null;
             var status = Object.FindAnyObjectByType<OperationBarStatus>().transform;
             var icon = GameObject.Find("Unit Icon 3").transform;
@@ -336,6 +338,27 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return Click(icon.transform);
             Assert.That((_battle.Deployment.Phase, icon.IsShowingReject), Is.EqualTo((DeployPhase.Idle, true)),
                 "待ち時間中に押して選べたか、光らない");
+        }
+
+        [UnityTest]
+        [Description("T611 (FR-108): ステージ1の無料の1回が残っている間は全ての札が「¥0」、使い切ると units.csv の費用に戻る")]
+        public IEnumerator Cards_Show_Zero_Yen_Until_The_Free_Summon_Is_Used()
+        {
+            yield return null;
+            var icons = Object.FindObjectsByType<UnitBarIcon>(FindObjectsSortMode.None);
+            Assert.That(icons.Length, Is.EqualTo(_battle.Units.All.Count), "札の数が職の数と合わない");
+            foreach (var icon in icons)
+            {
+                Assert.That(icon.CostText.text, Is.EqualTo("¥0"), $"{icon.name} が無料の1回の間に ¥0 でない");
+            }
+
+            yield return PlaceTank(_ => { });
+            yield return null;
+            foreach (var icon in icons)
+            {
+                Assert.That(icon.CostText.text, Is.EqualTo($"¥{_battle.Units.All[icon.Slot].Cost}"),
+                    $"{icon.name} が無料の1回の後に費用へ戻らない");
+            }
         }
 
         /// <summary>
