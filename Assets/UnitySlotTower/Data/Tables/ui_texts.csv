@@ -21,8 +21,6 @@ detail_block,ブロック
 bar_attack_rate,攻撃力
 bar_money_rate,獲得金
 cabinet_lever,レバー（Space）
-cabinet_credit,"コイン
-（2枚で1回）"
 cabinet_fixed,回数固定
 node_first,最初の戦闘
 node_battle,戦闘

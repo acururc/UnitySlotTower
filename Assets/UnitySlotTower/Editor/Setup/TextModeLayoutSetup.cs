@@ -212,10 +212,12 @@ namespace UnitySlotTower.Editor.Setup
             SetLabel(Child(lever, "Text Label cabinet_lever"), new Vector2(1f, 0f), Vector2.one,
                 new Vector2(10f, 0f), new Vector2(340f, 0f), CabinetFont);
 
-            // コイン（数字 x 1140〜1410・y 606〜702、絵 x 1046〜1130）: 絵の左に2行（x 650〜1026）。
-            var credit = Child(cabinet, "Credit");
-            SetLabel(Child(credit, "Text Label cabinet_credit"), Vector2.zero, new Vector2(0f, 1f),
-                new Vector2(-500f, 0f), new Vector2(-124f, 0f), CabinetFont);
+            // コインの名前は出さない（2026-11-23 ユーザー: 「コイン（2枚で1回）」はいらない、T614）。前に作った札があれば消す。
+            var oldCredit = cabinet.Find("Credit/Text Label cabinet_credit");
+            if (oldCredit != null)
+            {
+                Object.DestroyImmediate(oldCredit.gameObject);
+            }
 
             // 回数固定（絵 x 1046〜1130・y 616〜692、今は常に隠れている）: 絵の下。
             var fixedSpins = Child(cabinet, "Fixed Spins Icon");
@@ -225,8 +227,12 @@ namespace UnitySlotTower.Editor.Setup
 
         // --- T359b 戦闘の HUD ---
 
-        // 上端の帯（Top Band、T383 で両方の版に共通。高さは PortraitLayout.TopBandRatio）の高さ（px）。
-        private static float BandHeight => (float)(PortraitLayout.BattleHeightRatio * PortraitLayout.TopBandRatio) * 1920f;
+        // 上端の帯（Top Band、T383）の文字あり版の高さ（px、縮める前の基準）。
+        private static float BandHeight => BandRatio * 1920f;
+
+        // 文字あり版の帯の高さの割合（中身の高さに対する割合。文字なし版の 1.4 倍、T614）。
+        private const float TextBandScale = 1.4f;
+        private static float BandRatio => (float)(PortraitLayout.BattleHeightRatio * PortraitLayout.TopBandRatio) * TextBandScale;
 
         // 帯の中の段（帯の割合）。上が名前、下が数字・ボタンの絵。
         // T384: 名前が画面の上端からはみ出さず、数字と重ならないように間を空け、数字の字を小さくする（BandValueFont）。
@@ -235,7 +241,7 @@ namespace UnitySlotTower.Editor.Setup
         private const float NameTop = 0.96f;
         private const float ValueBottom = 0f;
         private const float ValueTop = 0.38f;
-        private const float BandValueFont = 32f;
+        private const float BandValueFont = 38f;
 
         private const float BandFont = 36f;
         private const float ButtonFont = 36f;
@@ -253,7 +259,9 @@ namespace UnitySlotTower.Editor.Setup
                 BuildUnitCard(bar, i, barHeight);
             }
 
+            // 上端の帯は文字あり版だけ高くする（名前と数字が詰まるため、T614）。戦闘カメラの範囲は変えず、帯が戦闘の上の余白に重なる。
             var band = Child(root, "Top Band");
+            SetRect(band, new Vector2(0f, 1f - BandRatio), Vector2.one);
             BuildStatusBand(band);
             BuildRates(band);
         }

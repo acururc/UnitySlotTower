@@ -92,8 +92,9 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
             var shown = ShownIds();
             Assert.That(shown, Does.Contain("unit_tank").And.Contain("unit_buffer").And.Contain("bar_upgrade").And.Contain("life")
-                .And.Contain("bar_pause").And.Contain("cabinet_lever").And.Contain("cabinet_credit")
+                .And.Contain("bar_pause").And.Contain("cabinet_lever")
                 .And.Contain("bar_remaining").And.Contain("bar_speed"), "操作バーか筐体にラベルが出ない");
+            Assert.That(shown, Does.Not.Contain("cabinet_credit"), "コインの名前は出さない（T614）");
 
             battle.SetPaused(true);
             var help = Object.FindAnyObjectByType<HelpScreen>();

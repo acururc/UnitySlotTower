@@ -179,8 +179,7 @@ namespace UnitySlotTower.Editor.Setup
             // 筐体
             var slot = (RectTransform)cabinet.transform;
             Above(Child(slot, "Lever Button"), "cabinet_lever", 36f, 24f);
-            Label(Child(slot, "Credit"), "cabinet_credit", new Vector2(-0.4f, 1f), Vector2.one, new Vector2(0f, 2f),
-                new Vector2(0f, 34f), 20f);
+            // コインの名前は出さない（2026-11-23 ユーザー: 「コイン（2枚で1回）」はいらない、T614）。
             Below(Child(slot, "Fixed Spins Icon"), "cabinet_fixed", 26f, 18f);
 
             // 開始の演出の ▶ の下（BattleIntroSetup が作る Play の子。▶ と一緒に出て消える）。T370。
