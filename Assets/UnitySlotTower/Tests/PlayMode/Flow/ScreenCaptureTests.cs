@@ -10,6 +10,7 @@ using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Run;
+using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Flow;
 using Object = UnityEngine.Object;
 
@@ -37,6 +38,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             "8,0,melee,S1,boss_a_g1,0\n8,3,melee,S1,boss_a_g1,0\n";
 
         private const float Settle = 0.4f;
+        private const float BoardMoment = 0.4f;
 
         private bool _runInBackground;
         private string _folder;
@@ -104,6 +106,23 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             battle.Field.Effects.StartPoison();
             battle.Field.Effects.StartAttack();
             yield return Capture(prefix + "-effects");
+            // 揃ったときの盤面全体の演出（T613、FR-113）。攻撃力0の味方を2体置き（敵を倒さない）、出目ごとに演出の途中を撮る。
+            battle.Wallet.Add(500);
+            PlaceUnit(deployment, map, "tank");
+            PlaceUnit(deployment, map, "buffer");
+            var board = Object.FindAnyObjectByType<SlotBoardEffect>();
+            Assert.That(board, Is.Not.Null, "Game シーンに盤面全体の演出がない（Build Slot Board Effect (T613)）");
+            foreach (var symbol in new[] { SlotSymbol.Red7, SlotSymbol.Blue7, SlotSymbol.Green7, SlotSymbol.Yellow7, SlotSymbol.Bar, SlotSymbol.Coin })
+            {
+                yield return Capture(null);
+                board.Play(symbol);
+                yield return Capture(prefix + "-board-" + symbol.ToString().ToLowerInvariant(), BoardMoment);
+                while (board.IsPlaying)
+                {
+                    yield return null;
+                }
+            }
+
             battle.SetPaused(true);
             var help = Object.FindAnyObjectByType<HelpScreen>();
             help.Open();
@@ -131,12 +150,36 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return Capture(prefix + "-result");
         }
 
-        private IEnumerator Capture(string name)
+        // 置けるマスを中央の行から探して置く（向きは右のまま）。
+        private static void PlaceUnit(UnitDeployment deployment, BattleMap map, string unitId)
         {
-            var until = Time.realtimeSinceStartup + Settle;
+            Assert.That(deployment.Select(unitId), Is.EqualTo(SummonResult.Summoned), $"{unitId} を召喚できない");
+            for (var n = 0; n < map.Width * map.Height; n++)
+            {
+                var cell = new GridPoint(n % map.Width, (map.Height / 2 + n / map.Width) % map.Height);
+                if (deployment.CanPlace(cell))
+                {
+                    deployment.SetCursor(cell);
+                    break;
+                }
+            }
+
+            Assert.That(deployment.ChooseCell(), Is.True, $"{unitId} を置けるマスがない");
+            Assert.That(deployment.Confirm(), Is.EqualTo(SummonResult.Summoned), $"{unitId} を置けない");
+        }
+
+        // 名前が null なら待つだけ。
+        private IEnumerator Capture(string name, float settle = Settle)
+        {
+            var until = Time.realtimeSinceStartup + settle;
             while (Time.realtimeSinceStartup < until)
             {
                 yield return null;
+            }
+
+            if (name == null)
+            {
+                yield break;
             }
 
             yield return new WaitForEndOfFrame();

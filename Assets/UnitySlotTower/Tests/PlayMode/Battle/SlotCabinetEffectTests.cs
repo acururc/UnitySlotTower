@@ -105,6 +105,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             var effect = Object.FindAnyObjectByType<SlotAlignEffect>();
             Assert.That(effect, Is.Not.Null, "Game シーンに揃った時の演出がない（Build Slot Align Effect (T366)）");
             var status = Object.FindAnyObjectByType<OperationBarStatus>();
+            var board = Object.FindAnyObjectByType<SlotBoardEffect>();
+            Assert.That(board, Is.Not.Null, "Game シーンに盤面全体の演出がない（Build Slot Board Effect (T613)）");
 
             // バー → 攻撃力の倍率。演出中に敵が進み、レバーを引ける。
             _cabinet.Wallet.Add(1);
@@ -113,6 +115,11 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That((effect.PlayCount, effect.LastSymbol, effect.LastTarget),
                 Is.EqualTo((1, (SlotSymbol?)SlotSymbol.Bar, status.AttackRateRect)));
             Assert.That(effect.IsPlaying, Is.True, "止まり終えたら演出が始まる");
+            AssertBoardPlaying(board, SlotSymbol.Bar, effect.PlayCount);
+            var layer = ((RectTransform)board.transform).rect;
+            Assert.That(board.BoardRect.width > 0f && board.BoardRect.height > 0f &&
+                        board.BoardRect.width <= layer.width + 1f && board.BoardRect.height <= layer.height + 1f, Is.True,
+                $"盤面の範囲がおかしい: {board.BoardRect} / 層 {layer}");
             yield return null;
             Assert.That(status.AttackRingFill, Is.GreaterThan(0f).And.LessThanOrEqualTo(1f), "攻撃力の残り時間の円が出ない（T611）");
             var tick = _battle.Field.Tick;
@@ -122,13 +129,16 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That(_battle.Field.Tick, Is.GreaterThan(tick), "演出中も戦闘が進む");
             yield return WaitForStop();
             yield return WaitForEffect(effect);
+            yield return WaitForBoard(board);
             Assert.That(status.AttackRateRect.localScale, Is.EqualTo(attackScale), "行き先の大きさが元に戻る");
 
             // コイン → 所持金の倍率。
             Select(SlotSymbol.Coin);
             yield return SpinAndStopAll();
             Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Coin, status.MoneyRateRect)));
+            AssertBoardPlaying(board, SlotSymbol.Coin, effect.PlayCount);
             yield return WaitForEffect(effect);
+            yield return WaitForBoard(board);
 
             // 青7 → 停止のアイコン、黄7 → 毒のアイコン（T611、上端の帯）。発動中はアイコンが濃く、残り時間の円が出る。
             _cabinet.Wallet.Add(3);
@@ -137,6 +147,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return SpinAndStopAll();
             yield return null;
             Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Blue7, status.StopEffectRect)));
+            AssertBoardPlaying(board, SlotSymbol.Blue7, effect.PlayCount);
             Assert.That((status.IsStopEffectShown, status.StopRingFill > 0f && status.StopRingFill <= 1f), Is.EqualTo((true, true)),
                 "停止のアイコンと残り時間の円が出ない");
             yield return WaitForEffect(effect);
@@ -145,6 +156,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return SpinAndStopAll();
             yield return null;
             Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Yellow7, status.PoisonEffectRect)));
+            AssertBoardPlaying(board, SlotSymbol.Yellow7, effect.PlayCount);
             Assert.That((status.IsPoisonEffectShown, status.PoisonRingFill > 0f && status.PoisonRingFill <= 1f), Is.EqualTo((true, true)),
                 "毒のアイコンと残り時間の円が出ない");
             yield return WaitForEffect(effect);
@@ -153,7 +165,37 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Select(SlotSymbol.Red7);
             yield return SpinAndStopAll();
             Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Red7, (RectTransform)null)));
+            AssertBoardPlaying(board, SlotSymbol.Red7, effect.PlayCount);
             yield return WaitForEffect(effect);
+
+            // 緑7 → その場の効果。盤面全体の演出だけが出る（T613）。
+            _cabinet.Wallet.Add(1);
+            Select(SlotSymbol.Green7);
+            yield return SpinAndStopAll();
+            Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Green7, (RectTransform)null)));
+            AssertBoardPlaying(board, SlotSymbol.Green7, effect.PlayCount);
+            yield return WaitForEffect(effect);
+            yield return WaitForBoard(board);
+            Assert.That(board.ActivePieceCount, Is.EqualTo(0), "盤面全体の演出の部品が残る");
+        }
+
+        // 揃うと盤面全体の演出がその出目で始まり、盤面の色（少なくとも1つの部品）が出る（T613、FR-113）。
+        private static void AssertBoardPlaying(SlotBoardEffect board, SlotSymbol symbol, int count)
+        {
+            Assert.That((board.PlayCount, board.LastSymbol, board.IsPlaying), Is.EqualTo((count, (SlotSymbol?)symbol, true)),
+                $"{symbol} で盤面全体の演出が始まらない");
+            Assert.That(board.ActivePieceCount, Is.GreaterThan(0), $"{symbol} の盤面全体の演出の部品が出ない");
+        }
+
+        private static IEnumerator WaitForBoard(SlotBoardEffect board)
+        {
+            var until = Time.realtimeSinceStartup + 5f;
+            while (board.IsPlaying && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That(board.IsPlaying, Is.False, "盤面全体の演出が終わらない");
         }
 
         private FixedRandom _random;
