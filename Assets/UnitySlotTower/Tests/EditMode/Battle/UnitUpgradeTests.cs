@@ -93,7 +93,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("plan 5章: 段階1〜5、強化費用（段階2〜5）160 / 280 / 440 / 640 円（plan 17.1）")]
+        [Description("plan 5章: 段階1〜5、強化費用（段階2〜5）400 / 700 / 1100 / 1600 円（T617 で 160 / 280 / 440 / 640 から上げた）")]
         public void Project_Table_Has_Five_Levels_With_Planned_Costs_For_Every_Unit()
         {
             var units = UnitTable.Load(CsvParser.Parse(UnitTable.FileName,
@@ -108,7 +108,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
                         table.MaxLevel(unit.Id), table.Get(unit.Id, 2).Cost, table.Get(unit.Id, 3).Cost,
                         table.Get(unit.Id, 4).Cost, table.Get(unit.Id, 5).Cost,
                     },
-                    Is.EqualTo(new[] { 5, 160, 280, 440, 640 }), unit.Id);
+                    Is.EqualTo(new[] { 5, 400, 700, 1100, 1600 }), unit.Id);
             }
         }
 

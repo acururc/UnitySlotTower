@@ -176,10 +176,10 @@ namespace UnitySlotTower.Tests.EditMode.Data
             var units = CsvParser.Parse("units.csv", files["units.csv"]);
             var melee = enemies.Rows.Single(row => row.Get("id") == "melee");
             Assert.That((melee.GetInt("max_hp"), melee.GetInt("atk"), melee.GetDouble("attack_interval"),
-                melee.GetInt("money_min"), melee.GetInt("money_max")), Is.EqualTo((10, 1, 1.0, 30, 30)));
+                melee.GetInt("money_min"), melee.GetInt("money_max")), Is.EqualTo((6, 1, 1.0, 50, 50)));
             var sword = units.Rows.Single(row => row.Get("id") == "sword");
             Assert.That((sword.GetInt("max_hp"), sword.GetInt("atk"), sword.GetDouble("attack_interval")),
-                Is.EqualTo((10, 1, 0.5)));
+                Is.EqualTo((20, 1, 0.5)));
             Assert.That(units.Rows.All(row => row.GetInt("def") == 0), Is.True);
             Assert.That(enemies.Rows.All(row => row.GetInt("def") == 0), Is.True);
             Assert.That(units.Rows.Single(row => row.Get("id") == "tank").GetInt("atk"), Is.EqualTo(0));

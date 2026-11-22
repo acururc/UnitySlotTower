@@ -1,6 +1,6 @@
 ﻿key,value
 initial_coins,3
-initial_money,0
+initial_money,100
 bet,1
 life,10
 deploy_limit,8
@@ -8,3 +8,4 @@ retreat_refund_rate,0.5
 intro_seconds,2
 placement_time_scale,0.2
 wave_gap_seconds,1
+first_stage_free_summons,0

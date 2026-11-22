@@ -7,7 +7,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
     public sealed class GameConfigTests
     {
         private const string ValidConfig =
-            "key,value\ninitial_coins,15\ninitial_money,30\nbet,3\nlife,10\ndeploy_limit,8\nretreat_refund_rate,0.5\nintro_seconds,2\nplacement_time_scale,0.1\nwave_gap_seconds,1\n";
+            "key,value\ninitial_coins,15\ninitial_money,30\nbet,3\nlife,10\ndeploy_limit,8\nretreat_refund_rate,0.5\nintro_seconds,2\nplacement_time_scale,0.1\nwave_gap_seconds,1\nfirst_stage_free_summons,1\n";
 
         [Test]
         [Description("plan 16.2: コインと所持金の初期値を別々に読む（ライフボーナスのキーはない）")]
@@ -27,7 +27,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
             var config = GameConfig.Load(CsvParser.Parse("game_config.csv",
                 ValidConfig.Replace("wave_gap_seconds,1", "wave_gap_seconds,2.5")));
 
-            Assert.That(config.WaveGapSeconds, Is.EqualTo(2.5));
+            Assert.That((config.WaveGapSeconds, config.FirstStageFreeSummons), Is.EqualTo((2.5, 1)));
         }
 
         [Test]
@@ -49,7 +49,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("plan 16.2・17.1: コイン3・所持金0（spec 002 FR-105）・1枚賭け・ライフ10")]
+        [Description("plan 16.2・17.1: コイン3・所持金100（T617 で 0 から変更）・1枚賭け・ライフ10・ステージ1の無料の召喚0（T617）")]
         public void Project_Table_Holds_Planned_Initial_Values()
         {
             var text = File.ReadAllText(Path.Combine(TablePaths.Root, "game_config.csv"));
@@ -58,7 +58,8 @@ namespace UnitySlotTower.Tests.EditMode.Data
 
             Assert.That((config.InitialCoins, config.InitialMoney, config.Bet, config.Life, config.DeployLimit,
                     config.RetreatRefundRate),
-                Is.EqualTo((3, 0, 1, 10, 8, 0.5)));
+                Is.EqualTo((3, 100, 1, 10, 8, 0.5)));
+            Assert.That(config.FirstStageFreeSummons, Is.Zero);
         }
 
         [Test]

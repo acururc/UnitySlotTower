@@ -22,6 +22,7 @@ namespace UnitySlotTower.Core.Run
             MaxLife = config.Life;
             Life = config.Life;
             Upgrades = new UnitUpgrades(upgradeTable, Money);
+            _firstStageFreeSummons = config.FirstStageFreeSummons;
         }
 
         /// <summary>スロットに賭けるコイン。</summary>
@@ -37,8 +38,10 @@ namespace UnitySlotTower.Core.Run
         /// <summary>いまのステージ（1 から。spec 002 FR-101）。</summary>
         public int StageIndex { get; private set; } = 1;
 
-        /// <summary>ステージ1の間だけ、最初の1体を無料で置ける（spec 002 FR-108）。</summary>
-        public bool HasFreeSummon => StageIndex == 1;
+        private readonly int _firstStageFreeSummons;
+
+        /// <summary>このステージの開始時の無料の召喚の回数。ステージ1だけ game_config.csv の値、ほかは 0（spec 002 FR-108）。</summary>
+        public int FreeSummons => StageIndex == 1 ? _firstStageFreeSummons : 0;
 
         /// <summary>次のステージへ進む。ライフ・コイン・所持金・強化はそのまま残る（FR-105）。</summary>
         public void AdvanceStage()

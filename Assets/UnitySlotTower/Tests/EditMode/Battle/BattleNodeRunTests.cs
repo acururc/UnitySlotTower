@@ -33,7 +33,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         {
             _config = GameConfig.Load(CsvParser.Parse(GameConfig.FileName,
                 $"key,value\ninitial_coins,{coins}\ninitial_money,{money}\nbet,3\nlife,{life}\n" +
-                $"deploy_limit,{deployLimit}\nretreat_refund_rate,0.5\nintro_seconds,{introSeconds}\nplacement_time_scale,0.1\nwave_gap_seconds,1\n"));
+                $"deploy_limit,{deployLimit}\nretreat_refund_rate,0.5\nintro_seconds,{introSeconds}\nplacement_time_scale,0.1\nwave_gap_seconds,1\nfirst_stage_free_summons,1\n"));
             _state = new RunState(_config, BattleFixtures.LoadUpgrades(), SlotTestRules.Create());
             // 既定はステージ2（無料の1体なし）。無料の1体を調べるテストだけ stage: 1。
             for (var i = 1; i < stage; i++)

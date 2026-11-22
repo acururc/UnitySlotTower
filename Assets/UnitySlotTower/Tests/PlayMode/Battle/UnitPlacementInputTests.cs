@@ -62,6 +62,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             Assert.That(_battle?.Deployment, Is.Not.Null, "Game シーンの戦闘が始まらない");
             yield return StageTestUtil.WaitForIntro(_battle);
+            FundTo250();
             _fieldView = Object.FindAnyObjectByType<BattleFieldView>();
             _input = Object.FindAnyObjectByType<UnitPlacementInput>();
             _camera = GameObject.Find("Battle Camera").GetComponent<Camera>();
@@ -172,7 +173,6 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         [UnityTest]
         public IEnumerator Keyboard_Upgrades_With_Shift_Digit_And_Retreats_With_Tab_And_X()
         {
-            UseFreeSummonAndFund();
             yield return Tap(Key.Digit1);
             yield return MoveCursorTo(FirstPlaceableCell());
             yield return Tap(Key.Enter);
@@ -187,6 +187,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That((_battle.Field.Units.Count, _battle.Wallet.Coins - afterSummon, _input.SelectedUnit),
                 Is.EqualTo((0, refund, (BattleUnit)null)), "X で撤退して返還する");
 
+            // T617 で強化の費用を上げたので、強化の分を足す（操作の確認が目的）。
+            _battle.Wallet.Add(_battle.Upgrades.NextCost("tank").Value);
             var coins = _battle.Wallet.Coins;
             yield return Tap(Key.LeftShift, Key.Digit1);
             Assert.That((_battle.Upgrades.Level("tank"), coins - _battle.Wallet.Coins),
@@ -196,7 +198,6 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         [UnityTest]
         public IEnumerator Mouse_Upgrades_Selects_And_Retreats_A_Unit_From_The_Bar()
         {
-            UseFreeSummonAndFund();
             yield return Tap(Key.Digit1);
             var target = FirstPlaceableCell();
             yield return MoveCursorTo(target);
@@ -213,6 +214,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That((_battle.Field.Units.Count, RetreatButton().gameObject.activeInHierarchy),
                 Is.EqualTo((0, false)), "撤退ボタン（詳細の板）で撤退し、選びがなくなると板ごと隠す");
 
+            _battle.Wallet.Add(_battle.Upgrades.NextCost("sword").Value);
             yield return Click(GameObject.Find("Upgrade Icon 2").transform);
             Assert.That(_battle.Upgrades.Level("sword"), Is.EqualTo(2), "強化アイコンで強化する");
         }
@@ -356,8 +358,6 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         [UnityTest]
         public IEnumerator Bar_Shows_Cost_Life_Coins_And_Upgrade_Cost_As_Numbers()
         {
-            // 無料の1回の間は札が「¥0」（T611、Cards_Show_Zero_Yen_Until_The_Free_Summon_Is_Used）なので先に使い切る。
-            UseFreeSummonAndFund();
             yield return null;
             var status = Object.FindAnyObjectByType<OperationBarStatus>().transform;
             var icon = GameObject.Find("Unit Icon 3").transform;
@@ -407,7 +407,6 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             var icon = GameObject.Find("Unit Icon 1").GetComponent<UnitBarIcon>();
             Assert.That(icon.CooldownText.enabled, Is.False, "召喚する前に待ち時間の数字が出ている");
 
-            UseFreeSummonAndFund();
             yield return PlaceTank(_ => { });
             yield return null;
             var cooldown = _battle.Units.Get("tank").Cooldown;
@@ -422,36 +421,28 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        [Description("T611 (FR-108): ステージ1の無料の1回が残っている間は全ての札が「¥0」、使い切ると units.csv の費用に戻る")]
-        public IEnumerator Cards_Show_Zero_Yen_Until_The_Free_Summon_Is_Used()
+        [Description("T617 (FR-108): ステージ1の無料の召喚は game_config.csv で0なので、最初から札は units.csv の費用（開始時の所持金100は RunControllerTests で見る）")]
+        public IEnumerator Cards_Show_Their_Cost_From_The_Start_Of_Stage_One()
         {
             yield return null;
+            Assert.That(_battle.Summoner.FreeSummons, Is.Zero, "ステージ1の開始時に無料の召喚が残っている");
             var icons = Object.FindObjectsByType<UnitBarIcon>(FindObjectsSortMode.None);
             Assert.That(icons.Length, Is.EqualTo(_battle.Units.All.Count), "札の数が職の数と合わない");
             foreach (var icon in icons)
             {
-                Assert.That(icon.CostText.text, Is.EqualTo("¥0"), $"{icon.name} が無料の1回の間に ¥0 でない");
-            }
-
-            yield return PlaceTank(_ => { });
-            yield return null;
-            foreach (var icon in icons)
-            {
                 Assert.That(icon.CostText.text, Is.EqualTo($"¥{_battle.Units.All[icon.Slot].Cost}"),
-                    $"{icon.name} が無料の1回の後に費用へ戻らない");
+                    $"{icon.name} が開始時に units.csv の費用でない");
             }
         }
 
         /// <summary>
-        /// spec 002 FR-108: ステージ1の最初の1体は無料（待ち時間・返還なし）。費用・待ち時間・返還を見るテストは、
-        /// 盤面に置かずに無料の1回を使い切り、002 より前の初期の所持金（250）を足してから始める。
+        /// どのテストも所持金を 002 より前の初期の所持金（250）にしてから始める（SetUp で呼ぶ）。
+        /// T617 からステージ1の開始時は所持金100・無料の召喚なしで、タンク（130）を置けないため。
         /// </summary>
-        private void UseFreeSummonAndFund()
+        private void FundTo250()
         {
-            Assert.That(_battle.Summoner.TrySummon("tank"), Is.EqualTo(SummonResult.Summoned));
-            Assert.That(_battle.Summoner.LastSummonWasFree, Is.True, "ステージ1の最初の召喚が無料でない");
-            _battle.Summoner.ReleaseFallen();
-            _battle.Wallet.Add(250);
+            Assert.That(_battle.Summoner.FreeSummons, Is.Zero, "ステージ1に無料の召喚が残っている");
+            _battle.Wallet.Add(250 - _battle.Wallet.Coins);
         }
 
         private IEnumerator PlaceTank(System.Action<BattleUnit> placed)

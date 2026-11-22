@@ -122,6 +122,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var bar = Object.FindAnyObjectByType<OperationBarStatus>().transform;
             var target = FirstPlaceableCell();
             var cell = CellScreen(target);
+            // T617: 開始時の所持金100ではタンク（130）を置けないので、タンクの費用を足す（操作の確認が目的）。
+            _battle.Wallet.Add(_battle.Units.Get("tank").Cost);
             var icon = ScreenOf(GameObject.Find("Unit Icon 1").transform);
             yield return MouseAt(icon, false);
             yield return MouseAt(icon, true);

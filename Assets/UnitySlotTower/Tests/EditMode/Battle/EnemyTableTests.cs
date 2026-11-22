@@ -103,7 +103,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("FR-107、002 plan 2.4: 雑魚（近・遠・空・重）はコイン15%で1枚、所持金100%で30円")]
+        [Description("FR-107、002 plan 2.4: 雑魚（近・遠・空・重）はコイン15%で1枚、所持金100%で50円（T617 で 30 から上げた）")]
         public void Project_Grunt_Drops_Follow_Plan()
         {
             var enemies = Project();
@@ -116,7 +116,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             }
 
             Assert.That(actual,
-                Is.EqualTo(new[] { (0.15, 1, 1, 1.0, 30, 30), (0.15, 1, 1, 1.0, 30, 30), (0.15, 1, 1, 1.0, 30, 30), (0.15, 1, 1, 1.0, 30, 30) }));
+                Is.EqualTo(new[] { (0.15, 1, 1, 1.0, 50, 50), (0.15, 1, 1, 1.0, 50, 50), (0.15, 1, 1, 1.0, 50, 50), (0.15, 1, 1, 1.0, 50, 50) }));
         }
     }
 }

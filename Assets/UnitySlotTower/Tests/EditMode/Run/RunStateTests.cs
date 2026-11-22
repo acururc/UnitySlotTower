@@ -15,7 +15,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
         {
             var config = GameConfig.Load(CsvParser.Parse(GameConfig.FileName,
                 $"key,value\ninitial_coins,{coins}\ninitial_money,{money}\nbet,3\nlife,{life}\n" +
-                "deploy_limit,8\nretreat_refund_rate,0.5\nintro_seconds,2\nplacement_time_scale,0.1\nwave_gap_seconds,1\n"));
+                "deploy_limit,8\nretreat_refund_rate,0.5\nintro_seconds,2\nplacement_time_scale,0.1\nwave_gap_seconds,1\nfirst_stage_free_summons,1\n"));
             return new RunState(config, BattleFixtures.LoadUpgrades(), SlotTestRules.Create());
         }
 
@@ -60,12 +60,12 @@ namespace UnitySlotTower.Tests.EditMode.Run
         }
 
         [Test]
-        [Description("spec 002 FR-101・FR-108: ステージ1から始まり、無料の1体はステージ1だけ")]
+        [Description("spec 002 FR-101・FR-108: ステージ1から始まり、無料の召喚（game_config.csv の回数）はステージ1だけ")]
         public void New_Run_Starts_At_Stage_One_With_The_Free_Summon()
         {
             var run = Create();
 
-            Assert.That((run.StageIndex, run.HasFreeSummon), Is.EqualTo((1, true)));
+            Assert.That((run.StageIndex, run.FreeSummons), Is.EqualTo((1, 1)));
         }
 
         [Test]
@@ -79,7 +79,7 @@ namespace UnitySlotTower.Tests.EditMode.Run
 
             run.AdvanceStage();
 
-            Assert.That((run.StageIndex, run.HasFreeSummon), Is.EqualTo((2, false)));
+            Assert.That((run.StageIndex, run.FreeSummons), Is.EqualTo((2, 0)));
             Assert.That((run.Life, run.Coins.Coins, run.Money.Coins, run.Upgrades.Level("sword")), Is.EqualTo(before));
         }
 

@@ -21,6 +21,9 @@ namespace UnitySlotTower.Core.Data
         /// <summary>ウェーブを出し終わって盤上の敵が0になってから次のウェーブを始めるまでの秒数（FR-102、plan 2.1）。</summary>
         public double WaveGapSeconds { get; private set; }
 
+        /// <summary>ステージ1の開始時に使える、どの職にも使える無料の召喚の回数（spec 002 FR-108。T617 で 0）。</summary>
+        public int FirstStageFreeSummons { get; private set; }
+
         public static GameConfig Load(CsvTable table)
         {
             var values = new KeyValueTable(table);
@@ -35,6 +38,7 @@ namespace UnitySlotTower.Core.Data
                 IntroSeconds = values.GetDouble("intro_seconds"),
                 PlacementTimeScale = values.GetDouble("placement_time_scale"),
                 WaveGapSeconds = values.GetDouble("wave_gap_seconds"),
+                FirstStageFreeSummons = values.GetInt("first_stage_free_summons"),
             };
         }
     }

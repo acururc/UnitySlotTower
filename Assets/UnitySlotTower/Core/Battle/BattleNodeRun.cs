@@ -50,7 +50,7 @@ namespace UnitySlotTower.Core.Battle
             _fieldLife = state.Life;
             Field = new Battlefield(waves, ranges, _fieldLife, random, new SlotEffects(state.SlotRules));
             Summoner = new UnitSummoner(units, Wallet, config.DeployLimit, config.RetreatRefundRate,
-                state.HasFreeSummon ? 1 : 0);
+                state.FreeSummons);
             Deployment = new UnitDeployment(Map, units, ranges, Summoner, Field, Upgrades);
         }
 

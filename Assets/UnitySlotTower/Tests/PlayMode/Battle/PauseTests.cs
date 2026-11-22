@@ -64,6 +64,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(_battle?.Field?.Enemies.Count, Is.GreaterThan(0), "Game シーンの敵が出てこない");
+            // T617: ステージ1の開始時は所持金100・無料の召喚なしでタンク（130）を置けないので、002 より前の初期の所持金（250）にする。
+            _battle.Wallet.Add(250 - _battle.Wallet.Coins);
         }
 
         [TearDown]

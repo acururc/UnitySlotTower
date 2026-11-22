@@ -80,8 +80,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
             _run.StageBegan += OnBegan;
             yield return StageTestUtil.WaitForIntro(_battle);
-            // ステージ1で無料の弓を置いても、次のステージには持ち越さない（FR-106）。
-            Assert.That(Place("archer"), Is.True, "ステージ1の最初の弓を無料で置けない");
+            // ステージ1で剣士を置いても、次のステージには持ち越さない（FR-106）。
+            Assert.That(Place("sword"), Is.True, "ステージ1の開始時の所持金で剣士を置けない");
             for (var i = 0; i < 8 && !_battle.IsFinished; i++)
             {
                 yield return StageTestUtil.FinishStage(_battle);
@@ -104,10 +104,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var state = _run.State;
             var first = _battle.Run;
             yield return StageTestUtil.WaitForIntro(_battle);
-            // spec 002 FR-108: 所持金0でもステージ1の最初の1体は無料で置ける。
-            Assert.That((state.Money.Coins, Place("archer")), Is.EqualTo((0, true)), "ステージ1の最初の弓を無料で置けない");
+            // T617: ステージ1の開始時は所持金100（game_config.csv）で、無料の召喚はなく剣士（100円）を置ける。
+            Assert.That((state.Money.Coins, Place("sword")), Is.EqualTo((100, true)), "ステージ1の開始時の所持金で剣士を置けない");
 
-            // このステージが終わる。配置中の弓は持ち越さない（spec 002 FR-106）。
+            // このステージが終わる。配置中の剣士は持ち越さない（spec 002 FR-106）。
             var completed = false;
             void OnCompleted() => completed = true;
             _battle.NodeCompleted += OnCompleted;

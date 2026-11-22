@@ -23,6 +23,7 @@ namespace UnitySlotTower.Core.Data
             ColumnRule.Float("intro_seconds", 0, 10),
             ColumnRule.Float("placement_time_scale", 0.01, 1),
             ColumnRule.Float("wave_gap_seconds", 0, 10),
+            ColumnRule.Int("first_stage_free_summons", 0, 10),
         };
 
         private static readonly ColumnRule[] SlotRuleKeys =

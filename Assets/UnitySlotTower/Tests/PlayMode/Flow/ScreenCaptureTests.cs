@@ -89,6 +89,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return StageTestUtil.WaitForIntro(battle);
             var deployment = battle.Deployment;
             var map = Object.FindAnyObjectByType<BattleFieldView>().Map;
+            // T617: 開始時の所持金100ではタンク（130）を選べないので足す。
+            battle.Wallet.Add(battle.Units.Get("tank").Cost);
             deployment.Select("tank");
             for (var n = 0; n < map.Width * map.Height; n++)
             {
