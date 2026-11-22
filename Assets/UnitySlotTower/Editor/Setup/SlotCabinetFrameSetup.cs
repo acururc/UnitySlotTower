@@ -26,6 +26,9 @@ namespace UnitySlotTower.Editor.Setup
         private const float JewelSize = 46f;
         private const float JewelGlowSize = 130f;
         private const float OuterLine = 6f;
+        private const float LedInset = 24f;
+        private const float LogoWidth = 720f;
+        private const string ButtonDeckName = "Button Deck";
         private const float InnerTrim = 5f;
         private const float WindowMargin = 15f;
         private const float WindowLedSize = 15f;
@@ -33,6 +36,10 @@ namespace UnitySlotTower.Editor.Setup
         private const float WindowGlowSize = 42f;
 
         private static readonly Color BodyColor = new Color(0.16f, 0.03f, 0.08f);
+        private static readonly Color ArchColor = new Color(0.22f, 0.05f, 0.1f);
+        private static readonly Color PillarColor = new Color(0.27f, 0.07f, 0.12f);
+        private static readonly Color LogoColor = new Color(0.08f, 0.02f, 0.05f);
+        private static readonly Color DeckColor = new Color(0.2f, 0.2f, 0.25f);
         private static readonly Color TrimColor = new Color(0.95f, 0.75f, 0.3f);
         private static readonly Color TrimShadeColor = new Color(0.5f, 0.32f, 0.08f);
         private static readonly Color LedOffColor = new Color(0.28f, 0.12f, 0.12f);
@@ -53,8 +60,11 @@ namespace UnitySlotTower.Editor.Setup
 
             var full = new Vector2(PortraitLayout.ReferenceWidth, PortraitLayout.ReferenceHeight);
             var content = full * (float)PortraitLayout.ContentScale;
+            var bottomBand = full.y * (float)PortraitLayout.ContentBottomRatio;
+            var archBand = full.y - content.y - bottomBand;
+            var center = new Vector2(0f, (bottomBand - archBand) * 0.5f); // 中身の中心（画面の中心から）
             root.anchorMin = root.anchorMax = new Vector2(0.5f, 0.5f);
-            root.anchoredPosition = Vector2.zero;
+            root.anchoredPosition = center;
             root.sizeDelta = content;
 
             var old = canvas.Find(FrameName);
@@ -76,22 +86,31 @@ namespace UnitySlotTower.Editor.Setup
             frame.sizeDelta = full;
             frame.SetSiblingIndex(root.GetSiblingIndex() + 1);
 
+            // 実機の台の場所どり（見た目は仮の色の板。デザインは後で差し替える）: 上のアーチ（真ん中にロゴの場所）・左右の柱・下の縁。
             var half = full * 0.5f;
             var inner = content * 0.5f;
-            var band = half - inner;
-            Ring("Body", frame, half, band, BodyColor);
-            var neon = Ring("Neon", frame, half, new Vector2(OuterLine, OuterLine), TrimColor);
-            Ring("Trim Shade", frame, inner + new Vector2(InnerTrim + 2f, InnerTrim + 2f), new Vector2(2f, 2f), TrimShadeColor);
-            Ring("Trim", frame, inner + new Vector2(InnerTrim, InnerTrim), new Vector2(InnerTrim, InnerTrim), TrimColor);
+            var top = center.y + inner.y;
+            var bottom = center.y - inner.y;
+            var body = Group("Body", frame);
+            Strip(body, "Arch", new Vector2(-half.x, top), half, ArchColor);
+            Strip(body, "Bottom", -half, new Vector2(half.x, bottom), BodyColor);
+            Strip(body, "Pillar Left", new Vector2(-half.x, bottom), new Vector2(-inner.x, top), PillarColor);
+            Strip(body, "Pillar Right", new Vector2(inner.x, bottom), new Vector2(half.x, top), PillarColor);
+            var logoCenter = new Vector2(0f, (top + half.y) * 0.5f);
+            var logoHalf = new Vector2(LogoWidth * 0.5f, archBand * 0.32f);
+            Strip(body, "Logo Area", logoCenter - logoHalf, logoCenter + logoHalf, LogoColor);
+            var neon = Ring("Neon", frame, Vector2.zero, half, new Vector2(OuterLine, OuterLine), TrimColor);
+            Ring("Trim Shade", frame, center, inner + new Vector2(InnerTrim + 2f, InnerTrim + 2f), new Vector2(2f, 2f), TrimShadeColor);
+            Ring("Trim", frame, center, inner + new Vector2(InnerTrim, InnerTrim), new Vector2(InnerTrim, InnerTrim), TrimColor);
 
-            // LED は外側の線と内側の縁の間の帯の真ん中に、左上の角から時計回りに並べる（角は大きなランプ）。
-            var path = (half - new Vector2(OuterLine, OuterLine) + inner + new Vector2(InnerTrim, InnerTrim)) * 0.5f;
+            // LED は中身のすぐ外（柱・アーチ・下の縁の内側）に、左上の角から時計回りに並べる（角は大きなランプ）。
+            var path = inner + new Vector2(LedInset, LedInset);
             var glowGroup = Group("Glows", frame);
             var ledGroup = Group("LEDs", frame);
             var corners = new[]
             {
-                new Vector2(-path.x, path.y), new Vector2(path.x, path.y),
-                new Vector2(path.x, -path.y), new Vector2(-path.x, -path.y),
+                center + new Vector2(-path.x, path.y), center + new Vector2(path.x, path.y),
+                center + new Vector2(path.x, -path.y), center + new Vector2(-path.x, -path.y),
             };
             var (lights, glows) = CreateRing(ledGroup, glowGroup, corners, LedSpacing, LedSize, GlowSize, true);
 
@@ -106,6 +125,7 @@ namespace UnitySlotTower.Editor.Setup
                 accents[neon.Length + c] = Dot(jewelGroup, $"Corner Lamp {c}", corners[c], JewelSize, sprite, TrimColor);
             }
 
+            BuildButtonDeck(window.parent as RectTransform);
             var (windowLights, windowGlows) = BuildWindowLights(window);
 
             var component = frame.gameObject.AddComponent<SlotCabinetLights>();
@@ -230,17 +250,39 @@ namespace UnitySlotTower.Editor.Setup
             return group;
         }
 
-        // 中心から外側の半分の大きさ outerHalf、太さ thickness（横・縦）の枠を4本の帯で作る。
-        private static Graphic[] Ring(string name, RectTransform parent, Vector2 outerHalf, Vector2 thickness, Color color)
+        // 筐体（Slot Area）のリール窓の上の段にボタン台の場所（仮の板）を置く。レバー・コインより後ろ（最初の子）。
+        private static void BuildButtonDeck(RectTransform slotArea)
+        {
+            var old = slotArea.Find(ButtonDeckName);
+            if (old != null)
+            {
+                Object.DestroyImmediate(old.gameObject);
+            }
+
+            var size = new Vector2(PortraitLayout.ReferenceWidth, PortraitLayout.ReferenceHeight * PortraitLayout.SlotAreaTop);
+            var deck = new GameObject(ButtonDeckName, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            deck.gameObject.layer = slotArea.gameObject.layer;
+            var rect = deck.rectTransform;
+            rect.SetParent(slotArea, false);
+            rect.SetAsFirstSibling();
+            rect.anchorMin = new Vector2(16f, 526f) / size;
+            rect.anchorMax = new Vector2(1424f, 714f) / size;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            deck.color = DeckColor;
+            deck.raycastTarget = false;
+        }
+
+        // 中心 center から外側の半分の大きさ outerHalf、太さ thickness（横・縦）の枠を4本の帯で作る。
+        private static Graphic[] Ring(string name, RectTransform parent, Vector2 center, Vector2 outerHalf, Vector2 thickness, Color color)
         {
             var group = Group(name, parent);
             var innerHalf = outerHalf - thickness;
             return new Graphic[]
             {
-                Strip(group, "Top", new Vector2(-outerHalf.x, innerHalf.y), new Vector2(outerHalf.x, outerHalf.y), color),
-                Strip(group, "Bottom", new Vector2(-outerHalf.x, -outerHalf.y), new Vector2(outerHalf.x, -innerHalf.y), color),
-                Strip(group, "Left", new Vector2(-outerHalf.x, -innerHalf.y), new Vector2(-innerHalf.x, innerHalf.y), color),
-                Strip(group, "Right", new Vector2(innerHalf.x, -innerHalf.y), new Vector2(outerHalf.x, innerHalf.y), color),
+                Strip(group, "Top", center + new Vector2(-outerHalf.x, innerHalf.y), center + new Vector2(outerHalf.x, outerHalf.y), color),
+                Strip(group, "Bottom", center + new Vector2(-outerHalf.x, -outerHalf.y), center + new Vector2(outerHalf.x, -innerHalf.y), color),
+                Strip(group, "Left", center + new Vector2(-outerHalf.x, -innerHalf.y), center + new Vector2(-innerHalf.x, innerHalf.y), color),
+                Strip(group, "Right", center + new Vector2(innerHalf.x, -innerHalf.y), center + new Vector2(outerHalf.x, innerHalf.y), color),
             };
         }
 

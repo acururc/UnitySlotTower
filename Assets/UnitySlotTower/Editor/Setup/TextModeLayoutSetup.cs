@@ -202,22 +202,22 @@ namespace UnitySlotTower.Editor.Setup
         private const float CabinetFont = 40f;
 
         /// <summary>
-        /// レバー・コイン・回数固定の名前を、リール窓の下の段に大きく出す。筐体の部品の配置と見た目は変えない（ラベルだけ動かす）。
-        /// 筐体の中は 1440×720 px、リール窓は x 212〜1228・y 205〜705、窓の下の段にレバーとコイン（GameSceneSetup、T368）。
+        /// レバー・コイン・回数固定の名前を、リール窓の上のボタン台に大きく出す。筐体の部品の配置と見た目は変えない（ラベルだけ動かす）。
+        /// 筐体の中は 1440×720 px、リール窓は x 232〜1208・y 22〜502、窓の上のボタン台にレバーとコイン（GameSceneSetup、T614）。
         /// </summary>
         private static void BuildCabinetLabels(RectTransform cabinet)
         {
-            // レバー（x 40〜300・y 22〜188）: レバーの右に2行（x 310〜640）。
+            // レバー（x 40〜300・y 540〜706）: レバーの右に2行（x 310〜640）。
             var lever = Child(cabinet, "Lever Button");
             SetLabel(Child(lever, "Text Label cabinet_lever"), new Vector2(1f, 0f), Vector2.one,
                 new Vector2(10f, 0f), new Vector2(340f, 0f), CabinetFont);
 
-            // コイン（数字 x 1150〜1420・y 62〜168、絵 x 1036〜1140）: 絵の左に2行（x 650〜1026）。
+            // コイン（数字 x 1150〜1420・y 580〜686、絵 x 1036〜1140）: 絵の左に2行（x 650〜1026）。
             var credit = Child(cabinet, "Credit");
             SetLabel(Child(credit, "Text Label cabinet_credit"), Vector2.zero, new Vector2(0f, 1f),
                 new Vector2(-500f, 0f), new Vector2(-124f, 0f), CabinetFont);
 
-            // 回数固定（絵 x 1036〜1140・y 70〜160）: 絵の下（x 990〜1190・y 8〜62）。
+            // 回数固定（絵 x 1036〜1140・y 588〜678）: 絵の下（x 990〜1190・y 526〜580、窓の LED の少し上）。
             var fixedSpins = Child(cabinet, "Fixed Spins Icon");
             SetLabel(Child(fixedSpins, "Text Label cabinet_fixed"), Vector2.zero, new Vector2(1f, 0f),
                 new Vector2(-46f, -62f), new Vector2(50f, -8f), CabinetFont);
@@ -273,13 +273,13 @@ namespace UnitySlotTower.Editor.Setup
             SetLabel(name, Vector2.zero, Vector2.zero, new Vector2(0f, 18f - iconBottom), new Vector2(292f, 74f - iconBottom), CardFont);
 
             var upgrade = Child(bar, $"Upgrade Icon {slot + 1}");
-            SetRect(upgrade, new Vector2((left + 158f) / width, iconBottom / barHeight), new Vector2((left + 304f) / width, 152f / barHeight));
+            SetRect(upgrade, new Vector2((left + 158f) / width, iconBottom / barHeight), new Vector2((left + 330f) / width, 152f / barHeight)); // T614 で右へ広げた（旧 304、中身が 0.88 倍）
             // T384: 左に「強化」とその下に段階の点、右の上に矢印、右の下に値段（重ならないように）。
             // 上の段に「強化」と値段を横に並べ、下の段に矢印と段階の点（上下に積むと重なる: T384）。
-            // T614: 外枠で中身が 0.94 倍になったので「強化」の幅を広げる（狭いと2行に折り返す）。
-            SetLabel(Child(upgrade, "Text Label bar_upgrade"), new Vector2(0f, 0.36f), new Vector2(0.62f, 1f), Vector2.zero, Vector2.zero,
+            // T614: 外枠で中身が縮んだので強化の板を右へ広げ、「強化」（字は 36 のまま）と値段を分け直す（狭いと2行に折り返す）。
+            SetLabel(Child(upgrade, "Text Label bar_upgrade"), new Vector2(0f, 0.36f), new Vector2(0.6f, 1f), Vector2.zero, Vector2.zero,
                 ButtonFont);
-            SetRect(Child(upgrade, "Cost"), new Vector2(0.64f, 0.36f), new Vector2(1f, 1f));
+            SetRect(Child(upgrade, "Cost"), new Vector2(0.61f, 0.36f), new Vector2(1f, 1f));
             SetRect(Child(upgrade, "Arrow"), new Vector2(0.04f, 0.02f), new Vector2(0.14f, 0.32f));
             for (var level = 0; level < 5; level++)
             {
@@ -306,10 +306,10 @@ namespace UnitySlotTower.Editor.Setup
             var speed = Child(status, "Speed Button");
             // 速さ: 名前を左、倍率を右に並べる（上下に積むと帯の高さに収まらない: T384）。T614 で名前の幅を広げた。
             SetRect(speed, new Vector2(0.75f, 0.04f), new Vector2(0.86f, 0.96f));
-            SetLabel(Child(speed, "Text Label bar_speed"), Vector2.zero, new Vector2(0.56f, 1f), Vector2.zero, Vector2.zero, ButtonFont);
+            SetLabel(Child(speed, "Text Label bar_speed"), Vector2.zero, new Vector2(0.64f, 1f), Vector2.zero, Vector2.zero, ButtonFont);
             Set(Child(speed, "Speed").gameObject, TextModeLayout.Parts.Rect | TextModeLayout.Parts.Font, s =>
             {
-                s.anchorMin = new Vector2(0.58f, 0f);
+                s.anchorMin = new Vector2(0.65f, 0f);
                 s.anchorMax = Vector2.one;
                 s.offsetMin = Vector2.zero;
                 s.offsetMax = Vector2.zero;
@@ -324,7 +324,7 @@ namespace UnitySlotTower.Editor.Setup
                 var open = Child(status, "Open Button");
                 BandButton(open, "help_open", 0.75f, 0.86f);
                 // 名前（下から 46px まで）と重ならないよう上半分に置く（T423、T614 で中身が縮んだぶん少し上げた）。
-                SetRect(Child(open, "Mark"), new Vector2(0.3f, 0.58f), new Vector2(0.7f, 1f));
+                SetRect(Child(open, "Mark"), new Vector2(0.3f, 0.64f), new Vector2(0.7f, 1f));
                 BandButton(home, "pause_home", 0.63f, 0.74f);
                 SetRect(Child(home, "House"), new Vector2(0.34f, 0.52f), new Vector2(0.66f, 0.94f));
             }

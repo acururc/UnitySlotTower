@@ -21,22 +21,22 @@ namespace UnitySlotTower.Tests.EditMode.Layout
         }
 
         [Test]
-        [Description("T614: 外枠の内側で、上端の帯（96 px の 0.94 倍）を除く")]
+        [Description("T614: 外枠（柱・アーチ）の内側で、上端の帯（96 px の 0.88 倍）を除く")]
         public void Reference_BattleView_Leaves_The_Frame_And_Hud()
         {
             var view = PortraitLayout.BattleView(1440, 1920);
             Assert.That(new[] { view.Height * 1920, (1 - view.Y - view.Height) * 1920, view.X * 1440, view.Width * 1440 },
-                Is.EqualTo(new[] { 864.0 * 0.94, 57.6 + 96.0 * 0.94, 43.2, 1440.0 * 0.94 }).Within(1e-6));
+                Is.EqualTo(new[] { 864.0 * 0.88, 182.4 + 96.0 * 0.88, 86.4, 1440.0 * 0.88 }).Within(1e-6));
         }
 
         [Test]
-        [Description("T614（FR-116）: 中身は 3:4 の領域の中央に同じ比のまま縮め、周りを外枠に空ける")]
-        public void Content_Is_Centered_Inside_The_Frame()
+        [Description("T614（FR-116）: 中身は 3:4 の領域に同じ比のまま縮めて左右の中央・下寄せに置き、周り（柱・アーチ）を外枠に空ける")]
+        public void Content_Sits_Inside_The_Pillars_And_Under_The_Arch()
         {
             var content = PortraitLayout.Content(1080, 2400);
             var scale = PortraitLayout.ContentScale;
 
-            Assert.That(Tuple(content), Is.EqualTo(((1 - scale) / 2, 0.2 + 0.6 * (1 - scale) / 2, scale, 0.6 * scale))
+            Assert.That(Tuple(content), Is.EqualTo(((1 - scale) / 2, 0.2 + 0.6 * PortraitLayout.ContentBottomRatio, scale, 0.6 * scale))
                 .Using(new Tolerance()));
         }
 

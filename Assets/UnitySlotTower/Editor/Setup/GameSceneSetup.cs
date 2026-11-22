@@ -86,11 +86,12 @@ namespace UnitySlotTower.Editor.Setup
         }
 
         // 筐体の中（1440×720 px、左下原点）の部品の位置（px）。リール窓は T315 と同じ縦横比（約 2.03:1）で 1016×500 px。
-        // 窓の下の段（高さ 約 200 px）の左にレバー、右にコインの絵と枚数（plan 17.9、Claude の仮置き）。
-        internal static readonly Rect ReelWindowPx = new Rect(212f, 205f, 1016f, 500f);
-        internal static readonly Rect LeverPx = new Rect(40f, 22f, 260f, 166f);
-        internal static readonly Rect CoinIconPx = new Rect(1036f, 70f, 104f, 90f);
-        internal static readonly Rect CreditPx = new Rect(1150f, 62f, 270f, 106f);
+        // T614（実機の台の並び）: リール窓は下の段（実機の下パネルの位置、480 px）、その上のボタン台（高さ 約 170 px）の左にレバー、
+        // 右にコインの絵と枚数（Claude の仮置き）。旧 T368 は窓が上・レバーとコインが下だった。
+        internal static readonly Rect ReelWindowPx = new Rect(232f, 22f, 976f, 480f);
+        internal static readonly Rect LeverPx = new Rect(40f, 540f, 260f, 166f);
+        internal static readonly Rect CoinIconPx = new Rect(1036f, 588f, 104f, 90f);
+        internal static readonly Rect CreditPx = new Rect(1150f, 580f, 270f, 106f);
 
         /// <summary>
         /// 既にある Game シーンを戦闘 50%・下部 50% にする（T368、D-87、plan 17.9。旧 T317 の 6:4）。
