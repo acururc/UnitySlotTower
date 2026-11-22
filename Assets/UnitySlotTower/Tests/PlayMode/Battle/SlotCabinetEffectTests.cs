@@ -187,6 +187,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             var lights = Object.FindAnyObjectByType<SlotCabinetLights>();
             Assert.That(lights, Is.Not.Null, "Game シーンに外枠の LED がない（Build Cabinet Frame (T614)）");
             Assert.That(lights.LightCount, Is.GreaterThan(40), "LED が少ない");
+            Assert.That(lights.WindowLightCount, Is.GreaterThan(20), "リール窓まわりの LED が少ない");
             var root = (RectTransform)GameObject.Find("Portrait Root").transform;
             var scale = (float)UnitySlotTower.Core.Layout.PortraitLayout.ContentScale;
             Assert.That(new[] { root.rect.width, root.rect.height }, Is.EqualTo(new[] { 1440f * scale, 1920f * scale }).Within(0.01f),
@@ -198,11 +199,15 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             // 普段: 実時間で光が流れる（どれかの LED の色が変わる）。
             var before = new Color[lights.LightCount];
+            var windowBefore = new Color[lights.WindowLightCount];
             for (var i = 0; i < before.Length; i++) before[i] = lights.LightColor(i);
+            for (var i = 0; i < windowBefore.Length; i++) windowBefore[i] = lights.WindowLightColor(i);
             yield return new WaitForSecondsRealtime(0.3f);
             var changed = false;
+            var windowChanged = false;
             for (var i = 0; i < before.Length && !changed; i++) changed = lights.LightColor(i) != before[i];
-            Assert.That((changed, lights.IsFlashing), Is.EqualTo((true, false)), "普段の LED が流れない");
+            for (var i = 0; i < windowBefore.Length && !windowChanged; i++) windowChanged = lights.WindowLightColor(i) != windowBefore[i];
+            Assert.That((changed, windowChanged, lights.IsFlashing), Is.EqualTo((true, true, false)), "普段の LED が流れない");
 
             // 揃うと出目の色で点滅し、しばらくして流れに戻る。
             _cabinet.Wallet.Add(1);
