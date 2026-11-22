@@ -112,10 +112,13 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             PlaceUnit(deployment, map, "buffer");
             var board = Object.FindAnyObjectByType<SlotBoardEffect>();
             Assert.That(board, Is.Not.Null, "Game シーンに盤面全体の演出がない（Build Slot Board Effect (T613)）");
+            var lights = Object.FindAnyObjectByType<UnitySlotTower.Slot.SlotCabinetLights>();
+            Assert.That(lights, Is.Not.Null, "Game シーンに外枠の LED がない（Build Cabinet Frame (T614)）");
             foreach (var symbol in new[] { SlotSymbol.Red7, SlotSymbol.Blue7, SlotSymbol.Green7, SlotSymbol.Yellow7, SlotSymbol.Bar, SlotSymbol.Coin })
             {
                 yield return Capture(null);
                 board.Play(symbol);
+                lights.Flash(symbol); // 外枠の LED も出目の色で光る（T614、FR-116）。
                 yield return Capture(prefix + "-board-" + symbol.ToString().ToLowerInvariant(), BoardMoment);
                 while (board.IsPlaying)
                 {

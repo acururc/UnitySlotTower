@@ -51,12 +51,12 @@ namespace UnitySlotTower.Editor.Setup
         }
 
         // --- T359f 早見表 ---
-        // ページごとの見出しと列名の高さを揃える（1440×1920 基準）。
+        // ページごとの見出しと列名の高さを揃える（1440×1920 基準）。T614 で中身が 0.94 倍になり列名と重なったので見出しを 8 px 上げた。
 
-        internal static readonly Vector2 HelpSlotHeadingY = new Vector2(1560f, 1630f);
+        internal static readonly Vector2 HelpSlotHeadingY = new Vector2(1568f, 1638f);
         internal static readonly Vector2 HelpSlotColumnsY = new Vector2(1510f, 1560f);
         private const float HelpSlotRowHeight = 100f;
-        internal static readonly Vector2 HelpUnitHeadingY = new Vector2(1560f, 1630f);
+        internal static readonly Vector2 HelpUnitHeadingY = new Vector2(1568f, 1638f);
         internal static readonly Vector2 HelpUnitColumnsY = new Vector2(1510f, 1560f);
         private const float HelpUnitRowHeight = 330f;
 
@@ -276,9 +276,10 @@ namespace UnitySlotTower.Editor.Setup
             SetRect(upgrade, new Vector2((left + 158f) / width, iconBottom / barHeight), new Vector2((left + 304f) / width, 152f / barHeight));
             // T384: 左に「強化」とその下に段階の点、右の上に矢印、右の下に値段（重ならないように）。
             // 上の段に「強化」と値段を横に並べ、下の段に矢印と段階の点（上下に積むと重なる: T384）。
-            SetLabel(Child(upgrade, "Text Label bar_upgrade"), new Vector2(0f, 0.36f), new Vector2(0.58f, 1f), Vector2.zero, Vector2.zero,
+            // T614: 外枠で中身が 0.94 倍になったので「強化」の幅を広げる（狭いと2行に折り返す）。
+            SetLabel(Child(upgrade, "Text Label bar_upgrade"), new Vector2(0f, 0.36f), new Vector2(0.62f, 1f), Vector2.zero, Vector2.zero,
                 ButtonFont);
-            SetRect(Child(upgrade, "Cost"), new Vector2(0.6f, 0.36f), new Vector2(1f, 1f));
+            SetRect(Child(upgrade, "Cost"), new Vector2(0.64f, 0.36f), new Vector2(1f, 1f));
             SetRect(Child(upgrade, "Arrow"), new Vector2(0.04f, 0.02f), new Vector2(0.14f, 0.32f));
             for (var level = 0; level < 5; level++)
             {
@@ -303,12 +304,12 @@ namespace UnitySlotTower.Editor.Setup
 
             // 撤退は T384 から選んだ味方の詳細の板（UnitDetailSetup、両方の版で同じ配置）。
             var speed = Child(status, "Speed Button");
-            // 速さ: 名前を左、倍率を右に並べる（上下に積むと帯の高さに収まらない: T384）。
+            // 速さ: 名前を左、倍率を右に並べる（上下に積むと帯の高さに収まらない: T384）。T614 で名前の幅を広げた。
             SetRect(speed, new Vector2(0.75f, 0.04f), new Vector2(0.86f, 0.96f));
-            SetLabel(Child(speed, "Text Label bar_speed"), Vector2.zero, new Vector2(0.52f, 1f), Vector2.zero, Vector2.zero, ButtonFont);
+            SetLabel(Child(speed, "Text Label bar_speed"), Vector2.zero, new Vector2(0.56f, 1f), Vector2.zero, Vector2.zero, ButtonFont);
             Set(Child(speed, "Speed").gameObject, TextModeLayout.Parts.Rect | TextModeLayout.Parts.Font, s =>
             {
-                s.anchorMin = new Vector2(0.54f, 0f);
+                s.anchorMin = new Vector2(0.58f, 0f);
                 s.anchorMax = Vector2.one;
                 s.offsetMin = Vector2.zero;
                 s.offsetMax = Vector2.zero;
@@ -322,8 +323,8 @@ namespace UnitySlotTower.Editor.Setup
             {
                 var open = Child(status, "Open Button");
                 BandButton(open, "help_open", 0.75f, 0.86f);
-                // 名前（下から 46px まで）と重ならないよう上半分に置く（T423）。
-                SetRect(Child(open, "Mark"), new Vector2(0.3f, 0.54f), new Vector2(0.7f, 1f));
+                // 名前（下から 46px まで）と重ならないよう上半分に置く（T423、T614 で中身が縮んだぶん少し上げた）。
+                SetRect(Child(open, "Mark"), new Vector2(0.3f, 0.58f), new Vector2(0.7f, 1f));
                 BandButton(home, "pause_home", 0.63f, 0.74f);
                 SetRect(Child(home, "House"), new Vector2(0.34f, 0.52f), new Vector2(0.66f, 0.94f));
             }

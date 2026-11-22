@@ -353,6 +353,10 @@ namespace UnitySlotTower.Battle
                 max = Vector2.Max(max, point);
             }
 
+            // 横幅いっぱいに寄せたカメラ（D-87）では四隅が層の端からわずかにはみ出すので、層の中に収める（T614 の外枠に重ねない）。
+            var layer = _layer.rect;
+            min = Vector2.Max(min, layer.min);
+            max = Vector2.Min(max, layer.max);
             BoardRect = Rect.MinMaxRect(min.x, min.y, max.x, max.y);
             _board.anchoredPosition = BoardRect.center;
             _board.sizeDelta = BoardRect.size;

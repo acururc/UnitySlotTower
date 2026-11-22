@@ -21,7 +21,7 @@ namespace UnitySlotTower.Core.Layout
 
     /// <summary>
     /// 縦長 3:4（12:16）の画面配置（plan 2章）。どの解像度でも 3:4 の領域を中央に置き、余白は黒帯にする。
-    /// 3:4 領域の上半分が戦闘カメラ、下半分が操作バーとスロット筐体（2026-11-17 D-87・T368 で 6:4 から変更）。
+    /// 3:4 領域の外枠（T614）の内側の上半分が戦闘カメラ、下半分が操作バーとスロット筐体（2026-11-17 D-87・T368 で 6:4 から変更）。
     /// </summary>
     public static class PortraitLayout
     {
@@ -36,6 +36,12 @@ namespace UnitySlotTower.Core.Layout
 
         /// <summary>スロット筐体の上端（下からの割合。基準解像度で 720 px）。ここから戦闘の下端までが操作バー（240 px）。</summary>
         public const float SlotAreaTop = 0.375f;
+
+        /// <summary>
+        /// 3:4 の領域のうち、スロット台の外枠（T614、FR-116）の内側に置く中身の大きさの割合。中身は同じ比のまま中央に縮める
+        /// （基準解像度で 1353.6×1804.8 px、外枠は左右 43.2 px・上下 57.6 px）。
+        /// </summary>
+        public const double ContentScale = 0.94;
 
         private const double Aspect = (double)ReferenceWidth / ReferenceHeight;
 
@@ -56,9 +62,19 @@ namespace UnitySlotTower.Core.Layout
             return new NormalizedRect(0, (1 - height) / 2, 1, height);
         }
 
-        public static NormalizedRect Battle(int screenWidth, int screenHeight)
+        /// <summary>外枠の内側の中身の領域（3:4 の領域を中央に <see cref="ContentScale"/> 倍に縮めたもの）。</summary>
+        public static NormalizedRect Content(int screenWidth, int screenHeight)
         {
             var box = Letterbox(screenWidth, screenHeight);
+            var width = box.Width * ContentScale;
+            var height = box.Height * ContentScale;
+            return new NormalizedRect(box.X + (box.Width - width) / 2, box.Y + (box.Height - height) / 2, width, height);
+        }
+
+        /// <summary>戦闘の領域（中身の上半分）。</summary>
+        public static NormalizedRect Battle(int screenWidth, int screenHeight)
+        {
+            var box = Content(screenWidth, screenHeight);
             var height = box.Height * BattleHeightRatio;
             return new NormalizedRect(box.X, box.Y + box.Height - height, box.Width, height);
         }

@@ -21,11 +21,23 @@ namespace UnitySlotTower.Tests.EditMode.Layout
         }
 
         [Test]
-        public void Reference_BattleView_Leaves_96_Pixels_For_Hud()
+        [Description("T614: 外枠の内側で、上端の帯（96 px の 0.94 倍）を除く")]
+        public void Reference_BattleView_Leaves_The_Frame_And_Hud()
         {
             var view = PortraitLayout.BattleView(1440, 1920);
-            Assert.That(new[] { view.Height * 1920, (1 - view.Y - view.Height) * 1920 },
-                Is.EqualTo(new[] { 864.0, 96.0 }).Within(1e-9));
+            Assert.That(new[] { view.Height * 1920, (1 - view.Y - view.Height) * 1920, view.X * 1440, view.Width * 1440 },
+                Is.EqualTo(new[] { 864.0 * 0.94, 57.6 + 96.0 * 0.94, 43.2, 1440.0 * 0.94 }).Within(1e-6));
+        }
+
+        [Test]
+        [Description("T614（FR-116）: 中身は 3:4 の領域の中央に同じ比のまま縮め、周りを外枠に空ける")]
+        public void Content_Is_Centered_Inside_The_Frame()
+        {
+            var content = PortraitLayout.Content(1080, 2400);
+            var scale = PortraitLayout.ContentScale;
+
+            Assert.That(Tuple(content), Is.EqualTo(((1 - scale) / 2, 0.2 + 0.6 * (1 - scale) / 2, scale, 0.6 * scale))
+                .Using(new Tolerance()));
         }
 
         [Test]
@@ -61,12 +73,14 @@ namespace UnitySlotTower.Tests.EditMode.Layout
         }
 
         [Test]
-        [Description("D-87（T368）: 戦闘は 3:4 の領域の上半分")]
-        public void Battle_View_Is_Top_Half_Of_Letterbox()
+        [Description("D-87（T368）: 戦闘は外枠の内側（T614）の上半分")]
+        public void Battle_View_Is_Top_Half_Of_Content()
         {
             var battle = PortraitLayout.Battle(1080, 2400);
+            var content = PortraitLayout.Content(1080, 2400);
 
-            Assert.That(Tuple(battle), Is.EqualTo((0.0, 0.2 + 0.6 * 0.5, 1.0, 0.6 * 0.5)).Using(new Tolerance()));
+            Assert.That(Tuple(battle), Is.EqualTo((content.X, content.Y + content.Height * 0.5, content.Width, content.Height * 0.5))
+                .Using(new Tolerance()));
         }
 
         [Test]

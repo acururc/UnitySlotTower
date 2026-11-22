@@ -179,6 +179,46 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That(board.ActivePieceCount, Is.EqualTo(0), "盤面全体の演出の部品が残る");
         }
 
+        [UnityTest]
+        [Description("AC-110（T614、FR-116）: 中身は外枠の内側に縮み、外枠の LED は普段流れ、揃うと出目の色で点滅して流れに戻る")]
+        public IEnumerator Cabinet_Frame_Lights_Flow_And_Flash_On_Align()
+        {
+            yield return LoadGame();
+            var lights = Object.FindAnyObjectByType<SlotCabinetLights>();
+            Assert.That(lights, Is.Not.Null, "Game シーンに外枠の LED がない（Build Cabinet Frame (T614)）");
+            Assert.That(lights.LightCount, Is.GreaterThan(40), "LED が少ない");
+            var root = (RectTransform)GameObject.Find("Portrait Root").transform;
+            var scale = (float)UnitySlotTower.Core.Layout.PortraitLayout.ContentScale;
+            Assert.That(new[] { root.rect.width, root.rect.height }, Is.EqualTo(new[] { 1440f * scale, 1920f * scale }).Within(0.01f),
+                "中身が外枠の内側に縮んでいない");
+            foreach (var graphic in lights.GetComponentsInChildren<Graphic>(true))
+            {
+                Assert.That(graphic.raycastTarget, Is.False, $"外枠の {graphic.name} がクリックを受ける");
+            }
+
+            // 普段: 実時間で光が流れる（どれかの LED の色が変わる）。
+            var before = new Color[lights.LightCount];
+            for (var i = 0; i < before.Length; i++) before[i] = lights.LightColor(i);
+            yield return new WaitForSecondsRealtime(0.3f);
+            var changed = false;
+            for (var i = 0; i < before.Length && !changed; i++) changed = lights.LightColor(i) != before[i];
+            Assert.That((changed, lights.IsFlashing), Is.EqualTo((true, false)), "普段の LED が流れない");
+
+            // 揃うと出目の色で点滅し、しばらくして流れに戻る。
+            _cabinet.Wallet.Add(1);
+            Select(SlotSymbol.Green7);
+            yield return SpinAndStopAll();
+            Assert.That((lights.IsFlashing, lights.FlashSymbol), Is.EqualTo((true, (SlotSymbol?)SlotSymbol.Green7)),
+                "揃っても LED が出目の色で光らない");
+            var until = Time.realtimeSinceStartup + 5f;
+            while (lights.IsFlashing && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That((lights.IsFlashing, lights.FlashSymbol), Is.EqualTo((false, (SlotSymbol?)null)), "LED の点滅が終わらない");
+        }
+
         // 揃うと盤面全体の演出がその出目で始まり、盤面の色（少なくとも1つの部品）が出る（T613、FR-113）。
         private static void AssertBoardPlaying(SlotBoardEffect board, SlotSymbol symbol, int count)
         {
