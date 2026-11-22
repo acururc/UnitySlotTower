@@ -46,12 +46,12 @@ namespace UnitySlotTower.Editor.Setup
                 Object.DestroyImmediate(old.gameObject);
             }
 
-            // 画面いっぱいの入れ物。説明（GuideOverlay）より後ろ、戦闘の UI より前。
+            // 画面いっぱいの入れ物。早見表（HelpScreen）より後ろ、戦闘の UI より前。
             var host = CreateRect(RootName, portrait, Vector2.zero, Vector2.one);
-            var guide = Object.FindAnyObjectByType<GuideOverlay>(FindObjectsInactive.Include);
-            if (guide != null && guide.transform.parent == portrait)
+            var help = Object.FindAnyObjectByType<HelpScreen>(FindObjectsInactive.Include);
+            if (help != null && help.transform.parent == portrait)
             {
-                host.SetSiblingIndex(guide.transform.GetSiblingIndex());
+                host.SetSiblingIndex(help.transform.GetSiblingIndex());
             }
             else
             {

@@ -44,7 +44,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         public void TearDown()
         {
             GameSession.SetTextMode(false);
-            GuideOverlay.DisabledForTests = true;
             Time.timeScale = 1f;
             Application.runInBackground = _runInBackground;
         }
@@ -73,16 +72,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         [UnityTest]
-        public IEnumerator Game_Bar_Cabinet_Guide_And_Help_Show_Labels_Only_In_Text_Mode()
+        public IEnumerator Game_Bar_Cabinet_And_Help_Show_Labels_Only_In_Text_Mode()
         {
-            GuideOverlay.DisabledForTests = false;
             var battle = default(BattleController);
             yield return LoadGame(b => battle = b);
-            var guide = Object.FindAnyObjectByType<GuideOverlay>();
-            for (var i = 0; i < 30 && guide.Current == Core.Guide.GuideHint.None; i++)
-            {
-                yield return null;
-            }
 
             Assert.That(ShownIds(), Is.Empty, "文字なし版でラベルが出ている");
 
@@ -101,7 +94,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(shown, Does.Contain("unit_tank").And.Contain("unit_buffer").And.Contain("bar_upgrade").And.Contain("life")
                 .And.Contain("bar_pause").And.Contain("cabinet_lever").And.Contain("cabinet_credit")
                 .And.Contain("bar_remaining").And.Contain("bar_speed"), "操作バーか筐体にラベルが出ない");
-            Assert.That(shown, Does.Contain(GuideOverlay.CaptionId(guide.Current)), "説明の文が出ない");
 
             battle.SetPaused(true);
             var help = Object.FindAnyObjectByType<HelpScreen>();
@@ -172,8 +164,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return Settle();
             Readable("タイトル", problems);
 
-            // 戦闘（最初の説明が出ている状態）、一時停止中の「?」、早見表。
-            GuideOverlay.DisabledForTests = false;
+            // 戦闘、一時停止中の「?」、早見表。
             var battle = default(BattleController);
             yield return LoadGame(b => battle = b);
             yield return Settle();
@@ -200,7 +191,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             battle.SetPaused(false);
 
             // リザルトを直接開く（ルート・ショップ・回復はない: spec 002 FR-101）。
-            GuideOverlay.DisabledForTests = true;
             yield return LoadGame(b => battle = b);
             var result = Object.FindAnyObjectByType<ResultScreen>();
             typeof(ResultScreen).GetMethod("Open", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(result, new object[] { battle.Run });

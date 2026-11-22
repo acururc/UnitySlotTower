@@ -79,7 +79,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var summoner = Create(0, freeSummons: 1);
             summoner.TrySummon("tank");
 
-            Assert.That((summoner.RefundFor("tank", wasFree: true), summoner.Retreat("tank", fullRefund: true, wasFree: true),
+            Assert.That((summoner.RefundFor("tank", wasFree: true), summoner.Retreat("tank", wasFree: true),
                     _wallet.Coins, summoner.DeployedCount),
                 Is.EqualTo((0, 0, 0, 0)));
         }
@@ -213,25 +213,15 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("AC-020, D-56: 説明の撤退の題目を表示中の撤退は召喚費用の全額が戻る")]
-        public void Full_Refund_Retreat_Returns_The_Whole_Cost()
-        {
-            var summoner = Create(30);
-            summoner.TrySummon("tank");
-
-            Assert.That((summoner.Retreat("tank", fullRefund: true), _wallet.Coins), Is.EqualTo((15, 30)));
-        }
-
-        [Test]
         [Description("T384: 詳細の板に出す撤退の返還額は、実際の撤退と同じで、財布も配置数も変えない")]
         public void Refund_Preview_Matches_Retreat_Without_Changing_Anything()
         {
             var summoner = Create(30);
             summoner.TrySummon("tank");
 
-            var preview = (summoner.RefundFor("tank"), summoner.RefundFor("tank", fullRefund: true), _wallet.Coins, summoner.DeployedCount);
+            var preview = (summoner.RefundFor("tank"), _wallet.Coins, summoner.DeployedCount);
 
-            Assert.That(preview, Is.EqualTo((7, 15, 15, 1)));
+            Assert.That(preview, Is.EqualTo((7, 15, 1)));
             Assert.That(summoner.Retreat("tank"), Is.EqualTo(preview.Item1));
         }
     }

@@ -56,7 +56,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         public void TearDown()
         {
             GameSession.SetTextMode(false);
-            GuideOverlay.DisabledForTests = true;
             Time.timeScale = 1f;
             Application.runInBackground = _runInBackground;
             Debug.Log($"[ScreenCapture] {_folder}");
@@ -80,8 +79,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return SceneManager.LoadSceneAsync(GameSession.TitleScene);
             yield return Capture(prefix + "-title");
 
-            // 戦闘（最初の説明が出ている状態）と早見表。
-            GuideOverlay.DisabledForTests = false;
+            // 戦闘と早見表。
             var battle = default(BattleController);
             yield return LoadGame(b => battle = b);
             yield return Capture(prefix + "-game");
@@ -95,7 +93,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             battle.SetPaused(false);
 
             // 最初のステージを終えて次のステージ、そこからリザルトを直接開く（ルート・ショップ・回復はない: spec 002 FR-101）。
-            GuideOverlay.DisabledForTests = true;
             yield return LoadGame(b => battle = b);
             Time.timeScale = 20f;
             var limit = Time.realtimeSinceStartup + 30f;

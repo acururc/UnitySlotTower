@@ -206,14 +206,6 @@ namespace UnitySlotTower.Battle
             }
         }
 
-        /// <summary>
-        /// 文字なし説明（T403）を見せているあいだ true。戦闘の時間だけを止め、操作とスロット（Time.timeScale）は止めない。
-        /// </summary>
-        public bool IsHeldByGuide { get; set; }
-
-        /// <summary>説明の撤退の題目を表示中は true（D-56）。このあいだの撤退は召喚コストの全額を返す。</summary>
-        public bool FullRefundRetreat { get; set; }
-
         private void UpdateSlotLock()
         {
             // Completed のルート選びではリールの停止入力が必要。
@@ -310,7 +302,7 @@ namespace UnitySlotTower.Battle
             }
             else
             {
-                Run.Advance(_clock.Advance(IsHeldByGuide ? 0d : Time.deltaTime));
+                Run.Advance(_clock.Advance(Time.deltaTime));
                 if (Run.Phase == WavePhase.Completed && !_completionReported)
                     _victoryLeft = BattlePresentationTiming.VictoryBand;
             }

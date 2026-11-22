@@ -243,7 +243,6 @@ namespace UnitySlotTower.Editor.Setup
 
         /// <summary>
         /// 操作バーを味方4種の札にし、ライフ・所持金・ウェーブ・倍率・▶・撤退・一時停止を戦闘フィールドの上端の帯へ移す。
-        /// 説明の文を大きくする（plan 16.13）。
         /// </summary>
         private static void BuildBattleHud(RectTransform root)
         {
@@ -257,12 +256,10 @@ namespace UnitySlotTower.Editor.Setup
             var band = Child(root, "Top Band");
             BuildStatusBand(band);
             BuildRates(band);
-            BuildGuideCaption(root);
         }
 
         // 札（T383）: 札の枠（Card Frame）は BattleHudRestyleSetup の位置のまま。文字あり版は味方アイコンを縮めて上に寄せ、
         // 下の段に職名、右に強化（「強化」の文字つき）とブロック数、右端にスキルゲージ。x は札の左からの px、y は操作バーの下からの px。
-        // 職名を下にするのは、説明の文がアイコンのすぐ上に出るため（GuideOverlay.PlaceCaption）。
         private static void BuildUnitCard(RectTransform bar, int slot, float barHeight)
         {
             const float width = 1440f;
@@ -352,27 +349,6 @@ namespace UnitySlotTower.Editor.Setup
             ValueFont(Child(money, "Value"));
             SetLabel(Child(money, "Text Label bar_money_rate"), new Vector2(0f, 1f), Vector2.one,
                 new Vector2(0f, (NameBottom - ValueTop) * bandHeight), new Vector2(0f, (NameTop - ValueTop) * bandHeight), BandFont);
-        }
-
-        // 説明の文（GuideOverlay が毎フレーム位置を決め、高さは sizeDelta.y を使う）。高さと字の大きさだけを変える。
-        private static void BuildGuideCaption(RectTransform root)
-        {
-            var guide = root.GetComponentInChildren<GuideOverlay>(true);
-            var caption = (TextModeLabel)new SerializedObject(guide).FindProperty("caption").objectReferenceValue;
-            var rect = (RectTransform)caption.transform;
-            Set(rect.gameObject, TextModeLayout.Parts.Rect, s =>
-            {
-                s.offsetMax = s.offsetMin + new Vector2(1200f, 124f);
-                return s;
-            });
-            Set(caption.Text.gameObject, TextModeLayout.Parts.Font, s =>
-            {
-                s.autoSize = true;
-                s.fontSizeMin = MinFontSize;
-                s.fontSizeMax = 48f;
-                s.fontSize = 48f;
-                return s;
-            });
         }
 
         // 帯の1項目: 左に絵、右に数字、上の段に名前（名前は絵の子なので絵の左上を基準に置く）。

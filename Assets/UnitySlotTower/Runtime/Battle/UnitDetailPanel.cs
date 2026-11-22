@@ -95,7 +95,7 @@ namespace UnitySlotTower.Battle
                 BlockText.Show(blockText, unit.Block);
             }
 
-            SetNumber(refundText, battle.Deployment.RetreatRefund(unit, battle.FullRefundRetreat), ref _shownRefund,
+            SetNumber(refundText, battle.Deployment.RetreatRefund(unit), ref _shownRefund,
                 NumericText.YenFormat);
         }
 

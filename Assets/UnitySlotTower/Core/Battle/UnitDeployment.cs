@@ -172,19 +172,18 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>
         /// 配置中の味方を撤退させ、返還する（FR-025）。フィールドに居なければ何もしない。
-        /// <paramref name="fullRefund"/> は説明の撤退の題目を表示中（D-56）で、召喚コストの全額を返す。
         /// </summary>
-        public void Retreat(BattleUnit unit, bool fullRefund = false)
+        public void Retreat(BattleUnit unit)
         {
             if (_field.RemoveUnit(unit))
             {
-                _summoner.Retreat(unit.Definition.Id, fullRefund, _freeUnits.Remove(unit));
+                _summoner.Retreat(unit.Definition.Id, _freeUnits.Remove(unit));
             }
         }
 
         /// <summary>その味方を撤退させたときに戻る額（T384、詳細の板）。</summary>
-        public int RetreatRefund(BattleUnit unit, bool fullRefund = false) =>
-            _summoner.RefundFor(unit.Definition.Id, fullRefund, _freeUnits.Contains(unit));
+        public int RetreatRefund(BattleUnit unit) =>
+            _summoner.RefundFor(unit.Definition.Id, _freeUnits.Contains(unit));
 
         /// <summary>
         /// その種類を1段階強化する（FR-026。戦闘中いつでも、配置操作の途中でもよい）。配置中の同種の全個体にすぐ反映し、

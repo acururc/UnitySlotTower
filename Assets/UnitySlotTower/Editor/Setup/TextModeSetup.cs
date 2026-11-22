@@ -28,7 +28,6 @@ namespace UnitySlotTower.Editor.Setup
         public const string TablePath = "Assets/UnitySlotTower/Data/Tables/" + UiTexts.FileName;
         private const string UnitsPath = "Assets/UnitySlotTower/Data/Tables/units.csv";
         private const string LabelPrefix = "Text Label ";
-        private const string CaptionName = "Text Label Caption";
         private const string TextModeButtonName = "Text Mode Button";
 
         private static TMP_FontAsset _font;
@@ -190,7 +189,6 @@ namespace UnitySlotTower.Editor.Setup
 
             AddResultLabels(root);
             AddHelpLabels(root, units);
-            AddGuideCaption(root);
         }
 
         private static void AddResultLabels(RectTransform root)
@@ -295,23 +293,6 @@ namespace UnitySlotTower.Editor.Setup
             TextAlignmentOptions alignment = TextAlignmentOptions.Left) =>
             Label(panel, id, new Vector2(left, y.x / 1920f), new Vector2(right, y.y / 1920f), Vector2.zero, Vector2.zero, fontSize)
                 .Text.alignment = alignment;
-
-        private static void AddGuideCaption(RectTransform root)
-        {
-            var guide = root.GetComponentInChildren<GuideOverlay>(true);
-            var serialized = new SerializedObject(guide);
-            var overlay = (RectTransform)serialized.FindProperty("root").objectReferenceValue;
-            DestroyChild(overlay, CaptionName);
-            // GuideOverlay が毎フレーム位置と幅を決める（中心が原点・左下が基準、Place と同じ）。
-            var caption = Label(overlay, string.Empty, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero,
-                34f, CaptionName);
-            var rect = (RectTransform)caption.transform;
-            rect.pivot = Vector2.zero;
-            rect.sizeDelta = new Vector2(1200f, 96f);
-            rect.SetAsLastSibling();
-            serialized.FindProperty("caption").objectReferenceValue = caption;
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-        }
 
         // --- 置き方 ---
 

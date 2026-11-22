@@ -51,17 +51,6 @@ namespace UnitySlotTower.Editor.Automation
 
             // 置いた後は ¥110 に減らす（値段の高い札が「所持金不足」になる）。
             battle.Wallet.TrySpend(Mathf.Max(0, battle.Wallet.Coins - 110));
-            // 説明の幕を止める（撮影の邪魔になる）。
-            var guide = Object.FindAnyObjectByType<GuideOverlay>();
-            if (guide != null)
-            {
-                guide.enabled = false;
-                foreach (Transform child in guide.transform)
-                {
-                    child.gameObject.SetActive(false);
-                }
-            }
-
             Debug.Log($"[BattlePreview] placed={placed} coins={battle.Wallet.Coins}");
         }
 

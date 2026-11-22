@@ -9,7 +9,7 @@ namespace UnitySlotTower.Editor.Setup
 {
     /// <summary>
     /// T366（FR-044、plan 17.6）: 開いている Game シーンの UI Canvas に揃った時の演出の層（<see cref="SlotAlignEffect"/>）を足す。
-    /// 筐体・操作バー・開始の演出より上、説明・ヘルプ・リザルトより下に置く。何度実行しても同じ結果になる。
+    /// 筐体・操作バー・開始の演出より上、ヘルプ・リザルトより下に置く。何度実行しても同じ結果になる。
     /// </summary>
     internal static class SlotAlignEffectSetup
     {
@@ -27,9 +27,9 @@ namespace UnitySlotTower.Editor.Setup
                 return;
             }
 
-            // 縦長の画面の親（Portrait Root）の中、説明（Guide）のすぐ前。説明・ヘルプ・リザルトはこの演出より上に出る。
-            var guide = Object.FindAnyObjectByType<GuideOverlay>(FindObjectsInactive.Include);
-            var root = guide != null ? (RectTransform)guide.transform.parent : (RectTransform)canvas.transform;
+            // 縦長の画面の親（Portrait Root）の中、早見表（Help）のすぐ前。ヘルプ・リザルトはこの演出より上に出る。
+            var help = Object.FindAnyObjectByType<HelpScreen>(FindObjectsInactive.Include);
+            var root = help != null ? (RectTransform)help.transform.parent : (RectTransform)canvas.transform;
             foreach (var parent in new[] { (Transform)canvas.transform, root })
             {
                 var old = parent.Find(LayerName);
@@ -46,7 +46,7 @@ namespace UnitySlotTower.Editor.Setup
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
-            var index = guide != null ? guide.transform.GetSiblingIndex() : root.childCount - 1;
+            var index = help != null ? help.transform.GetSiblingIndex() : root.childCount - 1;
             rect.SetSiblingIndex(index);
 
             var effect = rect.gameObject.AddComponent<SlotAlignEffect>();

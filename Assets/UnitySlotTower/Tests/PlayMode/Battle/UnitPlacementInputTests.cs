@@ -273,30 +273,6 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        [Description("AC-020, D-56: 説明の撤退の題目を表示中（FullRefundRetreat）に撤退アイコンで撤退すると、召喚コストの全額が戻る")]
-        public IEnumerator Retreat_During_The_Retreat_Hint_Refunds_The_Whole_Cost()
-        {
-            UseFreeSummonAndFund();
-            var bar = Object.FindAnyObjectByType<OperationBarStatus>();
-            yield return Tap(Key.Digit1);
-            var target = FirstPlaceableCell();
-            yield return MoveCursorTo(target);
-            yield return Tap(Key.Enter);
-            yield return Tap(Key.Enter);
-            var placed = _battle.Field.Units[0];
-            var afterSummon = _battle.Wallet.Coins;
-            yield return MouseAt(CellScreen(target), false);
-            yield return MouseAt(CellScreen(target), true);
-            yield return MouseAt(CellScreen(target), false);
-
-            _battle.FullRefundRetreat = true;
-            yield return Click(RetreatButton());
-            _battle.FullRefundRetreat = false;
-
-            Assert.That((_battle.Field.Units.Count, _battle.Wallet.Coins - afterSummon), Is.EqualTo((0, placed.Definition.Cost)));
-        }
-
-        [UnityTest]
         public IEnumerator Bar_Shows_Cost_Life_Coins_And_Upgrade_Cost_As_Numbers()
         {
             yield return null;

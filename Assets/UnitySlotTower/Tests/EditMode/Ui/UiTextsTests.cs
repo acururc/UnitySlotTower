@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using NUnit.Framework;
 using UnitySlotTower.Core.Data;
-using UnitySlotTower.Core.Guide;
 using UnitySlotTower.Core.Run;
 using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Core.Ui;
@@ -54,14 +53,6 @@ namespace UnitySlotTower.Tests.EditMode.Ui
                 if (!texts.TryGet(id, out _))
                 {
                     missing.Add(id);
-                }
-            }
-
-            foreach (GuideHint hint in Enum.GetValues(typeof(GuideHint)))
-            {
-                if (hint != GuideHint.None)
-                {
-                    Need(GuideOverlay.CaptionId(hint));
                 }
             }
 

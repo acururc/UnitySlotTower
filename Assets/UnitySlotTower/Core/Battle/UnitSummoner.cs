@@ -106,22 +106,21 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>
         /// 撤退した味方の分の返還（FR-025）。召喚コスト × 返還率を切り捨てて財布に戻し、返した額を返す。
-        /// <paramref name="fullRefund"/> が true（説明の撤退の題目を表示中、D-56）なら召喚コストの全額を返す。
         /// 無料の1回で出した味方（<paramref name="wasFree"/>）は返還しない（spec 002 E-25）。
         /// </summary>
-        public int Retreat(string unitId, bool fullRefund = false, bool wasFree = false)
+        public int Retreat(string unitId, bool wasFree = false)
         {
-            var refund = RefundFor(unitId, fullRefund, wasFree);
+            var refund = RefundFor(unitId, wasFree);
             _wallet.Add(refund);
             DeployedCount--;
             return refund;
         }
 
         /// <summary>撤退したときに戻る額（Retreat と同じ計算。何も変えない）。詳細の板に出す（T384）。</summary>
-        public int RefundFor(string unitId, bool fullRefund = false, bool wasFree = false)
+        public int RefundFor(string unitId, bool wasFree = false)
         {
             var cost = _units.Get(unitId).Cost;
-            return wasFree ? 0 : fullRefund ? cost : (int)Math.Floor(cost * _refundRate);
+            return wasFree ? 0 : (int)Math.Floor(cost * _refundRate);
         }
 
         /// <summary>倒された味方の分の配置枠を空ける（返還はない）。</summary>
