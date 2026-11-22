@@ -2,24 +2,26 @@
 
 ## 現在の作業
 
-更新: 2026-11-23 Asia/Tokyo（T617 調整2回目） / 状態: **spec 002 の実装中。M3 と T616 まで完了（T616: ハーネス 8/8、開発ビルド succeeded、プレイヤー撮影 `Artifacts/Automation/Player/20261123-032706-504/`・`20261123-032721-698/`、全テストは T615 の EditMode 541/541・PlayMode 68 成功/失敗0/Explicit 1 を流用、PROJECT_CONTEXT と 001 plan の冒頭に反映）。方針「デザインは後で、先に場所どり」、ユーザーは本番の 3D 台モデルを作る予定（差し替え先は `Cabinet Model`）。ユーザーは Editor の Play で確認する。** 次: T617 の続き（ユーザーの通しプレイと数値調整）。2026-11-23 の調整済み: 近距離の敵 HP6、剣士 HP20、雑魚の所持金50、ステージ1のウェーブ4は6体、開始時の所持金100・無料の召喚0（`game_config.csv` の `first_stage_free_summons`）、強化費用 400/700/1100/1600。spec E-05・E-07・AC-105 と plan 4章に記録。検証: EditMode 541/541、PlayMode 68 成功/失敗0/Explicit 1、ハーネス 8/8。ユーザーは調整前の値で全ステージを未強化でクリアできたので、`stages.csv` に敵の HP 倍率 `enemy_hp_rate`（1/1/1.3/2/2.2/2.6/3/3.5、強化しないとステージ4のボスから厳しく）を追加（EditMode 545/545、PlayMode 68/0/1）。この値での感想待ち。注意: PlayMode を Play 停止で打ち切るとジョブが `tests_running` のまま残り、Editor の再起動が要った。T615 の早見表の印の絵は仮置き（本番は M5）。T609 で `RouteNodeKinds`（開始の演出の印の4種）と `RouteNodeIcons` は名前のまま残した。T604 の仮置き: タンク・バッファー・ボスの攻撃間隔は据え置き、最終ボスの範囲攻撃3、`def_mult`=`hp_mult`。Codex に任せるのは小さく閉じた作業だけにする（T604・T605 の委任は失敗）。
-- 対象: [`spec.md`](../../specs/002-td-focus/spec.md)（2026-11-21 承認、sha256 `24ce711235c4`、E-01〜E-30・FR-101〜FR-117・AC-101〜AC-113）、[`plan.md`](../../specs/002-td-focus/plan.md)、[`tasks.md`](../../specs/002-td-focus/tasks.md)（T601〜T617）。元は 2026-11-21 の第三者プレイ後のメモ `変更.txt`（リポジトリ直下、未追跡）。001 の spec は土台で、食い違いは 002 が優先。
-- 承認の範囲: spec 002 全体（Claude 提案の E-23〜E-30 を含む）。plan の 4章の数値・マップの割り当て・`stages.csv`/`stage_waves.csv` の形・最低ダメージ1・buff_rate 2.0・強化倍率は Claude の仮置きで承認の対象外。
-- ユーザーの主な決定: ルート・ショップ・回復・無料ストック・説明・ガイドヒント・難易度・スキルを削除。全8ステージを順に。ステージ1はチュートリアル（全滅で次のウェーブ）、2以降は全滅を待たない。持ち越しはライフ・コイン・強化・所持金。無料の1体はステージ1だけ。召喚費用は今のまま。ウェーブ数は出さない。ハズレなし（一旦）。
-- 001 の残り: T399・T429（ユーザーの通しプレイ）と M5（T501〜T505）は 002 で前提が変わる。T501 のデザインの方向（サブモニター案など）は未決定のまま。
-- ブランチ: 2026-11-22 から main に直接コミットして origin へ push（`feature/002-td-focus` は T610 までの古い枝）。main は core.autocrlf で CSV が CRLF になる（テストの読み込みは `TablePaths` で LF にそろえた）。
-- Unity 接続: 2026-11-23 T616 の後に停止を確認済み（ポート 8080 閉）。Editor の撮影の最新は `t359/20261123-031454/`。`editor console` は0件しか返さないので、メニュー実行の結果は code execute でシーンを調べて確かめた。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する（`t359/` 内の `2026*` で探す。`before` フォルダが名前順で最後に来る）。テスト・撮影は scratchpad のスクリプトで、code execute のコードはファイルから読んで `.Trim()` して渡す（PowerShell の文字列に `\"` は使えない）。Editor は開いたまま。PlayMode 全件は約4〜10分。`poll-test --wait` はすぐ返るので、前景で回数を区切ったループで同じ job_id を poll する（バックグラウンドのポーラーはメモリ不足で止められた。止められても Unity 側のジョブは続く）。CLI にテスト名の絞り込みはない。code execute で `SerializedProperty.objectReferenceInstanceIDValue` は廃止扱いでコンパイルエラー（参照切れはシーン YAML を静的に調べた）。
+更新: 2026-11-23 Asia/Tokyo / 状態: **spec 002 の実装が完了（T601〜T617 すべて済み）。次の作業は未決定で、ユーザーに選んでもらう。**
 
-### 作業の注意（001 から引き継ぐもの）
-- テストの手順: scratchpad のスクリプトで refresh→25秒→code execute でコンパイル確認→`tests --async`→poll（[`UNITY_AUTOMATION.md`](UNITY_AUTOMATION.md) の Tests 節）。PlayMode 全件は約5分。poll が切れたら同じ job_id で poll し直す（バックグラウンドの poll はメモリ不足で止まった前例があり、前景のループで待つ）。「tests did not start within timeout」でも走っていることがあるので、`isPlaying` が false に戻るのを待ってから再送する。
-- Unity 操作中に PC が3回落ちた（原因未特定）。操作は1回の呼び出しに詰め込まず分ける。
-- Codex に委任するとき: HANDOFF・tasks を触らせない。テストは数と中身を必ず確認する（T602 では2件しか書かず、失敗するテストを `[Ignore]` にしていた）。Editor コードで `GetComponent<T>() ?? Add` を使わせない。行番号や既存の長さなどを正確に指示する。
-- シーンは Editor の Setup メニューで作り直す。Play を止めるとシーンが dirty になるので、Setup の前に保存済みシーンを開き直す。テストの後はアクティブシーンが無題になる。
-- 文字あり版: 配置は `TextModeLayoutSetup`、ラベルは `TextModeSetup`、読みやすさは `TextModeTests`。表に字を足したら `Create Text Mode Font (T352)`。
+- 対象: [`spec.md`](../../specs/002-td-focus/spec.md)・[`plan.md`](../../specs/002-td-focus/plan.md)・[`tasks.md`](../../specs/002-td-focus/tasks.md)。001 の spec は土台で、食い違いは 002 が優先。
+- T617 の結果（ユーザーが全ステージをクリアし、了承済み）: 近距離の敵 HP6、剣士 HP20、雑魚の所持金50、ステージ1のウェーブ4は6体、開始時の所持金100・無料の召喚0（`game_config.csv` の `first_stage_free_summons`）、強化費用 400/700/1100/1600、`stages.csv` の敵 HP 倍率 `enemy_hp_rate`（1/1/1.3/2/2.2/2.6/3/3.5、強化しないとステージ4のボスから厳しくなる狙い）。spec の E-05・E-07・AC-105 と plan の 2.4・4章に記録。コミット `241c2a4`・`3e7321b`（main、push 済み）。倍率を入れた後の通しプレイはまだ。
+- 検証（2026-11-23 最後の実行）: EditMode 545/545、PlayMode 68 成功/失敗0/Explicit 1、ハーネス 8/8。
+- 次の候補（ユーザーが決める）: (1) 001 の M5（[001 の tasks](../../specs/001-slot-tower-defense/tasks.md) の T501〜T505: 素材・グレーボックスの差し替え・最終調整・ビルド。002 で前提が変わっているので見直しが要る。T501 のデザインの方向は未決定）、(2) ユーザーが作る本番の 3D 台モデルの差し替え（差し替え先は `Cabinet Model`）、(3) 倍率を入れた後の通しプレイからの数値調整。方針は「デザインは後で、先に場所どり」。左右の黒帯は 3:4 の固定によるもの（ユーザーに説明済み、変更しない）。
+- 001 の残りの T399・T429（ユーザーの通しプレイ）は 002 の T617 で置き換わったものとして扱ってよいか、ユーザーに未確認。
+- ブランチ: main に直接コミットして origin へ push。main は core.autocrlf で CSV が CRLF になる。
+- Unity 接続: 2026-11-23 に停止を確認済み（ポート 8080 閉）。Editor は開いたまま。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。
+
+### 作業の注意
+- テストの手順: refresh → 約25秒 → code execute で `scriptCompilationFailed` と `isCompiling` を確認 → `tests --async` を1回 → 同じ job_id を前景のループで poll（[`UNITY_AUTOMATION.md`](UNITY_AUTOMATION.md) の Tests 節）。PlayMode 全件は約4分。スクリプトは毎回 `$env:TEMP` などに作り直す。
+- PlayMode の実行中に Play を止めて打ち切ると、ジョブが `tests_running` のまま残り、Editor の再起動まで新しいテストを流せない。止めずに最後まで待つ。
+- ラッパーが失敗すると出力が捨てられる。原因を見るときは `.tools/unity-mcp/Scripts/python.exe -B scripts/unity/unity_mcp_runner.py ...` を直接呼ぶ。
+- 実データを読むテスト（`TablePaths`）は数値の調整で落ちる。CSV を変えたら `Get("melee")` などの期待値を grep で探して一緒に直す。
+- Bash で C# の `\n` を含む置換をするとバックスラッシュが崩れる。そういう置換は Edit ツールで行う。`node -e "..."` の中のバッククォートはシェルに展開されるので、node のコードは quoted heredoc でファイルに書いてから実行する。
+- Unity 操作中に PC が落ちた前例がある。操作は1回の呼び出しに詰め込まず分ける。
+- Codex に任せるのは小さく閉じた作業だけ（T604・T605 の委任は失敗）。HANDOFF・tasks を触らせず、テストは数と中身を確かめる。
+- シーンは Editor の Setup メニューで作り直す。Play を止めるとシーンが dirty になるので、Setup の前に保存済みシーンを開き直す。
 - 撮影: `Tools/UnitySlotTower/Automation/Capture Screens (T359)` → `Artifacts/Automation/Editor/t359/<日時>/`。Game ビューは 1440×1920。
-- Bash の `python` は動かない（Windows のスタブ）。編集は Edit ツールか `node`。`code execute` のコードは位置引数。PowerShell で関数名 `R` は使わない。
-- Bash ツールで node スクリプトを書くとき、C# 文字列の `
-`（バックスラッシュ2つ）が1つに崩れて一致しない。エスケープを含む置換は Edit ツールで行う。
 
 ## 再開のしかた
 
