@@ -83,6 +83,22 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var battle = default(BattleController);
             yield return LoadGame(b => battle = b);
             yield return Capture(prefix + "-game");
+            // 配置中の置けるマスの緑とカーソル（T612、AC-111）。開始の演出の後、カーソルは中央の行の左から最初の置けるマスに置く。
+            yield return StageTestUtil.WaitForIntro(battle);
+            var deployment = battle.Deployment;
+            var map = Object.FindAnyObjectByType<BattleFieldView>().Map;
+            deployment.Select("tank");
+            for (var n = 0; n < map.Width * map.Height; n++)
+            {
+                deployment.SetCursor(new GridPoint(n % map.Width, (map.Height / 2 + n / map.Width) % map.Height));
+                if (deployment.CanPlace(deployment.Cursor))
+                {
+                    break;
+                }
+            }
+
+            yield return Capture(prefix + "-placing");
+            deployment.Cancel();
             // 時間のある効果が発動中の上端の帯（T611）。
             battle.Field.Effects.StartStop();
             battle.Field.Effects.StartPoison();

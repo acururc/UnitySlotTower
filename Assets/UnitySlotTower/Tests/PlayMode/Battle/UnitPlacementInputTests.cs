@@ -262,6 +262,87 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
+        [Description("T612 (AC-111, FR-115): マスを選ぶ間は置けるマスが全部緑、カーソル下の置けるマスは別の色、置けないマスの上では色が増えない")]
+        public IEnumerator Placeable_Cells_Show_Green_And_Cursor_Only_Over_Placeable_Cells()
+        {
+            yield return null;
+            var beforeSelect = ShownMarkers("Placeable Cell").Count;
+            yield return Tap(Key.Digit1);
+            var deployment = _battle.Deployment;
+            var map = _fieldView.Map;
+            var expected = new System.Collections.Generic.List<Vector3>();
+            var blocked = new GridPoint(-1, -1);
+            for (var y = 0; y < map.Height; y++)
+            {
+                for (var x = 0; x < map.Width; x++)
+                {
+                    var cell = new GridPoint(x, y);
+                    if (deployment.CanPlace(cell))
+                    {
+                        expected.Add(_fieldView.CellTopToWorld(cell));
+                    }
+                    else if (blocked.X < 0)
+                    {
+                        blocked = cell;
+                    }
+                }
+            }
+
+            Assert.That((expected.Count > 0, blocked.X >= 0), Is.EqualTo((true, true)), "置けるマスか置けないマスがない");
+
+            yield return MoveCursorTo(FirstPlaceableCell());
+            var plates = ShownMarkers("Placeable Cell");
+            Assert.That(plates.Count, Is.EqualTo(expected.Count), "置けるマスの数と緑の板の数が合わない");
+            foreach (var plate in plates)
+            {
+                var onPlaceable = expected.Exists(top => Mathf.Abs(top.x - plate.position.x) < 0.01f &&
+                                                         Mathf.Abs(top.z - plate.position.z) < 0.01f);
+                Assert.That(onPlaceable, Is.True, $"緑の板が置けないマスにある: {plate.position}");
+            }
+
+            var plateColor = MarkerColor(plates[0]);
+            var cursors = ShownMarkers("Placement Cursor");
+            Assert.That(cursors.Count, Is.EqualTo(1), "置けるマスの上でカーソルが出ない");
+            var cursorColor = MarkerColor(cursors[0]);
+            Assert.That((plateColor.g > plateColor.r && plateColor.g > plateColor.b, cursorColor != plateColor),
+                Is.EqualTo((true, true)), $"板が緑でないか、カーソルが板と同じ色: 板 {plateColor} カーソル {cursorColor}");
+
+            yield return MoveCursorTo(blocked);
+            Assert.That((ShownMarkers("Placement Cursor").Count, ShownMarkers("Placeable Cell").Count),
+                Is.EqualTo((0, expected.Count)), "置けないマスの上で色が増えた");
+
+            yield return MoveCursorTo(FirstPlaceableCell());
+            yield return Tap(Key.Enter);
+            var whileFacing = ShownMarkers("Placeable Cell").Count;
+            yield return Tap(Key.Escape);
+            yield return Tap(Key.Escape);
+
+            Assert.That((beforeSelect, whileFacing, ShownMarkers("Placeable Cell").Count), Is.EqualTo((0, 0, 0)),
+                "札を選ぶ前・向きを選ぶ間・取り消した後に緑の板が残る");
+        }
+
+        private static System.Collections.Generic.List<Transform> ShownMarkers(string markerName)
+        {
+            var found = new System.Collections.Generic.List<Transform>();
+            foreach (var marker in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
+            {
+                if (marker.name == markerName)
+                {
+                    found.Add(marker);
+                }
+            }
+
+            return found;
+        }
+
+        private static Color MarkerColor(Transform marker)
+        {
+            var block = new MaterialPropertyBlock();
+            marker.GetComponent<Renderer>().GetPropertyBlock(block);
+            return block.GetColor("_BaseColor");
+        }
+
+        [UnityTest]
         [Description("FR-019, plan 17.2: 準備フェーズがないので操作バーに ▶ とウェーブ n/2 はない")]
         public IEnumerator Bar_Has_No_Start_Button_Or_Wave_Count()
         {

@@ -18,7 +18,7 @@
 
 ## M3 画面
 - [x] T611 (FR-102, FR-108, FR-113) 上端の帯（ステージの残りの敵・効果のアイコンと残り時間）と札の「¥0」— 検証: PlayMode＋Editor画像（文字なし・文字あり） → 2026-11-22 EditMode 540/540、PlayMode 66 成功・失敗0・Explicit 1件スキップ（67件、¥0 のテスト1件を追加）、ハーネス 8/8、撮影 `Artifacts/Automation/Editor/t359/20261122-172610/`（`*-effects.png` を追加: 3つの効果が発動中の帯）。残りの敵の数は 001 の `Battlefield.RemainingEnemies`（出ていない分を含む）のままで変更なし。`SlotEffectBandSetup`（メニュー Build Slot Effect Band (T611)）が Top Band に「Slot Effects」（青7の停止・黄7の毒のアイコン、白い円の Filled Radial360 で残り時間）を置き、攻撃力の印の下に「Ring」を足す。文字あり版の位置は `TextModeLayoutSetup.BuildRates`。`OperationBarStatus` が発動中は濃く・ないときは薄く（0.3）、一時停止中はタイトルへ戻るボタンと重なるのでアイコンを隠す。揃った時の行き先: 青7→停止、黄7→毒、赤7・緑7は null（T613 の盤面全体の演出）。札: 無料の1回の間は費用を「¥0」（Ready の黄色）。無料ストックの部品（`stockText`・`stockBadge`）は隠したままシーンに残した。テストの修正: `SlotCabinetEffectTests` の固定の抽選は発動中の出目を外した中で数える、`Bar_Shows_Cost...` は先に無料の1回を使う。`TablePaths.ReadAll` が改行を LF にそろえる（main へ切り替えた後 core.autocrlf で CSV が CRLF になり、TableValidationTests 7件が落ちたため）。帯の効果のアイコンの名前（文字あり版）は T615。
-- [ ] T612 (FR-115) 配置中の置けるマスの緑とカーソルの色 — 検証: PlayMode（AC-111）＋Editor画像
+- [x] T612 (FR-115) 配置中の置けるマスの緑とカーソルの色 — 検証: PlayMode（AC-111）＋Editor画像 → 2026-11-22 EditMode 540/540、PlayMode 67 成功・失敗0・Explicit 1件スキップ（68件、`Placeable_Cells_Show_Green_And_Cursor_Only_Over_Placeable_Cells` を追加）、ハーネス 8/8、撮影 `Artifacts/Automation/Editor/t359/20261122-174823/`（`*-placing.png` を追加）。`UnitPlacementView` がマスを選ぶ間だけ置けるマス全部に緑の板「Placeable Cell」（プール）を出し、カーソルは置けるマスの上だけ `hoverColor`（黄）で出す。赤い `blockedColor` は削除（Game.unity に古い値が残るが無害、次の保存で消える）。向きを選ぶ間は緑の板を出さず範囲だけ。
 - [ ] T613 (FR-113) 出目ごとの盤面全体の演出 — 検証: Editor画像（6つの出目）＋PlayMode（演出中も戦闘とレバーが止まらない）
 - [ ] T614 (FR-116) スロット台の外枠と LED、比率の調整 — 検証: Editor画像（文字なし・文字あり）＋ユーザー確認（AC-110）
 - [ ] T615 (FR-117) 早見表と文字あり版の文言、TextAudit — 検証: PlayMode（早見表）＋EditMode（TextAudit）＋Editor画像
