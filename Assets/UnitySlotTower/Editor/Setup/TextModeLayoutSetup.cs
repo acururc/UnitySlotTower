@@ -203,21 +203,21 @@ namespace UnitySlotTower.Editor.Setup
 
         /// <summary>
         /// レバー・コイン・回数固定の名前を、リール窓の上のボタン台に大きく出す。筐体の部品の配置と見た目は変えない（ラベルだけ動かす）。
-        /// 筐体の中は 1440×720 px、リール窓は x 232〜1208・y 22〜502、窓の上のボタン台にレバーとコイン（GameSceneSetup、T614）。
+        /// 筐体の中は 1440×720 px、リール窓は x 263〜1177・y 66〜516、窓の上のボタン台にレバーとコイン（GameSceneSetup、T614）。
         /// </summary>
         private static void BuildCabinetLabels(RectTransform cabinet)
         {
-            // レバー（x 40〜300・y 540〜706）: レバーの右に2行（x 310〜640）。
+            // レバー（x 40〜230・y 604〜708）: レバーの右に2行（x 310〜640）。
             var lever = Child(cabinet, "Lever Button");
             SetLabel(Child(lever, "Text Label cabinet_lever"), new Vector2(1f, 0f), Vector2.one,
                 new Vector2(10f, 0f), new Vector2(340f, 0f), CabinetFont);
 
-            // コイン（数字 x 1150〜1420・y 580〜686、絵 x 1036〜1140）: 絵の左に2行（x 650〜1026）。
+            // コイン（数字 x 1140〜1410・y 606〜702、絵 x 1046〜1130）: 絵の左に2行（x 650〜1026）。
             var credit = Child(cabinet, "Credit");
             SetLabel(Child(credit, "Text Label cabinet_credit"), Vector2.zero, new Vector2(0f, 1f),
                 new Vector2(-500f, 0f), new Vector2(-124f, 0f), CabinetFont);
 
-            // 回数固定（絵 x 1036〜1140・y 588〜678）: 絵の下（x 990〜1190・y 526〜580、窓の LED の少し上）。
+            // 回数固定（絵 x 1046〜1130・y 616〜692、今は常に隠れている）: 絵の下。
             var fixedSpins = Child(cabinet, "Fixed Spins Icon");
             SetLabel(Child(fixedSpins, "Text Label cabinet_fixed"), Vector2.zero, new Vector2(1f, 0f),
                 new Vector2(-46f, -62f), new Vector2(50f, -8f), CabinetFont);

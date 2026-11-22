@@ -228,8 +228,8 @@ namespace UnitySlotTower.Editor.Setup
             var scale = (float)PortraitLayout.ContentScale;
             var slotHeight = PortraitLayout.ReferenceHeight * PortraitLayout.SlotAreaTop; // 筐体の中の px（縮める前）
             float SlotY(float y) => bottom + y * scale;
-            var deckBottom = SlotY(526f);
-            var deckTop = SlotY(714f);
+            var deckBottom = SlotY(GameSceneSetup.ButtonDeckPx.yMin);
+            var deckTop = SlotY(GameSceneSetup.ButtonDeckPx.yMax);
 
             var windowMin = window.anchorMin;
             var windowMax = window.anchorMax;
@@ -280,10 +280,11 @@ namespace UnitySlotTower.Editor.Setup
             const float bezel = 30f;
             const float rim = 22f;
             const float bezelZ = -1.6f;
-            Box(lower, "Bezel Top", new Vector2(winL - bezel - rim, winT + bezel), new Vector2(winR + bezel + rim, winT + bezel + rim), bezelZ, 1f, _chrome);
-            Box(lower, "Bezel Bottom", new Vector2(winL - bezel - rim, winB - bezel - rim), new Vector2(winR + bezel + rim, winB - bezel), bezelZ, 1f, _chrome);
-            Box(lower, "Bezel Left", new Vector2(winL - bezel - rim, winB - bezel), new Vector2(winL - bezel, winT + bezel), bezelZ, 1f, _chrome);
-            Box(lower, "Bezel Right", new Vector2(winR + bezel, winB - bezel), new Vector2(winR + bezel + rim, winT + bezel), bezelZ, 1f, _chrome);
+            var bs = OnScreen(bezelZ); // ふちの前面が画面の狙った位置（リール窓の外側）に写るよう縮めて置く
+            Box(lower, "Bezel Top", new Vector2(winL - bezel - rim, winT + bezel) * bs, new Vector2(winR + bezel + rim, winT + bezel + rim) * bs, bezelZ, 1f, _chrome);
+            Box(lower, "Bezel Bottom", new Vector2(winL - bezel - rim, winB - bezel - rim) * bs, new Vector2(winR + bezel + rim, winB - bezel) * bs, bezelZ, 1f, _chrome);
+            Box(lower, "Bezel Left", new Vector2(winL - bezel - rim, winB - bezel) * bs, new Vector2(winL - bezel, winT + bezel) * bs, bezelZ, 1f, _chrome);
+            Box(lower, "Bezel Right", new Vector2(winR + bezel, winB - bezel) * bs, new Vector2(winR + bezel + rim, winT + bezel) * bs, bezelZ, 1f, _chrome);
             foreach (var side in new[] { -1f, 1f })
             {
                 var inner = side < 0f ? winL - bezel - rim - 40f : winR + bezel + rim + 40f;
