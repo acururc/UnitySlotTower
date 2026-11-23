@@ -10,7 +10,7 @@ namespace UnitySlotTower.Battle
 {
     /// <summary>
     /// 揃ったときの盤面全体の演出（FR-113、spec 002 E-28、plan 50行目、T613）。筐体が揃いを通知したら、盤面（3Dのフィールド）の
-    /// 画面上の範囲に出目ごとの演出を重ねる: 赤7＝盤面を横切る赤い光の帯と敵ごとの爆発、青7＝盤面を青く染めて敵に氷の色、
+    /// 画面上の範囲に出目ごとの演出を重ねる（赤7は spec 003 の <see cref="Red7BreathEffect"/> に移した）: 青7＝盤面を青く染めて敵に氷の色、
     /// 緑7＝味方から緑の粒が上がる、黄7＝盤面に黄緑の霧と敵に毒の色、バー＝味方の頭上に上向きの矢印、コイン＝上からコインが降る。
     /// どの出目でも盤面をうっすら染める。見た目だけで戦闘とレバーは止めない。時間は戦闘の時間（Time.deltaTime）で進む。
     /// 絵は仮（丸と三角）で、本番の絵は M5 で差し替える。部品はこの層の子の「Board」（盤面の範囲で切り抜く）に作って使い回す。
@@ -37,7 +37,6 @@ namespace UnitySlotTower.Battle
         [Tooltip("どの出目でも盤面を染める一番濃いときの不透明度。青7・黄7はこれより濃い。")]
         [SerializeField, Range(0f, 1f)] private float tintAlpha = 0.14f;
         [SerializeField, Range(0f, 1f)] private float strongTintAlpha = 0.32f;
-        [SerializeField] private Color redColor = new Color(1f, 0.3f, 0.15f);
         [SerializeField] private Color iceColor = new Color(0.55f, 0.85f, 1f);
         [SerializeField] private Color greenColor = new Color(0.45f, 1f, 0.5f);
         [SerializeField] private Color poisonColor = new Color(0.7f, 0.95f, 0.25f);
@@ -121,8 +120,9 @@ namespace UnitySlotTower.Battle
         /// <summary>出目の演出を始める（筐体の揃いの通知と撮影から呼ぶ）。</summary>
         public void Play(SlotSymbol symbol)
         {
+            // 赤7は息吹の演出（Red7BreathEffect、spec 003）が受け持つ。
             var field = battle.Field;
-            if (field == null || fieldView.Map == null)
+            if (symbol == SlotSymbol.Red7 || field == null || fieldView.Map == null)
             {
                 return;
             }
@@ -147,18 +147,11 @@ namespace UnitySlotTower.Battle
                 var color = ColorOf(symbol);
                 var tint = TakeCircle(pieces, color, Vector2.zero, size, null);
                 tint.sprite = null;
-                Image band = null;
                 Image[] actorMarks = null;
                 Image[] extras = null;
                 TriangleGraphic[] arrows = null;
                 switch (symbol)
                 {
-                    case SlotSymbol.Red7:
-                        band = TakeCircle(pieces, redColor, Vector2.zero, new Vector2(size.x * 0.22f, size.y * 1.1f), null);
-                        band.sprite = null;
-                        actorMarks = TakeMany(pieces, enemies.Count, redColor, _softSprite);
-                        for (var i = 0; i < actorMarks.Length; i++) actorMarks[i].rectTransform.anchoredPosition = EnemyPosition(enemies[i]);
-                        break;
                     case SlotSymbol.Blue7:
                         actorMarks = TakeMany(pieces, enemies.Count, iceColor);
                         break;
@@ -186,9 +179,6 @@ namespace UnitySlotTower.Battle
                     SetAlpha(tint, color, (strong ? strongTintAlpha : tintAlpha) * fade);
                     switch (symbol)
                     {
-                        case SlotSymbol.Red7:
-                            AnimateRed(band, actorMarks, enemies, p, cell);
-                            break;
                         case SlotSymbol.Blue7:
                         case SlotSymbol.Yellow7:
                             AnimateEnemyColor(actorMarks, enemies, symbol == SlotSymbol.Blue7 ? iceColor : poisonColor, p, cell);
@@ -221,26 +211,6 @@ namespace UnitySlotTower.Battle
             foreach (var piece in pieces)
             {
                 piece.gameObject.SetActive(false);
-            }
-        }
-
-        // 光の帯が左から右へ盤面を横切り、帯が通った敵から小さく爆発する。
-        private void AnimateRed(Image band, Image[] marks, List<BattleEnemy> enemies, float p, float cell)
-        {
-            var sweep = Mathf.Clamp01(p / 0.6f);
-            var half = BoardRect.size.x * 0.5f;
-            var x = Mathf.Lerp(-half - band.rectTransform.sizeDelta.x, half + band.rectTransform.sizeDelta.x, sweep);
-            band.rectTransform.anchoredPosition = new Vector2(x, 0f);
-            SetAlpha(band, redColor, 0.55f * Mathf.Sin(Mathf.PI * sweep));
-            for (var i = 0; i < marks.Length; i++)
-            {
-                // 先に倒れた敵は最後に見た位置で爆発する。
-                var position = enemies[i].IsAlive ? EnemyPosition(enemies[i]) : marks[i].rectTransform.anchoredPosition;
-                var hit = Mathf.InverseLerp(-half, half, position.x) * 0.6f;
-                var k = Mathf.Clamp01((p - hit) / 0.35f);
-                marks[i].rectTransform.anchoredPosition = position;
-                marks[i].rectTransform.sizeDelta = Vector2.one * cell * Mathf.Lerp(0.6f, 2.2f, k);
-                SetAlpha(marks[i], redColor, k > 0f ? 0.85f * (1f - k) : 0f);
             }
         }
 
@@ -377,7 +347,6 @@ namespace UnitySlotTower.Battle
         {
             switch (symbol)
             {
-                case SlotSymbol.Red7: return redColor;
                 case SlotSymbol.Blue7: return iceColor;
                 case SlotSymbol.Green7: return greenColor;
                 case SlotSymbol.Yellow7: return poisonColor;

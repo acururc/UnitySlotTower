@@ -25,6 +25,7 @@ namespace UnitySlotTower.Core.Battle
             StopSteps = StepsOf(rules.BlueStopSeconds);
             PoisonSteps = StepsOf(rules.YellowPoisonSeconds);
             AttackSteps = StepsOf(rules.BarSeconds);
+            RedDelaySteps = Math.Max(0, StepsOf(rules.RedDelaySeconds));
             _poisonTickSteps = Math.Max(1, StepsOf(rules.YellowPoisonTickSeconds));
         }
 
@@ -36,6 +37,9 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>攻撃力アップの長さ（ステップ）。</summary>
         public int AttackSteps { get; }
+
+        /// <summary>赤7が揃ってからダメージが入るまでのステップ（spec 003 FR-005）。0 ならすぐ。</summary>
+        public int RedDelaySteps { get; }
 
         public int StopStepsLeft { get; private set; }
         public int PoisonStepsLeft { get; private set; }

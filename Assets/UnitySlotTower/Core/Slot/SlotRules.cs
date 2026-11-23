@@ -15,6 +15,9 @@ namespace UnitySlotTower.Core.Slot
 
         /// <summary>赤7で敵全員に与えるダメージ。</summary>
         public int RedDamage { get; private set; }
+
+        /// <summary>赤7が揃ってからダメージが入る（息吹が爆発する）までの戦闘の秒数（spec 003 FR-005）。0 ならすぐ。</summary>
+        public double RedDelaySeconds { get; private set; }
         public double BlueStopSeconds { get; private set; }
         public double GreenHealRate { get; private set; }
         public int YellowPoisonDamage { get; private set; }
@@ -37,6 +40,7 @@ namespace UnitySlotTower.Core.Slot
                 FirstStopSeconds = values.GetDouble("first_stop_seconds"),
                 StopIntervalSeconds = values.GetDouble("stop_interval_seconds"),
                 RedDamage = values.GetInt("red_damage"),
+                RedDelaySeconds = values.GetDouble("red_delay_seconds"),
                 BlueStopSeconds = values.GetDouble("blue_stop_seconds"),
                 GreenHealRate = values.GetDouble("green_heal_rate"),
                 YellowPoisonDamage = values.GetInt("yellow_poison_damage"),

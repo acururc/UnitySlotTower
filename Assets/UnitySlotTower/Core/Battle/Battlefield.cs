@@ -24,6 +24,9 @@ namespace UnitySlotTower.Core.Battle
         // Spawn で使い回す（ステップごとに確保しない）。
         private readonly List<WaveSpawn> _due = new List<WaveSpawn>();
 
+        // 待っている赤7ごとの、ダメージが入るまでの残りステップ（spec 003 FR-005）。
+        private readonly List<int> _redStrikes = new List<int>();
+
         /// <summary>全ウェーブを決めた時刻に出す（時刻が絶対の1ウェーブの表として扱う）。</summary>
         public Battlefield(WaveSchedule wave, UnitRanges ranges, int life, IRandom random, SlotEffects effects = null)
             : this(new WaveProgress(wave, WaveMode.Timed, 0), ranges, life, random, effects)
@@ -108,7 +111,9 @@ namespace UnitySlotTower.Core.Battle
         public int ArrivedCount { get; private set; }
 
         /// <summary>
-        /// 揃った出目の効果をすぐ出す（FR-112）。赤7は空中を含む全ての敵に防御を無視した固定ダメージ（倒した敵はドロップする）、
+        /// 揃った出目の効果をすぐ出す（FR-112）。赤7は空中を含む全ての敵に防御を無視した固定ダメージ（倒した敵はドロップする）。
+        /// ただし赤7のダメージは <see cref="SlotEffects.RedDelaySteps"/> だけ戦闘を進めてから入る（spec 003 FR-005、息吹が爆発する瞬間）。
+        /// 待っている間に出た敵にも当たり、ステージが先に終わって進めなくなれば入らない。
         /// 緑7は配置中の味方の HP を最大 HP × 率だけ回復（最大値で止め、ライフは回復しない）。青7・黄7・バーは時間の効果を始め、コインは倍率を上げる。
         /// </summary>
         public void ApplySlot(SlotSymbol symbol)
@@ -121,8 +126,16 @@ namespace UnitySlotTower.Core.Battle
             switch (symbol)
             {
                 case SlotSymbol.Red7:
-                    DamageAllEnemies(Effects.RedDamage);
-                    RemoveDefeatedEnemies();
+                    if (Effects.RedDelaySteps > 0)
+                    {
+                        _redStrikes.Add(Effects.RedDelaySteps);
+                    }
+                    else
+                    {
+                        StrikeRed();
+                        RemoveDefeatedEnemies();
+                    }
+
                     break;
                 case SlotSymbol.Blue7:
                     Effects.StartStop();
@@ -146,6 +159,31 @@ namespace UnitySlotTower.Core.Battle
                 case SlotSymbol.Coin:
                     Effects.AddCoin();
                     break;
+            }
+        }
+
+        /// <summary>待っている赤7の数（spec 003 FR-005）。</summary>
+        public int PendingRedStrikes => _redStrikes.Count;
+
+        /// <summary>赤7のダメージが入った（息吹の爆発、spec 003 FR-001）。ダメージを入れた後、倒した敵を消す前に呼ぶ。</summary>
+        public event Action RedStruck;
+
+        private void StrikeRed()
+        {
+            DamageAllEnemies(Effects.RedDamage);
+            RedStruck?.Invoke();
+        }
+
+        // 待っている赤7の残りを1ステップ減らし、0 になったものを当てる。
+        private void StepRedStrikes()
+        {
+            for (var i = _redStrikes.Count - 1; i >= 0; i--)
+            {
+                if (--_redStrikes[i] <= 0)
+                {
+                    _redStrikes.RemoveAt(i);
+                    StrikeRed();
+                }
             }
         }
 
@@ -218,7 +256,7 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>
         /// 1 ステップごとに 出現 → 移動（ゴール到着で退場・ライフ減少） → 敵の攻撃 → HP0 の味方の消滅 → 味方の行動
-        /// → 毒 → HP0 の敵の消滅（ドロップ） の順で処理し、出目の効果の残り時間を1ステップ減らす。
+        /// → 毒 → 待っている赤7 → HP0 の敵の消滅（ドロップ） の順で処理し、出目の効果の残り時間を1ステップ減らす。
         /// 停止中（青7）は移動と敵の攻撃を飛ばす。ゲームオーバーになったら残りのステップは進めない。
         /// </summary>
         public void Advance(int steps)
@@ -241,6 +279,7 @@ namespace UnitySlotTower.Core.Battle
                     DamageAllEnemies(Effects.PoisonDamage);
                 }
 
+                StepRedStrikes();
                 RemoveDefeatedEnemies();
                 Tick++;
             }

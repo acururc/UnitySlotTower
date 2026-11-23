@@ -32,8 +32,11 @@ namespace UnitySlotTower.Battle
         [SerializeField] private BattleFieldView fieldView;
         [Tooltip("揃った図柄を受け取るスロット筐体。")]
         [SerializeField] private SlotCabinet slotCabinet;
+        [Tooltip("赤7の息吹が爆発したときに戦闘だけを止める実時間の秒数（ヒットストップ、spec 003 D-05）。")]
+        [SerializeField, Min(0f)] private float hitStopSeconds = 0.1f;
 
         private SimulationClock _clock;
+        private float _hitStopLeft;
         private EnemyTable _enemies;
         private CsvTable _waves;
         private CsvTable _stageWaves;
@@ -46,6 +49,12 @@ namespace UnitySlotTower.Battle
         private float _victoryLeft;
 
         public bool IsShowingVictory => _victoryLeft > 0f;
+
+        /// <summary>ヒットストップ中（戦闘の時間が進まない、spec 003 D-05）。</summary>
+        public bool IsHitStopping => _hitStopLeft > 0f;
+
+        /// <summary>赤7のダメージが入った（息吹の爆発、spec 003 FR-001）。戦闘のステップの中から呼ばれる。</summary>
+        public event Action RedStruck;
         public string NodeKind { get; private set; }
         public float BaseFlashUntil { get; private set; }
 
@@ -223,7 +232,12 @@ namespace UnitySlotTower.Battle
             // シーンを離れても時間が止まったまま・速いままにならないようにする。
             _destroying = true;
             ApplyTimeScale();
-            if (Field != null) Field.BaseReached -= OnBaseReached;
+            if (Field != null)
+            {
+                Field.BaseReached -= OnBaseReached;
+                Field.RedStruck -= OnRedStruck;
+            }
+
             if (EdgeFlash != null) Destroy(EdgeFlash.gameObject);
 
             if (IsInitialized && slotCabinet != null)
@@ -254,13 +268,20 @@ namespace UnitySlotTower.Battle
             var isFinal = stage.Number == _stages.Count;
             var map = fieldView.LoadMap(stage.MapId);
             var schedule = WaveSchedule.Load(_waves, stage.Number, map, _enemies, _stageWaves);
-            if (Field != null) Field.BaseReached -= OnBaseReached;
+            if (Field != null)
+            {
+                Field.BaseReached -= OnBaseReached;
+                Field.RedStruck -= OnRedStruck;
+            }
+
+            _hitStopLeft = 0f;
             NodeKind = IntroKind(stage, isFinal);
             StageNumber = stage.Number;
             Run = new BattleNodeRun(Config, Units, Ranges, state, stage, isFinal, map,
                 new WaveProgress(schedule, stage.Mode, Config.WaveGapSeconds), _random);
             NodeCount++;
             Field.BaseReached += OnBaseReached;
+            Field.RedStruck += OnRedStruck;
             BaseFlashUntil = 0f;
             EdgeFlash.Hide();
             _victoryLeft = 0f;
@@ -300,6 +321,12 @@ namespace UnitySlotTower.Battle
                     if (!Run.IsRunCleared) NodeCompleted?.Invoke();
                 }
             }
+            else if (IsHitStopping)
+            {
+                // ヒットストップ（spec 003 D-05）: 戦闘だけを止める。Time.timeScale は触らないのでスロットと操作は動く。
+                // 実時間で減らすが、一時停止中（timeScale 0）は減らさない。
+                if (Time.timeScale > 0f) _hitStopLeft -= Time.unscaledDeltaTime;
+            }
             else
             {
                 Run.Advance(_clock.Advance(Time.deltaTime));
@@ -316,6 +343,13 @@ namespace UnitySlotTower.Battle
             }
 
             ApplyTimeScale();
+        }
+
+        // 赤7の息吹が爆発した（spec 003 FR-002）: 戦闘を一瞬止め、表示へ知らせる。
+        private void OnRedStruck()
+        {
+            _hitStopLeft = hitStopSeconds;
+            RedStruck?.Invoke();
         }
 
         private void OnBaseReached(GridPoint cell)

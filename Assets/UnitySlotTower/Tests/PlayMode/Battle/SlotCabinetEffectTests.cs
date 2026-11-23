@@ -161,19 +161,48 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                 "毒のアイコンと残り時間の円が出ない");
             yield return WaitForEffect(effect);
 
-            // 赤7 → その場の効果なので帯に行き先はない。
+            // 赤7 → その場の効果なので帯に行き先はない。盤面全体の演出の代わりに息吹が出て、待ち時間の後に爆発する（spec 003）。
+            var breath = Object.FindAnyObjectByType<Red7BreathEffect>();
+            Assert.That(breath, Is.Not.Null, "Game シーンに赤7の息吹の演出がない（Build Red7 Breath Effect (spec 003)）");
+            var boardCount = board.PlayCount;
+            var strikes = breath.StrikeCount;
             Select(SlotSymbol.Red7);
             yield return SpinAndStopAll();
             Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Red7, (RectTransform)null)));
-            AssertBoardPlaying(board, SlotSymbol.Red7, effect.PlayCount);
+            Assert.That((breath.PlayCount, breath.IsBreathing, board.PlayCount, breath.StrikeCount),
+                Is.EqualTo((1, true, boardCount, strikes)), "赤7で息吹が始まらない・盤面全体の演出が出る・すぐ爆発する");
+            yield return null;
+            Assert.That(breath.ActiveParticleCount, Is.GreaterThan(0), "予兆の粒が出ない");
+            yield return WaitForStrike(breath, strikes);
+
+            // 爆発の瞬間に戦闘だけが一瞬止まり、その間もレバーを引ける（spec 003 AC-006）。
+            Assert.That((_battle.IsHitStopping, breath.IsShaking, breath.IsBreathing), Is.EqualTo((true, true, false)),
+                "爆発で戦闘が止まらない・揺れない・息吹が止まらない");
+            var struckTick = _battle.Field.Tick;
+            _cabinet.Wallet.Add(1);
+            Select(SlotSymbol.Coin);
+            InputSystem.QueueStateEvent(_keyboard, new KeyboardState(Key.Space));
+            yield return null;
+            if (_battle.IsHitStopping)
+            {
+                Assert.That(_battle.Field.Tick, Is.EqualTo(struckTick), "ヒットストップ中に戦闘が進む");
+            }
+
+            InputSystem.QueueStateEvent(_keyboard, new KeyboardState());
+            yield return null;
+            Assert.That(_cabinet.IsSpinning, Is.True, "爆発の直後もレバーを引ける");
+            yield return new WaitForSeconds(0.3f);
+            Assert.That((_battle.IsHitStopping, _battle.Field.Tick > struckTick), Is.EqualTo((false, true)), "ヒットストップの後に戦闘が進まない");
+            yield return WaitForStop();
             yield return WaitForEffect(effect);
+            yield return WaitForBreath(breath);
 
             // 緑7 → その場の効果。盤面全体の演出だけが出る（T613）。
             _cabinet.Wallet.Add(1);
             Select(SlotSymbol.Green7);
             yield return SpinAndStopAll();
             Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Green7, (RectTransform)null)));
-            AssertBoardPlaying(board, SlotSymbol.Green7, effect.PlayCount);
+            AssertBoardPlaying(board, SlotSymbol.Green7, effect.PlayCount - 1); // 赤7では盤面全体の演出は出ない（spec 003）
             yield return WaitForEffect(effect);
             yield return WaitForBoard(board);
             Assert.That(board.ActivePieceCount, Is.EqualTo(0), "盤面全体の演出の部品が残る");
@@ -236,6 +265,30 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That((board.PlayCount, board.LastSymbol, board.IsPlaying), Is.EqualTo((count, (SlotSymbol?)symbol, true)),
                 $"{symbol} で盤面全体の演出が始まらない");
             Assert.That(board.ActivePieceCount, Is.GreaterThan(0), $"{symbol} の盤面全体の演出の部品が出ない");
+        }
+
+        // 赤7の爆発を待つ（待ち時間は slot_rules.csv の red_delay_seconds、戦闘の時間）。
+        private static IEnumerator WaitForStrike(Red7BreathEffect breath, int strikes)
+        {
+            var until = Time.realtimeSinceStartup + 5f;
+            while (breath.StrikeCount == strikes && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That(breath.StrikeCount, Is.EqualTo(strikes + 1), "赤7の息吹が爆発しない");
+        }
+
+        // 息吹・揺れ・粒がすべて終わる（部品が残らない、spec 003 AC-002）。
+        private static IEnumerator WaitForBreath(Red7BreathEffect breath)
+        {
+            var until = Time.realtimeSinceStartup + 6f;
+            while (breath.IsPlaying && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That((breath.IsPlaying, breath.ActiveParticleCount), Is.EqualTo((false, 0)), "赤7の息吹の演出が終わらない・粒が残る");
         }
 
         private static IEnumerator WaitForBoard(SlotBoardEffect board)

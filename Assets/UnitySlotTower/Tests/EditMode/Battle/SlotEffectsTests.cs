@@ -57,6 +57,72 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             Assert.That((field.Enemies.Count, field.DroppedCoins is >= 2 and <= 3), Is.EqualTo((0, true)));
         }
 
+        private static Battlefield CreateDelayed(string waveRows) =>
+            new Battlefield(BattleFixtures.LoadWave(waveRows), BattleFixtures.LoadRanges(), 10, new SeededRandom(1),
+                new SlotEffects(SlotTestRules.Create(redDelaySeconds: 1)));
+
+        [Test]
+        [Description("spec 003 AC-005: 赤7のダメージは待ち時間（1秒=60ステップ）戦闘を進めてから一度だけ入り、そのとき通知する")]
+        public void Red_Damage_Waits_For_The_Delay_Then_Strikes_Once()
+        {
+            var field = CreateDelayed("0,melee,S1,g,0\n");
+            field.Advance(1);
+            var struck = 0;
+            field.RedStruck += () => struck++;
+
+            field.ApplySlot(SlotSymbol.Red7);
+            var applied = (field.Enemies[0].Hp, field.PendingRedStrikes, struck);
+            field.Advance(59);
+            var before = (field.Enemies[0].Hp, field.PendingRedStrikes, struck);
+            field.Advance(1);
+            var at = (field.Enemies[0].Hp, field.PendingRedStrikes, struck);
+            field.Advance(30);
+
+            Assert.That((applied, before, at, field.Enemies[0].Hp, struck), Is.EqualTo(
+                ((1000, 1, 0), (1000, 1, 0), (995, 0, 1), 995, 1)));
+        }
+
+        [Test]
+        [Description("spec 003 AC-005: 待っている間に出た敵にも当たり、戦闘を進めなければ（ステージが終わったら）入らない")]
+        public void Red_Hits_Enemies_Spawned_While_Waiting_And_Needs_The_Battle_To_Advance()
+        {
+            var field = CreateDelayed("0,melee,S1,g,0\n0.5,air,S2,a,0\n");
+            field.Advance(1);
+            field.ApplySlot(SlotSymbol.Red7);
+            var idle = field.Enemies[0].Hp;
+
+            field.Advance(60);
+
+            Assert.That((idle, field.Enemies.Count, field.Enemies[0].Hp, field.Enemies[1].Hp),
+                Is.EqualTo((1000, 2, 995, 595)));
+        }
+
+        [Test]
+        [Description("spec 003 AC-005: 続けて揃えるとそれぞれの待ちで別々に当たる")]
+        public void Each_Red_Strikes_After_Its_Own_Delay()
+        {
+            var field = CreateDelayed("0,melee,S1,g,0\n");
+            field.Advance(1);
+            field.ApplySlot(SlotSymbol.Red7);
+            field.Advance(30);
+            field.ApplySlot(SlotSymbol.Red7);
+
+            field.Advance(30);
+            var first = field.Enemies[0].Hp;
+            field.Advance(30);
+
+            Assert.That((first, field.Enemies[0].Hp, field.PendingRedStrikes), Is.EqualTo((995, 990, 0)));
+        }
+
+        [Test]
+        [Description("spec 003 FR-005: 正本の slot_rules.csv の待ちは1秒（60ステップ）")]
+        public void Project_Red_Delay_Is_One_Second()
+        {
+            var rules = SlotRules.Load(SlotTestRules.ProjectTable(SlotRules.FileName));
+
+            Assert.That(new SlotEffects(rules).RedDelaySteps, Is.EqualTo(SimulationClock.StepsPerSecond));
+        }
+
         [Test]
         [Description("AC-109: 青7の間（3秒=180ステップ）敵は進まず、時間が切れると再び進む")]
         public void Blue_Stops_Enemies_Until_It_Ends()

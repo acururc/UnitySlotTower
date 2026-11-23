@@ -2,15 +2,16 @@
 
 ## 現在の作業
 
-更新: 2026-11-23 Asia/Tokyo / 状態: **spec 002 の実装が完了（T601〜T617 すべて済み）。次の作業は未決定で、ユーザーに選んでもらう。**
+更新: 2026-11-23 Asia/Tokyo / 状態: **spec 003（赤7の息吹の演出の試作）の T701〜T704 が完了。T705（ユーザーが Editor で Play して見た目を確認・調整）待ち。**
 
-- 対象: [`spec.md`](../../specs/002-td-focus/spec.md)・[`plan.md`](../../specs/002-td-focus/plan.md)・[`tasks.md`](../../specs/002-td-focus/tasks.md)。001 の spec は土台で、食い違いは 002 が優先。
-- T617 の結果（ユーザーが全ステージをクリアし、了承済み）: 近距離の敵 HP6、剣士 HP20、雑魚の所持金50、ステージ1のウェーブ4は6体、開始時の所持金100・無料の召喚0（`game_config.csv` の `first_stage_free_summons`）、強化費用 400/700/1100/1600、`stages.csv` の敵 HP 倍率 `enemy_hp_rate`（1/1/1.3/2/2.2/2.6/3/3.5、強化しないとステージ4のボスから厳しくなる狙い）。spec の E-05・E-07・AC-105 と plan の 2.4・4章に記録。コミット `241c2a4`・`3e7321b`（main、push 済み）。倍率を入れた後の通しプレイはまだ。
-- 検証（2026-11-23 最後の実行）: EditMode 545/545、PlayMode 68 成功/失敗0/Explicit 1、ハーネス 8/8。
-- 次の候補（ユーザーが決める）: (1) 001 の M5（[001 の tasks](../../specs/001-slot-tower-defense/tasks.md) の T501〜T505: 素材・グレーボックスの差し替え・最終調整・ビルド。002 で前提が変わっているので見直しが要る。T501 のデザインの方向は未決定）、(2) ユーザーが作る本番の 3D 台モデルの差し替え（差し替え先は `Cabinet Model`）、(3) 倍率を入れた後の通しプレイからの数値調整。方針は「デザインは後で、先に場所どり」。左右の黒帯は 3:4 の固定によるもの（ユーザーに説明済み、変更しない）。
-- 001 の残りの T399・T429（ユーザーの通しプレイ）は 002 の T617 で置き換わったものとして扱ってよいか、ユーザーに未確認。
+- 対象: [`spec.md`](../../specs/003-red7-breath/spec.md)（2026-11-23 承認: FR-001〜FR-005・AC-001〜AC-006）・[`plan.md`](../../specs/003-red7-breath/plan.md)・[`tasks.md`](../../specs/003-red7-breath/tasks.md)。spec 002 は完了（T601〜T617）。
+- ユーザーの決定: VFX に力を入れる。ドラゴン本体なし・息吹だけ。ダメージは爆発の瞬間（`slot_rules.csv` の `red_delay_seconds`＝1）。爆発で戦闘だけ約0.1秒止める（`BattleController.hitStopSeconds`）。素材は AI が取るログイン不要の無料素材だけ（有料は使わない）。赤7がうまくいけば、残り5種類に広げるかを別に決める。
+- 作ったもの: `Runtime/Battle/Red7BreathEffect.cs`（予兆→息吹→`RedStruck` で爆発・戦闘カメラの揺れ）、`Editor/Setup/Red7BreathEffectSetup.cs`（メニュー `Tools/UnitySlotTower/Setup/Build Red7 Breath Effect (spec 003)` が Game シーンに「Red7 Breath Effect」とパーティクル8つ、`Art/VFX/` に材質6つを作る）、`Art/VFX/VfxParticle.shader`、`Art/VFX/Kenney/`（CC0、`docs/ASSET_LICENSES.md`）。`SlotBoardEffect` は赤7で何もしない。パーティクルの値は Inspector で調整できる（Setup を再実行すると初期値に戻る）。
+- 検証（2026-11-23）: EditMode 549/549、PlayMode 68 成功/失敗0/Explicit 1、ハーネス 8/8。見た目（AC-001）は未確認。撮影用テスト（`ScreenCaptureTests`、Explicit）は赤7で盤面の演出を呼ぶだけなので、息吹は写らない。
+- 次: ユーザーの Play の感想に合わせて、秒数（`warningEnd`・`breathStart`・`red_delay_seconds`）・炎の量・色・揺れ（`shakeAmplitude`）を調整 → T706（全テスト・HANDOFF）。
+- そのほかの残り: 001 の M5（T501〜T505、002・003 に合わせて見直す）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。001 の T399・T429 はユーザーの指示（「テストプレイは終わったものとして」）で完了扱いでよい（tasks.md の更新はまだ）。
 - ブランチ: main に直接コミットして origin へ push。main は core.autocrlf で CSV が CRLF になる。
-- Unity 接続: 2026-11-23 に停止を確認済み（ポート 8080 閉）。Editor は開いたまま。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。
+- Unity 接続: 2026-11-23 に停止を確認済み（ポート 8080 閉）。Editor は開いたまま、Game シーンは保存済み。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。
 
 ### 作業の注意
 - テストの手順: refresh → 約25秒 → code execute で `scriptCompilationFailed` と `isCompiling` を確認 → `tests --async` を1回 → 同じ job_id を前景のループで poll（[`UNITY_AUTOMATION.md`](UNITY_AUTOMATION.md) の Tests 節）。PlayMode 全件は約4分。スクリプトは毎回 `$env:TEMP` などに作り直す。

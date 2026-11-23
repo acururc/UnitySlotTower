@@ -17,10 +17,10 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         public static SlotRules Create(int redDamage = 5, double blueStopSeconds = 3,
             double greenHealRate = 0.5, int yellowPoisonDamage = 1, double yellowPoisonTickSeconds = 1,
             double yellowPoisonSeconds = 5, double barAttackRate = 2, double barSeconds = 10,
-            double coinStep = 0.1, double coinCap = 1.5) =>
+            double coinStep = 0.1, double coinCap = 1.5, double redDelaySeconds = 0) =>
             SlotRules.Load(CsvParser.Parse(SlotRules.FileName,
                 "key,value\nfirst_stop_seconds,1\nstop_interval_seconds,0.4\n" +
-                $"red_damage,{redDamage}\nblue_stop_seconds,{N(blueStopSeconds)}\ngreen_heal_rate,{N(greenHealRate)}\n" +
+                $"red_damage,{redDamage}\nred_delay_seconds,{N(redDelaySeconds)}\nblue_stop_seconds,{N(blueStopSeconds)}\ngreen_heal_rate,{N(greenHealRate)}\n" +
                 $"yellow_poison_damage,{yellowPoisonDamage}\nyellow_poison_tick_seconds,{N(yellowPoisonTickSeconds)}\n" +
                 $"yellow_poison_seconds,{N(yellowPoisonSeconds)}\nbar_attack_rate,{N(barAttackRate)}\nbar_seconds,{N(barSeconds)}\n" +
                 $"coin_step,{N(coinStep)}\ncoin_cap,{N(coinCap)}\n"));
