@@ -9,7 +9,7 @@ namespace UnitySlotTower.Battle
 {
     /// <summary>
     /// 黄7の毒の演出（spec 006 FR-001・FR-002・FR-004、plan 3章）。<see cref="Blue7FreezeEffect"/> と同じく 3D のフィールドの上の
-    /// パーティクルを戦闘カメラで写す。揃うと盤面の地面のあちこちに毒の沼が湧き、泡がぼこぼこ立つ。Core が毒を始めた瞬間
+    /// パーティクルを戦闘カメラで写す。揃うと盤面の地面のあちこちと敵の足元（敵に付いて動く）に毒の沼が湧き、泡がぼこぼこ立つ。Core が毒を始めた瞬間
     /// （<see cref="BattleController.YellowBurst"/>）に沼が弾けて飛沫と毒の霧が上がり、カメラが弱く揺れる（ヒットストップなし）。
     /// 毒の間は敵ごとに紫のオーラ（粒）を付け、毒のダメージ（<see cref="BattleController.PoisonTicked"/>）ごとに点滅させる。
     /// 毒が切れたらオーラを消す。時間は戦闘の時間（Time.deltaTime）。パーティクルは Setup（Build Yellow7 Poison Effect）が作る。
@@ -30,6 +30,8 @@ namespace UnitySlotTower.Battle
 
         [Header("パーティクル（Setup が作る）")]
         [SerializeField] private ParticleSystem swamp;
+        [Tooltip("敵の足元の沼（敵に付いて動く）。位置と大きさは実行時に毎フレーム入れる。")]
+        [SerializeField] private ParticleSystem enemySwamp;
         [SerializeField] private ParticleSystem bubbles;
         [SerializeField] private ParticleSystem splash;
         [SerializeField] private ParticleSystem ring;
@@ -44,6 +46,11 @@ namespace UnitySlotTower.Battle
         [SerializeField, Range(0.05f, 1f)] private float swampSpreadEnd = 0.6f;
         [Tooltip("沼の大きさ（マス = 1）。")]
         [SerializeField] private Vector2 swampSize = new Vector2(1.4f, 2.4f);
+        [Tooltip("敵の足元の沼の大きさ（マス = 1）。")]
+        [SerializeField, Min(0f)] private float enemySwampSize = 1.3f;
+        [Tooltip("敵の足元の沼が広がりきるまでの秒数。")]
+        [SerializeField, Min(0.01f)] private float enemySwampGrowSeconds = 0.35f;
+        [SerializeField] private Color enemySwampColor = new Color(0.45f, 0.12f, 0.6f, 0.9f);
         [Tooltip("泡の数（毎秒、沼1つあたり）。弾ける直前ほど増える。")]
         [SerializeField, Min(0f)] private float bubblesPerSecond = 6f;
 
@@ -72,7 +79,10 @@ namespace UnitySlotTower.Battle
         private readonly ParticleSystem.Particle[] _auraParticles = new ParticleSystem.Particle[MaxAuras];
         private readonly Vector3[] _auraPositions = new Vector3[MaxAuras];
         private readonly Vector3[] _swampPositions = new Vector3[MaxSwamps];
+        private readonly ParticleSystem.Particle[] _enemySwampParticles = new ParticleSystem.Particle[MaxAuras];
+        private readonly Vector3[] _enemySwampPositions = new Vector3[MaxAuras];
         private int _swampsShown;
+        private int _enemySwampCount;
         private int _auraCount;
         private bool _auraShown;
         private float _flashAt = float.NegativeInfinity;
@@ -95,6 +105,9 @@ namespace UnitySlotTower.Battle
         /// <summary>沼が湧いて泡が立っている（弾ける前）。</summary>
         public bool IsBubbling => _bubbling > 0;
 
+        /// <summary>出ている敵の足元の沼の数（沼が湧いている間だけ 0 より大きい）。</summary>
+        public int EnemySwampCount => IsBubbling ? _enemySwampCount : 0;
+
         /// <summary>出ているオーラの数（毒の間だけ 0 より大きい）。</summary>
         public int AuraCount => _auraShown ? _auraCount : 0;
 
@@ -106,7 +119,7 @@ namespace UnitySlotTower.Battle
 
         /// <summary>出ている粒の数（テスト用。演出が終われば 0）。</summary>
         public int ActiveParticleCount =>
-            Count(swamp) + Count(bubbles) + Count(splash) + Count(ring) + Count(fumes) + Count(aura) + Count(tickBubbles);
+            Count(swamp) + Count(enemySwamp) + Count(bubbles) + Count(splash) + Count(ring) + Count(fumes) + Count(aura) + Count(tickBubbles);
 
         private void Awake() => _shake = BattleCameraShake.Of(battleCamera);
 
@@ -131,6 +144,7 @@ namespace UnitySlotTower.Battle
         {
             _expectedBursts = BurstCount;
             HideAura();
+            HideEnemySwamps();
         }
 
         private void OnAligned(SlotSymbol symbol)
@@ -178,12 +192,16 @@ namespace UnitySlotTower.Battle
                         }, 1);
                     }
 
-                    // 泡: 弾ける直前ほど多く立つ。
+                    PlaceEnemySwamps(Mathf.Clamp01(t / enemySwampGrowSeconds));
+
+                    // 泡: 弾ける直前ほど多く立つ。盤面の沼と敵の足元の沼の両方から。
                     var rise = 0.4f + 1.6f * Mathf.Clamp01(t / delay);
-                    bubbleDebt += bubblesPerSecond * rise * _swampsShown * Time.deltaTime;
+                    var swamps = _swampsShown + _enemySwampCount;
+                    bubbleDebt += bubblesPerSecond * rise * swamps * Time.deltaTime;
                     for (; bubbleDebt >= 1f; bubbleDebt -= 1f)
                     {
-                        var at = _swampPositions[UnityEngine.Random.Range(0, _swampsShown)];
+                        var pick = UnityEngine.Random.Range(0, swamps);
+                        var at = pick < _swampsShown ? _swampPositions[pick] : _enemySwampPositions[pick - _swampsShown];
                         var offset = UnityEngine.Random.insideUnitCircle * 0.5f;
                         Emit(bubbles, at + new Vector3(offset.x, 0.05f, offset.y), Vector3.up * UnityEngine.Random.Range(0.3f, 0.8f));
                     }
@@ -205,7 +223,60 @@ namespace UnitySlotTower.Battle
             {
                 // 弾けなかった（ステージが先に終わった）: 沼はそっと消す。
                 swamp.Clear();
+                HideEnemySwamps();
             }
+        }
+
+        // 生きている敵の足元に沼を置く（敵に付いて動く）。grow は広がり具合（0〜1）。
+        private void PlaceEnemySwamps(float grow)
+        {
+            var field = battle.Field;
+            _enemySwampCount = 0;
+            if (field == null || fieldView.Map == null)
+            {
+                return;
+            }
+
+            var size = enemySwampSize * Mathf.Lerp(0.2f, 1f, grow);
+            foreach (var enemy in field.Enemies)
+            {
+                if (_enemySwampCount >= MaxAuras)
+                {
+                    break;
+                }
+
+                if (!enemy.IsAlive)
+                {
+                    continue;
+                }
+
+                // 空の敵も真下の地面に置く。
+                var position = fieldView.PositionToWorld(enemy.X, enemy.Y, false) + Vector3.up * 0.04f;
+                _enemySwampPositions[_enemySwampCount] = position;
+                _enemySwampParticles[_enemySwampCount] = new ParticleSystem.Particle
+                {
+                    position = position,
+                    startSize = size * (1f + 0.05f * Mathf.Sin(Time.time * 7f + _enemySwampCount * 1.9f)),
+                    rotation = _enemySwampCount * 53f,
+                    startColor = enemySwampColor,
+                    startLifetime = 100f,
+                    remainingLifetime = 100f,
+                };
+                _enemySwampCount++;
+            }
+
+            if (!enemySwamp.isPlaying)
+            {
+                enemySwamp.Play();
+            }
+
+            enemySwamp.SetParticles(_enemySwampParticles, _enemySwampCount);
+        }
+
+        private void HideEnemySwamps()
+        {
+            enemySwamp.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            _enemySwampCount = 0;
         }
 
         // Core が毒を始めた: 沼を弾けさせ、飛沫と毒の霧を上げて弱く揺らす。
@@ -233,22 +304,34 @@ namespace UnitySlotTower.Battle
 
             for (var i = 0; i < _swampsShown; i++)
             {
-                var at = _swampPositions[i];
-                Emit(ring, at, Vector3.zero);
-                for (var k = 0; k < splashPerSwamp; k++)
-                {
-                    var side = UnityEngine.Random.insideUnitCircle * 1.6f;
-                    Emit(splash, at + Vector3.up * 0.1f, new Vector3(side.x, UnityEngine.Random.Range(2.5f, 4.5f), side.y));
-                }
-
-                for (var k = 0; k < fumesPerSwamp; k++)
-                {
-                    Emit(fumes, at + Vector3.up * 0.3f, Vector3.up * UnityEngine.Random.Range(0.3f, 0.7f));
-                }
+                BurstAt(_swampPositions[i]);
             }
 
+            // 敵の足元の沼は、その敵の今いる場所で弾ける（待ちが 0 でも足元で弾ける）。
+            PlaceEnemySwamps(1f);
+            for (var i = 0; i < _enemySwampCount; i++)
+            {
+                BurstAt(_enemySwampPositions[i]);
+            }
+
+            HideEnemySwamps();
             _swampsShown = 0;
             _shake.Shake(shakeSeconds, shakeAmplitude);
+        }
+
+        private void BurstAt(Vector3 at)
+        {
+            Emit(ring, at, Vector3.zero);
+            for (var k = 0; k < splashPerSwamp; k++)
+            {
+                var side = UnityEngine.Random.insideUnitCircle * 1.6f;
+                Emit(splash, at + Vector3.up * 0.1f, new Vector3(side.x, UnityEngine.Random.Range(2.5f, 4.5f), side.y));
+            }
+
+            for (var k = 0; k < fumesPerSwamp; k++)
+            {
+                Emit(fumes, at + Vector3.up * 0.3f, Vector3.up * UnityEngine.Random.Range(0.3f, 0.7f));
+            }
         }
 
         // 毒のダメージが入った: オーラを点滅させ、敵ごとに泡を立てる。

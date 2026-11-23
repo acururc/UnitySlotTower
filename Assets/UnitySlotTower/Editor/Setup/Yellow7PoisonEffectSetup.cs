@@ -81,6 +81,14 @@ namespace UnitySlotTower.Editor.Setup
                 Flat(ps);
             });
 
+            // 敵の足元の沼: 位置・大きさ・色は実行時に毎フレーム入れる（放出はしない）。
+            var enemySwamp = R.Create(root.transform, "Enemy Swamp", blob, layer, 64, false, ps =>
+            {
+                var main = ps.main;
+                main.startLifetime = 100f;
+                Flat(ps);
+            });
+
             // 泡: 沼から上がって大きくなり、弾けて消える。
             var bubbles = R.Create(root.transform, "Bubbles", glow, layer, 300, false, ps =>
             {
@@ -157,6 +165,7 @@ namespace UnitySlotTower.Editor.Setup
             serialized.FindProperty("fieldView").objectReferenceValue = fieldView;
             serialized.FindProperty("battleCamera").objectReferenceValue = camera;
             serialized.FindProperty("swamp").objectReferenceValue = swamp;
+            serialized.FindProperty("enemySwamp").objectReferenceValue = enemySwamp;
             serialized.FindProperty("bubbles").objectReferenceValue = bubbles;
             serialized.FindProperty("splash").objectReferenceValue = splash;
             serialized.FindProperty("ring").objectReferenceValue = ring;

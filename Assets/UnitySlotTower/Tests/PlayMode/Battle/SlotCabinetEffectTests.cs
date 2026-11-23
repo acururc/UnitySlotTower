@@ -206,6 +206,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That((poison.PlayCount, poison.IsBubbling, board.PlayCount, poison.BurstCount, _battle.Field.Effects.IsPoisoned),
                 Is.EqualTo((1, true, yellowBoardCount, bursts, false)), "黄7で沼が湧かない・盤面全体の演出が出る・すぐ毒が始まる");
             Assert.That(poison.ActiveParticleCount, Is.GreaterThan(0), "沼の粒が出ない");
+            // 敵の足元にも沼が湧く（前のフレームの数なので1体ぶんのずれは許す）。
+            Assert.That(poison.EnemySwampCount, Is.EqualTo(AliveEnemies()).Within(1), "敵の足元に沼が湧かない");
             yield return WaitForBurst(poison, bursts);
 
             // 弾ける瞬間: 弱く揺れ、ヒットストップはしない（spec 006 FR-002）。
