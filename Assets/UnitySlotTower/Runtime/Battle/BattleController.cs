@@ -34,6 +34,8 @@ namespace UnitySlotTower.Battle
         [SerializeField] private SlotCabinet slotCabinet;
         [Tooltip("赤7の息吹が爆発したときに戦闘だけを止める実時間の秒数（ヒットストップ、spec 003 D-05）。")]
         [SerializeField, Min(0f)] private float hitStopSeconds = 0.1f;
+        [Tooltip("青7で盤面が凍りついたときに戦闘だけを止める実時間の秒数（ヒットストップ、spec 004 D-06）。")]
+        [SerializeField, Min(0f)] private float blueHitStopSeconds = 0.1f;
 
         private SimulationClock _clock;
         private float _hitStopLeft;
@@ -55,6 +57,9 @@ namespace UnitySlotTower.Battle
 
         /// <summary>赤7のダメージが入った（息吹の爆発、spec 003 FR-001）。戦闘のステップの中から呼ばれる。</summary>
         public event Action RedStruck;
+
+        /// <summary>青7で盤面が凍りついた（停止の始まり、spec 004 FR-003）。戦闘のステップかレバーの結果の中から呼ばれる。</summary>
+        public event Action BlueFroze;
         public string NodeKind { get; private set; }
         public float BaseFlashUntil { get; private set; }
 
@@ -236,6 +241,7 @@ namespace UnitySlotTower.Battle
             {
                 Field.BaseReached -= OnBaseReached;
                 Field.RedStruck -= OnRedStruck;
+                Field.BlueFroze -= OnBlueFroze;
             }
 
             if (EdgeFlash != null) Destroy(EdgeFlash.gameObject);
@@ -272,6 +278,7 @@ namespace UnitySlotTower.Battle
             {
                 Field.BaseReached -= OnBaseReached;
                 Field.RedStruck -= OnRedStruck;
+                Field.BlueFroze -= OnBlueFroze;
             }
 
             _hitStopLeft = 0f;
@@ -282,6 +289,7 @@ namespace UnitySlotTower.Battle
             NodeCount++;
             Field.BaseReached += OnBaseReached;
             Field.RedStruck += OnRedStruck;
+            Field.BlueFroze += OnBlueFroze;
             BaseFlashUntil = 0f;
             EdgeFlash.Hide();
             _victoryLeft = 0f;
@@ -348,8 +356,15 @@ namespace UnitySlotTower.Battle
         // 赤7の息吹が爆発した（spec 003 FR-002）: 戦闘を一瞬止め、表示へ知らせる。
         private void OnRedStruck()
         {
-            _hitStopLeft = hitStopSeconds;
+            _hitStopLeft = Mathf.Max(_hitStopLeft, hitStopSeconds);
             RedStruck?.Invoke();
+        }
+
+        // 青7で盤面が凍りついた（spec 004 FR-002）: 戦闘を一瞬止め、表示へ知らせる。赤7と重なったら長いほうを残す。
+        private void OnBlueFroze()
+        {
+            _hitStopLeft = Mathf.Max(_hitStopLeft, blueHitStopSeconds);
+            BlueFroze?.Invoke();
         }
 
         private void OnBaseReached(GridPoint cell)

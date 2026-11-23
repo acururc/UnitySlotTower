@@ -5,4 +5,4 @@
 | 素材 | 置き場所 | 入手元 | ライセンス | 確認日 | 用途 |
 |---|---|---|---|---|---|
 | Noto Sans JP Regular（サブセット OTF） | `Assets/UnitySlotTower/Art/Fonts/NotoSansJP-Regular.otf`（本文 `NotoSansJP-OFL.txt`） | https://github.com/notofonts/noto-cjk （`Sans/SubsetOTF/JP/NotoSansJP-Regular.otf`、sha256 先頭12桁 dff723ba59d5） | SIL Open Font License 1.1（商用利用可、フォント単体の販売は不可、改変版は別名） | 2026-11-15 | 文字あり版のラベル（T352）。TMP の静的フォントアセット `TextMode SDF.asset` は `ui_texts.csv` に出てくる字だけを持つ |
-| Kenney Particle Pack 1.1（透過 PNG 5枚: flame_01・fire_01・smoke_04・circle_05・scorch_02） | `Assets/UnitySlotTower/Art/VFX/Kenney/`（本文 `License.txt`） | https://kenney.nl/assets/particle-pack | CC0 1.0（クレジット不要） | 2026-11-23 | 赤7の息吹の演出（spec 003） |
+| Kenney Particle Pack 1.1（透過 PNG 8枚: flame_01・fire_01・smoke_04・circle_05・scorch_02・star_06・star_08・spark_04） | `Assets/UnitySlotTower/Art/VFX/Kenney/`（本文 `License.txt`） | https://kenney.nl/assets/particle-pack | CC0 1.0（クレジット不要） | 2026-11-23 | 赤7の息吹の演出（spec 003）、青7の凍結の演出（spec 004、star_06・star_08・spark_04 は 2026-11-23 に追加） |

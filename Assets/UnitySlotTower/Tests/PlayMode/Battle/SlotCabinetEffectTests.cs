@@ -143,20 +143,62 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             // 青7 → 停止のアイコン、黄7 → 毒のアイコン（T611、上端の帯）。発動中はアイコンが濃く、残り時間の円が出る。
             _cabinet.Wallet.Add(3);
             Assert.That((status.IsStopEffectShown, status.StopRingFill), Is.EqualTo((false, 0f)), "揃う前から停止のアイコンが発動中");
+            // 青7は盤面全体の演出の代わりに冷気が出て、待ち時間の後に凍りついて停止が始まる（spec 004）。
+            var freeze = Object.FindAnyObjectByType<Blue7FreezeEffect>();
+            Assert.That(freeze, Is.Not.Null, "Game シーンに青7の凍結の演出がない（Build Blue7 Freeze Effect (spec 004)）");
+            var blueBoardCount = board.PlayCount;
+            var freezes = freeze.FreezeCount;
             Select(SlotSymbol.Blue7);
             yield return SpinAndStopAll();
             yield return null;
             Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Blue7, status.StopEffectRect)));
-            AssertBoardPlaying(board, SlotSymbol.Blue7, effect.PlayCount);
+            Assert.That((freeze.PlayCount, freeze.IsChilling, board.PlayCount, freeze.FreezeCount, _battle.Field.Effects.IsStopped),
+                Is.EqualTo((1, true, blueBoardCount, freezes, false)), "青7で冷気が始まらない・盤面全体の演出が出る・すぐ止まる");
+            Assert.That(freeze.ActiveParticleCount, Is.GreaterThan(0), "予兆の粒が出ない");
+            yield return WaitForFreeze(freeze, freezes);
+
+            // 凍結の瞬間に戦闘だけが一瞬止まり、その間もレバーを引ける（spec 004 AC-004）。
+            Assert.That((_battle.IsHitStopping, freeze.IsShaking, freeze.IsChilling, _battle.Field.Effects.IsStopped),
+                Is.EqualTo((true, true, false, true)), "凍結で戦闘が止まらない・揺れない・冷気が止まらない・停止が始まらない");
+            var frozenTick = _battle.Field.Tick;
+            _cabinet.Wallet.Add(1);
+            Select(SlotSymbol.Coin);
+            InputSystem.QueueStateEvent(_keyboard, new KeyboardState(Key.Space));
+            yield return null;
+            if (_battle.IsHitStopping)
+            {
+                Assert.That(_battle.Field.Tick, Is.EqualTo(frozenTick), "ヒットストップ中に戦闘が進む");
+            }
+
+            InputSystem.QueueStateEvent(_keyboard, new KeyboardState());
+            yield return null;
+            Assert.That(_cabinet.IsSpinning, Is.True, "凍結の直後もレバーを引ける");
             Assert.That((status.IsStopEffectShown, status.StopRingFill > 0f && status.StopRingFill <= 1f), Is.EqualTo((true, true)),
                 "停止のアイコンと残り時間の円が出ない");
+
+            // 停止中は生きている敵ごとに氷の塊が付き、停止が切れると砕けて消える（spec 004 AC-005）。
+            // 前のフレームの数なので、その間に倒された1体ぶんのずれは許す。
+            Assert.That(freeze.IceCount, Is.EqualTo(AliveEnemies()).Within(1), "停止中の敵に氷の塊が付かない");
+            var shatters = freeze.ShatterCount;
+            yield return WaitForStop();
             yield return WaitForEffect(effect);
+            yield return WaitForBoard(board);
+            var until = Time.realtimeSinceStartup + 8f;
+            while (_battle.Field.Effects.IsStopped && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            yield return null;
+            Assert.That((_battle.Field.Effects.IsStopped, freeze.IceCount, freeze.ShatterCount), Is.EqualTo((false, 0, shatters + 1)),
+                "停止が切れない・氷が残る・砕けない");
+            yield return WaitForFreezeEnd(freeze);
 
             Select(SlotSymbol.Yellow7);
             yield return SpinAndStopAll();
             yield return null;
             Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Yellow7, status.PoisonEffectRect)));
-            AssertBoardPlaying(board, SlotSymbol.Yellow7, effect.PlayCount);
+            AssertBoardPlaying(board, SlotSymbol.Yellow7, effect.PlayCount - 1); // 青7では盤面全体の演出は出ない（spec 004）
             Assert.That((status.IsPoisonEffectShown, status.PoisonRingFill > 0f && status.PoisonRingFill <= 1f), Is.EqualTo((true, true)),
                 "毒のアイコンと残り時間の円が出ない");
             yield return WaitForEffect(effect);
@@ -202,7 +244,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Select(SlotSymbol.Green7);
             yield return SpinAndStopAll();
             Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Green7, (RectTransform)null)));
-            AssertBoardPlaying(board, SlotSymbol.Green7, effect.PlayCount - 1); // 赤7では盤面全体の演出は出ない（spec 003）
+            AssertBoardPlaying(board, SlotSymbol.Green7, effect.PlayCount - 2); // 青7・赤7では盤面全体の演出は出ない（spec 003・004）
             yield return WaitForEffect(effect);
             yield return WaitForBoard(board);
             Assert.That(board.ActivePieceCount, Is.EqualTo(0), "盤面全体の演出の部品が残る");
@@ -289,6 +331,41 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That((breath.IsPlaying, breath.ActiveParticleCount), Is.EqualTo((false, 0)), "赤7の息吹の演出が終わらない・粒が残る");
+        }
+
+        // 青7の凍結を待つ（待ち時間は slot_rules.csv の blue_delay_seconds、戦闘の時間）。
+        private static IEnumerator WaitForFreeze(Blue7FreezeEffect freeze, int freezes)
+        {
+            var until = Time.realtimeSinceStartup + 5f;
+            while (freeze.FreezeCount == freezes && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That(freeze.FreezeCount, Is.EqualTo(freezes + 1), "青7で盤面が凍りつかない");
+        }
+
+        // 冷気・氷・揺れ・粒がすべて終わる（部品が残らない、spec 004 AC-005）。
+        private static IEnumerator WaitForFreezeEnd(Blue7FreezeEffect freeze)
+        {
+            var until = Time.realtimeSinceStartup + 6f;
+            while (freeze.IsPlaying && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That((freeze.IsPlaying, freeze.ActiveParticleCount), Is.EqualTo((false, 0)), "青7の凍結の演出が終わらない・粒が残る");
+        }
+
+        private int AliveEnemies()
+        {
+            var count = 0;
+            foreach (var enemy in _battle.Field.Enemies)
+            {
+                if (enemy.IsAlive) count++;
+            }
+
+            return count;
         }
 
         private static IEnumerator WaitForBoard(SlotBoardEffect board)

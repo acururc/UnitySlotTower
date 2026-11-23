@@ -62,10 +62,8 @@ namespace UnitySlotTower.Battle
         [SerializeField, Min(0f)] private float shakeAmplitude = 0.25f;
 
         private int _breathing;
-        private int _shaking;
         private int _expectedStrikes;
-        private Vector3 _cameraBase;
-        private Vector3 _cameraSet;
+        private BattleCameraShake _shake;
 
         /// <summary>赤7で始めた息吹の数（テスト用）。</summary>
         public int PlayCount { get; private set; }
@@ -77,7 +75,7 @@ namespace UnitySlotTower.Battle
         public bool IsBreathing => _breathing > 0;
 
         /// <summary>カメラが揺れている。</summary>
-        public bool IsShaking => _shaking > 0;
+        public bool IsShaking => _shake != null && _shake.IsShaking;
 
         /// <summary>演出中か（息吹・揺れ・残っている粒のどれか）。</summary>
         public bool IsPlaying => IsBreathing || IsShaking || ActiveParticleCount > 0;
@@ -85,6 +83,8 @@ namespace UnitySlotTower.Battle
         /// <summary>出ている粒の数（テスト用。演出が終われば 0）。</summary>
         public int ActiveParticleCount =>
             Count(warning) + Count(breath) + Count(groundFire) + Count(flash) + Count(blasts) + Count(hits) + Count(embers) + Count(smoke);
+
+        private void Awake() => _shake = BattleCameraShake.Of(battleCamera);
 
         private void OnEnable()
         {
@@ -229,49 +229,7 @@ namespace UnitySlotTower.Battle
                 Emit(smoke, RandomOnBoard(map) + Vector3.up * 0.5f, Vector3.up * UnityEngine.Random.Range(0.3f, 0.8f));
             }
 
-            _ = Shake();
-        }
-
-        // 戦闘カメラを揺らして元の位置に戻す。揺れの最中にカメラが動かされた（マップが変わった）ら、そこを新しい元の位置にする。
-        private async Awaitable Shake()
-        {
-            var camera = battleCamera.transform;
-            if (_shaking++ == 0)
-            {
-                _cameraBase = camera.position;
-                _cameraSet = _cameraBase;
-            }
-
-            var token = destroyCancellationToken;
-            try
-            {
-                for (var t = 0f; t < shakeSeconds; t += Time.deltaTime)
-                {
-                    if (camera.position != _cameraSet)
-                    {
-                        _cameraBase = camera.position;
-                    }
-
-                    var k = 1f - t / shakeSeconds;
-                    var offset = UnityEngine.Random.insideUnitCircle * (shakeAmplitude * k * k);
-                    _cameraSet = _cameraBase + camera.right * offset.x + camera.up * offset.y;
-                    camera.position = _cameraSet;
-                    await Awaitable.NextFrameAsync(token);
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-            finally
-            {
-                _shaking--;
-            }
-
-            if (_shaking == 0 && camera.position == _cameraSet)
-            {
-                camera.position = _cameraBase;
-            }
+            _shake.Shake(shakeSeconds, shakeAmplitude);
         }
 
         // 盤面の奥の端の中心・手前の端の中心（地面の高さ）、右と奥の向き、横幅と奥行き（ワールド）。

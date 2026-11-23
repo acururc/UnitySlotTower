@@ -19,6 +19,10 @@ namespace UnitySlotTower.Core.Slot
         /// <summary>赤7が揃ってからダメージが入る（息吹が爆発する）までの戦闘の秒数（spec 003 FR-005）。0 ならすぐ。</summary>
         public double RedDelaySeconds { get; private set; }
         public double BlueStopSeconds { get; private set; }
+
+        /// <summary>青7が揃ってから停止が始まる（盤面が凍りつく）までの戦闘の秒数（spec 004 FR-003）。0 ならすぐ。</summary>
+        public double BlueDelaySeconds { get; private set; }
+
         public double GreenHealRate { get; private set; }
         public int YellowPoisonDamage { get; private set; }
         public double YellowPoisonTickSeconds { get; private set; }
@@ -42,6 +46,7 @@ namespace UnitySlotTower.Core.Slot
                 RedDamage = values.GetInt("red_damage"),
                 RedDelaySeconds = values.GetDouble("red_delay_seconds"),
                 BlueStopSeconds = values.GetDouble("blue_stop_seconds"),
+                BlueDelaySeconds = values.GetDouble("blue_delay_seconds"),
                 GreenHealRate = values.GetDouble("green_heal_rate"),
                 YellowPoisonDamage = values.GetInt("yellow_poison_damage"),
                 YellowPoisonTickSeconds = values.GetDouble("yellow_poison_tick_seconds"),

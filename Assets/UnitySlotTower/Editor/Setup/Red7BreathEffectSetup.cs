@@ -213,7 +213,7 @@ namespace UnitySlotTower.Editor.Setup
             UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(go, scene);
 
         // 材質を作るか、あれば値を上書きする（GUID を保つ）。
-        private static Material Material(Shader shader, string name, string texture, bool additive)
+        internal static Material Material(Shader shader, string name, string texture, bool additive)
         {
             var path = $"{VfxFolder}/{name}.mat";
             var material = AssetDatabase.LoadAssetAtPath<Material>(path);
@@ -233,7 +233,7 @@ namespace UnitySlotTower.Editor.Setup
             return material;
         }
 
-        private static ParticleSystem Create(Transform parent, string name, Material material, int layer, int maxParticles,
+        internal static ParticleSystem Create(Transform parent, string name, Material material, int layer, int maxParticles,
             bool looping, Action<ParticleSystem> configure)
         {
             var go = new GameObject(name, typeof(ParticleSystem));
@@ -263,7 +263,7 @@ namespace UnitySlotTower.Editor.Setup
         }
 
         // 色は始め→終わりに変わり、透明度は fadeIn までに上がって最後に消える。
-        private static void Fade(ParticleSystem ps, Color from, Color to, float fadeIn)
+        internal static void Fade(ParticleSystem ps, Color from, Color to, float fadeIn)
         {
             var color = ps.colorOverLifetime;
             color.enabled = true;
@@ -280,14 +280,14 @@ namespace UnitySlotTower.Editor.Setup
                 new[] { (1f, 0f), (0.9f, 0.5f), (0f, 1f) });
         }
 
-        private static void Grow(ParticleSystem ps, float from, float to)
+        internal static void Grow(ParticleSystem ps, float from, float to)
         {
             var size = ps.sizeOverLifetime;
             size.enabled = true;
             size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, from, 1f, to));
         }
 
-        private static ParticleSystem.MinMaxGradient Gradient((Color color, float time)[] colors, (float alpha, float time)[] alphas)
+        internal static ParticleSystem.MinMaxGradient Gradient((Color color, float time)[] colors, (float alpha, float time)[] alphas)
         {
             var gradient = new Gradient();
             var colorKeys = new GradientColorKey[colors.Length];

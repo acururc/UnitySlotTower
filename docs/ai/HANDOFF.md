@@ -2,16 +2,18 @@
 
 ## 現在の作業
 
-更新: 2026-11-23 Asia/Tokyo / 状態: **spec 003（赤7の息吹の演出の試作）は完了（T701〜T706）。次の作業はユーザーが選ぶ。**
+更新: 2026-11-23 Asia/Tokyo / 状態: **spec 004（青7の凍結の演出）は T801〜T804 完了。T805（ユーザーが Editor で Play して確認・調整）待ち。**
 
-- 対象: [`spec.md`](../../specs/003-red7-breath/spec.md)・[`plan.md`](../../specs/003-red7-breath/plan.md)・[`tasks.md`](../../specs/003-red7-breath/tasks.md)。spec 002 も完了（T601〜T617）。
-- 作ったもの: `Runtime/Battle/Red7BreathEffect.cs`（予兆→息吹→`RedStruck` で爆発・戦闘カメラの揺れ、爆発時に `BattleController.hitStopSeconds` で約0.1秒止める）、`Editor/Setup/Red7BreathEffectSetup.cs`（メニュー `Tools/UnitySlotTower/Setup/Build Red7 Breath Effect (spec 003)`、Setup を再実行すると Inspector の調整値は初期値に戻る）、`Art/VFX/VfxParticle.shader`、`Art/VFX/Kenney/`（CC0、`docs/ASSET_LICENSES.md`）。地面の火は息吹と同じ flame_01。
+- spec 004: [`spec.md`](../../specs/004-blue7-freeze/spec.md)・[`plan.md`](../../specs/004-blue7-freeze/plan.md)・[`tasks.md`](../../specs/004-blue7-freeze/tasks.md)。残りの出目の演出は1種類ずつ（D-01）。青7の確認が済んだら次の出目を新しい spec で（緑7・黄7・バー・コインからユーザーが選ぶ）。
+- spec 004 で作ったもの: `Runtime/Battle/Blue7FreezeEffect.cs`（冷気→`BlueFroze` で凍結・ヒットストップ・小さな揺れ→停止中は敵ごとに氷の塊→切れたら砕ける。氷の塊は仮の半透明の立方体）、`Runtime/Battle/BattleCameraShake.cs`（赤7と共有の揺れ）、`Editor/Setup/Blue7FreezeEffectSetup.cs`（メニュー `Build Blue7 Freeze Effect (spec 004)`）、`slot_rules.csv` の `blue_delay_seconds`=1。検証: EditMode 554/554、PlayMode 成功68/失敗0/Explicit 1、ハーネス 8/8。
+- spec 003（完了、T701〜T706）: [`spec.md`](../../specs/003-red7-breath/spec.md)。spec 002 も完了（T601〜T617）。
+- 作ったもの（spec 003）: `Runtime/Battle/Red7BreathEffect.cs`（予兆→息吹→`RedStruck` で爆発・戦闘カメラの揺れ、爆発時に `BattleController.hitStopSeconds` で約0.1秒止める）、`Editor/Setup/Red7BreathEffectSetup.cs`（メニュー `Tools/UnitySlotTower/Setup/Build Red7 Breath Effect (spec 003)`、Setup を再実行すると Inspector の調整値は初期値に戻る）、`Art/VFX/VfxParticle.shader`、`Art/VFX/Kenney/`（CC0、`docs/ASSET_LICENSES.md`）。地面の火は息吹と同じ flame_01。
 - ユーザーの確認（2026-11-23）: 息吹も変更後の地面の火も良い。秒数・揺れは初期値のまま。
 - 検証（2026-11-23）: EditMode 549/549、PlayMode 68 成功/失敗0/Explicit 1、ハーネス 8/8。
-- 次の候補（ユーザーが選ぶ）: 赤7の演出を残り5種類に広げるか（spec 003 の決定事項。広げるなら新しい spec）、001 の M5（T501〜T505、002・003 に合わせて見直す）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。001 の T399・T429 はユーザーの指示（「テストプレイは終わったものとして」）で完了扱いでよい（tasks.md の更新はまだ）。
+- そのほかの候補: 001 の M5（T501〜T505、002・003 に合わせて見直す）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。001 の T399・T429 はユーザーの指示（「テストプレイは終わったものとして」）で完了扱いでよい（tasks.md の更新はまだ）。
 - 素材の方針: AI が取るログイン不要の無料素材だけ（有料は使わない）。
 - ブランチ: main に直接コミットして origin へ push。main は core.autocrlf で CSV が CRLF になる。
-- Unity 接続: 2026-11-23 に停止を確認済み（ポート 8080 閉）。Editor は開いたまま。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（実メモリ16GB）で、プロジェクトの問題ではない。
+- Unity 接続: 2026-11-23 に停止を確認済み。Editor は開いたまま。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（実メモリ16GB）で、プロジェクトの問題ではない。
 
 ### 作業の注意
 - テストの手順: refresh → 約25秒 → code execute で `scriptCompilationFailed` と `isCompiling` を確認 → `tests --async` を1回 → 同じ job_id を前景のループで poll（[`UNITY_AUTOMATION.md`](UNITY_AUTOMATION.md) の Tests 節）。PlayMode 全件は約4分。スクリプトは毎回 `$env:TEMP` などに作り直す。

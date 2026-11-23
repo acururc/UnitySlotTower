@@ -138,7 +138,11 @@ namespace UnitySlotTower.Core.Battle
 
                     break;
                 case SlotSymbol.Blue7:
-                    Effects.StartStop();
+                    if (Effects.QueueStop())
+                    {
+                        BlueFroze?.Invoke();
+                    }
+
                     break;
                 case SlotSymbol.Green7:
                     foreach (var unit in _units)
@@ -167,6 +171,9 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>赤7のダメージが入った（息吹の爆発、spec 003 FR-001）。ダメージを入れた後、倒した敵を消す前に呼ぶ。</summary>
         public event Action RedStruck;
+
+        /// <summary>青7の停止が始まった（盤面が凍りついた、spec 004 FR-003）。待ちが 0 なら <see cref="ApplySlot"/> の中から呼ぶ。</summary>
+        public event Action BlueFroze;
 
         private void StrikeRed()
         {
@@ -277,6 +284,12 @@ namespace UnitySlotTower.Core.Battle
                 if (Effects != null && Effects.Step())
                 {
                     DamageAllEnemies(Effects.PoisonDamage);
+                }
+
+                // 青7の凍結（spec 004 FR-003）: 停止は次のステップから丸々 StopSteps 続く。
+                if (Effects != null && Effects.StepStopDelay())
+                {
+                    BlueFroze?.Invoke();
                 }
 
                 StepRedStrikes();

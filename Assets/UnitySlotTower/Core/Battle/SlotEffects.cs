@@ -26,6 +26,7 @@ namespace UnitySlotTower.Core.Battle
             PoisonSteps = StepsOf(rules.YellowPoisonSeconds);
             AttackSteps = StepsOf(rules.BarSeconds);
             RedDelaySteps = Math.Max(0, StepsOf(rules.RedDelaySeconds));
+            BlueDelaySteps = Math.Max(0, StepsOf(rules.BlueDelaySeconds));
             _poisonTickSteps = Math.Max(1, StepsOf(rules.YellowPoisonTickSeconds));
         }
 
@@ -40,6 +41,15 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>赤7が揃ってからダメージが入るまでのステップ（spec 003 FR-005）。0 ならすぐ。</summary>
         public int RedDelaySteps { get; }
+
+        /// <summary>青7が揃ってから停止が始まる（盤面が凍りつく）までのステップ（spec 004 FR-003）。0 ならすぐ。</summary>
+        public int BlueDelaySteps { get; }
+
+        /// <summary>凍りつくまでの残りステップ。0 なら待っていない。</summary>
+        public int StopDelayStepsLeft { get; private set; }
+
+        /// <summary>青7が揃い、凍りつくのを待っている（spec 004 FR-003）。</summary>
+        public bool IsStopPending => StopDelayStepsLeft > 0;
 
         public int StopStepsLeft { get; private set; }
         public int PoisonStepsLeft { get; private set; }
@@ -74,6 +84,34 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>停止を始める。効果中なら長さを最初に戻す（ふつうは抽選で外れるので起きない）。</summary>
         public void StartStop() => StopStepsLeft = StopSteps;
 
+        /// <summary>
+        /// 青7が揃った: 待ちが 0 ならその場で停止を始めて true、そうでなければ凍りつくまでの待ちを入れて false（spec 004 FR-003）。
+        /// 待ち中にもう一度来たら待ちを最初に戻す（ふつうは抽選で外れるので起きない）。
+        /// </summary>
+        public bool QueueStop()
+        {
+            if (BlueDelaySteps <= 0)
+            {
+                StartStop();
+                return true;
+            }
+
+            StopDelayStepsLeft = BlueDelaySteps;
+            return false;
+        }
+
+        /// <summary>凍りつくまでの待ちを1ステップ減らし、0 になったら停止を始めて true。<see cref="Step"/> の後に呼ぶ。</summary>
+        internal bool StepStopDelay()
+        {
+            if (StopDelayStepsLeft <= 0 || --StopDelayStepsLeft > 0)
+            {
+                return false;
+            }
+
+            StartStop();
+            return true;
+        }
+
         /// <summary>毒を始める。最初のダメージは1間隔の後。</summary>
         public void StartPoison()
         {
@@ -84,14 +122,15 @@ namespace UnitySlotTower.Core.Battle
         public void StartAttack() => AttackStepsLeft = AttackSteps;
 
         /// <summary>
-        /// 発動中の出目（E-11）。青7・黄7・バーは残り時間がある間、コインは倍率が上限に達したら true。赤7・緑7は常に false。
+        /// 発動中の出目（E-11）。青7・黄7・バーは残り時間がある間（青7は凍りつくのを待つ間も、spec 004 FR-005）、
+        /// コインは倍率が上限に達したら true。赤7・緑7は常に false。
         /// </summary>
         public bool IsActive(SlotSymbol symbol)
         {
             switch (symbol)
             {
                 case SlotSymbol.Blue7:
-                    return IsStopped;
+                    return IsStopped || IsStopPending;
                 case SlotSymbol.Yellow7:
                     return IsPoisoned;
                 case SlotSymbol.Bar:

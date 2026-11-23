@@ -4,6 +4,7 @@ stop_interval_seconds,0.4
 red_damage,5
 red_delay_seconds,1
 blue_stop_seconds,3
+blue_delay_seconds,1
 green_heal_rate,0.5
 yellow_poison_damage,1
 yellow_poison_tick_seconds,1

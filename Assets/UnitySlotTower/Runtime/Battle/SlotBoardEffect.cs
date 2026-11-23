@@ -10,7 +10,7 @@ namespace UnitySlotTower.Battle
 {
     /// <summary>
     /// 揃ったときの盤面全体の演出（FR-113、spec 002 E-28、plan 50行目、T613）。筐体が揃いを通知したら、盤面（3Dのフィールド）の
-    /// 画面上の範囲に出目ごとの演出を重ねる（赤7は spec 003 の <see cref="Red7BreathEffect"/> に移した）: 青7＝盤面を青く染めて敵に氷の色、
+    /// 画面上の範囲に出目ごとの演出を重ねる（赤7は spec 003 の <see cref="Red7BreathEffect"/>、青7は spec 004 の <see cref="Blue7FreezeEffect"/> に移した）:
     /// 緑7＝味方から緑の粒が上がる、黄7＝盤面に黄緑の霧と敵に毒の色、バー＝味方の頭上に上向きの矢印、コイン＝上からコインが降る。
     /// どの出目でも盤面をうっすら染める。見た目だけで戦闘とレバーは止めない。時間は戦闘の時間（Time.deltaTime）で進む。
     /// 絵は仮（丸と三角）で、本番の絵は M5 で差し替える。部品はこの層の子の「Board」（盤面の範囲で切り抜く）に作って使い回す。
@@ -120,9 +120,9 @@ namespace UnitySlotTower.Battle
         /// <summary>出目の演出を始める（筐体の揃いの通知と撮影から呼ぶ）。</summary>
         public void Play(SlotSymbol symbol)
         {
-            // 赤7は息吹の演出（Red7BreathEffect、spec 003）が受け持つ。
+            // 赤7は息吹の演出（Red7BreathEffect、spec 003）、青7は凍結の演出（Blue7FreezeEffect、spec 004）が受け持つ。
             var field = battle.Field;
-            if (symbol == SlotSymbol.Red7 || field == null || fieldView.Map == null)
+            if (symbol == SlotSymbol.Red7 || symbol == SlotSymbol.Blue7 || field == null || fieldView.Map == null)
             {
                 return;
             }
@@ -143,7 +143,7 @@ namespace UnitySlotTower.Battle
                 var size = BoardRect.size;
                 var enemies = Snapshot(field.Enemies, MaxEnemies);
                 var units = Snapshot(field.Units, MaxUnits);
-                var strong = symbol == SlotSymbol.Blue7 || symbol == SlotSymbol.Yellow7;
+                var strong = symbol == SlotSymbol.Yellow7;
                 var color = ColorOf(symbol);
                 var tint = TakeCircle(pieces, color, Vector2.zero, size, null);
                 tint.sprite = null;
@@ -152,9 +152,6 @@ namespace UnitySlotTower.Battle
                 TriangleGraphic[] arrows = null;
                 switch (symbol)
                 {
-                    case SlotSymbol.Blue7:
-                        actorMarks = TakeMany(pieces, enemies.Count, iceColor);
-                        break;
                     case SlotSymbol.Yellow7:
                         actorMarks = TakeMany(pieces, enemies.Count, poisonColor);
                         extras = TakeMany(pieces, FogCount, poisonColor, _softSprite);
@@ -179,10 +176,9 @@ namespace UnitySlotTower.Battle
                     SetAlpha(tint, color, (strong ? strongTintAlpha : tintAlpha) * fade);
                     switch (symbol)
                     {
-                        case SlotSymbol.Blue7:
                         case SlotSymbol.Yellow7:
-                            AnimateEnemyColor(actorMarks, enemies, symbol == SlotSymbol.Blue7 ? iceColor : poisonColor, p, cell);
-                            if (extras != null) AnimateFog(extras, p, size);
+                            AnimateEnemyColor(actorMarks, enemies, poisonColor, p, cell);
+                            AnimateFog(extras, p, size);
                             break;
                         case SlotSymbol.Green7:
                             AnimateParticles(extras, units, p, cell);

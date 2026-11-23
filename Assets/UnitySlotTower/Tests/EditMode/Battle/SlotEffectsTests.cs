@@ -123,6 +123,88 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             Assert.That(new SlotEffects(rules).RedDelaySteps, Is.EqualTo(SimulationClock.StepsPerSecond));
         }
 
+        private static Battlefield CreateFreezeDelayed(string waveRows) =>
+            new Battlefield(BattleFixtures.LoadWave(waveRows), BattleFixtures.LoadRanges(), 10, new SeededRandom(1),
+                new SlotEffects(SlotTestRules.Create(blueDelaySeconds: 1)));
+
+        [Test]
+        [Description("spec 004 AC-002: 青7は待ち（1秒=60ステップ）の間は敵が動き、凍結の瞬間に一度だけ通知して、そこから180ステップ止まる")]
+        public void Blue_Stop_Starts_When_It_Freezes_And_Lasts_Its_Full_Length()
+        {
+            var field = CreateFreezeDelayed("0,melee,S1,g,0\n");
+            field.Advance(1);
+            var froze = 0;
+            field.BlueFroze += () => froze++;
+
+            field.ApplySlot(SlotSymbol.Blue7);
+            var start = field.Enemies[0].Distance;
+            field.Advance(59);
+            var waiting = (field.Enemies[0].Distance > start, field.Effects.IsStopped, field.Effects.IsStopPending, froze);
+            field.Advance(1);
+            var frozen = (field.Effects.IsStopped, field.Effects.IsStopPending, froze, field.Effects.StopStepsLeft);
+            var at = field.Enemies[0].Distance;
+            field.Advance(179);
+            var still = (field.Enemies[0].Distance == at, field.Effects.IsStopped);
+            field.Advance(2);
+
+            Assert.That((waiting, frozen, still, field.Effects.IsStopped, field.Enemies[0].Distance > at, froze),
+                Is.EqualTo(((true, false, true, 0), (true, false, 1, 180), (true, true), false, true, 1)));
+        }
+
+        [Test]
+        [Description("spec 004 AC-002: 戦闘を進めなければ（ステージが終わったら）停止は始まらない。一度に進めたステップ数（倍速）でも同じ時点で凍る")]
+        public void Blue_Freeze_Needs_The_Battle_To_Advance_And_Counts_Steps()
+        {
+            var idle = CreateFreezeDelayed("0,melee,S1,g,0\n");
+            idle.Advance(1);
+            idle.ApplySlot(SlotSymbol.Blue7);
+            var fast = CreateFreezeDelayed("0,melee,S1,g,0\n");
+            fast.Advance(1);
+            fast.ApplySlot(SlotSymbol.Blue7);
+
+            fast.Advance(61);
+
+            Assert.That((idle.Effects.IsStopped, idle.Effects.IsStopPending, fast.Effects.IsStopped, fast.Effects.StopStepsLeft),
+                Is.EqualTo((false, true, true, 179)));
+        }
+
+        [Test]
+        [Description("spec 004 AC-003: 青7の待ちの間も青7は抽選から外れる")]
+        public void Blue_Cannot_Roll_While_Waiting_To_Freeze()
+        {
+            var field = CreateFreezeDelayed("0,melee,S1,g,0\n");
+            field.Advance(1);
+            var before = field.Effects.CanRoll(SlotSymbol.Blue7);
+
+            field.ApplySlot(SlotSymbol.Blue7);
+
+            Assert.That((before, field.Effects.CanRoll(SlotSymbol.Blue7), field.Effects.IsActive(SlotSymbol.Blue7)),
+                Is.EqualTo((true, false, true)));
+        }
+
+        [Test]
+        [Description("spec 004 FR-003: 待ちが0なら揃った瞬間に止まり、凍結を通知する")]
+        public void Blue_Without_Delay_Freezes_At_Once()
+        {
+            var field = Create("0,melee,S1,g,0\n");
+            field.Advance(1);
+            var froze = 0;
+            field.BlueFroze += () => froze++;
+
+            field.ApplySlot(SlotSymbol.Blue7);
+
+            Assert.That((field.Effects.IsStopped, field.Effects.StopStepsLeft, froze), Is.EqualTo((true, 180, 1)));
+        }
+
+        [Test]
+        [Description("spec 004 FR-003: 正本の slot_rules.csv の青7の待ちは1秒（60ステップ）")]
+        public void Project_Blue_Delay_Is_One_Second()
+        {
+            var rules = SlotRules.Load(SlotTestRules.ProjectTable(SlotRules.FileName));
+
+            Assert.That(new SlotEffects(rules).BlueDelaySteps, Is.EqualTo(SimulationClock.StepsPerSecond));
+        }
+
         [Test]
         [Description("AC-109: 青7の間（3秒=180ステップ）敵は進まず、時間が切れると再び進む")]
         public void Blue_Stops_Enemies_Until_It_Ends()
