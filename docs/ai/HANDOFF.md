@@ -2,17 +2,16 @@
 
 ## 現在の作業
 
-更新: 2026-11-23 Asia/Tokyo / 状態: **spec 003（赤7の息吹の演出の試作）の T701〜T704 が完了。T705（ユーザーが Editor で Play して見た目を確認・調整）待ち。**
+更新: 2026-11-23 Asia/Tokyo / 状態: **spec 003（赤7の息吹の演出の試作）は完了（T701〜T706）。次の作業はユーザーが選ぶ。**
 
-- 対象: [`spec.md`](../../specs/003-red7-breath/spec.md)（2026-11-23 承認: FR-001〜FR-005・AC-001〜AC-006）・[`plan.md`](../../specs/003-red7-breath/plan.md)・[`tasks.md`](../../specs/003-red7-breath/tasks.md)。spec 002 は完了（T601〜T617）。
-- ユーザーの決定: VFX に力を入れる。ドラゴン本体なし・息吹だけ。ダメージは爆発の瞬間（`slot_rules.csv` の `red_delay_seconds`＝1）。爆発で戦闘だけ約0.1秒止める（`BattleController.hitStopSeconds`）。素材は AI が取るログイン不要の無料素材だけ（有料は使わない）。赤7がうまくいけば、残り5種類に広げるかを別に決める。
-- 作ったもの: `Runtime/Battle/Red7BreathEffect.cs`（予兆→息吹→`RedStruck` で爆発・戦闘カメラの揺れ）、`Editor/Setup/Red7BreathEffectSetup.cs`（メニュー `Tools/UnitySlotTower/Setup/Build Red7 Breath Effect (spec 003)` が Game シーンに「Red7 Breath Effect」とパーティクル8つ、`Art/VFX/` に材質5つを作る）、`Art/VFX/VfxParticle.shader`、`Art/VFX/Kenney/`（CC0、`docs/ASSET_LICENSES.md`）。`SlotBoardEffect` は赤7で何もしない。パーティクルの値は Inspector で調整できる（Setup を再実行すると初期値に戻る）。
-- 検証（2026-11-23）: EditMode 549/549、PlayMode 68 成功/失敗0/Explicit 1、ハーネス 8/8。見た目（AC-001）は未確認。撮影用テスト（`ScreenCaptureTests`、Explicit）は赤7で盤面の演出を呼ぶだけなので、息吹は写らない。
-- 2026-11-23 ユーザーの感想: 息吹は良い。地面の火（muzzle_02）は水滴のようでダサい → 息吹と同じ flame_01 を回して低く広げる形に変更（muzzle_02 と Red7 Jet.mat は削除）。PlayMode 68 成功/失敗0、ハーネス 8/8。Editor が Play していなくても重い件は PC のメモリ不足（コミット約26.6GB/実メモリ16GB、ページング毎秒約3,500、Unity の CPU は約1%、Editor.log にエラーなし）が原因で、プロジェクトの問題ではないとユーザーに説明済み。
-- 次: ユーザーの Play の感想に合わせて、秒数（`warningEnd`・`breathStart`・`red_delay_seconds`）・炎の量・色・揺れ（`shakeAmplitude`）を調整 → T706（全テスト・HANDOFF）。
-- そのほかの残り: 001 の M5（T501〜T505、002・003 に合わせて見直す）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。001 の T399・T429 はユーザーの指示（「テストプレイは終わったものとして」）で完了扱いでよい（tasks.md の更新はまだ）。
+- 対象: [`spec.md`](../../specs/003-red7-breath/spec.md)・[`plan.md`](../../specs/003-red7-breath/plan.md)・[`tasks.md`](../../specs/003-red7-breath/tasks.md)。spec 002 も完了（T601〜T617）。
+- 作ったもの: `Runtime/Battle/Red7BreathEffect.cs`（予兆→息吹→`RedStruck` で爆発・戦闘カメラの揺れ、爆発時に `BattleController.hitStopSeconds` で約0.1秒止める）、`Editor/Setup/Red7BreathEffectSetup.cs`（メニュー `Tools/UnitySlotTower/Setup/Build Red7 Breath Effect (spec 003)`、Setup を再実行すると Inspector の調整値は初期値に戻る）、`Art/VFX/VfxParticle.shader`、`Art/VFX/Kenney/`（CC0、`docs/ASSET_LICENSES.md`）。地面の火は息吹と同じ flame_01。
+- ユーザーの確認（2026-11-23）: 息吹も変更後の地面の火も良い。秒数・揺れは初期値のまま。
+- 検証（2026-11-23）: EditMode 549/549、PlayMode 68 成功/失敗0/Explicit 1、ハーネス 8/8。
+- 次の候補（ユーザーが選ぶ）: 赤7の演出を残り5種類に広げるか（spec 003 の決定事項。広げるなら新しい spec）、001 の M5（T501〜T505、002・003 に合わせて見直す）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。001 の T399・T429 はユーザーの指示（「テストプレイは終わったものとして」）で完了扱いでよい（tasks.md の更新はまだ）。
+- 素材の方針: AI が取るログイン不要の無料素材だけ（有料は使わない）。
 - ブランチ: main に直接コミットして origin へ push。main は core.autocrlf で CSV が CRLF になる。
-- Unity 接続: 2026-11-23 に停止を確認済み（ポート 8080 閉）。Editor は開いたまま、Game シーンは保存済み。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。
+- Unity 接続: 2026-11-23 に停止を確認済み（ポート 8080 閉）。Editor は開いたまま。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（実メモリ16GB）で、プロジェクトの問題ではない。
 
 ### 作業の注意
 - テストの手順: refresh → 約25秒 → code execute で `scriptCompilationFailed` と `isCompiling` を確認 → `tests --async` を1回 → 同じ job_id を前景のループで poll（[`UNITY_AUTOMATION.md`](UNITY_AUTOMATION.md) の Tests 節）。PlayMode 全件は約4分。スクリプトは毎回 `$env:TEMP` などに作り直す。
