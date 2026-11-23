@@ -2,7 +2,7 @@
 
 ## 現在の作業
 
-更新: 2026-11-23 Asia/Tokyo / 状態: **spec 004（青7の凍結の演出）は T801〜T804 完了。T805（ユーザーが Editor で Play して確認・調整）待ち。**
+更新: 2026-11-23 Asia/Tokyo / 状態: **spec 004（青7の凍結の演出）は完了（T801〜T805、ユーザー確認「良かった」、調整なし）。次の出目の演出はユーザーが選ぶ。**
 
 - spec 004: [`spec.md`](../../specs/004-blue7-freeze/spec.md)・[`plan.md`](../../specs/004-blue7-freeze/plan.md)・[`tasks.md`](../../specs/004-blue7-freeze/tasks.md)。残りの出目の演出は1種類ずつ（D-01）。青7の確認が済んだら次の出目を新しい spec で（緑7・黄7・バー・コインからユーザーが選ぶ）。
 - spec 004 で作ったもの: `Runtime/Battle/Blue7FreezeEffect.cs`（冷気→`BlueFroze` で凍結・ヒットストップ・小さな揺れ→停止中は敵ごとに氷の塊→切れたら砕ける。氷の塊は仮の半透明の立方体）、`Runtime/Battle/BattleCameraShake.cs`（赤7と共有の揺れ）、`Editor/Setup/Blue7FreezeEffectSetup.cs`（メニュー `Build Blue7 Freeze Effect (spec 004)`）、`slot_rules.csv` の `blue_delay_seconds`=1。検証: EditMode 554/554、PlayMode 成功68/失敗0/Explicit 1、ハーネス 8/8。
