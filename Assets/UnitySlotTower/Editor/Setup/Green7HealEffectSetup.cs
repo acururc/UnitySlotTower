@@ -160,7 +160,16 @@ namespace UnitySlotTower.Editor.Setup
                 R.Grow(ps, 1f, 0.4f);
             });
 
+            // 盤面全体の魔法陣（spec 008 FR-003）: 外・中・内の3層。回復の瞬間に 1.35 倍へ広がりながら消える。
+            var circles = MagicCircleTextures.Green(shader);
+            var circleOuter = MagicCircleTextures.Layer(root.transform, "Circle Outer", circles.outer, layer, 4, 1.35f);
+            var circleMiddle = MagicCircleTextures.Layer(root.transform, "Circle Middle", circles.middle, layer, 4, 1.35f);
+            var circleInner = MagicCircleTextures.Layer(root.transform, "Circle Inner", circles.inner, layer, 4, 1.35f);
+
             var serialized = new SerializedObject(effect);
+            serialized.FindProperty("circleOuter").objectReferenceValue = circleOuter;
+            serialized.FindProperty("circleMiddle").objectReferenceValue = circleMiddle;
+            serialized.FindProperty("circleInner").objectReferenceValue = circleInner;
             serialized.FindProperty("cabinet").objectReferenceValue = cabinet;
             serialized.FindProperty("battle").objectReferenceValue = battle;
             serialized.FindProperty("fieldView").objectReferenceValue = fieldView;

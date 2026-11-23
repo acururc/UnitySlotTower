@@ -66,9 +66,30 @@ namespace UnitySlotTower.Battle
         [SerializeField] private float enemyShotSize = 0.15f;
         [SerializeField] private Color enemyShotColor = new Color(1f, 0.45f, 0.85f);
 
+        [Header("Shot Trails (spec 008 FR-002)")]
+        [Tooltip("弾の尾の材質（加算、Setup の Build Hit Impact Effect が入れる）。未設定なら尾を付けない。")]
+        [SerializeField] private Material shotTrailMaterial;
+        [Tooltip("尾が残る秒数（戦闘の時間）。")]
+        [SerializeField, Min(0.01f)] private float trailSeconds = 0.12f;
+        [Tooltip("尾の頭の太さ（ワールド）。尾の先は 0。")]
+        [SerializeField, Min(0f)] private float arrowTrailWidth = 0.14f;
+        [SerializeField, Min(0f)] private float enemyTrailWidth = 0.2f;
+        [SerializeField] private Color arrowTrailColor = new Color(1f, 0.85f, 0.4f, 0.9f);
+        [SerializeField] private Color enemyTrailColor = new Color(1f, 0.25f, 0.3f, 0.9f);
+
+        /// <summary>
+        /// 攻撃が当たった（spec 008 FR-001、見た目の当たり）。位置と、味方の攻撃なら true。近接は攻撃の通知の中で、
+        /// 遠距離は弾が見た目で届いた瞬間に呼ぶ（ダメージが入る時点は Core のまま）。
+        /// </summary>
+        public event Action<Vector3, bool> Impact;
+
+        /// <summary>当たりを通知した数（テスト用）。</summary>
+        public int ImpactCount { get; private set; }
+
         private sealed class Shot
         {
             public Transform Root;
+            public TrailRenderer Trail;
             public bool IsArrow;
             public BattleUnit TargetUnit;
             public BattleEnemy TargetEnemy;
@@ -170,6 +191,7 @@ namespace UnitySlotTower.Battle
         {
             if (unit.Definition.Role != UnitRole.Ranged)
             {
+                RaiseImpact(AimPoint(enemy), true);
                 return;
             }
 
@@ -182,6 +204,7 @@ namespace UnitySlotTower.Battle
         {
             if (enemy.Definition.Range <= 0)
             {
+                RaiseImpact(AimPoint(unit), false);
                 return;
             }
 
@@ -198,6 +221,13 @@ namespace UnitySlotTower.Battle
             shot.Duration = Mathf.Max(0.01f, Mathf.Min(maxShotSeconds, (float)interval / 3f));
             PlaceShot(shot, 0f);
             shot.Root.gameObject.SetActive(true);
+            if (shot.Trail != null)
+            {
+                // 使い回した弾が前の位置から線を引かないよう、置いてから消す。
+                shot.Trail.Clear();
+                shot.Trail.emitting = true;
+            }
+
             _shots.Add(shot);
             ShotsFired++;
             if (shot.IsArrow) ArrowsFired++;
@@ -224,6 +254,7 @@ namespace UnitySlotTower.Battle
                 {
                     ShotsLanded++;
                     if (shot.IsArrow) ArrowsLanded++;
+                    RaiseImpact(shot.To, shot.IsArrow);
                     ReleaseShot(i);
                     continue;
                 }
@@ -263,7 +294,39 @@ namespace UnitySlotTower.Battle
                 root.localScale = Vector3.one * enemyShotSize;
             }
 
-            return new Shot { Root = root, IsArrow = arrow };
+            return new Shot { Root = root, IsArrow = arrow, Trail = AddTrail(root, arrow) };
+        }
+
+        // 弾の尾（spec 008 FR-002）: 頭が太く尾が細い光の筋。材質がなければ付けない。
+        private TrailRenderer AddTrail(Transform root, bool arrow)
+        {
+            if (shotTrailMaterial == null)
+            {
+                return null;
+            }
+
+            var trail = root.gameObject.AddComponent<TrailRenderer>();
+            trail.sharedMaterial = shotTrailMaterial;
+            trail.time = trailSeconds;
+            trail.minVertexDistance = 0.02f;
+            trail.widthMultiplier = arrow ? arrowTrailWidth : enemyTrailWidth;
+            trail.widthCurve = AnimationCurve.Linear(0f, 1f, 1f, 0f);
+            var color = arrow ? arrowTrailColor : enemyTrailColor;
+            var tail = color;
+            tail.a = 0f;
+            trail.startColor = color;
+            trail.endColor = tail;
+            trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            trail.receiveShadows = false;
+            trail.alignment = LineAlignment.View;
+            trail.emitting = false;
+            return trail;
+        }
+
+        private void RaiseImpact(Vector3 at, bool byUnit)
+        {
+            ImpactCount++;
+            Impact?.Invoke(at, byUnit);
         }
 
         private void ReleaseShot(int index)
@@ -272,6 +335,12 @@ namespace UnitySlotTower.Battle
             _shots.RemoveAt(index);
             shot.TargetEnemy = null;
             shot.TargetUnit = null;
+            if (shot.Trail != null)
+            {
+                shot.Trail.emitting = false;
+                shot.Trail.Clear();
+            }
+
             shot.Root.gameObject.SetActive(false);
             (shot.IsArrow ? _freeArrows : _freeEnemyShots).Push(shot);
         }

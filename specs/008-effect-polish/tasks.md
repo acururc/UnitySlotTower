@@ -1,0 +1,11 @@
+# エフェクトの改善 — タスク
+
+要求は [`spec.md`](spec.md)、設計は [`plan.md`](plan.md)。
+
+- [x] T1201 (FR-003・FR-004・P-06) 魔法陣の絵の生成と材質 — 検証: Setup で PNG と材質ができる → 2026-11-23 PNG 4枚（`Art/VFX/MagicCircles/`）と材質4個。黒背景で目視し、三角＋円＋点（目の印に見える）・中心へつながる放射線（法輪に見える）・輪の上の小円3つ（既存作品の模様を連想）を避けて描き直した
+- [x] T1202 (FR-003) 緑7の盤面全体の魔法陣 — 検証: Setup を適用、コンパイル → 2026-11-23 Setup 再適用（部品9個、参照の欠けなし）、コンパイル成功
+- [x] T1203 (FR-004) バーの足元の魔法陣 — 検証: Setup を適用、コンパイル → 2026-11-23 Setup 再適用（部品12個、芯を `Charge Core` に分けた）、コンパイル成功
+- [x] T1204 (FR-001) 当たりの衝撃（`BattleActorsView.Impact`、`HitImpactEffect`、Setup） — 検証: Setup を適用、コンパイル → 2026-11-23 Setup 適用（部品3個、材質 `Hit Flash/Ring/Spark`）、コンパイル成功
+- [x] T1205 (FR-002) 弾の尾 — 検証: コンパイル → 2026-11-23 Setup で `BattleActorsView.shotTrailMaterial` に `Shot Trail` を入れた、コンパイル成功
+- [x] T1206 (AC-002〜AC-005) PlayMode テストと全テスト・ハーネス、ライセンスの記録 — 検証: EditMode・PlayMode の件数、ハーネス → 2026-11-23 EditMode 569/569、PlayMode 成功68・失敗0・Explicit 1（`ShotTests` に尾と衝撃、`SlotCabinetEffectTests` に緑7の魔法陣を追加）、ハーネス 8/8。シーンの消えた行は作り直した緑7・バーの部品の古い ID（74個）だけで参照の残りなし。`docs/ASSET_LICENSES.md` に自作の魔法陣と流用を記録
+- [ ] T1207 (AC-001) ユーザーが Editor で Play して確認、調整（spec 007 T1105 の確認も合わせる） — 検証: ユーザーの確認

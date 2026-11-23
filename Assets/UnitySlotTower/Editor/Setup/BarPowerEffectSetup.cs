@@ -63,8 +63,9 @@ namespace UnitySlotTower.Editor.Setup
             root.layer = layer;
             var effect = root.AddComponent<BarPowerEffect>();
 
-            // 足元の縮まる輪と膨らむ芯（味方1体に2つ）: 位置・大きさ・色は実行時に毎フレーム入れる（放出はしない）。
-            var chargeRing = R.Create(root.transform, "Charge Ring", glow, layer, 128, false, ps =>
+            // 足元の縮まる魔法陣（spec 008 FR-004）と膨らむ芯: 位置・大きさ・色は実行時に毎フレーム入れる（放出はしない）。
+            var chargeRing = MagicCircleTextures.Layer(root.transform, "Charge Ring", MagicCircleTextures.Bar(shader), layer, 64, 1f);
+            var chargeCore = R.Create(root.transform, "Charge Core", glow, layer, 64, false, ps =>
             {
                 var main = ps.main;
                 main.startLifetime = 100f;
@@ -201,6 +202,7 @@ namespace UnitySlotTower.Editor.Setup
             serialized.FindProperty("fieldView").objectReferenceValue = fieldView;
             serialized.FindProperty("battleCamera").objectReferenceValue = camera;
             serialized.FindProperty("chargeRing").objectReferenceValue = chargeRing;
+            serialized.FindProperty("chargeCore").objectReferenceValue = chargeCore;
             serialized.FindProperty("chargeMotes").objectReferenceValue = chargeMotes;
             serialized.FindProperty("burstFlames").objectReferenceValue = burstFlames;
             serialized.FindProperty("burstRing").objectReferenceValue = burstRing;

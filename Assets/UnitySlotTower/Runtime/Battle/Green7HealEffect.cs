@@ -32,6 +32,27 @@ namespace UnitySlotTower.Battle
         [SerializeField] private ParticleSystem pillars;
         [SerializeField] private ParticleSystem rings;
         [SerializeField] private ParticleSystem motes;
+        [Tooltip("盤面全体の魔法陣の外・中・内の層（spec 008 FR-003）。位置と大きさは実行時に入れる。")]
+        [SerializeField] private ParticleSystem circleOuter;
+        [SerializeField] private ParticleSystem circleMiddle;
+        [SerializeField] private ParticleSystem circleInner;
+
+        [Header("盤面全体の魔法陣（spec 008）")]
+        [Tooltip("魔法陣の大きさ（盤面の長い辺に対する倍率）。")]
+        [SerializeField, Min(0f)] private float circleScale = 1.05f;
+        [Tooltip("層ごとの現れ始めと現れ終わり（待ち時間に対する割合）。外・中・内の順。")]
+        [SerializeField] private Vector2 outerReveal = new Vector2(0f, 0.35f);
+        [SerializeField] private Vector2 middleReveal = new Vector2(0.25f, 0.6f);
+        [SerializeField] private Vector2 innerReveal = new Vector2(0.5f, 0.85f);
+        [Tooltip("層ごとの回る速さ（度/秒）。外・中・内。向きを変えて重ねる。")]
+        [SerializeField] private Vector3 circleSpin = new Vector3(18f, -32f, 55f);
+        [SerializeField] private Color circleOuterColor = new Color(0.35f, 1f, 0.5f, 0.8f);
+        [SerializeField] private Color circleMiddleColor = new Color(0.55f, 1f, 0.65f, 0.8f);
+        [SerializeField] private Color circleInnerColor = new Color(0.85f, 1f, 0.85f, 0.95f);
+        [Tooltip("回復の瞬間に強く光るときの色（広がりながら消える）。")]
+        [SerializeField] private Color circleFlashColor = new Color(0.85f, 1f, 0.85f, 1f);
+        [Tooltip("強く光って消えるまでの秒数。")]
+        [SerializeField, Min(0.05f)] private float circleFlashSeconds = 0.6f;
 
         [Header("流れ（揃ってから光の柱までの待ち時間に対する割合）")]
         [Tooltip("予兆の光を出し終える時点。")]
@@ -55,8 +76,17 @@ namespace UnitySlotTower.Battle
         [Tooltip("閃光の大きさ（盤面の長い辺に対する倍率）。")]
         [SerializeField, Min(0f)] private float flashScale = 1.4f;
 
+        private readonly ParticleSystem.Particle[] _circleParticle = new ParticleSystem.Particle[1];
         private int _showering;
         private int _expectedHeals;
+        private float _circleAngle;
+        private bool _circleShown;
+
+        /// <summary>魔法陣が出ている（回復を待っている間）。</summary>
+        public bool IsCircleShown => _circleShown;
+
+        /// <summary>回復の瞬間に魔法陣が強く光った回数（テスト用）。</summary>
+        public int CircleFlashCount { get; private set; }
 
         /// <summary>緑7で始めた演出の数（テスト用）。</summary>
         public int PlayCount { get; private set; }
@@ -72,7 +102,8 @@ namespace UnitySlotTower.Battle
 
         /// <summary>出ている粒の数（テスト用。演出が終われば 0）。</summary>
         public int ActiveParticleCount =>
-            Count(warning) + Count(rain) + Count(flash) + Count(pillars) + Count(rings) + Count(motes);
+            Count(warning) + Count(rain) + Count(flash) + Count(pillars) + Count(rings) + Count(motes) +
+            Count(circleOuter) + Count(circleMiddle) + Count(circleInner);
 
         /// <summary>出ている光の柱の数（テスト用）。</summary>
         public int PillarCount => Count(pillars);
@@ -124,8 +155,11 @@ namespace UnitySlotTower.Battle
                 var rainShape = rain.shape;
                 rainShape.scale = new Vector3(width, 0.1f, depth);
                 var raining = false;
+                _circleAngle = 0f;
                 for (var t = 0f; HealCount < healIndex && t < delay + HealGrace; t += Time.deltaTime)
                 {
+                    PlaceCircles(center, Mathf.Max(width, depth) * circleScale, delay > 0f ? Mathf.Clamp01(t / delay) : 1f);
+
                     if (t >= warningEnd * delay && warning.isEmitting)
                     {
                         warning.Stop(true, ParticleSystemStopBehavior.StopEmitting);
@@ -154,7 +188,78 @@ namespace UnitySlotTower.Battle
             {
                 warning.Stop(true, ParticleSystemStopBehavior.StopEmitting);
                 rain.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+                if (_circleShown)
+                {
+                    // 柱が来なかった（ステージが先に終わった）: 魔法陣はそっと消す。
+                    HideCircles();
+                }
             }
+        }
+
+        // 盤面の中心に魔法陣の層を置く。progress は待ちの進み具合（0〜1）。外→中→内の順に現れ、層ごとに逆向きに回る。
+        private void PlaceCircles(Vector3 center, float size, float progress)
+        {
+            _circleAngle += Time.deltaTime * (1f + progress);
+            var bright = Mathf.Lerp(0.6f, 1f, progress);
+            var at = center + Vector3.up * 0.06f;
+            PlaceLayer(circleOuter, at, size, Reveal(progress, outerReveal), circleSpin.x, circleOuterColor, bright, 100f);
+            PlaceLayer(circleMiddle, at + Vector3.up * 0.01f, size, Reveal(progress, middleReveal), circleSpin.y, circleMiddleColor, bright, 100f);
+            PlaceLayer(circleInner, at + Vector3.up * 0.02f, size, Reveal(progress, innerReveal), circleSpin.z, circleInnerColor, bright, 100f);
+            _circleShown = true;
+        }
+
+        private static float Reveal(float progress, Vector2 window) =>
+            Mathf.Clamp01((progress - window.x) / Mathf.Max(0.01f, window.y - window.x));
+
+        // 層の粒を1つ置く。appear（0〜1）で 1.15 倍から縮んで定まり、濃くなる。lifetime が短いと、置いた後は大きく広がりながら消える（Setup の色と大きさの変化）。
+        private void PlaceLayer(ParticleSystem layer, Vector3 at, float size, float appear, float spin, Color color, float bright, float lifetime)
+        {
+            if (layer == null)
+            {
+                return;
+            }
+
+            var eased = 1f - (1f - appear) * (1f - appear);
+            color.a *= appear * bright;
+            _circleParticle[0] = new ParticleSystem.Particle
+            {
+                position = at,
+                startSize = size * Mathf.Lerp(1.15f, 1f, eased),
+                rotation = spin * _circleAngle,
+                startColor = color,
+                startLifetime = lifetime,
+                remainingLifetime = lifetime,
+            };
+            if (!layer.isPlaying)
+            {
+                layer.Play();
+            }
+
+            layer.SetParticles(_circleParticle, 1);
+        }
+
+        private void HideCircles()
+        {
+            foreach (var layer in new[] { circleOuter, circleMiddle, circleInner })
+            {
+                if (layer != null)
+                {
+                    layer.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                }
+            }
+
+            _circleShown = false;
+        }
+
+        // 回復の瞬間: 魔法陣が強く光り、広がりながら消える（待ちが 0 でも出す）。
+        private void FlashCircles(Vector3 center, float size)
+        {
+            CircleFlashCount++;
+            var at = center + Vector3.up * 0.06f;
+            PlaceLayer(circleOuter, at, size, 1f, circleSpin.x, circleFlashColor, 1f, circleFlashSeconds);
+            PlaceLayer(circleMiddle, at + Vector3.up * 0.01f, size, 1f, circleSpin.y, circleFlashColor, 1f, circleFlashSeconds);
+            PlaceLayer(circleInner, at + Vector3.up * 0.02f, size, 1f, circleSpin.z, circleFlashColor, 1f, circleFlashSeconds);
+            _circleShown = false;
         }
 
         // Core が回復を入れた: 生きている味方ごとに光の柱を立てる。
@@ -171,6 +276,7 @@ namespace UnitySlotTower.Battle
             rain.Stop(true, ParticleSystemStopBehavior.StopEmitting);
 
             Measure(out _, out var center, out _, out var width, out var depth);
+            FlashCircles(center, Mathf.Max(width, depth) * circleScale);
             flash.Emit(new ParticleSystem.EmitParams
             {
                 position = center + Vector3.up,

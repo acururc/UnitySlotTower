@@ -332,11 +332,15 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                 Assert.That((heal.PlayCount, heal.IsShowering, board.PlayCount, heal.HealCount),
                     Is.EqualTo((round + 1, true, greenBoardCount, heals)), "緑7で光が降り始めない・盤面全体の演出が出る・すぐ回復する");
                 Assert.That(heal.ActiveParticleCount, Is.GreaterThan(0), "予兆の粒が出ない");
+                Assert.That(heal.IsCircleShown, Is.True, "待ちの間に盤面全体の魔法陣が出ない（spec 008 FR-003）");
+                var circleFlashes = heal.CircleFlashCount;
                 yield return WaitForHeal(heal, heals);
 
-                // 柱の瞬間: 生きている味方ごとに柱が立ち、戦闘は止まらない（FR-003）。
+                // 柱の瞬間: 生きている味方ごとに柱が立ち、戦闘は止まらない（FR-003）。魔法陣は強く光って消えていく（spec 008）。
                 Assert.That((heal.PillarCount, heal.IsShowering, _battle.IsHitStopping), Is.EqualTo((AliveUnits(), false, false)),
                     "味方ごとに光の柱が立たない・光が降り止まない・ヒットストップする");
+                Assert.That((heal.CircleFlashCount, heal.IsCircleShown), Is.EqualTo((circleFlashes + 1, false)),
+                    "回復の瞬間に魔法陣が光らない・残る");
                 yield return WaitForStop();
                 yield return WaitForEffect(effect);
                 yield return WaitForHealEnd(heal);

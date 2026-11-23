@@ -28,8 +28,10 @@ namespace UnitySlotTower.Battle
         [SerializeField] private Camera battleCamera;
 
         [Header("パーティクル（Setup が作る）")]
-        [Tooltip("足元の縮まる輪（味方に付いて動く）。位置と大きさは実行時に毎フレーム入れる。")]
+        [Tooltip("足元の縮まる魔法陣（味方に付いて動く、spec 008 FR-004）。位置と大きさは実行時に毎フレーム入れる。")]
         [SerializeField] private ParticleSystem chargeRing;
+        [Tooltip("足元の膨らむ光の芯（味方に付いて動く）。位置と大きさは実行時に毎フレーム入れる。")]
+        [SerializeField] private ParticleSystem chargeCore;
         [Tooltip("溜めの間に足元へ吸い込まれる光の粒。")]
         [SerializeField] private ParticleSystem chargeMotes;
         [SerializeField] private ParticleSystem burstFlames;
@@ -49,8 +51,10 @@ namespace UnitySlotTower.Battle
 
         [Header("溜め（足元の輪）")]
         [Tooltip("輪の大きさ（マス = 1）。揃った瞬間 → 爆発の瞬間。")]
-        [SerializeField] private Vector2 chargeRingSize = new Vector2(4f, 0.7f);
+        [SerializeField] private Vector2 chargeRingSize = new Vector2(4f, 1.2f);
         [SerializeField] private Color chargeRingColor = new Color(1f, 0.8f, 0.3f, 1f);
+        [Tooltip("溜めの間に魔法陣が回る回数（爆発に近づくほど速い）。")]
+        [SerializeField, Min(0f)] private float chargeCircleTurns = 1.5f;
         [Tooltip("足元の光の芯の大きさ（爆発の直前、マス = 1）。溜めにつれて膨らむ。")]
         [SerializeField, Min(0f)] private float chargeCoreSize = 1.6f;
         [SerializeField] private Color chargeCoreColor = new Color(1f, 0.95f, 0.7f, 1f);
@@ -92,8 +96,8 @@ namespace UnitySlotTower.Battle
         [Tooltip("揺れの幅（ワールド）。黄7と同じくらい（spec 007 D-04）。")]
         [SerializeField, Min(0f)] private float shakeAmplitude = 0.06f;
 
-        // 輪と芯の2つずつ。
-        private readonly ParticleSystem.Particle[] _ringParticles = new ParticleSystem.Particle[MaxUnits * 2];
+        private readonly ParticleSystem.Particle[] _ringParticles = new ParticleSystem.Particle[MaxUnits];
+        private readonly ParticleSystem.Particle[] _coreParticles = new ParticleSystem.Particle[MaxUnits];
         private readonly ParticleSystem.Particle[] _auraParticles = new ParticleSystem.Particle[MaxUnits];
         private readonly Vector3[] _ringPositions = new Vector3[MaxUnits];
         private readonly Vector3[] _auraPositions = new Vector3[MaxUnits];
@@ -135,7 +139,7 @@ namespace UnitySlotTower.Battle
 
         /// <summary>出ている粒の数（テスト用。演出が終われば 0）。</summary>
         public int ActiveParticleCount =>
-            Count(chargeRing) + Count(chargeMotes) + Count(burstFlames) + Count(burstRing) + Count(burstSparks) +
+            Count(chargeRing) + Count(chargeCore) + Count(chargeMotes) + Count(burstFlames) + Count(burstRing) + Count(burstSparks) +
             Count(aura) + Count(auraFlames) + Count(attackSparks) + Count(burstFlash) + Count(burstPillar) + Count(auraEmbers);
 
         private void Awake() => _shake = BattleCameraShake.Of(battleCamera);
@@ -245,7 +249,6 @@ namespace UnitySlotTower.Battle
             var coreSize = chargeCoreSize * eased * throb;
             var coreColor = chargeCoreColor;
             coreColor.a *= Mathf.Lerp(0.3f, 1f, progress);
-            var written = 0;
             foreach (var unit in field.Units)
             {
                 if (_ringCount >= MaxUnits)
@@ -260,16 +263,17 @@ namespace UnitySlotTower.Battle
 
                 var position = fieldView.CellTopToWorld(unit.Cell) + Vector3.up * 0.04f;
                 _ringPositions[_ringCount] = position;
-                _ringParticles[written++] = new ParticleSystem.Particle
+                // 魔法陣（spec 008 FR-004）: 縮まりながら回り、爆発に近づくほど速く回る。
+                _ringParticles[_ringCount] = new ParticleSystem.Particle
                 {
                     position = position,
                     startSize = size,
-                    rotation = _ringCount * 41f + progress * 120f,
+                    rotation = _ringCount * 41f + progress * progress * chargeCircleTurns * 360f,
                     startColor = color,
                     startLifetime = 100f,
                     remainingLifetime = 100f,
                 };
-                _ringParticles[written++] = new ParticleSystem.Particle
+                _coreParticles[_ringCount] = new ParticleSystem.Particle
                 {
                     position = position + Vector3.up * 0.01f,
                     startSize = coreSize,
@@ -281,17 +285,33 @@ namespace UnitySlotTower.Battle
                 _ringCount++;
             }
 
-            if (!chargeRing.isPlaying)
+            SetLayer(chargeRing, _ringParticles, _ringCount);
+            SetLayer(chargeCore, _coreParticles, _ringCount);
+        }
+
+        private static void SetLayer(ParticleSystem system, ParticleSystem.Particle[] particles, int count)
+        {
+            if (system == null)
             {
-                chargeRing.Play();
+                return;
             }
 
-            chargeRing.SetParticles(_ringParticles, written);
+            if (!system.isPlaying)
+            {
+                system.Play();
+            }
+
+            system.SetParticles(particles, count);
         }
 
         private void HideRings()
         {
             chargeRing.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            if (chargeCore != null)
+            {
+                chargeCore.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+
             _ringCount = 0;
         }
 

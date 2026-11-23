@@ -77,11 +77,17 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             Assert.That(placed, Is.EqualTo(2), "敵の道を射程に入れて弓を置けるマスが足りない");
 
+            var impact = Object.FindAnyObjectByType<HitImpactEffect>();
+            Assert.That(impact, Is.Not.Null, "Game シーンに当たりの衝撃がない（Build Hit Impact Effect (spec 008)）");
+            var impacts = view.ImpactCount;
+            var played = impact.PlayCount;
             var sawInFlight = false;
+            var sawTrail = false;
             for (var i = 0; i < 60 * 40 && view.ArrowsFired < 4 && battle.Field == field && !field.IsGameOver; i++)
             {
                 field.Advance(1);
                 sawInFlight |= view.ActiveShotCount > 0;
+                sawTrail |= view.ActiveShotCount > 0 && EmittingTrails() > 0;
                 // 1ステップ分（1/60 秒）の時間を待ち、弾が戦闘と同じ速さで飛ぶようにする。
                 yield return new WaitForSeconds(1f / 60f);
             }
@@ -97,6 +103,41 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             Assert.That(view.ArrowsLanded, Is.GreaterThan(0), "矢が相手まで届かない");
             Assert.That(view.CreatedShotCount, Is.LessThan(view.ShotsFired), "弾を使い回さず毎回作っている");
+
+            // spec 008 AC-002: 弾は尾を引き、届くと当たりの衝撃が出る。片付けた弾に尾は残らず、衝撃の粒も消える。
+            Assert.That(sawTrail, Is.True, "飛んでいる弾に尾が付かない");
+            Assert.That(view.ImpactCount - impacts, Is.GreaterThanOrEqualTo(view.ArrowsLanded), "届いた矢の数だけ当たりの衝撃が出ない");
+            Assert.That(impact.PlayCount - played, Is.EqualTo(view.ImpactCount - impacts), "当たりの通知と衝撃の数が合わない");
+            until = Time.realtimeSinceStartup + 2f;
+            while ((view.ActiveShotCount > 0 || impact.IsPlaying) && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That((view.ActiveShotCount, impact.ActiveParticleCount, EmittingTrails(), VisibleTrailPoints()),
+                Is.EqualTo((0, 0, 0, 0)), "弾・衝撃の粒・尾が残る");
+        }
+
+        private static int EmittingTrails()
+        {
+            var count = 0;
+            foreach (var trail in Object.FindObjectsByType<TrailRenderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (trail.gameObject.activeInHierarchy && trail.emitting) count++;
+            }
+
+            return count;
+        }
+
+        private static int VisibleTrailPoints()
+        {
+            var count = 0;
+            foreach (var trail in Object.FindObjectsByType<TrailRenderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (trail.gameObject.activeInHierarchy) count += trail.positionCount;
+            }
+
+            return count;
         }
 
         private static bool CoversPath(MapPath path, BattleUnit unit)
