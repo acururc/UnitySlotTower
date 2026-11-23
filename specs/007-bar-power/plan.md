@@ -21,7 +21,7 @@
 - `SlotBoardEffect` はバーでは何もしない（矢印のコードは残す、黄7と同じ）。
 
 ## 4. 素材（FR-007）
-- 新しい素材は使わない（Kenney の circle_05・flame_01・spark_04 を流用）。`docs/ASSET_LICENSES.md` の用途に追記。
+- 新しい素材は使わない（Kenney の circle_05・flame_01・spark_04・scorch_02 を流用）。`docs/ASSET_LICENSES.md` の用途に追記。
 
 ## 5. リスク
 - 攻撃力の倍率の表示（`OperationBarStatus`）は待ちの間は ×1.0 のままで、爆発の瞬間から出る（青7・黄7と同じ）。

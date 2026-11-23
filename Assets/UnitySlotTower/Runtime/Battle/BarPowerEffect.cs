@@ -40,35 +40,53 @@ namespace UnitySlotTower.Battle
         [Tooltip("オーラから立ちのぼる炎。")]
         [SerializeField] private ParticleSystem auraFlames;
         [SerializeField] private ParticleSystem attackSparks;
+        [Tooltip("爆発と攻撃の閃光（放射状の光）。")]
+        [SerializeField] private ParticleSystem burstFlash;
+        [Tooltip("爆発で味方から立つ炎の柱。")]
+        [SerializeField] private ParticleSystem burstPillar;
+        [Tooltip("効果の間に舞い上がる火の粉。")]
+        [SerializeField] private ParticleSystem auraEmbers;
 
         [Header("溜め（足元の輪）")]
         [Tooltip("輪の大きさ（マス = 1）。揃った瞬間 → 爆発の瞬間。")]
-        [SerializeField] private Vector2 chargeRingSize = new Vector2(3.2f, 0.6f);
-        [SerializeField] private Color chargeRingColor = new Color(1f, 0.75f, 0.3f, 0.9f);
+        [SerializeField] private Vector2 chargeRingSize = new Vector2(4f, 0.7f);
+        [SerializeField] private Color chargeRingColor = new Color(1f, 0.8f, 0.3f, 1f);
+        [Tooltip("足元の光の芯の大きさ（爆発の直前、マス = 1）。溜めにつれて膨らむ。")]
+        [SerializeField, Min(0f)] private float chargeCoreSize = 1.6f;
+        [SerializeField] private Color chargeCoreColor = new Color(1f, 0.95f, 0.7f, 1f);
         [Tooltip("吸い込まれる粒の数（毎秒、味方1体あたり）。爆発の直前ほど増える。")]
-        [SerializeField, Min(0f)] private float motesPerSecond = 8f;
+        [SerializeField, Min(0f)] private float motesPerSecond = 18f;
 
         [Header("爆発")]
-        [SerializeField, Min(0)] private int flamesPerUnit = 14;
-        [SerializeField, Min(0)] private int sparksPerUnit = 12;
+        [SerializeField, Min(0)] private int flamesPerUnit = 30;
+        [SerializeField, Min(0)] private int sparksPerUnit = 28;
+        [Tooltip("閃光の大きさ（マス = 1）。")]
+        [SerializeField, Min(0f)] private float flashSize = 4.5f;
+        [Tooltip("炎の柱の幅と高さ（マス = 1）。")]
+        [SerializeField] private Vector2 pillarSize = new Vector2(1.6f, 5f);
 
         [Header("オーラ")]
         [Tooltip("オーラの光の大きさ（ワールド、マス = 1）。")]
-        [SerializeField, Min(0f)] private float auraSize = 1.2f;
+        [SerializeField, Min(0f)] private float auraSize = 1.7f;
         [Tooltip("オーラの中心の、味方の足元からの高さ。")]
-        [SerializeField] private float auraHeight = 0.45f;
-        [SerializeField] private Color auraColor = new Color(1f, 0.55f, 0.15f, 0.5f);
+        [SerializeField] private float auraHeight = 0.5f;
+        [SerializeField] private Color auraColor = new Color(1f, 0.55f, 0.15f, 0.7f);
         [Tooltip("立ちのぼる炎の数（毎秒、味方1体あたり）。")]
-        [SerializeField, Min(0f)] private float auraFlamesPerSecond = 10f;
+        [SerializeField, Min(0f)] private float auraFlamesPerSecond = 24f;
+        [Tooltip("舞い上がる火の粉の数（毎秒、味方1体あたり）。")]
+        [SerializeField, Min(0f)] private float embersPerSecond = 8f;
         [Tooltip("攻撃したときの火花の数。")]
-        [SerializeField, Min(0)] private int sparksPerAttack = 6;
+        [SerializeField, Min(0)] private int sparksPerAttack = 12;
+        [Tooltip("攻撃したときの閃光の大きさ（マス = 1）。")]
+        [SerializeField, Min(0f)] private float attackFlashSize = 1.6f;
 
         [Header("揺れ")]
         [SerializeField, Min(0f)] private float shakeSeconds = 0.2f;
         [Tooltip("揺れの幅（ワールド）。黄7と同じくらい（spec 007 D-04）。")]
         [SerializeField, Min(0f)] private float shakeAmplitude = 0.06f;
 
-        private readonly ParticleSystem.Particle[] _ringParticles = new ParticleSystem.Particle[MaxUnits];
+        // 輪と芯の2つずつ。
+        private readonly ParticleSystem.Particle[] _ringParticles = new ParticleSystem.Particle[MaxUnits * 2];
         private readonly ParticleSystem.Particle[] _auraParticles = new ParticleSystem.Particle[MaxUnits];
         private readonly Vector3[] _ringPositions = new Vector3[MaxUnits];
         private readonly Vector3[] _auraPositions = new Vector3[MaxUnits];
@@ -76,6 +94,7 @@ namespace UnitySlotTower.Battle
         private int _auraCount;
         private bool _auraShown;
         private float _flameDebt;
+        private float _emberDebt;
         private int _charging;
         private int _expectedBursts;
         private BattleCameraShake _shake;
@@ -110,7 +129,7 @@ namespace UnitySlotTower.Battle
         /// <summary>出ている粒の数（テスト用。演出が終われば 0）。</summary>
         public int ActiveParticleCount =>
             Count(chargeRing) + Count(chargeMotes) + Count(burstFlames) + Count(burstRing) + Count(burstSparks) +
-            Count(aura) + Count(auraFlames) + Count(attackSparks);
+            Count(aura) + Count(auraFlames) + Count(attackSparks) + Count(burstFlash) + Count(burstPillar) + Count(auraEmbers);
 
         private void Awake() => _shake = BattleCameraShake.Of(battleCamera);
 
@@ -212,6 +231,12 @@ namespace UnitySlotTower.Battle
             var size = Mathf.Lerp(chargeRingSize.x, chargeRingSize.y, eased);
             var color = chargeRingColor;
             color.a *= Mathf.Lerp(0.5f, 1f, progress);
+            // 芯: 溜めにつれて膨らみ、爆発の直前は速く脈打つ。
+            var throb = 1f + 0.15f * progress * Mathf.Sin(Time.time * (12f + 30f * progress));
+            var coreSize = chargeCoreSize * eased * throb;
+            var coreColor = chargeCoreColor;
+            coreColor.a *= Mathf.Lerp(0.3f, 1f, progress);
+            var written = 0;
             foreach (var unit in field.Units)
             {
                 if (_ringCount >= MaxUnits)
@@ -226,12 +251,21 @@ namespace UnitySlotTower.Battle
 
                 var position = fieldView.CellTopToWorld(unit.Cell) + Vector3.up * 0.04f;
                 _ringPositions[_ringCount] = position;
-                _ringParticles[_ringCount] = new ParticleSystem.Particle
+                _ringParticles[written++] = new ParticleSystem.Particle
                 {
                     position = position,
                     startSize = size,
                     rotation = _ringCount * 41f + progress * 120f,
                     startColor = color,
+                    startLifetime = 100f,
+                    remainingLifetime = 100f,
+                };
+                _ringParticles[written++] = new ParticleSystem.Particle
+                {
+                    position = position + Vector3.up * 0.01f,
+                    startSize = coreSize,
+                    rotation = -_ringCount * 41f - progress * 360f,
+                    startColor = coreColor,
                     startLifetime = 100f,
                     remainingLifetime = 100f,
                 };
@@ -243,7 +277,7 @@ namespace UnitySlotTower.Battle
                 chargeRing.Play();
             }
 
-            chargeRing.SetParticles(_ringParticles, _ringCount);
+            chargeRing.SetParticles(_ringParticles, written);
         }
 
         private void HideRings()
@@ -274,17 +308,24 @@ namespace UnitySlotTower.Battle
 
                 var at = fieldView.CellTopToWorld(unit.Cell);
                 Emit(burstRing, at + Vector3.up * 0.05f, Vector3.zero);
+                EmitSized(burstFlash, at + Vector3.up * 0.6f, flashSize);
+                burstPillar.Emit(new ParticleSystem.EmitParams
+                {
+                    position = at + Vector3.up * (pillarSize.y * 0.45f),
+                    startSize3D = new Vector3(pillarSize.x, pillarSize.y, 1f),
+                    applyShapeToPosition = false,
+                }, 1);
                 for (var k = 0; k < flamesPerUnit; k++)
                 {
-                    var side = UnityEngine.Random.insideUnitCircle * 0.9f;
+                    var side = UnityEngine.Random.insideUnitCircle * 1.4f;
                     Emit(burstFlames, at + new Vector3(side.x * 0.3f, 0.2f, side.y * 0.3f),
-                        new Vector3(side.x, UnityEngine.Random.Range(2.5f, 4.5f), side.y));
+                        new Vector3(side.x, UnityEngine.Random.Range(3.5f, 7f), side.y));
                 }
 
                 for (var k = 0; k < sparksPerUnit; k++)
                 {
-                    var side = UnityEngine.Random.insideUnitCircle.normalized * UnityEngine.Random.Range(1.5f, 3f);
-                    Emit(burstSparks, at + Vector3.up * 0.4f, new Vector3(side.x, UnityEngine.Random.Range(1.5f, 3.5f), side.y));
+                    var side = UnityEngine.Random.insideUnitCircle.normalized * UnityEngine.Random.Range(2.5f, 5f);
+                    Emit(burstSparks, at + Vector3.up * 0.5f, new Vector3(side.x, UnityEngine.Random.Range(2f, 5.5f), side.y));
                 }
             }
 
@@ -302,10 +343,11 @@ namespace UnitySlotTower.Battle
 
             SparkCount++;
             var at = fieldView.CellTopToWorld(unit.Cell) + Vector3.up * auraHeight;
+            EmitSized(burstFlash, at, attackFlashSize);
             for (var k = 0; k < sparksPerAttack; k++)
             {
-                var side = UnityEngine.Random.insideUnitCircle.normalized * UnityEngine.Random.Range(1f, 2.2f);
-                Emit(attackSparks, at, new Vector3(side.x, UnityEngine.Random.Range(1f, 2.5f), side.y));
+                var side = UnityEngine.Random.insideUnitCircle.normalized * UnityEngine.Random.Range(1.5f, 3.2f);
+                Emit(attackSparks, at, new Vector3(side.x, UnityEngine.Random.Range(1.5f, 3.5f), side.y));
             }
         }
 
@@ -346,7 +388,7 @@ namespace UnitySlotTower.Battle
                 }
 
                 var position = fieldView.CellTopToWorld(unit.Cell) + Vector3.up * auraHeight;
-                var flicker = 1f + 0.08f * Mathf.Sin(Time.time * 11f + _auraCount * 1.7f);
+                var flicker = 1f + 0.12f * Mathf.Sin(Time.time * 11f + _auraCount * 1.7f) + 0.06f * Mathf.Sin(Time.time * 23f + _auraCount);
                 _auraPositions[_auraCount] = position;
                 _auraParticles[_auraCount] = new ParticleSystem.Particle
                 {
@@ -374,7 +416,17 @@ namespace UnitySlotTower.Battle
             {
                 var at = _auraPositions[UnityEngine.Random.Range(0, _auraCount)];
                 var offset = UnityEngine.Random.insideUnitCircle * 0.3f;
-                Emit(auraFlames, at + new Vector3(offset.x, -0.3f, offset.y), Vector3.up * UnityEngine.Random.Range(0.8f, 1.5f));
+                Emit(auraFlames, at + new Vector3(offset.x, -0.35f, offset.y), Vector3.up * UnityEngine.Random.Range(1.4f, 2.4f));
+            }
+
+            // 舞い上がる火の粉。
+            _emberDebt += embersPerSecond * _auraCount * Time.deltaTime;
+            for (; _emberDebt >= 1f && _auraCount > 0; _emberDebt -= 1f)
+            {
+                var at = _auraPositions[UnityEngine.Random.Range(0, _auraCount)];
+                var offset = UnityEngine.Random.insideUnitCircle * 0.5f;
+                Emit(auraEmbers, at + new Vector3(offset.x, 0f, offset.y),
+                    new Vector3(offset.x * 0.6f, UnityEngine.Random.Range(1.5f, 3f), offset.y * 0.6f));
             }
         }
 
@@ -384,7 +436,17 @@ namespace UnitySlotTower.Battle
             _auraShown = false;
             _auraCount = 0;
             _flameDebt = 0f;
+            _emberDebt = 0f;
         }
+
+        private static void EmitSized(ParticleSystem system, Vector3 position, float size) =>
+            system.Emit(new ParticleSystem.EmitParams
+            {
+                position = position,
+                startSize = size,
+                rotation = UnityEngine.Random.Range(0f, 360f),
+                applyShapeToPosition = false,
+            }, 1);
 
         private static void Emit(ParticleSystem system, Vector3 position, Vector3 velocity) =>
             system.Emit(new ParticleSystem.EmitParams

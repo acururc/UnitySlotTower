@@ -6,7 +6,7 @@
 
 - spec 007: [`spec.md`](../../specs/007-bar-power/spec.md)（2026-11-23 承認、FR-001〜FR-007・AC-001〜AC-005）・[`plan.md`](../../specs/007-bar-power/plan.md)・[`tasks.md`](../../specs/007-bar-power/tasks.md)。流れ: 味方の足元に光の輪が縮まる（溜め、粒が吸い込まれる）→約1秒後に味方ごとに炎の闘気が爆発して弱く揺れ（ヒットストップなし）、攻撃力アップが始まる→効果の間は味方ごとに橙のオーラと立ちのぼる炎、攻撃ごとに火花→切れたら消える。
 - spec 007 で作ったもの: Core の `bar_delay_seconds`=1（`SlotRules`・`SlotEffects.BarDelaySteps`/`QueueAttack`/`IsAttackPending`・`GameDataValidator`）、`Battlefield.BarBurst`、`BattleController.BarBurst`・`UnitAttacked` の中継、`Runtime/Battle/BarPowerEffect.cs`、`Editor/Setup/BarPowerEffectSetup.cs`（メニュー `Build Bar Power Effect (spec 007)`、Game シーンに適用・保存済み、材質 `Art/VFX/Bar *.mat` 3個）、`SlotBoardEffect` からバーを外した。素材の追加なし。攻撃力の倍率の表示は待ちの間は ×1.0、爆発の瞬間から上がる。
-- 検証（2026-11-23）: EditMode 569/569（新規5件）、PlayMode 成功68/失敗0/Explicit 1、ハーネス 8/8。見た目は未確認（ユーザーの Play 待ち）。
+- 検証（2026-11-23）: EditMode 569/569（新規5件）、PlayMode 成功68/失敗0/Explicit 1、ハーネス 8/8。見た目はユーザー「ちょっと地味」→ 調整1で全段階を派手にした（tasks.md T1105）。再確認待ち。
 - 次の操作: ユーザーが Editor で Play してバーを確認（AC-001）。調整があれば `BarPowerEffect` の初期値（輪の大きさ・炎の数・オーラの大きさ・揺れ）か Setup を直し、Setup を再適用。確認が取れたら T1105 を閉じ、次はコインの演出（spec 008）。
 - 完了済み: spec 006（黄7）、005（緑7）、004（青7）、003（赤7）、002。赤・青・緑・黄・バーとも Setup を再実行すると Inspector の調整値は初期値に戻る。
 - Setup をかけると Game.unity の差分が大きく見える（行の並べ替え）。行の集合で比べ、消えた行がないことを確認する（2026-11-23 の黄7・バーでも0）。
