@@ -2,15 +2,15 @@
 
 ## 現在の作業
 
-更新: 2026-11-23 Asia/Tokyo / 状態: **spec 006（黄7の毒の演出）は T1001〜T1004 完了。T1005（ユーザーが Editor で Play して確認・調整）待ち。**
+更新: 2026-11-23 Asia/Tokyo / 状態: **spec 006（黄7の毒の演出）完了（T1001〜T1005、ユーザー確認済み）。次の出目（バー・コイン）をユーザーが選ぶところ。**
 
 - spec 006: [`spec.md`](../../specs/006-yellow7-poison/spec.md)（2026-11-23 承認、FR-001〜FR-007・AC-001〜AC-005）・[`plan.md`](../../specs/006-yellow7-poison/plan.md)・[`tasks.md`](../../specs/006-yellow7-poison/tasks.md)。流れ: 盤面の地面に毒の沼が湧き泡が立つ→約1秒後に沼が弾けて弱く揺れ（ヒットストップなし）、毒が始まる→毒の間は敵ごとに紫のオーラ、ダメージごとに点滅→毒が切れたら消える。
 - spec 006 で作ったもの: Core の `yellow_delay_seconds`=1（`SlotRules`・`SlotEffects.YellowDelaySteps`/`QueuePoison`/`IsPoisonPending`・`GameDataValidator`）、`Battlefield.YellowBurst`・`PoisonTicked`、`BattleController` の中継、`Runtime/Battle/Yellow7PoisonEffect.cs`、`Editor/Setup/Yellow7PoisonEffectSetup.cs`（メニュー `Build Yellow7 Poison Effect (spec 006)`、Game シーンに適用・保存済み、材質 `Art/VFX/Yellow7 *.mat` 3個）、`SlotBoardEffect` から黄7を外した。素材の追加なし。毒のアイコンは待ちの間は出ず、弾けた瞬間から出る（青7と同じ）。
 - 同じコミットで: 初期コインを 3→10（`game_config.csv`、`GameConfigTests` の期待値、ユーザー指示 2026-11-23）。spec 005 T905 完了（ユーザー確認）。
-- 検証（2026-11-23）: EditMode 564/564（新規5件）、PlayMode 成功68/失敗0/Explicit 1、ハーネス 8/8。見た目（AC-001）は未確認。
-- 調整1（2026-11-23、spec D-06）: 敵の足元にも沼を追加済み（PlayMode 68/0/1、ハーネス 8/8）。 調整2: 沼を大きく（盤面 2.2〜3.4・足元 2.6 マス）。
-- 次の操作: ユーザーに Play で黄7を確認してもらい、調整（沼の数・秒数・オーラの色と大きさ・揺れは `Yellow7PoisonEffect` の Inspector と Setup の初期値）。確認後 T1005 を完了にし、次の出目（バー・コイン）をユーザーが選ぶ。
-- 完了済み: spec 005（緑7）、004（青7）、003（赤7）、002。赤・青・緑・黄とも Setup を再実行すると Inspector の調整値は初期値に戻る。
+- 検証（2026-11-23）: EditMode 564/564（新規5件）、PlayMode 成功68/失敗0/Explicit 1、ハーネス 8/8。見た目はユーザーが確認。
+- 調整（T1005）: 敵の足元にも沼（spec D-06）、沼を大きく（盤面 2.2〜3.4 マス、足元 5.0 マス。足元はユーザーが Inspector で決めた値）。
+- 次の操作: 次の出目（バー・コイン）をユーザーが選び、spec 007 を `spec` スキルで始める（003〜006 と同じ進め方: 流れ・揺れを聞く→承認→Core の待ち→演出と Setup→テスト→ユーザーの Play 確認）。
+- 完了済み: spec 006（黄7）、005（緑7）、004（青7）、003（赤7）、002。赤・青・緑・黄とも Setup を再実行すると Inspector の調整値は初期値に戻る。
 - Setup をかけると Game.unity の差分が大きく見える（行の並べ替え）。行の集合で比べ、消えた行がないことを確認する（2026-11-23 の黄7でも0）。
 - そのほかの候補: 001 の M5（T501〜T505、002・003 に合わせて見直す）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。001 の T399・T429 はユーザーの指示（「テストプレイは終わったものとして」）で完了扱いでよい（tasks.md の更新はまだ）。
 - 素材の方針: AI が取るログイン不要の無料素材だけ（有料は使わない）。

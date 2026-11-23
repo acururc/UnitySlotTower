@@ -71014,7 +71014,7 @@ MonoBehaviour:
   swampCount: 10
   swampSpreadEnd: 0.6
   swampSize: {x: 2.2, y: 3.4}
-  enemySwampSize: 2.6
+  enemySwampSize: 5
   enemySwampGrowSeconds: 0.35
   enemySwampColor: {r: 0.45, g: 0.12, b: 0.6, a: 0.9}
   bubblesPerSecond: 6
