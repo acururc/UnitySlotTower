@@ -31,6 +31,10 @@ namespace UnitySlotTower.Core.Slot
         public int YellowPoisonDamage { get; private set; }
         public double YellowPoisonTickSeconds { get; private set; }
         public double YellowPoisonSeconds { get; private set; }
+
+        /// <summary>黄7が揃ってから毒が始まる（毒の沼が弾ける）までの戦闘の秒数（spec 006 FR-003）。0 ならすぐ。</summary>
+        public double YellowDelaySeconds { get; private set; }
+
         public double BarAttackRate { get; private set; }
         public double BarSeconds { get; private set; }
 
@@ -53,6 +57,7 @@ namespace UnitySlotTower.Core.Slot
                 BlueDelaySeconds = values.GetDouble("blue_delay_seconds"),
                 GreenHealRate = values.GetDouble("green_heal_rate"),
                 GreenDelaySeconds = values.GetDouble("green_delay_seconds"),
+                YellowDelaySeconds = values.GetDouble("yellow_delay_seconds"),
                 YellowPoisonDamage = values.GetInt("yellow_poison_damage"),
                 YellowPoisonTickSeconds = values.GetDouble("yellow_poison_tick_seconds"),
                 YellowPoisonSeconds = values.GetDouble("yellow_poison_seconds"),

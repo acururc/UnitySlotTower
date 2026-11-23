@@ -194,14 +194,49 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                 "停止が切れない・氷が残る・砕けない");
             yield return WaitForFreezeEnd(freeze);
 
+            // 黄7は盤面全体の演出の代わりに毒の沼が湧き、待ち時間の後に弾けて毒が始まる（spec 006）。
+            var poison = Object.FindAnyObjectByType<Yellow7PoisonEffect>();
+            Assert.That(poison, Is.Not.Null, "Game シーンに黄7の毒の演出がない（Build Yellow7 Poison Effect (spec 006)）");
+            var yellowBoardCount = board.PlayCount;
+            var bursts = poison.BurstCount;
             Select(SlotSymbol.Yellow7);
             yield return SpinAndStopAll();
             yield return null;
             Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Yellow7, status.PoisonEffectRect)));
-            AssertBoardPlaying(board, SlotSymbol.Yellow7, effect.PlayCount - 1); // 青7では盤面全体の演出は出ない（spec 004）
+            Assert.That((poison.PlayCount, poison.IsBubbling, board.PlayCount, poison.BurstCount, _battle.Field.Effects.IsPoisoned),
+                Is.EqualTo((1, true, yellowBoardCount, bursts, false)), "黄7で沼が湧かない・盤面全体の演出が出る・すぐ毒が始まる");
+            Assert.That(poison.ActiveParticleCount, Is.GreaterThan(0), "沼の粒が出ない");
+            yield return WaitForBurst(poison, bursts);
+
+            // 弾ける瞬間: 弱く揺れ、ヒットストップはしない（spec 006 FR-002）。
+            Assert.That((_battle.IsHitStopping, poison.IsShaking, poison.IsBubbling, _battle.Field.Effects.IsPoisoned),
+                Is.EqualTo((false, true, false, true)), "弾けて揺れない・ヒットストップする・沼が止まらない・毒が始まらない");
+            yield return null;
             Assert.That((status.IsPoisonEffectShown, status.PoisonRingFill > 0f && status.PoisonRingFill <= 1f), Is.EqualTo((true, true)),
                 "毒のアイコンと残り時間の円が出ない");
+
+            // 毒の間は生きている敵ごとにオーラが付き、ダメージごとに点滅し、毒が切れると消える（spec 006 AC-003）。
+            Assert.That(poison.AuraCount, Is.EqualTo(AliveEnemies()).Within(1), "毒の間の敵にオーラが付かない");
+            var flashes = poison.FlashCount;
+            var fades = poison.FadeCount;
+            var flashUntil = Time.realtimeSinceStartup + 3f;
+            while (poison.FlashCount == flashes && Time.realtimeSinceStartup < flashUntil)
+            {
+                yield return null;
+            }
+
+            Assert.That(poison.FlashCount, Is.GreaterThan(flashes), "毒のダメージでオーラが点滅しない");
+            var poisonUntil = Time.realtimeSinceStartup + 8f;
+            while (_battle.Field.Effects.IsPoisoned && Time.realtimeSinceStartup < poisonUntil)
+            {
+                yield return null;
+            }
+
+            yield return null;
+            Assert.That((_battle.Field.Effects.IsPoisoned, poison.AuraCount, poison.FadeCount), Is.EqualTo((false, 0, fades + 1)),
+                "毒が切れない・オーラが残る・消えない");
             yield return WaitForEffect(effect);
+            yield return WaitForPoisonEnd(poison);
 
             // 赤7 → その場の効果なので帯に行き先はない。盤面全体の演出の代わりに息吹が出て、待ち時間の後に爆発する（spec 003）。
             var breath = Object.FindAnyObjectByType<Red7BreathEffect>();
@@ -373,6 +408,30 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That((freeze.IsPlaying, freeze.ActiveParticleCount), Is.EqualTo((false, 0)), "青7の凍結の演出が終わらない・粒が残る");
+        }
+
+        // 黄7の沼が弾けるのを待つ（待ち時間は slot_rules.csv の yellow_delay_seconds、戦闘の時間）。
+        private static IEnumerator WaitForBurst(Yellow7PoisonEffect poison, int bursts)
+        {
+            var until = Time.realtimeSinceStartup + 5f;
+            while (poison.BurstCount == bursts && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That(poison.BurstCount, Is.EqualTo(bursts + 1), "黄7の沼が弾けない");
+        }
+
+        // 沼・オーラ・揺れ・粒がすべて終わる（部品が残らない、spec 006 AC-003）。
+        private static IEnumerator WaitForPoisonEnd(Yellow7PoisonEffect poison)
+        {
+            var until = Time.realtimeSinceStartup + 6f;
+            while (poison.IsPlaying && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That((poison.IsPlaying, poison.ActiveParticleCount), Is.EqualTo((false, 0)), "黄7の毒の演出が終わらない・粒が残る");
         }
 
         // 緑7の光の柱を待つ（待ち時間は slot_rules.csv の green_delay_seconds、戦闘の時間）。

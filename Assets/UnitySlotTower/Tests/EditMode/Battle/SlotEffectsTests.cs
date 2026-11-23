@@ -303,6 +303,88 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             Assert.That((alive, field.Enemies.Count, field.DroppedCoins is >= 2 and <= 3), Is.EqualTo((1, 0, true)));
         }
 
+        private static Battlefield CreatePoisonDelayed(string waveRows) =>
+            new Battlefield(BattleFixtures.LoadWave(waveRows), BattleFixtures.LoadRanges(), 10, new SeededRandom(1),
+                new SlotEffects(SlotTestRules.Create(yellowDelaySeconds: 1)));
+
+        [Test]
+        [Description("spec 006 AC-002: 黄7は待ち（1秒=60ステップ）の間はダメージが入らず、沼が弾ける瞬間に一度だけ通知して、そこから5秒（5回）毒が入る。ダメージごとに通知する")]
+        public void Yellow_Poison_Starts_When_The_Swamp_Bursts()
+        {
+            var field = CreatePoisonDelayed("0,quaker,S1,g,0\n");
+            field.Advance(1);
+            var burst = 0;
+            var ticks = 0;
+            field.YellowBurst += () => burst++;
+            field.PoisonTicked += () => ticks++;
+
+            field.ApplySlot(SlotSymbol.Yellow7);
+            field.Advance(59);
+            var waiting = (field.Enemies[0].Hp, field.Effects.IsPoisoned, field.Effects.IsPoisonPending, burst);
+            field.Advance(1);
+            var bursting = (field.Effects.IsPoisoned, field.Effects.IsPoisonPending, burst, field.Effects.PoisonStepsLeft);
+            field.Advance(60);
+            var first = (field.Enemies[0].Hp, ticks);
+            field.Advance(240);
+
+            Assert.That((waiting, bursting, first, field.Enemies[0].Hp, ticks, field.Effects.IsPoisoned, burst),
+                Is.EqualTo(((100000, false, true, 0), (true, false, 1, 300), (100000 - 1, 1), 100000 - 5, 5, false, 1)));
+        }
+
+        [Test]
+        [Description("spec 006 AC-002: 戦闘を進めなければ（ステージが終わったら）毒は始まらない。一度に進めたステップ数（倍速）でも同じ時点で弾ける")]
+        public void Yellow_Burst_Needs_The_Battle_To_Advance_And_Counts_Steps()
+        {
+            var idle = CreatePoisonDelayed("0,quaker,S1,g,0\n");
+            idle.Advance(1);
+            idle.ApplySlot(SlotSymbol.Yellow7);
+            var fast = CreatePoisonDelayed("0,quaker,S1,g,0\n");
+            fast.Advance(1);
+            fast.ApplySlot(SlotSymbol.Yellow7);
+
+            fast.Advance(61);
+
+            Assert.That((idle.Effects.IsPoisoned, idle.Effects.IsPoisonPending, fast.Effects.IsPoisoned, fast.Effects.PoisonStepsLeft),
+                Is.EqualTo((false, true, true, 299)));
+        }
+
+        [Test]
+        [Description("spec 006 AC-002: 黄7の待ちの間も黄7は抽選から外れる")]
+        public void Yellow_Cannot_Roll_While_Waiting_To_Burst()
+        {
+            var field = CreatePoisonDelayed("0,quaker,S1,g,0\n");
+            field.Advance(1);
+            var before = field.Effects.CanRoll(SlotSymbol.Yellow7);
+
+            field.ApplySlot(SlotSymbol.Yellow7);
+
+            Assert.That((before, field.Effects.CanRoll(SlotSymbol.Yellow7), field.Effects.IsActive(SlotSymbol.Yellow7)),
+                Is.EqualTo((true, false, true)));
+        }
+
+        [Test]
+        [Description("spec 006 FR-003: 待ちが0なら揃った瞬間に毒が始まり、弾けたことを通知する")]
+        public void Yellow_Without_Delay_Bursts_At_Once()
+        {
+            var field = Create("0,quaker,S1,g,0\n");
+            field.Advance(1);
+            var burst = 0;
+            field.YellowBurst += () => burst++;
+
+            field.ApplySlot(SlotSymbol.Yellow7);
+
+            Assert.That((field.Effects.IsPoisoned, field.Effects.PoisonStepsLeft, burst), Is.EqualTo((true, 300, 1)));
+        }
+
+        [Test]
+        [Description("spec 006 FR-003: 正本の slot_rules.csv の黄7の待ちは1秒（60ステップ）")]
+        public void Project_Yellow_Delay_Is_One_Second()
+        {
+            var rules = SlotRules.Load(SlotTestRules.ProjectTable(SlotRules.FileName));
+
+            Assert.That(new SlotEffects(rules).YellowDelaySteps, Is.EqualTo(SimulationClock.StepsPerSecond));
+        }
+
         [Test]
         [Description("AC-109: 緑7は味方の HP を最大 HP の50%回復し、最大値で止まる。ライフは回復しない")]
         public void Green_Heals_Units_Up_To_Max_But_Not_Life()

@@ -63,6 +63,12 @@ namespace UnitySlotTower.Battle
 
         /// <summary>緑7の回復が入った（光の柱、spec 005 FR-001）。戦闘のステップかレバーの結果の中から呼ばれる。ヒットストップはしない（FR-003）。</summary>
         public event Action GreenHealed;
+
+        /// <summary>黄7の毒の沼が弾けた（毒の始まり、spec 006 FR-003）。戦闘のステップかレバーの結果の中から呼ばれる。ヒットストップはしない（FR-002）。</summary>
+        public event Action YellowBurst;
+
+        /// <summary>毒のダメージが入った（spec 006 FR-004）。戦闘のステップの中から呼ばれる。</summary>
+        public event Action PoisonTicked;
         public string NodeKind { get; private set; }
         public float BaseFlashUntil { get; private set; }
 
@@ -246,6 +252,8 @@ namespace UnitySlotTower.Battle
                 Field.RedStruck -= OnRedStruck;
                 Field.BlueFroze -= OnBlueFroze;
                 Field.GreenHealed -= OnGreenHealed;
+                Field.YellowBurst -= OnYellowBurst;
+                Field.PoisonTicked -= OnPoisonTicked;
             }
 
             if (EdgeFlash != null) Destroy(EdgeFlash.gameObject);
@@ -284,6 +292,8 @@ namespace UnitySlotTower.Battle
                 Field.RedStruck -= OnRedStruck;
                 Field.BlueFroze -= OnBlueFroze;
                 Field.GreenHealed -= OnGreenHealed;
+                Field.YellowBurst -= OnYellowBurst;
+                Field.PoisonTicked -= OnPoisonTicked;
             }
 
             _hitStopLeft = 0f;
@@ -296,6 +306,8 @@ namespace UnitySlotTower.Battle
             Field.RedStruck += OnRedStruck;
             Field.BlueFroze += OnBlueFroze;
             Field.GreenHealed += OnGreenHealed;
+            Field.YellowBurst += OnYellowBurst;
+            Field.PoisonTicked += OnPoisonTicked;
             BaseFlashUntil = 0f;
             EdgeFlash.Hide();
             _victoryLeft = 0f;
@@ -375,6 +387,11 @@ namespace UnitySlotTower.Battle
 
         // 緑7の光の柱が立った（spec 005 FR-001）: 表示へ知らせるだけ（揺れ・ヒットストップなし、FR-003）。
         private void OnGreenHealed() => GreenHealed?.Invoke();
+
+        // 黄7の毒の沼が弾けた・毒のダメージが入った（spec 006）: 表示へ知らせるだけ（ヒットストップなし、FR-002）。
+        private void OnYellowBurst() => YellowBurst?.Invoke();
+
+        private void OnPoisonTicked() => PoisonTicked?.Invoke();
 
         private void OnBaseReached(GridPoint cell)
         {

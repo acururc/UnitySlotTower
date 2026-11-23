@@ -49,7 +49,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("plan 16.2・17.1: コイン3・所持金100（T617 で 0 から変更）・1枚賭け・ライフ10・ステージ1の無料の召喚0（T617）")]
+        [Description("plan 16.2・17.1: コイン10（2026-11-23 に3から変更）・所持金100（T617 で 0 から変更）・1枚賭け・ライフ10・ステージ1の無料の召喚0（T617）")]
         public void Project_Table_Holds_Planned_Initial_Values()
         {
             var text = File.ReadAllText(Path.Combine(TablePaths.Root, "game_config.csv"));
@@ -58,7 +58,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
 
             Assert.That((config.InitialCoins, config.InitialMoney, config.Bet, config.Life, config.DeployLimit,
                     config.RetreatRefundRate),
-                Is.EqualTo((3, 100, 1, 10, 8, 0.5)));
+                Is.EqualTo((10, 100, 1, 10, 8, 0.5)));
             Assert.That(config.FirstStageFreeSummons, Is.Zero);
         }
 

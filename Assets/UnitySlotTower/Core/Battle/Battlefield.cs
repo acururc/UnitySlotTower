@@ -160,7 +160,11 @@ namespace UnitySlotTower.Core.Battle
 
                     break;
                 case SlotSymbol.Yellow7:
-                    Effects.StartPoison();
+                    if (Effects.QueuePoison())
+                    {
+                        YellowBurst?.Invoke();
+                    }
+
                     break;
                 case SlotSymbol.Bar:
                     Effects.StartAttack();
@@ -179,6 +183,12 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>青7の停止が始まった（盤面が凍りついた、spec 004 FR-003）。待ちが 0 なら <see cref="ApplySlot"/> の中から呼ぶ。</summary>
         public event Action BlueFroze;
+
+        /// <summary>黄7の毒が始まった（毒の沼が弾けた、spec 006 FR-003）。待ちが 0 なら <see cref="ApplySlot"/> の中から呼ぶ。</summary>
+        public event Action YellowBurst;
+
+        /// <summary>毒のダメージが入った（spec 006 FR-004、オーラの点滅）。ダメージを入れた後、倒した敵を消す前に呼ぶ。</summary>
+        public event Action PoisonTicked;
 
         /// <summary>待っている緑7の数（spec 005 FR-002）。</summary>
         public int PendingGreenHeals => _greenHeals.Count;
@@ -321,6 +331,13 @@ namespace UnitySlotTower.Core.Battle
                 if (Effects != null && Effects.Step())
                 {
                     DamageAllEnemies(Effects.PoisonDamage);
+                    PoisonTicked?.Invoke();
+                }
+
+                // 黄7の沼が弾ける（spec 006 FR-003）: 毒は次のステップから丸々 PoisonSteps 続く。
+                if (Effects != null && Effects.StepPoisonDelay())
+                {
+                    YellowBurst?.Invoke();
                 }
 
                 // 青7の凍結（spec 004 FR-003）: 停止は次のステップから丸々 StopSteps 続く。
