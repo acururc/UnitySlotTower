@@ -29,6 +29,7 @@ namespace UnitySlotTower.Core.Battle
             BlueDelaySteps = Math.Max(0, StepsOf(rules.BlueDelaySeconds));
             GreenDelaySteps = Math.Max(0, StepsOf(rules.GreenDelaySeconds));
             YellowDelaySteps = Math.Max(0, StepsOf(rules.YellowDelaySeconds));
+            BarDelaySteps = Math.Max(0, StepsOf(rules.BarDelaySeconds));
             _poisonTickSteps = Math.Max(1, StepsOf(rules.YellowPoisonTickSeconds));
         }
 
@@ -58,6 +59,15 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>黄7が揃い、毒の沼が弾けるのを待っている（spec 006 FR-003）。</summary>
         public bool IsPoisonPending => PoisonDelayStepsLeft > 0;
+
+        /// <summary>バーが揃ってから攻撃力アップが始まる（闘気が爆発する）までのステップ（spec 007 FR-003）。0 ならすぐ。</summary>
+        public int BarDelaySteps { get; }
+
+        /// <summary>闘気が爆発するまでの残りステップ。0 なら待っていない。</summary>
+        public int AttackDelayStepsLeft { get; private set; }
+
+        /// <summary>バーが揃い、闘気が爆発するのを待っている（spec 007 FR-003）。</summary>
+        public bool IsAttackPending => AttackDelayStepsLeft > 0;
 
         /// <summary>凍りつくまでの残りステップ。0 なら待っていない。</summary>
         public int StopDelayStepsLeft { get; private set; }
@@ -164,7 +174,35 @@ namespace UnitySlotTower.Core.Battle
         public void StartAttack() => AttackStepsLeft = AttackSteps;
 
         /// <summary>
-        /// 発動中の出目（E-11）。青7・黄7・バーは残り時間がある間（青7は凍りつくのを待つ間も、spec 004 FR-005。黄7は沼が弾けるのを待つ間も、spec 006 FR-005）、
+        /// バーが揃った: 待ちが 0 ならその場で攻撃力アップを始めて true、そうでなければ闘気が爆発するまでの待ちを入れて false（spec 007 FR-003）。
+        /// 待ち中にもう一度来たら待ちを最初に戻す（ふつうは抽選で外れるので起きない）。
+        /// </summary>
+        public bool QueueAttack()
+        {
+            if (BarDelaySteps <= 0)
+            {
+                StartAttack();
+                return true;
+            }
+
+            AttackDelayStepsLeft = BarDelaySteps;
+            return false;
+        }
+
+        /// <summary>闘気が爆発するまでの待ちを1ステップ減らし、0 になったら攻撃力アップを始めて true。<see cref="Step"/> の後に呼ぶ。</summary>
+        internal bool StepAttackDelay()
+        {
+            if (AttackDelayStepsLeft <= 0 || --AttackDelayStepsLeft > 0)
+            {
+                return false;
+            }
+
+            StartAttack();
+            return true;
+        }
+
+        /// <summary>
+        /// 発動中の出目（E-11）。青7・黄7・バーは残り時間がある間（青7は凍りつくのを待つ間も、spec 004 FR-005。黄7は沼が弾けるのを待つ間も、spec 006 FR-005。バーは闘気が爆発するのを待つ間も、spec 007 FR-005）、
         /// コインは倍率が上限に達したら true。赤7・緑7は常に false。
         /// </summary>
         public bool IsActive(SlotSymbol symbol)
@@ -176,7 +214,7 @@ namespace UnitySlotTower.Core.Battle
                 case SlotSymbol.Yellow7:
                     return IsPoisoned || IsPoisonPending;
                 case SlotSymbol.Bar:
-                    return IsAttackUp;
+                    return IsAttackUp || IsAttackPending;
                 case SlotSymbol.Coin:
                     return MoneyRate >= _rules.CoinCap - CapEpsilon;
                 default:

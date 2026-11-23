@@ -69,6 +69,12 @@ namespace UnitySlotTower.Battle
 
         /// <summary>毒のダメージが入った（spec 006 FR-004）。戦闘のステップの中から呼ばれる。</summary>
         public event Action PoisonTicked;
+
+        /// <summary>バーの闘気が爆発した（攻撃力アップの始まり、spec 007 FR-003）。戦闘のステップかレバーの結果の中から呼ばれる。ヒットストップはしない（FR-002）。</summary>
+        public event Action BarBurst;
+
+        /// <summary>味方が攻撃した（spec 007 FR-004、闘気の火花）。戦闘のステップの中から呼ばれる。</summary>
+        public event Action<BattleUnit, BattleEnemy> UnitAttacked;
         public string NodeKind { get; private set; }
         public float BaseFlashUntil { get; private set; }
 
@@ -254,6 +260,8 @@ namespace UnitySlotTower.Battle
                 Field.GreenHealed -= OnGreenHealed;
                 Field.YellowBurst -= OnYellowBurst;
                 Field.PoisonTicked -= OnPoisonTicked;
+                Field.BarBurst -= OnBarBurst;
+                Field.UnitAttacked -= OnUnitAttacked;
             }
 
             if (EdgeFlash != null) Destroy(EdgeFlash.gameObject);
@@ -294,6 +302,8 @@ namespace UnitySlotTower.Battle
                 Field.GreenHealed -= OnGreenHealed;
                 Field.YellowBurst -= OnYellowBurst;
                 Field.PoisonTicked -= OnPoisonTicked;
+                Field.BarBurst -= OnBarBurst;
+                Field.UnitAttacked -= OnUnitAttacked;
             }
 
             _hitStopLeft = 0f;
@@ -308,6 +318,8 @@ namespace UnitySlotTower.Battle
             Field.GreenHealed += OnGreenHealed;
             Field.YellowBurst += OnYellowBurst;
             Field.PoisonTicked += OnPoisonTicked;
+            Field.BarBurst += OnBarBurst;
+            Field.UnitAttacked += OnUnitAttacked;
             BaseFlashUntil = 0f;
             EdgeFlash.Hide();
             _victoryLeft = 0f;
@@ -390,6 +402,11 @@ namespace UnitySlotTower.Battle
 
         // 黄7の毒の沼が弾けた・毒のダメージが入った（spec 006）: 表示へ知らせるだけ（ヒットストップなし、FR-002）。
         private void OnYellowBurst() => YellowBurst?.Invoke();
+
+        // バーの闘気が爆発した・味方が攻撃した（spec 007）: 表示へ知らせるだけ（ヒットストップなし、FR-002）。
+        private void OnBarBurst() => BarBurst?.Invoke();
+
+        private void OnUnitAttacked(BattleUnit unit, BattleEnemy enemy) => UnitAttacked?.Invoke(unit, enemy);
 
         private void OnPoisonTicked() => PoisonTicked?.Invoke();
 

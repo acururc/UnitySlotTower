@@ -385,6 +385,88 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             Assert.That(new SlotEffects(rules).YellowDelaySteps, Is.EqualTo(SimulationClock.StepsPerSecond));
         }
 
+        private static Battlefield CreateBarDelayed(string waveRows) =>
+            new Battlefield(BattleFixtures.LoadWave(waveRows), BattleFixtures.LoadRanges(), 10, new SeededRandom(1),
+                new SlotEffects(SlotTestRules.Create(barDelaySeconds: 1)));
+
+        [Test]
+        [Description("spec 007 AC-002: バーは待ち（1秒=60ステップ）の間は倍率1のまま、闘気が爆発する瞬間に一度だけ通知して、そこから10秒（600ステップ）倍率2")]
+        public void Bar_Attack_Up_Starts_When_The_Aura_Bursts()
+        {
+            var field = CreateBarDelayed("0,quaker,S1,g,0\n");
+            field.Advance(1);
+            var burst = 0;
+            field.BarBurst += () => burst++;
+
+            field.ApplySlot(SlotSymbol.Bar);
+            field.Advance(59);
+            var waiting = (field.Effects.AttackRate, field.Effects.IsAttackPending, burst);
+            field.Advance(1);
+            var bursting = (field.Effects.AttackRate, field.Effects.IsAttackPending, burst, field.Effects.AttackStepsLeft);
+            field.Advance(599);
+            var last = field.Effects.AttackRate;
+            field.Advance(1);
+
+            Assert.That((waiting, bursting, last, field.Effects.AttackRate, burst),
+                Is.EqualTo(((1d, true, 0), (2d, false, 1, 600), 2d, 1d, 1)));
+        }
+
+        [Test]
+        [Description("spec 007 AC-002: 戦闘を進めなければ（ステージが終わったら）攻撃力アップは始まらない。一度に進めたステップ数（倍速）でも同じ時点で爆発する")]
+        public void Bar_Burst_Needs_The_Battle_To_Advance_And_Counts_Steps()
+        {
+            var idle = CreateBarDelayed("0,quaker,S1,g,0\n");
+            idle.Advance(1);
+            idle.ApplySlot(SlotSymbol.Bar);
+            var fast = CreateBarDelayed("0,quaker,S1,g,0\n");
+            fast.Advance(1);
+            fast.ApplySlot(SlotSymbol.Bar);
+
+            fast.Advance(61);
+
+            Assert.That((idle.Effects.IsAttackUp, idle.Effects.IsAttackPending, fast.Effects.IsAttackUp, fast.Effects.AttackStepsLeft),
+                Is.EqualTo((false, true, true, 599)));
+        }
+
+        [Test]
+        [Description("spec 007 AC-002: バーの待ちの間も効果の間もバーは抽選から外れる")]
+        public void Bar_Cannot_Roll_While_Waiting_Or_Active()
+        {
+            var field = CreateBarDelayed("0,quaker,S1,g,0\n");
+            field.Advance(1);
+            var before = field.Effects.CanRoll(SlotSymbol.Bar);
+
+            field.ApplySlot(SlotSymbol.Bar);
+            var waiting = field.Effects.CanRoll(SlotSymbol.Bar);
+            field.Advance(60);
+
+            Assert.That((before, waiting, field.Effects.CanRoll(SlotSymbol.Bar), field.Effects.IsAttackUp),
+                Is.EqualTo((true, false, false, true)));
+        }
+
+        [Test]
+        [Description("spec 007 FR-003: 待ちが0なら揃った瞬間に攻撃力アップが始まり、爆発したことを通知する")]
+        public void Bar_Without_Delay_Bursts_At_Once()
+        {
+            var field = Create("0,quaker,S1,g,0\n");
+            field.Advance(1);
+            var burst = 0;
+            field.BarBurst += () => burst++;
+
+            field.ApplySlot(SlotSymbol.Bar);
+
+            Assert.That((field.Effects.AttackRate, field.Effects.AttackStepsLeft, burst), Is.EqualTo((2d, 600, 1)));
+        }
+
+        [Test]
+        [Description("spec 007 FR-003: 正本の slot_rules.csv のバーの待ちは1秒（60ステップ）")]
+        public void Project_Bar_Delay_Is_One_Second()
+        {
+            var rules = SlotRules.Load(SlotTestRules.ProjectTable(SlotRules.FileName));
+
+            Assert.That(new SlotEffects(rules).BarDelaySteps, Is.EqualTo(SimulationClock.StepsPerSecond));
+        }
+
         [Test]
         [Description("AC-109: 緑7は味方の HP を最大 HP の50%回復し、最大値で止まる。ライフは回復しない")]
         public void Green_Heals_Units_Up_To_Max_But_Not_Life()

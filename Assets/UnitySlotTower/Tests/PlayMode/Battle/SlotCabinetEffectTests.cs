@@ -9,6 +9,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 using UnitySlotTower.Battle;
+using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Simulation;
 using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Slot;
@@ -81,7 +82,12 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That((rate.text, attack.GetComponent<CanvasGroup>().alpha < 1f), Is.EqualTo(("×1.0", true)),
                 "倍率がないときは薄く ×1.0");
 
+            var power = Object.FindAnyObjectByType<BarPowerEffect>();
+            var bursts = power.BurstCount;
             yield return SpinAndStopAll();
+            // 攻撃力アップは闘気が爆発する瞬間から（spec 007 FR-003）。
+            Assert.That(_battle.Field.Effects.AttackRate, Is.EqualTo(1d), "揃った瞬間に攻撃力が上がる");
+            yield return WaitForBarBurst(power, bursts);
 
             var tick = _battle.Field.Tick;
             Assert.That(_battle.Field.Effects.AttackRate, Is.EqualTo(_cabinet.Rules.BarAttackRate).Within(1e-9));
@@ -95,6 +101,26 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             // 戦闘は実時間の 1/60 秒ごとに進むため、フレームが速いと2フレームでは tick が増えない。実時間で待つ。
             yield return new WaitForSeconds(0.1f);
             Assert.That(_battle.Field.Tick, Is.GreaterThan(tick), "スロットのあとも戦闘が進む");
+
+            // 攻撃力アップの間は味方ごとにオーラが付き、攻撃ごとに火花が出て、切れるとオーラが消えて部品が残らない（spec 007 AC-003）。
+            var attacks = 0;
+            var field = _battle.Field;
+            void Count(BattleUnit unit, BattleEnemy enemy) => attacks++;
+            field.UnitAttacked += Count;
+            var sparks = power.SparkCount;
+            var fades = power.FadeCount;
+            var until = Time.realtimeSinceStartup + _cabinet.Rules.BarSeconds + 3f;
+            while (field.Effects.IsAttackUp && Time.realtimeSinceStartup < until)
+            {
+                Assert.That(power.AuraCount, Is.EqualTo(AliveUnits()), "オーラの数が味方の数と合わない");
+                yield return null;
+            }
+
+            field.UnitAttacked -= Count;
+            yield return null;
+            Assert.That((field.Effects.IsAttackUp, power.AuraCount, power.FadeCount, power.SparkCount - sparks >= attacks),
+                Is.EqualTo((false, 0, fades + 1, true)), $"攻撃力アップが切れない・オーラが残る・消えない・火花が攻撃の数（{attacks}）より少ない");
+            yield return WaitForPowerEnd(power);
         }
 
         [UnityTest]
@@ -108,35 +134,49 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             var board = Object.FindAnyObjectByType<SlotBoardEffect>();
             Assert.That(board, Is.Not.Null, "Game シーンに盤面全体の演出がない（Build Slot Board Effect (T613)）");
 
-            // バー → 攻撃力の倍率。演出中に敵が進み、レバーを引ける。
+            // バー → 攻撃力の倍率。盤面全体の演出の代わりに足元の輪が縮まり、待ち時間の後に闘気が爆発する（spec 007）。
+            // 演出中に敵が進み、レバーを引ける。
+            var power = Object.FindAnyObjectByType<BarPowerEffect>();
+            Assert.That(power, Is.Not.Null, "Game シーンにバーの闘気の演出がない（Build Bar Power Effect (spec 007)）");
             _cabinet.Wallet.Add(1);
             var attackScale = status.AttackRateRect.localScale;
+            var barBursts = power.BurstCount;
             yield return SpinAndStopAll();
             Assert.That((effect.PlayCount, effect.LastSymbol, effect.LastTarget),
                 Is.EqualTo((1, (SlotSymbol?)SlotSymbol.Bar, status.AttackRateRect)));
             Assert.That(effect.IsPlaying, Is.True, "止まり終えたら演出が始まる");
-            AssertBoardPlaying(board, SlotSymbol.Bar, effect.PlayCount);
-            var layer = ((RectTransform)board.transform).rect;
-            Assert.That(board.BoardRect.width > 0f && board.BoardRect.height > 0f &&
-                        board.BoardRect.width <= layer.width + 1f && board.BoardRect.height <= layer.height + 1f, Is.True,
-                $"盤面の範囲がおかしい: {board.BoardRect} / 層 {layer}");
             yield return null;
-            Assert.That(status.AttackRingFill, Is.GreaterThan(0f).And.LessThanOrEqualTo(1f), "攻撃力の残り時間の円が出ない（T611）");
+            Assert.That((power.PlayCount, power.IsCharging, board.PlayCount, power.BurstCount, _battle.Field.Effects.AttackRate),
+                Is.EqualTo((1, true, 0, barBursts, 1d)), "バーで輪が縮まらない・盤面全体の演出が出る・すぐ攻撃力が上がる");
+            Assert.That(power.RingCount, Is.EqualTo(AliveUnits()), "味方の足元に輪が出ない");
             var tick = _battle.Field.Tick;
             yield return Tap(Key.Space);
             Assert.That(_cabinet.IsSpinning, Is.True, "演出中もレバーを引ける");
             yield return new WaitForSeconds(0.1f);
             Assert.That(_battle.Field.Tick, Is.GreaterThan(tick), "演出中も戦闘が進む");
+            yield return WaitForBarBurst(power, barBursts);
+
+            // 爆発の瞬間: 弱く揺れ、ヒットストップはしない（spec 007 FR-002）。
+            Assert.That((_battle.IsHitStopping, power.IsShaking, power.IsCharging, _battle.Field.Effects.IsAttackUp),
+                Is.EqualTo((false, true, false, true)), "爆発して揺れない・ヒットストップする・輪が止まらない・攻撃力が上がらない");
+            yield return null;
+            Assert.That(status.AttackRingFill, Is.GreaterThan(0f).And.LessThanOrEqualTo(1f), "攻撃力の残り時間の円が出ない（T611）");
+            Assert.That(power.AuraCount, Is.EqualTo(AliveUnits()), "攻撃力アップの間の味方にオーラが付かない");
             yield return WaitForStop();
             yield return WaitForEffect(effect);
-            yield return WaitForBoard(board);
             Assert.That(status.AttackRateRect.localScale, Is.EqualTo(attackScale), "行き先の大きさが元に戻る");
 
-            // コイン → 所持金の倍率。
+            // コイン → 所持金の倍率。溜めの間に引いたレバーの揃いでも盤面全体の演出が出ていることがあるので、ここからの回数で数える。
+            yield return WaitForBoard(board);
+            var coinBoardCount = board.PlayCount;
             Select(SlotSymbol.Coin);
             yield return SpinAndStopAll();
             Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Coin, status.MoneyRateRect)));
-            AssertBoardPlaying(board, SlotSymbol.Coin, effect.PlayCount);
+            AssertBoardPlaying(board, SlotSymbol.Coin, coinBoardCount + 1);
+            var layer = ((RectTransform)board.transform).rect;
+            Assert.That(board.BoardRect.width > 0f && board.BoardRect.height > 0f &&
+                        board.BoardRect.width <= layer.width + 1f && board.BoardRect.height <= layer.height + 1f, Is.True,
+                $"盤面の範囲がおかしい: {board.BoardRect} / 層 {layer}");
             yield return WaitForEffect(effect);
             yield return WaitForBoard(board);
 
@@ -410,6 +450,30 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That((freeze.IsPlaying, freeze.ActiveParticleCount), Is.EqualTo((false, 0)), "青7の凍結の演出が終わらない・粒が残る");
+        }
+
+        // バーの闘気が爆発するのを待つ（待ち時間は slot_rules.csv の bar_delay_seconds、戦闘の時間）。
+        private static IEnumerator WaitForBarBurst(BarPowerEffect power, int bursts)
+        {
+            var until = Time.realtimeSinceStartup + 5f;
+            while (power.BurstCount == bursts && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That(power.BurstCount, Is.EqualTo(bursts + 1), "バーの闘気が爆発しない");
+        }
+
+        // 輪・オーラ・揺れ・粒がすべて終わる（部品が残らない、spec 007 AC-003）。
+        private static IEnumerator WaitForPowerEnd(BarPowerEffect power)
+        {
+            var until = Time.realtimeSinceStartup + 6f;
+            while (power.IsPlaying && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That((power.IsPlaying, power.ActiveParticleCount), Is.EqualTo((false, 0)), "バーの闘気の演出が終わらない・粒が残る");
         }
 
         // 黄7の沼が弾けるのを待つ（待ち時間は slot_rules.csv の yellow_delay_seconds、戦闘の時間）。

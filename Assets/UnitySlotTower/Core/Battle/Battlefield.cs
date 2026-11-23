@@ -167,7 +167,11 @@ namespace UnitySlotTower.Core.Battle
 
                     break;
                 case SlotSymbol.Bar:
-                    Effects.StartAttack();
+                    if (Effects.QueueAttack())
+                    {
+                        BarBurst?.Invoke();
+                    }
+
                     break;
                 case SlotSymbol.Coin:
                     Effects.AddCoin();
@@ -186,6 +190,9 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>黄7の毒が始まった（毒の沼が弾けた、spec 006 FR-003）。待ちが 0 なら <see cref="ApplySlot"/> の中から呼ぶ。</summary>
         public event Action YellowBurst;
+
+        /// <summary>バーの攻撃力アップが始まった（闘気が爆発した、spec 007 FR-003）。待ちが 0 なら <see cref="ApplySlot"/> の中から呼ぶ。</summary>
+        public event Action BarBurst;
 
         /// <summary>毒のダメージが入った（spec 006 FR-004、オーラの点滅）。ダメージを入れた後、倒した敵を消す前に呼ぶ。</summary>
         public event Action PoisonTicked;
@@ -338,6 +345,12 @@ namespace UnitySlotTower.Core.Battle
                 if (Effects != null && Effects.StepPoisonDelay())
                 {
                     YellowBurst?.Invoke();
+                }
+
+                // バーの闘気が爆発する（spec 007 FR-003）: 攻撃力アップは次のステップから丸々 AttackSteps 続く。
+                if (Effects != null && Effects.StepAttackDelay())
+                {
+                    BarBurst?.Invoke();
                 }
 
                 // 青7の凍結（spec 004 FR-003）: 停止は次のステップから丸々 StopSteps 続く。

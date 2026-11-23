@@ -38,6 +38,9 @@ namespace UnitySlotTower.Core.Slot
         public double BarAttackRate { get; private set; }
         public double BarSeconds { get; private set; }
 
+        /// <summary>バーが揃ってから攻撃力アップが始まる（闘気が爆発する）までの戦闘の秒数（spec 007 FR-003）。0 ならすぐ。</summary>
+        public double BarDelaySeconds { get; private set; }
+
         /// <summary>コイン1回ぶんの所持金の倍率の上がり幅。</summary>
         public double CoinStep { get; private set; }
 
@@ -63,6 +66,7 @@ namespace UnitySlotTower.Core.Slot
                 YellowPoisonSeconds = values.GetDouble("yellow_poison_seconds"),
                 BarAttackRate = values.GetDouble("bar_attack_rate"),
                 BarSeconds = values.GetDouble("bar_seconds"),
+                BarDelaySeconds = values.GetDouble("bar_delay_seconds"),
                 CoinStep = values.GetDouble("coin_step"),
                 CoinCap = values.GetDouble("coin_cap"),
             };

@@ -13,5 +13,6 @@ yellow_poison_tick_seconds,1
 yellow_poison_seconds,5
 bar_attack_rate,2
 bar_seconds,10
+bar_delay_seconds,1
 coin_step,0.1
 coin_cap,1.5
