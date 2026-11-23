@@ -27,6 +27,7 @@ namespace UnitySlotTower.Core.Battle
             AttackSteps = StepsOf(rules.BarSeconds);
             RedDelaySteps = Math.Max(0, StepsOf(rules.RedDelaySeconds));
             BlueDelaySteps = Math.Max(0, StepsOf(rules.BlueDelaySeconds));
+            GreenDelaySteps = Math.Max(0, StepsOf(rules.GreenDelaySeconds));
             _poisonTickSteps = Math.Max(1, StepsOf(rules.YellowPoisonTickSeconds));
         }
 
@@ -44,6 +45,9 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>青7が揃ってから停止が始まる（盤面が凍りつく）までのステップ（spec 004 FR-003）。0 ならすぐ。</summary>
         public int BlueDelaySteps { get; }
+
+        /// <summary>緑7が揃ってから回復する（光の柱が立つ）までのステップ（spec 005 FR-002）。0 ならすぐ。</summary>
+        public int GreenDelaySteps { get; }
 
         /// <summary>凍りつくまでの残りステップ。0 なら待っていない。</summary>
         public int StopDelayStepsLeft { get; private set; }

@@ -60,6 +60,9 @@ namespace UnitySlotTower.Battle
 
         /// <summary>青7で盤面が凍りついた（停止の始まり、spec 004 FR-003）。戦闘のステップかレバーの結果の中から呼ばれる。</summary>
         public event Action BlueFroze;
+
+        /// <summary>緑7の回復が入った（光の柱、spec 005 FR-001）。戦闘のステップかレバーの結果の中から呼ばれる。ヒットストップはしない（FR-003）。</summary>
+        public event Action GreenHealed;
         public string NodeKind { get; private set; }
         public float BaseFlashUntil { get; private set; }
 
@@ -242,6 +245,7 @@ namespace UnitySlotTower.Battle
                 Field.BaseReached -= OnBaseReached;
                 Field.RedStruck -= OnRedStruck;
                 Field.BlueFroze -= OnBlueFroze;
+                Field.GreenHealed -= OnGreenHealed;
             }
 
             if (EdgeFlash != null) Destroy(EdgeFlash.gameObject);
@@ -279,6 +283,7 @@ namespace UnitySlotTower.Battle
                 Field.BaseReached -= OnBaseReached;
                 Field.RedStruck -= OnRedStruck;
                 Field.BlueFroze -= OnBlueFroze;
+                Field.GreenHealed -= OnGreenHealed;
             }
 
             _hitStopLeft = 0f;
@@ -290,6 +295,7 @@ namespace UnitySlotTower.Battle
             Field.BaseReached += OnBaseReached;
             Field.RedStruck += OnRedStruck;
             Field.BlueFroze += OnBlueFroze;
+            Field.GreenHealed += OnGreenHealed;
             BaseFlashUntil = 0f;
             EdgeFlash.Hide();
             _victoryLeft = 0f;
@@ -366,6 +372,9 @@ namespace UnitySlotTower.Battle
             _hitStopLeft = Mathf.Max(_hitStopLeft, blueHitStopSeconds);
             BlueFroze?.Invoke();
         }
+
+        // 緑7の光の柱が立った（spec 005 FR-001）: 表示へ知らせるだけ（揺れ・ヒットストップなし、FR-003）。
+        private void OnGreenHealed() => GreenHealed?.Invoke();
 
         private void OnBaseReached(GridPoint cell)
         {

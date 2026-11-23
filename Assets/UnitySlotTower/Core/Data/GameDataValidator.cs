@@ -35,6 +35,7 @@ namespace UnitySlotTower.Core.Data
             ColumnRule.Float("blue_stop_seconds", 0, 600),
             ColumnRule.Float("blue_delay_seconds", 0, 10),
             ColumnRule.Float("green_heal_rate", 0, 10),
+            ColumnRule.Float("green_delay_seconds", 0, 10),
             ColumnRule.Int("yellow_poison_damage", 0, 100000),
             ColumnRule.Float("yellow_poison_tick_seconds", 0.01, 60),
             ColumnRule.Float("yellow_poison_seconds", 0, 600),

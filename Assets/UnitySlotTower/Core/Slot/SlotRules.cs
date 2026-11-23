@@ -24,6 +24,10 @@ namespace UnitySlotTower.Core.Slot
         public double BlueDelaySeconds { get; private set; }
 
         public double GreenHealRate { get; private set; }
+
+        /// <summary>緑7が揃ってから回復する（光の柱が立つ）までの戦闘の秒数（spec 005 FR-002）。0 ならすぐ。</summary>
+        public double GreenDelaySeconds { get; private set; }
+
         public int YellowPoisonDamage { get; private set; }
         public double YellowPoisonTickSeconds { get; private set; }
         public double YellowPoisonSeconds { get; private set; }
@@ -48,6 +52,7 @@ namespace UnitySlotTower.Core.Slot
                 BlueStopSeconds = values.GetDouble("blue_stop_seconds"),
                 BlueDelaySeconds = values.GetDouble("blue_delay_seconds"),
                 GreenHealRate = values.GetDouble("green_heal_rate"),
+                GreenDelaySeconds = values.GetDouble("green_delay_seconds"),
                 YellowPoisonDamage = values.GetInt("yellow_poison_damage"),
                 YellowPoisonTickSeconds = values.GetDouble("yellow_poison_tick_seconds"),
                 YellowPoisonSeconds = values.GetDouble("yellow_poison_seconds"),

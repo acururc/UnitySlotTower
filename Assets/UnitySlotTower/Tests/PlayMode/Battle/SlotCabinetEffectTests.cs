@@ -239,14 +239,32 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return WaitForEffect(effect);
             yield return WaitForBreath(breath);
 
-            // 緑7 → その場の効果。盤面全体の演出だけが出る（T613）。
-            _cabinet.Wallet.Add(1);
-            Select(SlotSymbol.Green7);
-            yield return SpinAndStopAll();
-            Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Green7, (RectTransform)null)));
-            AssertBoardPlaying(board, SlotSymbol.Green7, effect.PlayCount - 2); // 青7・赤7では盤面全体の演出は出ない（spec 003・004）
-            yield return WaitForEffect(effect);
-            yield return WaitForBoard(board);
+            // 緑7 → その場の効果で帯に行き先はない。盤面全体の演出の代わりに光が降り、待ち時間の後に光の柱が立って回復する（spec 005）。
+            var heal = Object.FindAnyObjectByType<Green7HealEffect>();
+            Assert.That(heal, Is.Not.Null, "Game シーンに緑7の回復の演出がない（Build Green7 Heal Effect (spec 005)）");
+            var greenBoardCount = board.PlayCount;
+            for (var round = 0; round < 2; round++)
+            {
+                // 続けて揃えても同じように出て、部品が残らない（AC-003）。
+                var heals = heal.HealCount;
+                _cabinet.Wallet.Add(1);
+                Select(SlotSymbol.Green7);
+                yield return SpinAndStopAll();
+                yield return null;
+                Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Green7, (RectTransform)null)));
+                Assert.That((heal.PlayCount, heal.IsShowering, board.PlayCount, heal.HealCount),
+                    Is.EqualTo((round + 1, true, greenBoardCount, heals)), "緑7で光が降り始めない・盤面全体の演出が出る・すぐ回復する");
+                Assert.That(heal.ActiveParticleCount, Is.GreaterThan(0), "予兆の粒が出ない");
+                yield return WaitForHeal(heal, heals);
+
+                // 柱の瞬間: 生きている味方ごとに柱が立ち、戦闘は止まらない（FR-003）。
+                Assert.That((heal.PillarCount, heal.IsShowering, _battle.IsHitStopping), Is.EqualTo((AliveUnits(), false, false)),
+                    "味方ごとに光の柱が立たない・光が降り止まない・ヒットストップする");
+                yield return WaitForStop();
+                yield return WaitForEffect(effect);
+                yield return WaitForHealEnd(heal);
+            }
+
             Assert.That(board.ActivePieceCount, Is.EqualTo(0), "盤面全体の演出の部品が残る");
         }
 
@@ -355,6 +373,41 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That((freeze.IsPlaying, freeze.ActiveParticleCount), Is.EqualTo((false, 0)), "青7の凍結の演出が終わらない・粒が残る");
+        }
+
+        // 緑7の光の柱を待つ（待ち時間は slot_rules.csv の green_delay_seconds、戦闘の時間）。
+        private static IEnumerator WaitForHeal(Green7HealEffect heal, int heals)
+        {
+            var until = Time.realtimeSinceStartup + 5f;
+            while (heal.HealCount == heals && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That(heal.HealCount, Is.EqualTo(heals + 1), "緑7の光の柱が立たない");
+        }
+
+        // 降る光・柱・粒がすべて終わる（部品が残らない、spec 005 AC-003）。
+        private static IEnumerator WaitForHealEnd(Green7HealEffect heal)
+        {
+            var until = Time.realtimeSinceStartup + 6f;
+            while (heal.IsPlaying && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That((heal.IsPlaying, heal.ActiveParticleCount), Is.EqualTo((false, 0)), "緑7の回復の演出が終わらない・粒が残る");
+        }
+
+        private int AliveUnits()
+        {
+            var count = 0;
+            foreach (var unit in _battle.Field.Units)
+            {
+                if (unit.IsAlive) count++;
+            }
+
+            return count;
         }
 
         private int AliveEnemies()

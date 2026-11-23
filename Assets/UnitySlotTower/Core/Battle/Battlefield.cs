@@ -27,6 +27,9 @@ namespace UnitySlotTower.Core.Battle
         // 待っている赤7ごとの、ダメージが入るまでの残りステップ（spec 003 FR-005）。
         private readonly List<int> _redStrikes = new List<int>();
 
+        // 待っている緑7ごとの、回復するまでの残りステップ（spec 005 FR-002）。
+        private readonly List<int> _greenHeals = new List<int>();
+
         /// <summary>全ウェーブを決めた時刻に出す（時刻が絶対の1ウェーブの表として扱う）。</summary>
         public Battlefield(WaveSchedule wave, UnitRanges ranges, int life, IRandom random, SlotEffects effects = null)
             : this(new WaveProgress(wave, WaveMode.Timed, 0), ranges, life, random, effects)
@@ -114,7 +117,8 @@ namespace UnitySlotTower.Core.Battle
         /// 揃った出目の効果をすぐ出す（FR-112）。赤7は空中を含む全ての敵に防御を無視した固定ダメージ（倒した敵はドロップする）。
         /// ただし赤7のダメージは <see cref="SlotEffects.RedDelaySteps"/> だけ戦闘を進めてから入る（spec 003 FR-005、息吹が爆発する瞬間）。
         /// 待っている間に出た敵にも当たり、ステージが先に終わって進めなくなれば入らない。
-        /// 緑7は配置中の味方の HP を最大 HP × 率だけ回復（最大値で止め、ライフは回復しない）。青7・黄7・バーは時間の効果を始め、コインは倍率を上げる。
+        /// 緑7は配置中の味方の HP を最大 HP × 率だけ回復（最大値で止め、ライフは回復しない）。回復は <see cref="SlotEffects.GreenDelaySteps"/>
+        /// だけ戦闘を進めてから、その時点の味方に入る（spec 005 FR-002、光の柱が立つ瞬間）。青7・黄7・バーは時間の効果を始め、コインは倍率を上げる。
         /// </summary>
         public void ApplySlot(SlotSymbol symbol)
         {
@@ -145,12 +149,13 @@ namespace UnitySlotTower.Core.Battle
 
                     break;
                 case SlotSymbol.Green7:
-                    foreach (var unit in _units)
+                    if (Effects.GreenDelaySteps > 0)
                     {
-                        if (unit.IsAlive)
-                        {
-                            unit.Heal((int)Math.Round(unit.MaxHp * Effects.GreenHealRate, MidpointRounding.AwayFromZero));
-                        }
+                        _greenHeals.Add(Effects.GreenDelaySteps);
+                    }
+                    else
+                    {
+                        HealGreen();
                     }
 
                     break;
@@ -174,6 +179,38 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>青7の停止が始まった（盤面が凍りついた、spec 004 FR-003）。待ちが 0 なら <see cref="ApplySlot"/> の中から呼ぶ。</summary>
         public event Action BlueFroze;
+
+        /// <summary>待っている緑7の数（spec 005 FR-002）。</summary>
+        public int PendingGreenHeals => _greenHeals.Count;
+
+        /// <summary>緑7の回復が入った（光の柱が立った、spec 005 FR-001）。回復した後に呼ぶ。待ちが 0 なら <see cref="ApplySlot"/> の中から呼ぶ。</summary>
+        public event Action GreenHealed;
+
+        private void HealGreen()
+        {
+            foreach (var unit in _units)
+            {
+                if (unit.IsAlive)
+                {
+                    unit.Heal((int)Math.Round(unit.MaxHp * Effects.GreenHealRate, MidpointRounding.AwayFromZero));
+                }
+            }
+
+            GreenHealed?.Invoke();
+        }
+
+        // 待っている緑7の残りを1ステップ減らし、0 になったものを回復する。
+        private void StepGreenHeals()
+        {
+            for (var i = _greenHeals.Count - 1; i >= 0; i--)
+            {
+                if (--_greenHeals[i] <= 0)
+                {
+                    _greenHeals.RemoveAt(i);
+                    HealGreen();
+                }
+            }
+        }
 
         private void StrikeRed()
         {
@@ -293,6 +330,7 @@ namespace UnitySlotTower.Core.Battle
                 }
 
                 StepRedStrikes();
+                StepGreenHeals();
                 RemoveDefeatedEnemies();
                 Tick++;
             }

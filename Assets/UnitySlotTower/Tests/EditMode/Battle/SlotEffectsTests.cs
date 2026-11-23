@@ -320,6 +320,91 @@ namespace UnitySlotTower.Tests.EditMode.Battle
                 Is.EqualTo((Math.Min(sword.MaxHp, hp + 600), sword.MaxHp, life)));
         }
 
+        // 回復量を大きくして、回復した瞬間に必ず最大 HP になるようにする。brute は約1秒ごとに950を与え剣士は2回目で倒れるので、待ちは0.5秒（30ステップ）にする。
+        private static Battlefield CreateHealDelayed(string waveRows) =>
+            new Battlefield(BattleFixtures.LoadWave(waveRows), BattleFixtures.LoadRanges(), 10, new SeededRandom(1),
+                new SlotEffects(SlotTestRules.Create(greenHealRate: 10, greenDelaySeconds: 0.5)));
+
+        [Test]
+        [Description("spec 005 AC-002: 緑7の回復は待ち時間（0.5秒=30ステップ）戦闘を進めてから一度だけ入り、そのとき通知する")]
+        public void Green_Heal_Waits_For_The_Delay_Then_Heals_Once()
+        {
+            var field = CreateHealDelayed("0,brute,S1,g,0\n");
+            var sword = SwordHitByBrute(field);
+            var healed = 0;
+            field.GreenHealed += () => healed++;
+
+            field.ApplySlot(SlotSymbol.Green7);
+            var applied = (sword.Hp < sword.MaxHp, field.PendingGreenHeals, healed);
+            field.Advance(29);
+            var before = (sword.Hp < sword.MaxHp, field.PendingGreenHeals, healed);
+            field.Advance(1);
+            var at = (sword.Hp, field.PendingGreenHeals, healed);
+            field.Advance(15);
+
+            Assert.That((applied, before, at, healed), Is.EqualTo(
+                ((true, 1, 0), (true, 1, 0), (sword.MaxHp, 0, 1), 1)));
+        }
+
+        [Test]
+        [Description("spec 005 AC-002: 待っている間に外した味方は回復せず、戦闘を進めなければ（ステージが終わったら）回復しない")]
+        public void Green_Heals_Only_Units_On_The_Field_And_Needs_The_Battle_To_Advance()
+        {
+            var field = CreateHealDelayed("0,brute,S1,g,0\n");
+            var sword = SwordHitByBrute(field);
+            field.ApplySlot(SlotSymbol.Green7);
+            field.RemoveUnit(sword);
+            var hp = sword.Hp;
+
+            var idle = field.PendingGreenHeals;
+            field.Advance(30);
+
+            Assert.That((idle, field.PendingGreenHeals, sword.Hp), Is.EqualTo((1, 0, hp)));
+        }
+
+        [Test]
+        [Description("spec 005 AC-002: 一度に30ステップ進めても（倍速）回復する")]
+        public void Green_Heals_When_The_Delay_Passes_In_One_Advance()
+        {
+            var field = CreateHealDelayed("0,brute,S1,g,0\n");
+            var sword = SwordHitByBrute(field);
+            var healed = 0;
+            field.GreenHealed += () => healed++;
+            field.ApplySlot(SlotSymbol.Green7);
+
+            field.Advance(30);
+
+            Assert.That((healed, field.PendingGreenHeals, sword.Hp), Is.EqualTo((1, 0, sword.MaxHp)));
+        }
+
+        [Test]
+        [Description("spec 005 AC-002: 続けて揃えるとそれぞれの待ちで別々に回復する")]
+        public void Each_Green_Heals_After_Its_Own_Delay()
+        {
+            var field = CreateHealDelayed("0,brute,S1,g,0\n");
+            SwordHitByBrute(field);
+            var healed = 0;
+            field.GreenHealed += () => healed++;
+            field.ApplySlot(SlotSymbol.Green7);
+            field.Advance(15);
+            field.ApplySlot(SlotSymbol.Green7);
+
+            field.Advance(15);
+            var first = (healed, field.PendingGreenHeals);
+            field.Advance(15);
+
+            Assert.That((first, healed, field.PendingGreenHeals), Is.EqualTo(((1, 1), 2, 0)));
+        }
+
+        [Test]
+        [Description("spec 005 FR-002: 正本の slot_rules.csv の緑7の待ちは1秒（60ステップ）")]
+        public void Project_Green_Delay_Is_One_Second()
+        {
+            var rules = SlotRules.Load(SlotTestRules.ProjectTable(SlotRules.FileName));
+
+            Assert.That(new SlotEffects(rules).GreenDelaySteps, Is.EqualTo(SimulationClock.StepsPerSecond));
+        }
+
         [Test]
         [Description("AC-109: コインは1回ごとに +0.1 で 1.5 で止まり、上限で抽選から外れる（E-11）")]
         public void Coin_Rate_Rises_And_Stops_At_The_Cap()

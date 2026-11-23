@@ -2,14 +2,14 @@
 
 ## 現在の作業
 
-更新: 2026-11-23 Asia/Tokyo / 状態: **spec 004（青7の凍結の演出）は完了（T801〜T805、ユーザー確認「良かった」、調整なし）。次の出目の演出はユーザーが選ぶ。**
+更新: 2026-11-23 Asia/Tokyo / 状態: **spec 005（緑7の回復の演出）は T901〜T904 完了。T905（ユーザーが Editor で Play して確認・調整）待ち。**
 
-- spec 004: [`spec.md`](../../specs/004-blue7-freeze/spec.md)・[`plan.md`](../../specs/004-blue7-freeze/plan.md)・[`tasks.md`](../../specs/004-blue7-freeze/tasks.md)。残りの出目の演出は1種類ずつ（D-01）。青7の確認が済んだら次の出目を新しい spec で（緑7・黄7・バー・コインからユーザーが選ぶ）。
-- spec 004 で作ったもの: `Runtime/Battle/Blue7FreezeEffect.cs`（冷気→`BlueFroze` で凍結・ヒットストップ・小さな揺れ→停止中は敵ごとに氷の塊→切れたら砕ける。氷の塊は仮の半透明の立方体）、`Runtime/Battle/BattleCameraShake.cs`（赤7と共有の揺れ）、`Editor/Setup/Blue7FreezeEffectSetup.cs`（メニュー `Build Blue7 Freeze Effect (spec 004)`）、`slot_rules.csv` の `blue_delay_seconds`=1。検証: EditMode 554/554、PlayMode 成功68/失敗0/Explicit 1、ハーネス 8/8。
-- spec 003（完了、T701〜T706）: [`spec.md`](../../specs/003-red7-breath/spec.md)。spec 002 も完了（T601〜T617）。
-- 作ったもの（spec 003）: `Runtime/Battle/Red7BreathEffect.cs`（予兆→息吹→`RedStruck` で爆発・戦闘カメラの揺れ、爆発時に `BattleController.hitStopSeconds` で約0.1秒止める）、`Editor/Setup/Red7BreathEffectSetup.cs`（メニュー `Tools/UnitySlotTower/Setup/Build Red7 Breath Effect (spec 003)`、Setup を再実行すると Inspector の調整値は初期値に戻る）、`Art/VFX/VfxParticle.shader`、`Art/VFX/Kenney/`（CC0、`docs/ASSET_LICENSES.md`）。地面の火は息吹と同じ flame_01。
-- ユーザーの確認（2026-11-23）: 息吹も変更後の地面の火も良い。秒数・揺れは初期値のまま。
-- 検証（2026-11-23）: EditMode 549/549、PlayMode 68 成功/失敗0/Explicit 1、ハーネス 8/8。
+- spec 005: [`spec.md`](../../specs/005-green7-heal/spec.md)（2026-11-23 承認、FR-001〜FR-006・AC-001〜AC-005）・[`plan.md`](../../specs/005-green7-heal/plan.md)・[`tasks.md`](../../specs/005-green7-heal/tasks.md)。流れ: 上端が緑に光る→光の粒が降る→約1秒後に味方ごとに光の柱が立ち、その瞬間に回復→粒が上がって消える。揺れ・ヒットストップなし（D-04 は仮。ユーザーが入れたいと言えば変える）。
+- spec 005 で作ったもの: Core の `green_delay_seconds`=1（`SlotRules`・`SlotEffects.GreenDelaySteps`・`GameDataValidator`）、`Battlefield` の回復の待ち（`PendingGreenHeals`、`GreenHealed`、赤7と同じく複数並ぶ）、`BattleController.GreenHealed`、`Runtime/Battle/Green7HealEffect.cs`、`Editor/Setup/Green7HealEffectSetup.cs`（メニュー `Build Green7 Heal Effect (spec 005)`、Game シーンに適用・保存済み、材質 `Art/VFX/Green7 *.mat` 3個）、`SlotBoardEffect` から緑7を外した。素材の追加なし（`docs/ASSET_LICENSES.md` の用途に追記）。
+- 検証（2026-11-23）: EditMode 559/559（新規5件）、PlayMode 成功68/失敗0/Explicit 1（緑7を2回続けて揃える確認を含む）、ハーネス 8/8。見た目（AC-001）は未確認。
+- 次の操作: ユーザーに Play で緑7を確認してもらい、調整（秒数・柱の太さ高さ・色は `Green7HealEffect` の Inspector と Setup の初期値）。確認後 T905 を完了にし、次の出目（黄7・バー・コイン）をユーザーが選ぶ。
+- 完了済み: spec 004（青7、T801〜T805）、spec 003（赤7、T701〜T706）、spec 002（T601〜T617）。赤・青・緑とも Setup を再実行すると Inspector の調整値は初期値に戻る。
+- Setup をかけると Game.unity の差分が大きく見える（行の並べ替え）。2026-11-23 に行の集合で比べ、消えた行がないことを確認した。
 - そのほかの候補: 001 の M5（T501〜T505、002・003 に合わせて見直す）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。001 の T399・T429 はユーザーの指示（「テストプレイは終わったものとして」）で完了扱いでよい（tasks.md の更新はまだ）。
 - 素材の方針: AI が取るログイン不要の無料素材だけ（有料は使わない）。
 - ブランチ: main に直接コミットして origin へ push。main は core.autocrlf で CSV が CRLF になる。

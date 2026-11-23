@@ -10,8 +10,8 @@ namespace UnitySlotTower.Battle
 {
     /// <summary>
     /// 揃ったときの盤面全体の演出（FR-113、spec 002 E-28、plan 50行目、T613）。筐体が揃いを通知したら、盤面（3Dのフィールド）の
-    /// 画面上の範囲に出目ごとの演出を重ねる（赤7は spec 003 の <see cref="Red7BreathEffect"/>、青7は spec 004 の <see cref="Blue7FreezeEffect"/> に移した）:
-    /// 緑7＝味方から緑の粒が上がる、黄7＝盤面に黄緑の霧と敵に毒の色、バー＝味方の頭上に上向きの矢印、コイン＝上からコインが降る。
+    /// 画面上の範囲に出目ごとの演出を重ねる（赤7は spec 003 の <see cref="Red7BreathEffect"/>、青7は spec 004 の <see cref="Blue7FreezeEffect"/>、緑7は spec 005 の <see cref="Green7HealEffect"/> に移した）:
+    /// 黄7＝盤面に黄緑の霧と敵に毒の色、バー＝味方の頭上に上向きの矢印、コイン＝上からコインが降る。
     /// どの出目でも盤面をうっすら染める。見た目だけで戦闘とレバーは止めない。時間は戦闘の時間（Time.deltaTime）で進む。
     /// 絵は仮（丸と三角）で、本番の絵は M5 で差し替える。部品はこの層の子の「Board」（盤面の範囲で切り抜く）に作って使い回す。
     /// </summary>
@@ -19,7 +19,6 @@ namespace UnitySlotTower.Battle
     {
         private const int MaxEnemies = 24;
         private const int MaxUnits = 16;
-        private const int ParticlesPerUnit = 6;
         private const int SoftSize = 64;
         private const int FogCount = 6;
         private const int CoinCount = 14;
@@ -120,9 +119,11 @@ namespace UnitySlotTower.Battle
         /// <summary>出目の演出を始める（筐体の揃いの通知と撮影から呼ぶ）。</summary>
         public void Play(SlotSymbol symbol)
         {
-            // 赤7は息吹の演出（Red7BreathEffect、spec 003）、青7は凍結の演出（Blue7FreezeEffect、spec 004）が受け持つ。
+            // 赤7は息吹の演出（Red7BreathEffect、spec 003）、青7は凍結の演出（Blue7FreezeEffect、spec 004）、
+            // 緑7は回復の演出（Green7HealEffect、spec 005）が受け持つ。
             var field = battle.Field;
-            if (symbol == SlotSymbol.Red7 || symbol == SlotSymbol.Blue7 || field == null || fieldView.Map == null)
+            if (symbol == SlotSymbol.Red7 || symbol == SlotSymbol.Blue7 || symbol == SlotSymbol.Green7 ||
+                field == null || fieldView.Map == null)
             {
                 return;
             }
@@ -156,9 +157,6 @@ namespace UnitySlotTower.Battle
                         actorMarks = TakeMany(pieces, enemies.Count, poisonColor);
                         extras = TakeMany(pieces, FogCount, poisonColor, _softSprite);
                         break;
-                    case SlotSymbol.Green7:
-                        extras = TakeMany(pieces, units.Count * ParticlesPerUnit, greenColor);
-                        break;
                     case SlotSymbol.Bar:
                         arrows = new TriangleGraphic[units.Count];
                         for (var i = 0; i < arrows.Length; i++) arrows[i] = TakeTriangle(pieces, arrowColor, cell * 0.6f);
@@ -179,9 +177,6 @@ namespace UnitySlotTower.Battle
                         case SlotSymbol.Yellow7:
                             AnimateEnemyColor(actorMarks, enemies, poisonColor, p, cell);
                             AnimateFog(extras, p, size);
-                            break;
-                        case SlotSymbol.Green7:
-                            AnimateParticles(extras, units, p, cell);
                             break;
                         case SlotSymbol.Bar:
                             AnimateArrows(arrows, units, p, cell);
@@ -240,28 +235,6 @@ namespace UnitySlotTower.Battle
                 fogs[i].rectTransform.anchoredPosition = start + drift;
                 fogs[i].rectTransform.sizeDelta = Vector2.one * Mathf.Max(size.x, size.y) * (0.45f + 0.1f * p);
                 SetAlpha(fogs[i], poisonColor, alpha);
-            }
-        }
-
-        // 緑の粒: 味方ごとにいくつかの粒が少しずつずれて上がって消える。
-        private void AnimateParticles(Image[] particles, List<BattleUnit> units, float p, float cell)
-        {
-            for (var i = 0; i < particles.Length; i++)
-            {
-                var unit = units[i / ParticlesPerUnit];
-                var n = i % ParticlesPerUnit;
-                var k = Mathf.Clamp01((p - n * 0.07f) / 0.6f);
-                if (!unit.IsAlive || k <= 0f || k >= 1f)
-                {
-                    SetAlpha(particles[i], greenColor, 0f);
-                    continue;
-                }
-
-                var basePosition = ToBoard(fieldView.CellTopToWorld(unit.Cell));
-                var side = (n - (ParticlesPerUnit - 1) * 0.5f) * cell * 0.16f;
-                particles[i].rectTransform.anchoredPosition = basePosition + new Vector2(side, cell * (0.2f + 1.3f * k + 0.15f * (n % 2)));
-                particles[i].rectTransform.sizeDelta = Vector2.one * cell * 0.26f;
-                SetAlpha(particles[i], greenColor, Mathf.Sin(Mathf.PI * k));
             }
         }
 
