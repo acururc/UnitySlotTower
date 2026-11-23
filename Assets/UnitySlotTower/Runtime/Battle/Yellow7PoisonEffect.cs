@@ -45,9 +45,9 @@ namespace UnitySlotTower.Battle
         [Tooltip("最後の沼が湧く時点。沼はここまでに順に湧く。")]
         [SerializeField, Range(0.05f, 1f)] private float swampSpreadEnd = 0.6f;
         [Tooltip("沼の大きさ（マス = 1）。")]
-        [SerializeField] private Vector2 swampSize = new Vector2(1.4f, 2.4f);
+        [SerializeField] private Vector2 swampSize = new Vector2(2.2f, 3.4f);
         [Tooltip("敵の足元の沼の大きさ（マス = 1）。")]
-        [SerializeField, Min(0f)] private float enemySwampSize = 1.3f;
+        [SerializeField, Min(0f)] private float enemySwampSize = 2.6f;
         [Tooltip("敵の足元の沼が広がりきるまでの秒数。")]
         [SerializeField, Min(0.01f)] private float enemySwampGrowSeconds = 0.35f;
         [SerializeField] private Color enemySwampColor = new Color(0.45f, 0.12f, 0.6f, 0.9f);
