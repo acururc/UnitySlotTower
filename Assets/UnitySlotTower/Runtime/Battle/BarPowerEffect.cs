@@ -56,10 +56,17 @@ namespace UnitySlotTower.Battle
         [SerializeField] private Color chargeCoreColor = new Color(1f, 0.95f, 0.7f, 1f);
         [Tooltip("吸い込まれる粒の数（毎秒、味方1体あたり）。爆発の直前ほど増える。")]
         [SerializeField, Min(0f)] private float motesPerSecond = 18f;
+        [Tooltip("粒が集まってくる距離（マス = 1）。溜めの始め → 爆発の直前（近くから遠くへ広げる）。")]
+        [SerializeField] private Vector2 moteReach = new Vector2(0.8f, 2.6f);
+        [Tooltip("粒が芯へ入るときの渦の強さ。")]
+        [SerializeField, Min(0f)] private float moteSwirl = 1.2f;
 
         [Header("爆発")]
         [SerializeField, Min(0)] private int flamesPerUnit = 30;
         [SerializeField, Min(0)] private int sparksPerUnit = 28;
+        [Tooltip("炎が昇りながら巻く回数と、横向きの速さ（渦の強さ）。")]
+        [SerializeField, Min(0f)] private float flameTurns = 2f;
+        [SerializeField, Min(0f)] private float flameSwirl = 2.5f;
         [Tooltip("閃光の大きさ（マス = 1）。")]
         [SerializeField, Min(0f)] private float flashSize = 4.5f;
         [Tooltip("炎の柱の幅と高さ（マス = 1）。")]
@@ -71,8 +78,8 @@ namespace UnitySlotTower.Battle
         [Tooltip("オーラの中心の、味方の足元からの高さ。")]
         [SerializeField] private float auraHeight = 0.5f;
         [SerializeField] private Color auraColor = new Color(1f, 0.55f, 0.15f, 0.7f);
-        [Tooltip("立ちのぼる炎の数（毎秒、味方1体あたり）。")]
-        [SerializeField, Min(0f)] private float auraFlamesPerSecond = 24f;
+        [Tooltip("立ちのぼる炎の数（毎秒、味方1体あたり）。続く効果なので、爆発より控えめにして戦闘の邪魔をしない。")]
+        [SerializeField, Min(0f)] private float auraFlamesPerSecond = 16f;
         [Tooltip("舞い上がる火の粉の数（毎秒、味方1体あたり）。")]
         [SerializeField, Min(0f)] private float embersPerSecond = 8f;
         [Tooltip("攻撃したときの火花の数。")]
@@ -187,14 +194,16 @@ namespace UnitySlotTower.Battle
                     var progress = Mathf.Clamp01(t / delay);
                     PlaceRings(progress);
 
-                    // 吸い込まれる粒: 輪の外から足元へ集まる。爆発の直前ほど多い。
+                    // 吸い込まれる粒: 始めは近くから、溜まるにつれて遠くから集まり、渦を巻いて芯へ入る。爆発の直前ほど多い。
                     moteDebt += motesPerSecond * (0.5f + 1.5f * progress) * _ringCount * Time.deltaTime;
+                    var reach = Mathf.Lerp(moteReach.x, moteReach.y, progress);
                     for (; moteDebt >= 1f && _ringCount > 0; moteDebt -= 1f)
                     {
                         var at = _ringPositions[UnityEngine.Random.Range(0, _ringCount)];
-                        var side = UnityEngine.Random.insideUnitCircle.normalized * (chargeRingSize.x * 0.5f);
-                        var from = at + new Vector3(side.x, 0.1f, side.y);
-                        Emit(chargeMotes, from, (at + Vector3.up * 0.4f - from) * 2.2f);
+                        var side = UnityEngine.Random.insideUnitCircle.normalized * (reach * UnityEngine.Random.Range(0.8f, 1f));
+                        var from = at + new Vector3(side.x, UnityEngine.Random.Range(0.1f, 0.6f), side.y);
+                        var swirl = new Vector3(-side.y, 0f, side.x) * moteSwirl;
+                        Emit(chargeMotes, from, (at + Vector3.up * 0.4f - from) * 2.2f + swirl);
                     }
 
                     await Awaitable.NextFrameAsync(token);
@@ -315,11 +324,15 @@ namespace UnitySlotTower.Battle
                     startSize3D = new Vector3(pillarSize.x, pillarSize.y, 1f),
                     applyShapeToPosition = false,
                 }, 1);
+                // 炎は渦を巻いて昇る（竜巻のように、太い所と細い所を作ってシルエットを単調にしない）。
                 for (var k = 0; k < flamesPerUnit; k++)
                 {
-                    var side = UnityEngine.Random.insideUnitCircle * 1.4f;
-                    Emit(burstFlames, at + new Vector3(side.x * 0.3f, 0.2f, side.y * 0.3f),
-                        new Vector3(side.x, UnityEngine.Random.Range(3.5f, 7f), side.y));
+                    var angle = k * (Mathf.PI * 2f * flameTurns / Mathf.Max(1, flamesPerUnit)) + UnityEngine.Random.Range(-0.3f, 0.3f);
+                    var radius = 0.35f + 0.3f * Mathf.Abs(Mathf.Sin(k * 0.7f));
+                    var out1 = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+                    var tangent = new Vector3(-out1.z, 0f, out1.x);
+                    Emit(burstFlames, at + out1 * radius + Vector3.up * 0.2f,
+                        Vector3.up * UnityEngine.Random.Range(3.5f, 7f) + tangent * flameSwirl + out1 * UnityEngine.Random.Range(0.2f, 1f));
                 }
 
                 for (var k = 0; k < sparksPerUnit; k++)
