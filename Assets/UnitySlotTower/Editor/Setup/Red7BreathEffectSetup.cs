@@ -43,7 +43,6 @@ namespace UnitySlotTower.Editor.Setup
             }
 
             var flame = Material(shader, "Red7 Flame", "flame_01", additive: true);
-            var jet = Material(shader, "Red7 Jet", "muzzle_02", additive: true);
             var glow = Material(shader, "Red7 Glow", "circle_05", additive: true);
             var fire = Material(shader, "Red7 Fire", "fire_01", additive: true);
             var burst = Material(shader, "Red7 Burst", "scorch_02", additive: true);
@@ -105,14 +104,19 @@ namespace UnitySlotTower.Editor.Setup
                 rotation.z = new ParticleSystem.MinMaxCurve(-Mathf.PI, Mathf.PI);
             });
 
-            var groundFire = Create(root.transform, "Ground Fire", jet, layer, 600, true, ps =>
+            // 地面をなめる炎: 息吹と同じゆらぐ炎の絵を回しながら低く広げる（縦長の絵は水滴に見えたので使わない）。
+            var groundFire = Create(root.transform, "Ground Fire", flame, layer, 400, true, ps =>
             {
                 var main = ps.main;
-                main.startLifetime = new ParticleSystem.MinMaxCurve(0.35f, 0.6f);
-                main.startSize = new ParticleSystem.MinMaxCurve(0.9f, 1.7f);
-                main.startSpeed = new ParticleSystem.MinMaxCurve(1.5f, 3f);
+                main.startLifetime = new ParticleSystem.MinMaxCurve(0.4f, 0.7f);
+                main.startSize = new ParticleSystem.MinMaxCurve(1.2f, 2.2f);
+                main.startSpeed = new ParticleSystem.MinMaxCurve(0.4f, 1.2f);
+                main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+                var rotation = ps.rotationOverLifetime;
+                rotation.enabled = true;
+                rotation.z = new ParticleSystem.MinMaxCurve(-Mathf.PI, Mathf.PI);
                 var emission = ps.emission;
-                emission.rateOverTime = 260f;
+                emission.rateOverTime = 160f;
                 var shape = ps.shape;
                 shape.enabled = true;
                 shape.shapeType = ParticleSystemShapeType.Box;

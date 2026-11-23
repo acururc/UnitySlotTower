@@ -22,7 +22,7 @@
 - `SlotBoardEffect` は赤7では何もしない（赤い帯と敵ごとの丸は消す）。
 
 ## 4. 素材（FR-004）
-- Kenney Particle Pack 1.1（CC0、https://kenney.nl/assets/particle-pack、2026-11-23 取得）から6枚を `Assets/UnitySlotTower/Art/VFX/Kenney/` へ: flame_01・fire_01・smoke_04・circle_05・scorch_02・muzzle_02（透過版）。`License.txt` も同じ場所に置き、`docs/ASSET_LICENSES.md` に記録する。
+- Kenney Particle Pack 1.1（CC0、https://kenney.nl/assets/particle-pack、2026-11-23 取得）から5枚を `Assets/UnitySlotTower/Art/VFX/Kenney/` へ: flame_01・fire_01・smoke_04・circle_05・scorch_02（透過版。muzzle_02 は地面の炎が水滴に見えたので外した）。`License.txt` も同じ場所に置き、`docs/ASSET_LICENSES.md` に記録する。
 
 ## 5. リスク
 - 戦闘カメラの位置は `BattleFieldView.FitCamera` がマップを読んだときだけ書くので、揺れは元の位置を覚えて戻す。揺れの最中にマップが変わったら、戻す位置は新しいカメラの位置にする。
