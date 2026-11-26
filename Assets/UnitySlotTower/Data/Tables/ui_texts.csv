@@ -32,7 +32,7 @@ result_clear,クリア！
 result_game_over,ゲームオーバー
 result_floor,到達した階
 result_stage_retry,このステージから
-result_retry,最初から
+result_retry,もう一度
 result_title,タイトルへ
 help_open,早見表
 help_title,早見表

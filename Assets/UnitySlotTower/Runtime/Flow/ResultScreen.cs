@@ -13,19 +13,13 @@ namespace UnitySlotTower.Flow
 {
     /// <summary>
     /// Game シーンのリザルト（T402、FR-005、plan 4章）。最終ウェーブを終える（クリア）かライフが0になる（ゲームオーバー）と開き、
-    /// 結果のアイコン、到達した階、所持金、コインを出す。ゲームオーバーでは ▶＋旗 で負けたステージの始めからやり直し（spec 010）、
-    /// ▶＋1 で最初から（Game を読み込み直す: AC-004）、◀ でタイトルへ戻る。クリアでは やり直し を出さない。
+    /// 結果のアイコン、到達した階、所持金、コインを出す。ボタンは左右に2つで、右は ◀（タイトルへ戻る）。左はゲームオーバーなら
+    /// ▶＋旗（負けたステージの始めからやり直す: spec 010）、クリアなら ▶（Game を読み込み直してステージ1から: AC-004）。
     /// マウスはクリック、キーボードは左右で選んで Enter。
     /// </summary>
     public sealed class ResultScreen : MonoBehaviour
     {
         private const string ActionMap = "SlotTower";
-
-        // ボタンが3つのときの横の範囲（パネル内の比率。左から やり直し・最初から・タイトル）。2つのときはシーンの位置のまま。
-        private static readonly Vector2[] ThreeColumns =
-        {
-            new Vector2(0.05f, 0.31f), new Vector2(0.37f, 0.63f), new Vector2(0.69f, 0.95f),
-        };
 
         [SerializeField] private InputActionAsset inputActions;
         [SerializeField] private BattleController battle;
@@ -46,7 +40,7 @@ namespace UnitySlotTower.Flow
         [Tooltip("ゲームオーバーで出す、負けたステージの始めからやり直すボタン（spec 010）。")]
         [SerializeField] private Button stageRetryButton;
         [SerializeField] private GameObject stageRetryFrame;
-        [Tooltip("最初から（ステージ1）。")]
+        [Tooltip("クリアで出す、ステージ1から遊び直すボタン。")]
         [SerializeField] private Button retryButton;
         [SerializeField] private Button titleButton;
         [Tooltip("キーボードで選んでいるボタンの枠（retry, title の順）。")]
@@ -57,8 +51,6 @@ namespace UnitySlotTower.Flow
         private Vector2 _lastCursorValue;
         private int _selected;
         private int _openedFrame = -1;
-        private Vector2 _retryAnchorX;
-        private Vector2 _titleAnchorX;
         private bool _showsStageRetry;
 
         /// <summary>開いているか。</summary>
@@ -72,12 +64,9 @@ namespace UnitySlotTower.Flow
         public Button TitleButton => titleButton;
 
         /// <summary>
-        /// キーボードで選んでいるボタンの、見えているボタンの中での位置。ゲームオーバーは 0: やり直し、1: 最初から、2: タイトル、
-        /// クリアは 0: 最初から、1: タイトル。
+        /// キーボードで選んでいるボタン。0: 左（ゲームオーバーはやり直し、クリアはステージ1から）、1: タイトル。
         /// </summary>
         public int Selected => _selected;
-
-        private int ButtonCount => _showsStageRetry ? 3 : 2;
 
         private void Awake()
         {
@@ -87,10 +76,6 @@ namespace UnitySlotTower.Flow
             if (stageRetryButton != null) stageRetryButton.onClick.AddListener(RetryStage);
             retryButton.onClick.AddListener(Retry);
             titleButton.onClick.AddListener(BackToTitle);
-            var retryRect = (RectTransform)retryButton.transform;
-            var titleRect = (RectTransform)titleButton.transform;
-            _retryAnchorX = new Vector2(retryRect.anchorMin.x, retryRect.anchorMax.x);
-            _titleAnchorX = new Vector2(titleRect.anchorMin.x, titleRect.anchorMax.x);
             panel.SetActive(false);
         }
 
@@ -136,21 +121,12 @@ namespace UnitySlotTower.Flow
             panel.SetActive(true);
         }
 
-        // ゲームオーバーは3つ（やり直し・最初から・タイトル）、クリアは2つ（最初から・タイトル）を横に並べる（spec 010 FR-202）。
+        // 左のボタン: ゲームオーバーはやり直し、クリアはステージ1から（spec 010 FR-202・FR-204）。2つは同じ位置にある。
         private void LayOutButtons(bool showStageRetry)
         {
             _showsStageRetry = showStageRetry;
             if (stageRetryButton != null) stageRetryButton.gameObject.SetActive(showStageRetry);
-            SetAnchorX(retryButton, showStageRetry ? ThreeColumns[1] : _retryAnchorX);
-            SetAnchorX(titleButton, showStageRetry ? ThreeColumns[2] : _titleAnchorX);
-            if (showStageRetry) SetAnchorX(stageRetryButton, ThreeColumns[0]);
-        }
-
-        private static void SetAnchorX(Button button, Vector2 x)
-        {
-            var rect = (RectTransform)button.transform;
-            rect.anchorMin = new Vector2(x.x, rect.anchorMin.y);
-            rect.anchorMax = new Vector2(x.y, rect.anchorMax.y);
+            retryButton.gameObject.SetActive(!showStageRetry);
         }
 
         /// <summary>
@@ -176,11 +152,10 @@ namespace UnitySlotTower.Flow
         private void Select(int index)
         {
             _selected = index;
-            var offset = _showsStageRetry ? 1 : 0;
-            if (stageRetryFrame != null) stageRetryFrame.SetActive(_showsStageRetry && index == 0);
+            if (stageRetryFrame != null) stageRetryFrame.SetActive(index == 0);
             for (var i = 0; i < selectionFrames.Length; i++)
             {
-                selectionFrames[i].SetActive(i + offset == index);
+                selectionFrames[i].SetActive(i == index);
             }
         }
 
@@ -192,7 +167,7 @@ namespace UnitySlotTower.Flow
             _lastCursorValue = value;
             if (IsOpen && dx != 0)
             {
-                Select(Mathf.Clamp(_selected + dx, 0, ButtonCount - 1));
+                Select(Mathf.Clamp(_selected + dx, 0, 1));
             }
         }
 
@@ -204,18 +179,17 @@ namespace UnitySlotTower.Flow
                 return;
             }
 
-            var index = _showsStageRetry ? _selected : _selected + 1;
-            switch (index)
+            if (_selected == 1)
             {
-                case 0:
-                    RetryStage();
-                    break;
-                case 1:
-                    Retry();
-                    break;
-                default:
-                    BackToTitle();
-                    break;
+                BackToTitle();
+            }
+            else if (_showsStageRetry)
+            {
+                RetryStage();
+            }
+            else
+            {
+                Retry();
             }
         }
     }

@@ -185,15 +185,16 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var result = Object.FindAnyObjectByType<ResultScreen>();
             Assert.That(result.IsOpen, Is.True, "ゲームオーバーのリザルトが開かない");
 
+            // spec 010: ゲームオーバーの左は やり直し。同じシーンのままステージ1の始めに戻る。
             var before = _battle;
-            yield return Click(result.RetryButton.transform);
-            for (var i = 0; i < 300 && Object.FindAnyObjectByType<BattleController>() == before; i++)
+            yield return Click(result.StageRetryButton.transform);
+            for (var i = 0; i < 60 && result.IsOpen; i++)
             {
                 yield return null;
             }
 
-            yield return WaitForGame();
-            Assert.That((_battle != before, _battle.StageNumber), Is.EqualTo((true, 1)), "↻ のクリックでリトライしない");
+            Assert.That((result.IsOpen, Object.FindAnyObjectByType<BattleController>() == before, _battle.StageNumber),
+                Is.EqualTo((false, true, 1)), "▶ のクリックでステージをやり直さない");
 
             yield return LoseTheGame();
             result = Object.FindAnyObjectByType<ResultScreen>();

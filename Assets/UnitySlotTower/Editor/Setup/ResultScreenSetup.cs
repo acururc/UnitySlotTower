@@ -186,9 +186,9 @@ namespace UnitySlotTower.Editor.Setup
         }
 
         /// <summary>
-        /// spec 010: ゲームオーバーで出す「このステージからやり直す」ボタン（緑の地に ▶ と旗）を足し、最初から のボタンに「1」を添える。
+        /// spec 010: ゲームオーバーで出す「このステージからやり直す」ボタン（▶ と旗）を、クリアで出す ▶ のボタンと同じ位置に足す。
         /// RunController・SlotCabinet とボタンを ResultScreen に結び、文字あり版の名前と位置も足す。既にボタンがあれば何もしない。
-        /// 横の並び（3つ／2つ）は ResultScreen が開くときに決める。
+        /// どちらを出すかは ResultScreen が開くときに決める（ゲームオーバーはやり直し、クリアはステージ1から）。
         /// </summary>
         [MenuItem("Tools/UnitySlotTower/Setup/Update Result Screen (spec 010)")]
         private static void UpdateForStageRetry()
@@ -215,7 +215,7 @@ namespace UnitySlotTower.Editor.Setup
             _box = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
             _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontPath);
 
-            // 位置は仮（ResultScreen が開くときに3列の左へ置く）。最初から のボタンより手前に並べる。
+            // クリアの ▶ のボタンと同じ位置・並び。
             var retryRect = (RectTransform)retry.transform;
             var stageRetry = CreateButton("Stage Retry Button", area, retryRect.anchorMin, retryRect.anchorMax,
                 new Color(0.25f, 0.6f, 0.3f), 0f, out var stageRetryFrame);
@@ -226,18 +226,13 @@ namespace UnitySlotTower.Editor.Setup
             CreateRect("Flag", flag, new Vector2(0.3f, 0.5f), new Vector2(0.9f, 1f)).gameObject.AddComponent<TriangleGraphic>()
                 .color = new Color(0.9f, 0.25f, 0.3f);
             stageRetry.gameObject.SetActive(false);
-            // 見た目は 最初から のボタンと同じ角を切った地と縁（UiSkin）。
+            // 見た目はクリアの ▶ のボタンと同じ角を切った地と縁（UiSkin）。
             var retrySkin = retryRect.Find(UiSkin.SkinName)?.GetComponent<UiPanel>();
             if (retrySkin != null)
             {
                 var skin = UiSkin.Apply(stageRetry.GetComponent<Image>(), retrySkin.color, UiStyle.PanelBorder);
                 EditorUtility.CopySerialized(retrySkin, skin);
             }
-
-            // 最初から＝ステージ1へ: ▶ の右に「1」。
-            var one = CreateText("One Mark", retryRect, new Vector2(0.62f, 0.2f), new Vector2(0.82f, 0.8f), Color.white);
-            one.text = "1";
-            one.alignment = TextAlignmentOptions.Center;
 
             serialized.FindProperty("run").objectReferenceValue = run;
             serialized.FindProperty("slotCabinet").objectReferenceValue = cabinet;
@@ -246,7 +241,7 @@ namespace UnitySlotTower.Editor.Setup
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             // 文字あり版: 三角と印は上に寄せ、下に名前（TextModeLayoutSetup.BuildResult・TextModeSetup.AddResultLabels と同じ形）。
-            foreach (var part in new[] { stageRetryRect.Find("Arrow"), flag, retryRect.Find("One Mark") })
+            foreach (var part in new[] { stageRetryRect.Find("Arrow"), flag })
             {
                 var rect = (RectTransform)part;
                 var x = new Vector2(rect.anchorMin.x, rect.anchorMax.x);

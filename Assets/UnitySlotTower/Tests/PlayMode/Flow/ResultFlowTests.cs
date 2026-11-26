@@ -86,7 +86,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         }
 
         [UnityTest]
-        public IEnumerator Game_Over_Shows_Result_And_Retry_Restarts_From_Stage_One()
+        [Description("spec 010 AC-203: ゲームオーバーのリザルトは やり直し（同じシーンでステージの始めへ）と タイトル の2つ")]
+        public IEnumerator Game_Over_Shows_Result_With_Stage_Retry_And_Title()
         {
             _waves = LosingWaves;
             GameSession.StartGame();
@@ -110,8 +111,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 Is.EqualTo(("¥" + oldState.Money.Coins, oldState.Coins.Coins.ToString())), "所持金・コインの表示が違う");
             battle.SetPaused(true);
             Assert.That(battle.IsPaused, Is.False, "リザルト中に一時停止できてしまう");
-            Assert.That((result.StageRetryButton.gameObject.activeSelf, result.Selected), Is.EqualTo((true, 0)),
-                "spec 010 AC-203: ゲームオーバーで やり直し のボタンが出ない／最初に選ばれていない");
+            Assert.That((result.StageRetryButton.gameObject.activeSelf, result.RetryButton.gameObject.activeSelf, result.Selected),
+                Is.EqualTo((true, false, 0)), "spec 010 AC-203: ゲームオーバーで やり直し が出ない／最初から が出ている／最初に選ばれていない");
 
             // spec 010 AC-203: Enter（初期選択の やり直し）で、同じシーンのままステージ1の始めに戻る。
             var nodes = battle.NodeCount;
@@ -121,25 +122,16 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That((battle.StageNumber, battle.NodeCount, battle.Field.Life, oldState.Money.Coins, oldState.Coins.Coins),
                 Is.EqualTo((1, nodes + 1, startLife, startMoney, startCoins)), "やり直しでステージ1の開始時に戻らない");
 
-            // もう一度負けて、→ で「最初から」を選んで Enter（AC-004 のリトライ）。
+            // もう一度負けると、また やり直し とタイトルの2つだけ（最初から は出ない）。→ でタイトルを選んで Enter。
             yield return PlayUntilFinished(battle);
             yield return null;
-            Assert.That(result.IsOpen, Is.True, "2回目のゲームオーバーでリザルトが開かない");
+            Assert.That((result.IsOpen, result.StageRetryButton.gameObject.activeSelf, result.RetryButton.gameObject.activeSelf,
+                    result.Selected), Is.EqualTo((true, true, false, 0)),
+                "2回目のゲームオーバーのリザルトが やり直し・タイトル の2つにならない");
             yield return Press(Key.RightArrow, () => result.Selected == 1);
-            Assert.That(result.Selected, Is.EqualTo(1), "→ で「最初から」を選べない");
-
-            // AC-004: 最初から。ステージ・進行・ライフ・所持金・コインが初期状態に戻る。
-            yield return Press(Key.Enter, () => SceneManager.GetActiveScene().name == GameSession.GameScene &&
-                                                Object.FindAnyObjectByType<BattleController>() != battle);
-            yield return WaitForGame();
-            battle = Object.FindAnyObjectByType<BattleController>();
-            result = Object.FindAnyObjectByType<ResultScreen>();
-            run = Object.FindAnyObjectByType<RunController>();
-            Assert.That(battle.Run, Is.Not.Null, "リトライ後に進行が作られない");
-            Assert.That(run.State, Is.Not.SameAs(oldState), "リトライで RunState が作り直されない");
-            Assert.That((run.State.StageIndex, battle.StageNumber, battle.NodeCount, battle.Field.Life, run.State.Money.Coins, run.State.Coins.Coins),
-                Is.EqualTo((1, 1, 1, startLife, startMoney, startCoins)), "リトライで進行が初期化されない");
-            Assert.That(result.IsOpen, Is.False, "リトライ後にリザルトが開いている");
+            Assert.That(result.Selected, Is.EqualTo(1), "→ でタイトルを選べない");
+            yield return Press(Key.Enter, () => SceneManager.GetActiveScene().name == GameSession.TitleScene);
+            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(GameSession.TitleScene), "タイトルへ戻らない");
         }
 
         // spec 010 用: ステージ1は近接1体（ゴールしてライフ9でクリア）、ステージ2で近接13体に負ける。
@@ -225,6 +217,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return null;
             Assert.That((result.IsOpen, result.IsClear, Text(result, "floorText")),
                 Is.EqualTo((true, true, "8")), "クリアのリザルトが開かない／到達ステージが違う");
+            Assert.That((result.RetryButton.gameObject.activeSelf, result.StageRetryButton.gameObject.activeSelf),
+                Is.EqualTo((true, false)), "spec 010 FR-204: クリアのリザルトが もう一度・タイトル の2つでない");
             Assert.That((Text(result, "moneyText"), Text(result, "slotCoinsText")),
                 Is.EqualTo(("¥" + run.State.Money.Coins, run.State.Coins.Coins.ToString())), "所持金・コインの表示が違う");
 

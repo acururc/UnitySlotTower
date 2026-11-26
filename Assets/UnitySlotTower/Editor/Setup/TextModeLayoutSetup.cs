@@ -247,10 +247,9 @@ namespace UnitySlotTower.Editor.Setup
         private static void BuildBattleHud(RectTransform root)
         {
             var bar = Child(root, "Operation Bar");
-            var barHeight = bar.rect.height;
             for (var i = 0; i < 4; i++)
             {
-                BuildUnitCard(bar, i, barHeight);
+                BuildUnitCard(bar, i, BarDesignHeight);
             }
 
             // 上端の帯は文字あり版だけ高くする（名前と数字が詰まるため、T614）。戦闘カメラの範囲は変えず、帯が戦闘の上の余白に重なる。
@@ -259,6 +258,10 @@ namespace UnitySlotTower.Editor.Setup
             BuildStatusBand(band);
             BuildRates(band);
         }
+
+        // 操作バーの設計上の高さ（px）。札の枠は 10〜230 px（アンカー 10/240〜230/240）。外枠（T614）で実際の高さは縮むが、
+        // アンカーの割合はこの高さで出す（実際の高さで割ると中身が縦に伸び、味方の絵が枠の上にはみ出す: 2026-11-26 ユーザー指摘）。
+        private const float BarDesignHeight = 240f;
 
         // 札（T383）: 札の枠（Card Frame）は BattleHudRestyleSetup の位置のまま。文字あり版は味方アイコンを縮めて上に寄せ、
         // 下の段に職名、右に強化（「強化」の文字つき）とブロック数、右端にスキルゲージ。x は札の左からの px、y は操作バーの下からの px。
