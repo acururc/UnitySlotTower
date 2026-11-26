@@ -47,6 +47,7 @@ namespace UnitySlotTower.Battle
         private int _shownBlock = -1;
         private bool _shownFrameStock;
         private bool _wasRejecting;
+        private bool _shownShort;
         private TMP_Text _cooldownText;
         private int _shownSeconds = -1;
         private float _rejectUntil;
@@ -180,7 +181,12 @@ namespace UnitySlotTower.Battle
                 : result == SummonResult.NotEnoughCoins ? CardState.Money : CardState.Blocked;
             var normal = state == CardState.Placeable ? _bodyColor
                 : _bodyColor * (state == CardState.Cooldown ? UiStyle.CooldownTint : UiStyle.DisabledTint);
-            var costColor = state == CardState.Money ? UiStyle.Danger : free ? UiStyle.Ready : UiStyle.TextColor;
+            // 待ち時間中でもお金が足りなければ料金を赤くする（待ち時間は状態としてお金より先に決まるため、別に見る）。
+            var wallet = battle.Wallet;
+            var shortOfMoney = !free && wallet != null && wallet.Coins < unit.Cost;
+            var costColor = state == CardState.Money || (state == CardState.Cooldown && shortOfMoney) ? UiStyle.Danger : free ? UiStyle.Ready : UiStyle.TextColor;
+            var shortChanged = shortOfMoney != _shownShort;
+            _shownShort = shortOfMoney;
             var hasStock = free;
             var freeChanged = hasStock != _shownFrameStock;
             if (state != _shownState || freeChanged)
@@ -202,7 +208,7 @@ namespace UnitySlotTower.Battle
                 body.color = Color.Lerp(normal, rejectColor, t);
                 costText.color = _rejectMoney ? Color.Lerp(costColor, rejectColor, t) : costColor;
             }
-            else if (state != _shownState || _wasRejecting || freeChanged)
+            else if (state != _shownState || _wasRejecting || freeChanged || shortChanged)
             {
                 body.color = normal;
                 costText.color = costColor;

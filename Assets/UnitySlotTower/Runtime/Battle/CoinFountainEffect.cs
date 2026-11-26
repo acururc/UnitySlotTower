@@ -367,7 +367,8 @@ namespace UnitySlotTower.Battle
 
         private void Update()
         {
-            var dt = Time.deltaTime;
+            // 勝利の帯の間は時間が止まる（timeScale 0）が、最後の敵のお札・コインは表示まで飛ばしきる（実時間で進める）。
+            var dt = battle.IsShowingVictory ? Time.unscaledDeltaTime : Time.deltaTime;
             if (_activeCoins > 0)
             {
                 _targets[KindFountain] = LocalRect(status.MoneyRateRect).center;
