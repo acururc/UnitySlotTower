@@ -1,0 +1,7 @@
+# tasks: コインの噴水の演出（spec 009）
+
+- [x] T1301 (FR-003・FR-004) Core: `coin_delay_seconds`、`SlotEffects.QueueCoin`/`StepCoinDelay`/`PendingCoins`、上限の判定、`Battlefield.CoinGained`・`EnemyDefeated` — 検証: EditMode テスト（待ちの間は前の倍率、待ちの後に1段、進めなければ上がらない、倍速、待ちを含めて上限で抽選から外れる、正本の値 1.5秒） → 2026-11-26 EditMode 576/576（新規7件: `SlotEffectsTests` の待ち・前の倍率・進めない/倍速・待ちを含む上限・待ち0・倒した通知・正本の値）
+- [x] T1302 (FR-001〜FR-006) `BattleController` の中継、`OperationBarStatus.MoneyRect`、`CoinFountainEffect`、`SlotBoardEffect` からコインを外す — 検証: コンパイル → 2026-11-26 `scriptCompilationFailed=False`、`CoinFountainEffect` は UnitySlotTower.Runtime に入った
+- [x] T1303 (FR-001・FR-008) 自作の金貨・星の PNG と Setup `Build Coin Fountain Effect (spec 009)`、Game シーンに適用 — 検証: Setup の実行結果、シーンの消えた行の確認 → 2026-11-26 メニュー実行成功、`Portrait Root` の 8 番目に `Coin Fountain Effect`、PNG 3枚（`Art/VFX/Coin/`）。シーンの消えた行は `PortraitScreenLayout`（ExecuteAlways）が Game ビューの大きさから計算し直すカメラの表示範囲2つと CanvasScaler の match だけで、部品・参照の欠けなし
+- [x] T1304 (AC-002〜AC-005) PlayMode テスト（噴水の後始末・倒したときの金貨の上限・きらめき）、全テスト・ハーネス、ライセンスの記録 — 検証: EditMode・PlayMode の件数、ハーネス → 2026-11-26 EditMode 576/576、PlayMode 成功69・失敗0・Explicit 1（`SlotCabinetEffectTests` のコインの節を噴水に置き換え、`Defeated_Enemies_Throw_Coins_Up_To_The_Limit` を追加）、ハーネス 8/8。`docs/ASSET_LICENSES.md` に自作のコインの絵を記録。ステージをまたいだきらめきの消え方はテストしていない（きらめきは今の `MoneyRate` から決まり、ステージごとに SlotEffects を作り直すので 1 に戻る）
+- [ ] T1305 (AC-001) ユーザーが Editor で Play して確認、調整 — 検証: ユーザーの確認

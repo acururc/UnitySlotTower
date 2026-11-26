@@ -38,6 +38,7 @@ namespace UnitySlotTower.Core.Data
             ColumnRule.Float("green_delay_seconds", 0, 10),
             ColumnRule.Float("yellow_delay_seconds", 0, 10),
             ColumnRule.Float("bar_delay_seconds", 0, 10),
+            ColumnRule.Float("coin_delay_seconds", 0, 10),
             ColumnRule.Int("yellow_poison_damage", 0, 100000),
             ColumnRule.Float("yellow_poison_tick_seconds", 0.01, 60),
             ColumnRule.Float("yellow_poison_seconds", 0, 600),

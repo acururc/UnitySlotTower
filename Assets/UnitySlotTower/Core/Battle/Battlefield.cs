@@ -174,7 +174,11 @@ namespace UnitySlotTower.Core.Battle
 
                     break;
                 case SlotSymbol.Coin:
-                    Effects.AddCoin();
+                    if (Effects.QueueCoin())
+                    {
+                        CoinGained?.Invoke();
+                    }
+
                     break;
             }
         }
@@ -193,6 +197,12 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>バーの攻撃力アップが始まった（闘気が爆発した、spec 007 FR-003）。待ちが 0 なら <see cref="ApplySlot"/> の中から呼ぶ。</summary>
         public event Action BarBurst;
+
+        /// <summary>コインの所持金の倍率が1段上がった（金貨が所持金の表示に吸い込まれた、spec 009 FR-003）。待ちが 0 なら <see cref="ApplySlot"/> の中から呼ぶ。</summary>
+        public event Action CoinGained;
+
+        /// <summary>敵を倒した（spec 009 FR-005、倒した敵から金貨が飛ぶ）。ドロップを入れた後、リストから消す前に呼ぶ。全体ダメージ・毒で倒した敵も含む。</summary>
+        public event Action<BattleEnemy> EnemyDefeated;
 
         /// <summary>毒のダメージが入った（spec 006 FR-004、オーラの点滅）。ダメージを入れた後、倒した敵を消す前に呼ぶ。</summary>
         public event Action PoisonTicked;
@@ -351,6 +361,15 @@ namespace UnitySlotTower.Core.Battle
                 if (Effects != null && Effects.StepAttackDelay())
                 {
                     BarBurst?.Invoke();
+                }
+
+                // コインの金貨が吸い込まれる（spec 009 FR-003）: 倍率は次に倒した敵から効く。
+                if (Effects != null)
+                {
+                    for (var gained = Effects.StepCoinDelay(); gained > 0; gained--)
+                    {
+                        CoinGained?.Invoke();
+                    }
                 }
 
                 // 青7の凍結（spec 004 FR-003）: 停止は次のステップから丸々 StopSteps 続く。
@@ -670,6 +689,7 @@ namespace UnitySlotTower.Core.Battle
                     DroppedMoney += Effects == null ? money : Effects.ApplyMoneyRate(money);
                 }
 
+                EnemyDefeated?.Invoke(enemy);
                 _enemies.RemoveAt(i);
             }
         }

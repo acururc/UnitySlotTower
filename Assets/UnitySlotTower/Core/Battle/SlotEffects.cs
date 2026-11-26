@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnitySlotTower.Core.Simulation;
 using UnitySlotTower.Core.Slot;
 
@@ -16,6 +17,9 @@ namespace UnitySlotTower.Core.Battle
         private readonly int _poisonTickSteps;
         private int _poisonTickCount;
 
+        // 金貨が吸い込まれるまでの残りステップ（揃うたびに1つ、spec 009 FR-003）。
+        private readonly List<int> _coinDelays = new List<int>();
+
         // 上限との比較で浮動小数の誤差を吸収する幅。
         private const double CapEpsilon = 1e-9;
 
@@ -30,6 +34,7 @@ namespace UnitySlotTower.Core.Battle
             GreenDelaySteps = Math.Max(0, StepsOf(rules.GreenDelaySeconds));
             YellowDelaySteps = Math.Max(0, StepsOf(rules.YellowDelaySeconds));
             BarDelaySteps = Math.Max(0, StepsOf(rules.BarDelaySeconds));
+            CoinDelaySteps = Math.Max(0, StepsOf(rules.CoinDelaySeconds));
             _poisonTickSteps = Math.Max(1, StepsOf(rules.YellowPoisonTickSeconds));
         }
 
@@ -85,8 +90,14 @@ namespace UnitySlotTower.Core.Battle
         public bool IsPoisoned => PoisonStepsLeft > 0;
         public bool IsAttackUp => AttackStepsLeft > 0;
 
-        /// <summary>コインが揃った回数。</summary>
+        /// <summary>コインが揃った回数（倍率に入った分）。</summary>
         public int Coins { get; private set; }
+
+        /// <summary>コインが揃ってから倍率が上がる（金貨が所持金の表示に吸い込まれる）までのステップ（spec 009 FR-003）。0 ならすぐ。</summary>
+        public int CoinDelaySteps { get; }
+
+        /// <summary>揃って、金貨が吸い込まれるのを待っているコインの数（spec 009 FR-003）。</summary>
+        public int PendingCoins => _coinDelays.Count;
 
         /// <summary>攻撃力の倍率: バーの効果中は bar_attack_rate、それ以外は1。</summary>
         public double AttackRate => IsAttackUp ? _rules.BarAttackRate : 1;
@@ -104,6 +115,39 @@ namespace UnitySlotTower.Core.Battle
         public double MoneyRate => Tidy(Math.Min(1 + _rules.CoinStep * Coins, _rules.CoinCap));
 
         public void AddCoin() => Coins++;
+
+        /// <summary>
+        /// コインが揃った: 待ちが 0 ならその場で倍率を上げて true、そうでなければ金貨が吸い込まれるまでの待ちを足して false（spec 009 FR-003）。
+        /// 待ちの間に揃った分は別々に待つ。
+        /// </summary>
+        public bool QueueCoin()
+        {
+            if (CoinDelaySteps <= 0)
+            {
+                AddCoin();
+                return true;
+            }
+
+            _coinDelays.Add(CoinDelaySteps);
+            return false;
+        }
+
+        /// <summary>待っているコインを1ステップ減らし、0 になった分だけ倍率を上げてその数を返す。<see cref="Step"/> の後に呼ぶ。</summary>
+        internal int StepCoinDelay()
+        {
+            var gained = 0;
+            for (var i = _coinDelays.Count - 1; i >= 0; i--)
+            {
+                if (--_coinDelays[i] <= 0)
+                {
+                    _coinDelays.RemoveAt(i);
+                    AddCoin();
+                    gained++;
+                }
+            }
+
+            return gained;
+        }
 
         /// <summary>停止を始める。効果中なら長さを最初に戻す（ふつうは抽選で外れるので起きない）。</summary>
         public void StartStop() => StopStepsLeft = StopSteps;
@@ -203,7 +247,7 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>
         /// 発動中の出目（E-11）。青7・黄7・バーは残り時間がある間（青7は凍りつくのを待つ間も、spec 004 FR-005。黄7は沼が弾けるのを待つ間も、spec 006 FR-005。バーは闘気が爆発するのを待つ間も、spec 007 FR-005）、
-        /// コインは倍率が上限に達したら true。赤7・緑7は常に false。
+        /// コインは倍率が上限に達したら（待っている分を足して、spec 009 FR-004）true。赤7・緑7は常に false。
         /// </summary>
         public bool IsActive(SlotSymbol symbol)
         {
@@ -216,7 +260,8 @@ namespace UnitySlotTower.Core.Battle
                 case SlotSymbol.Bar:
                     return IsAttackUp || IsAttackPending;
                 case SlotSymbol.Coin:
-                    return MoneyRate >= _rules.CoinCap - CapEpsilon;
+                    // 待っている分も数える（spec 009 FR-004）。
+                    return Math.Min(1 + _rules.CoinStep * (Coins + PendingCoins), _rules.CoinCap) >= _rules.CoinCap - CapEpsilon;
                 default:
                     return false;
             }

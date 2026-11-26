@@ -2,18 +2,18 @@
 
 ## 現在の作業
 
-更新: 2026-11-26 Asia/Tokyo / 状態: **spec 007 完了（T1105 ユーザー確認 OK）。spec 008 は弾の尾・緑7の魔法陣・バーの魔法陣がユーザー確認 OK。当たりの衝撃はユーザー指示で一旦閃光だけ（輪・火花は showRing・showSparks でオフ、[`tasks.md`](../../specs/008-effect-polish/tasks.md) T1207）、検証済みで確認待ち。push はユーザーがアカウントを切り替えて行う（コミットだけする）。OK なら T1207 を閉じ、コインの演出（spec 009）の spec へ。下の spec 007 の記述は経緯として残す。**
+更新: 2026-11-26 Asia/Tokyo / 状態: **spec 009（コインの噴水）実装・検証済み、ユーザーの Play 確認待ち（[`tasks.md`](../../specs/009-coin-shower/tasks.md) T1305）。spec 007・008 は完了。**
 
-- spec 007: [`spec.md`](../../specs/007-bar-power/spec.md)（2026-11-23 承認、FR-001〜FR-007・AC-001〜AC-005）・[`plan.md`](../../specs/007-bar-power/plan.md)・[`tasks.md`](../../specs/007-bar-power/tasks.md)。流れ: 味方の足元に光の輪が縮まる（溜め、粒が吸い込まれる）→約1秒後に味方ごとに炎の闘気が爆発して弱く揺れ（ヒットストップなし）、攻撃力アップが始まる→効果の間は味方ごとに橙のオーラと立ちのぼる炎、攻撃ごとに火花→切れたら消える。
-- spec 007 で作ったもの: Core の `bar_delay_seconds`=1（`SlotRules`・`SlotEffects.BarDelaySteps`/`QueueAttack`/`IsAttackPending`・`GameDataValidator`）、`Battlefield.BarBurst`、`BattleController.BarBurst`・`UnitAttacked` の中継、`Runtime/Battle/BarPowerEffect.cs`、`Editor/Setup/BarPowerEffectSetup.cs`（メニュー `Build Bar Power Effect (spec 007)`、Game シーンに適用・保存済み、材質 `Art/VFX/Bar *.mat` 3個）、`SlotBoardEffect` からバーを外した。素材の追加なし。攻撃力の倍率の表示は待ちの間は ×1.0、爆発の瞬間から上がる。
-- 検証（2026-11-23）: EditMode 569/569（新規5件）、PlayMode 成功68/失敗0/Explicit 1、ハーネス 8/8。見た目はユーザー「ちょっと地味」→ 調整1で全段階を派手にし、調整2でエフェクト解説記事の考え方（チャージは近く→遠く、竜巻の渦、続く効果は控えめ）を入れた（tasks.md T1105）。再確認待ち。
-- 次の操作: ユーザーが Editor で Play してバーを確認（AC-001）。調整があれば `BarPowerEffect` の初期値（輪の大きさ・炎の数・オーラの大きさ・揺れ）か Setup を直し、Setup を再適用。確認が取れたら T1105 を閉じる。spec 008（[`spec.md`](../../specs/008-effect-polish/spec.md) 2026-11-23 承認・[`plan.md`](../../specs/008-effect-polish/plan.md)・[`tasks.md`](../../specs/008-effect-polish/tasks.md)）: `HitImpactEffect`＋Setup `Build Hit Impact Effect (spec 008)`、`BattleActorsView.Impact`・弾の `TrailRenderer`、`Editor/Setup/MagicCircleTextures.cs`（自作の魔法陣 PNG、緑7・バーの Setup から呼ぶ）、`Green7HealEffect` の3層の魔法陣。検証 EditMode 569/569、PlayMode 68/0/1、ハーネス 8/8。次: ユーザーの Play 確認（spec 007 T1105 と spec 008 T1207 をまとめて）→ 両方閉じたらコインの演出（spec 009）。
-- 完了済み: spec 006（黄7）、005（緑7）、004（青7）、003（赤7）、002。赤・青・緑・黄・バーとも Setup を再実行すると Inspector の調整値は初期値に戻る。
-- Setup をかけると Game.unity の差分が大きく見える（行の並べ替え）。行の集合で比べ、消えた行がないことを確認する（2026-11-23 の黄7・バーでも0）。
-- そのほかの候補: 001 の M5（T501〜T505、002・003 に合わせて見直す）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。001 の T399・T429 はユーザーの指示（「テストプレイは終わったものとして」）で完了扱いでよい（tasks.md の更新はまだ）。
+- spec 009: [`spec.md`](../../specs/009-coin-shower/spec.md)（2026-11-26 承認、FR-001〜FR-008・AC-001〜AC-005）・[`plan.md`](../../specs/009-coin-shower/plan.md)・[`tasks.md`](../../specs/009-coin-shower/tasks.md)。流れ: 中段の真ん中のマスから金貨が噴き上がる（弱い揺れ）→回りながら降る→所持金の数字へ吸い込まれ、最後の1枚が着く瞬間（`coin_delay_seconds`=1.5）に倍率が1段上がって数字が弾む→以後、倒した敵から倍率に応じた枚数（1〜5）の金貨が飛び、所持金の周りがきらめく（数は倍率に合わせて1〜5）。
+- 作ったもの: Core `SlotRules.CoinDelaySeconds`・`SlotEffects.QueueCoin`/`StepCoinDelay`/`PendingCoins`（待ちの分も上限の判定に入る）・`Battlefield.CoinGained`/`EnemyDefeated`、`BattleController` の中継、`OperationBarStatus.MoneyRect`、`Runtime/Battle/CoinFountainEffect.cs`（UI 層の Image、プール）、`Editor/Setup/CoinFountainTextures.cs`（自作 PNG 3枚 `Art/VFX/Coin/`）・`CoinFountainEffectSetup.cs`（メニュー `Build Coin Fountain Effect (spec 009)`、Game シーンに適用・保存済み）、`SlotBoardEffect` からコインを外した（もうどの出目も出さない）。
+- 検証（2026-11-26）: EditMode 576/576（新規7）、PlayMode 成功69/失敗0/Explicit 1（新規1）、ハーネス 8/8。ステージをまたいだきらめきの消え方はテストなし（倍率から決まるので戻る）。
+- 次の操作: ユーザーが Editor で Play してコインを確認（AC-001）。調整は `CoinFountainEffect` の初期値（枚数・高さ・吸い込みの割合・弾み・きらめき）を直して Setup を再適用。OK なら T1305 を閉じる。
+- そのほかの候補: 001 の M5（T501〜T505）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。001 の T399・T429 はユーザー指示で完了扱いでよい（tasks.md は未更新）。
+- 完了済み: spec 008・007・006・005・004・003・002。Setup を再実行すると Inspector の調整値は初期値に戻る。
+- Setup をかけると Game.unity の差分が大きく見える（行の並べ替え）。行の集合で比べる。`PortraitScreenLayout`（ExecuteAlways）がカメラの表示範囲と CanvasScaler の match を Game ビューの大きさで書き換えるのは無害。
 - 素材の方針: AI が取るログイン不要の無料素材だけ（有料は使わない）。
-- ブランチ: main に直接コミットして origin へ push。main は core.autocrlf で CSV が CRLF になる。
-- Unity 接続: 2026-11-26 に停止を確認済み（8080 閉）。PlayMode テストは Editor が非フォーカスだと極端に遅いので、ユーザーに前面に出してもらう。Editor は開いたまま。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（実メモリ16GB）で、プロジェクトの問題ではない。
+- ブランチ: main に直接コミットして origin へ push（2026-11-26 は push できた）。main は core.autocrlf で CSV が CRLF になる。
+- Unity 接続: 2026-11-26 に停止を確認済み（8080 閉）。PlayMode テストは Editor を前面に出してもらう。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（16GB）。
 
 ### 作業の注意
 - テストの手順: refresh → 約25秒 → code execute で `scriptCompilationFailed` と `isCompiling` を確認 → `tests --async` を1回 → 同じ job_id を前景のループで poll（[`UNITY_AUTOMATION.md`](UNITY_AUTOMATION.md) の Tests 節）。PlayMode 全件は約4分。スクリプトは毎回 `$env:TEMP` などに作り直す。

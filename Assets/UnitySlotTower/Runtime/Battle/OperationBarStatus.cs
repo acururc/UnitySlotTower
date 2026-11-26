@@ -67,6 +67,9 @@ namespace UnitySlotTower.Battle
         /// <summary>コインの所持金倍率の表示（揃った時の演出の行き先: T366）。</summary>
         public RectTransform MoneyRateRect => (RectTransform)moneyRateGroup.transform;
 
+        /// <summary>所持金の数字（コインの金貨の行き先: spec 009 FR-001・FR-005）。</summary>
+        public RectTransform MoneyRect => moneyText.rectTransform;
+
         /// <summary>青7の停止のアイコン（揃った時の演出の行き先: T611）。</summary>
         public RectTransform StopEffectRect => (RectTransform)stopEffectGroup.transform;
 

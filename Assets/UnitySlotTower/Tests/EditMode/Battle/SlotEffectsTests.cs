@@ -588,6 +588,118 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             Assert.That(field.Effects.CanRoll(SlotSymbol.Coin), Is.False);
         }
 
+        private static Battlefield CreateCoinDelayed(string waveRows) =>
+            new Battlefield(BattleFixtures.LoadWave(waveRows), BattleFixtures.LoadRanges(), 10, new SeededRandom(1),
+                new SlotEffects(SlotTestRules.Create(coinDelaySeconds: 1.5)));
+
+        [Test]
+        [Description("spec 009 AC-002: コインは待ち（1.5秒=90ステップ）の間は前の倍率のまま、吸い込みの瞬間に1段上がって一度だけ通知する")]
+        public void Coin_Rate_Rises_When_The_Coins_Arrive()
+        {
+            var field = CreateCoinDelayed("0,quaker,S1,g,0\n");
+            field.Advance(1);
+            var gained = 0;
+            field.CoinGained += () => gained++;
+
+            field.ApplySlot(SlotSymbol.Coin);
+            field.Advance(89);
+            var waiting = (field.Effects.MoneyRate, field.Effects.PendingCoins, gained);
+            field.Advance(1);
+
+            Assert.That((waiting, field.Effects.MoneyRate, field.Effects.PendingCoins, gained),
+                Is.EqualTo(((1d, 1, 0), 1.1, 0, 1)));
+        }
+
+        [Test]
+        [Description("spec 009 AC-002: 待っている間に倒した敵には前の倍率がかかる")]
+        public void Kills_While_Waiting_Use_The_Old_Rate()
+        {
+            var field = CreateCoinDelayed("0,grunt,S1,g,0\n");
+            field.Advance(1);
+
+            field.ApplySlot(SlotSymbol.Coin);
+            field.ApplySlot(SlotSymbol.Red7);
+
+            Assert.That((field.Enemies.Count, field.DroppedMoney), Is.EqualTo((0, 30)));
+        }
+
+        [Test]
+        [Description("spec 009 AC-002: 戦闘を進めなければ（ステージが終わったら）倍率は上がらない。一度に進めたステップ数（倍速）でも同じ時点で上がる")]
+        public void Coin_Needs_The_Battle_To_Advance_And_Counts_Steps()
+        {
+            var idle = CreateCoinDelayed("0,quaker,S1,g,0\n");
+            idle.Advance(1);
+            idle.ApplySlot(SlotSymbol.Coin);
+            var fast = CreateCoinDelayed("0,quaker,S1,g,0\n");
+            fast.Advance(1);
+            fast.ApplySlot(SlotSymbol.Coin);
+
+            fast.Advance(91);
+
+            Assert.That((idle.Effects.MoneyRate, idle.Effects.PendingCoins, fast.Effects.MoneyRate, fast.Effects.PendingCoins),
+                Is.EqualTo((1d, 1, 1.1, 0)));
+        }
+
+        [Test]
+        [Description("spec 009 AC-002: 続けて揃った分は順に上がり、待っている分を足して上限に届くとコインは抽選から外れる")]
+        public void Pending_Coins_Count_Toward_The_Cap()
+        {
+            var field = CreateCoinDelayed("0,quaker,S1,g,0\n");
+            field.Advance(1);
+            for (var i = 0; i < 4; i++)
+            {
+                field.ApplySlot(SlotSymbol.Coin);
+            }
+
+            var beforeCap = field.Effects.CanRoll(SlotSymbol.Coin);
+            field.Advance(30);
+            field.ApplySlot(SlotSymbol.Coin);
+            var atCap = (field.Effects.MoneyRate, field.Effects.PendingCoins, field.Effects.CanRoll(SlotSymbol.Coin));
+            field.Advance(60);
+            var first = (field.Effects.MoneyRate, field.Effects.PendingCoins);
+            field.Advance(30);
+
+            Assert.That((beforeCap, atCap, first, field.Effects.MoneyRate, field.Effects.CanRoll(SlotSymbol.Coin)),
+                Is.EqualTo((true, (1d, 5, false), (1.4, 1), 1.5, false)));
+        }
+
+        [Test]
+        [Description("spec 009 FR-003: 待ちが0なら揃った瞬間に倍率が上がり、上がったことを通知する")]
+        public void Coin_Without_Delay_Rises_At_Once()
+        {
+            var field = Create("0,quaker,S1,g,0\n");
+            field.Advance(1);
+            var gained = 0;
+            field.CoinGained += () => gained++;
+
+            field.ApplySlot(SlotSymbol.Coin);
+
+            Assert.That((field.Effects.MoneyRate, field.Effects.PendingCoins, gained), Is.EqualTo((1.1, 0, 1)));
+        }
+
+        [Test]
+        [Description("spec 009 FR-005: 倒した敵ごとに通知する（赤7で倒した敵も）")]
+        public void Defeated_Enemies_Are_Reported()
+        {
+            var field = Create("0,grunt,S1,g,0\n0,grunt,S1,g,0\n");
+            field.Advance(1);
+            var defeated = 0;
+            field.EnemyDefeated += enemy => defeated += enemy.IsAlive ? 100 : 1;
+
+            field.ApplySlot(SlotSymbol.Red7);
+
+            Assert.That((field.Enemies.Count, defeated), Is.EqualTo((0, 2)));
+        }
+
+        [Test]
+        [Description("spec 009 FR-003: 正本の slot_rules.csv のコインの待ちは1.5秒（90ステップ）")]
+        public void Project_Coin_Delay_Is_One_And_A_Half_Seconds()
+        {
+            var rules = SlotRules.Load(SlotTestRules.ProjectTable(SlotRules.FileName));
+
+            Assert.That(new SlotEffects(rules).CoinDelaySteps, Is.EqualTo(SimulationClock.StepsPerSecond * 3 / 2));
+        }
+
         [Test]
         [Description("E-11: 時間の効果は発動中だけ抽選から外れる。赤7・緑7は外れない")]
         public void Only_Running_Effects_Are_Excluded_From_The_Draw()

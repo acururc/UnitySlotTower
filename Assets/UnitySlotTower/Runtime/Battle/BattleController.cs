@@ -75,6 +75,12 @@ namespace UnitySlotTower.Battle
 
         /// <summary>味方が攻撃した（spec 007 FR-004、闘気の火花）。戦闘のステップの中から呼ばれる。</summary>
         public event Action<BattleUnit, BattleEnemy> UnitAttacked;
+
+        /// <summary>コインの所持金の倍率が1段上がった（金貨が吸い込まれた、spec 009 FR-003）。戦闘のステップかレバーの結果の中から呼ばれる。</summary>
+        public event Action CoinGained;
+
+        /// <summary>敵を倒した（spec 009 FR-005、倒した敵から金貨が飛ぶ）。戦闘のステップかレバーの結果の中から呼ばれる。</summary>
+        public event Action<BattleEnemy> EnemyDefeated;
         public string NodeKind { get; private set; }
         public float BaseFlashUntil { get; private set; }
 
@@ -262,6 +268,8 @@ namespace UnitySlotTower.Battle
                 Field.PoisonTicked -= OnPoisonTicked;
                 Field.BarBurst -= OnBarBurst;
                 Field.UnitAttacked -= OnUnitAttacked;
+                Field.CoinGained -= OnCoinGained;
+                Field.EnemyDefeated -= OnEnemyDefeated;
             }
 
             if (EdgeFlash != null) Destroy(EdgeFlash.gameObject);
@@ -304,6 +312,8 @@ namespace UnitySlotTower.Battle
                 Field.PoisonTicked -= OnPoisonTicked;
                 Field.BarBurst -= OnBarBurst;
                 Field.UnitAttacked -= OnUnitAttacked;
+                Field.CoinGained -= OnCoinGained;
+                Field.EnemyDefeated -= OnEnemyDefeated;
             }
 
             _hitStopLeft = 0f;
@@ -320,6 +330,8 @@ namespace UnitySlotTower.Battle
             Field.PoisonTicked += OnPoisonTicked;
             Field.BarBurst += OnBarBurst;
             Field.UnitAttacked += OnUnitAttacked;
+            Field.CoinGained += OnCoinGained;
+            Field.EnemyDefeated += OnEnemyDefeated;
             BaseFlashUntil = 0f;
             EdgeFlash.Hide();
             _victoryLeft = 0f;
@@ -407,6 +419,11 @@ namespace UnitySlotTower.Battle
         private void OnBarBurst() => BarBurst?.Invoke();
 
         private void OnUnitAttacked(BattleUnit unit, BattleEnemy enemy) => UnitAttacked?.Invoke(unit, enemy);
+
+        // コインの金貨が吸い込まれた・敵を倒した（spec 009）: 表示へ知らせるだけ（ヒットストップなし、FR-002）。
+        private void OnCoinGained() => CoinGained?.Invoke();
+
+        private void OnEnemyDefeated(BattleEnemy enemy) => EnemyDefeated?.Invoke(enemy);
 
         private void OnPoisonTicked() => PoisonTicked?.Invoke();
 

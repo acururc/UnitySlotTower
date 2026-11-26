@@ -10,8 +10,8 @@ namespace UnitySlotTower.Battle
 {
     /// <summary>
     /// 揃ったときの盤面全体の演出（FR-113、spec 002 E-28、plan 50行目、T613）。筐体が揃いを通知したら、盤面（3Dのフィールド）の
-    /// 画面上の範囲に出目ごとの演出を重ねる（赤7は spec 003 の <see cref="Red7BreathEffect"/>、青7は spec 004 の <see cref="Blue7FreezeEffect"/>、緑7は spec 005 の <see cref="Green7HealEffect"/>、黄7は spec 006 の <see cref="Yellow7PoisonEffect"/>、バーは spec 007 の <see cref="BarPowerEffect"/> に移した）:
-    /// コイン＝上からコインが降る。
+    /// 画面上の範囲に出目ごとの演出を重ねる（赤7は spec 003 の <see cref="Red7BreathEffect"/>、青7は spec 004 の <see cref="Blue7FreezeEffect"/>、緑7は spec 005 の <see cref="Green7HealEffect"/>、黄7は spec 006 の <see cref="Yellow7PoisonEffect"/>、バーは spec 007 の <see cref="BarPowerEffect"/>、コインは spec 009 の <see cref="CoinFountainEffect"/> に移した）。
+    /// 今はどの出目もここでは出さない（仮の演出の部品は残してある）。
     /// どの出目でも盤面をうっすら染める。見た目だけで戦闘とレバーは止めない。時間は戦闘の時間（Time.deltaTime）で進む。
     /// 絵は仮（丸と三角）で、本番の絵は M5 で差し替える。部品はこの層の子の「Board」（盤面の範囲で切り抜く）に作って使い回す。
     /// </summary>
@@ -120,9 +120,9 @@ namespace UnitySlotTower.Battle
         public void Play(SlotSymbol symbol)
         {
             // 赤7は息吹の演出（Red7BreathEffect、spec 003）、青7は凍結の演出（Blue7FreezeEffect、spec 004）、
-            // 緑7は回復の演出（Green7HealEffect、spec 005）、黄7は毒の演出（Yellow7PoisonEffect、spec 006）、バーは闘気の演出（BarPowerEffect、spec 007）が受け持つ。
+            // 緑7は回復の演出（Green7HealEffect、spec 005）、黄7は毒の演出（Yellow7PoisonEffect、spec 006）、バーは闘気の演出（BarPowerEffect、spec 007）、コインは噴水の演出（CoinFountainEffect、spec 009）が受け持つ。
             var field = battle.Field;
-            if (symbol == SlotSymbol.Red7 || symbol == SlotSymbol.Blue7 || symbol == SlotSymbol.Green7 || symbol == SlotSymbol.Yellow7 || symbol == SlotSymbol.Bar ||
+            if (symbol == SlotSymbol.Red7 || symbol == SlotSymbol.Blue7 || symbol == SlotSymbol.Green7 || symbol == SlotSymbol.Yellow7 || symbol == SlotSymbol.Bar || symbol == SlotSymbol.Coin ||
                 field == null || fieldView.Map == null)
             {
                 return;

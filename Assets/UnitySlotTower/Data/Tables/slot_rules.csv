@@ -16,3 +16,4 @@ bar_seconds,10
 bar_delay_seconds,1
 coin_step,0.1
 coin_cap,1.5
+coin_delay_seconds,1.5

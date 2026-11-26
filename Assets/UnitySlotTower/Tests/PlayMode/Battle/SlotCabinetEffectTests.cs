@@ -166,19 +166,35 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return WaitForEffect(effect);
             Assert.That(status.AttackRateRect.localScale, Is.EqualTo(attackScale), "行き先の大きさが元に戻る");
 
-            // コイン → 所持金の倍率。溜めの間に引いたレバーの揃いでも盤面全体の演出が出ていることがあるので、ここからの回数で数える。
+            // コイン → 所持金の倍率。盤面全体の演出の代わりに台から金貨が噴き出して弱く揺れ、待ち時間の後に所持金の表示に吸い込まれて
+            // 倍率が上がり、表示が弾む（spec 009）。溜めの間に引いたレバーの揃いでコインが出ていることがあるので、ここからの回数と倍率で比べる。
+            var fountain = Object.FindAnyObjectByType<CoinFountainEffect>();
+            Assert.That(fountain, Is.Not.Null, "Game シーンにコインの噴水の演出がない（Build Coin Fountain Effect (spec 009)）");
             yield return WaitForBoard(board);
+            yield return WaitForFountainEnd(fountain);
             var coinBoardCount = board.PlayCount;
+            var fountainPlays = fountain.PlayCount;
+            var gains = fountain.GainCount;
+            var rate = _battle.Field.Effects.MoneyRate;
+            var moneyScale = status.MoneyRect.localScale;
             Select(SlotSymbol.Coin);
             yield return SpinAndStopAll();
             Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Coin, status.MoneyRateRect)));
-            AssertBoardPlaying(board, SlotSymbol.Coin, coinBoardCount + 1);
-            var layer = ((RectTransform)board.transform).rect;
-            Assert.That(board.BoardRect.width > 0f && board.BoardRect.height > 0f &&
-                        board.BoardRect.width <= layer.width + 1f && board.BoardRect.height <= layer.height + 1f, Is.True,
-                $"盤面の範囲がおかしい: {board.BoardRect} / 層 {layer}");
+            yield return null;
+            Assert.That((fountain.PlayCount, board.PlayCount, fountain.GainCount, _battle.Field.Effects.MoneyRate),
+                Is.EqualTo((fountainPlays + 1, coinBoardCount, gains, rate)), "コインで噴水が出ない・盤面全体の演出が出る・すぐ倍率が上がる");
+            Assert.That((fountain.ActiveCoinCount > 0, fountain.IsShaking), Is.EqualTo((true, true)), "金貨が噴き出さない・揺れない");
+            yield return WaitForCoinGain(fountain, gains);
+
+            // 吸い込みの瞬間: 倍率が1段上がって表示が弾み、ヒットストップはしない（spec 009 FR-002・FR-003）。
+            Assert.That((_battle.IsHitStopping, fountain.IsPunching, _battle.Field.Effects.MoneyRate),
+                Is.EqualTo((false, true, System.Math.Round(rate + 0.1, 6))), "吸い込みで弾まない・ヒットストップする・倍率が上がらない");
+            yield return null;
+            Assert.That(fountain.SparkleCount, Is.GreaterThan(0), "倍率が上がっても所持金の表示がきらめかない");
+            yield return WaitForFountainEnd(fountain);
+            Assert.That((fountain.ActiveCoinCount, status.MoneyRect.localScale), Is.EqualTo((0, moneyScale)),
+                "噴水の金貨が残る・所持金の表示の大きさが戻らない");
             yield return WaitForEffect(effect);
-            yield return WaitForBoard(board);
 
             // 青7 → 停止のアイコン、黄7 → 毒のアイコン（T611、上端の帯）。発動中はアイコンが濃く、残り時間の円が出る。
             _cabinet.Wallet.Add(3);
@@ -400,12 +416,51 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That((lights.IsFlashing, lights.FlashSymbol), Is.EqualTo((false, (SlotSymbol?)null)), "LED の点滅が終わらない");
         }
 
-        // 揃うと盤面全体の演出がその出目で始まり、盤面の色（少なくとも1つの部品）が出る（T613、FR-113）。
-        private static void AssertBoardPlaying(SlotBoardEffect board, SlotSymbol symbol, int count)
+        [UnityTest]
+        [Description("spec 009 AC-003: 倍率が上がっている間は倒した敵から倍率に応じた枚数の金貨が飛び、同時の上限を超えず、飛び終えると残らない。所持金の表示がきらめく")]
+        public IEnumerator Defeated_Enemies_Throw_Coins_Up_To_The_Limit()
         {
-            Assert.That((board.PlayCount, board.LastSymbol, board.IsPlaying), Is.EqualTo((count, (SlotSymbol?)symbol, true)),
-                $"{symbol} で盤面全体の演出が始まらない");
-            Assert.That(board.ActivePieceCount, Is.GreaterThan(0), $"{symbol} の盤面全体の演出の部品が出ない");
+            yield return LoadGame();
+            var fountain = Object.FindAnyObjectByType<CoinFountainEffect>();
+            Assert.That(fountain, Is.Not.Null, "Game シーンにコインの噴水の演出がない（Build Coin Fountain Effect (spec 009)）");
+            var until = Time.realtimeSinceStartup + 10f;
+            while (_battle.Field.Enemies.Count == 0 && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That(_battle.Field.Enemies.Count, Is.GreaterThan(0), "敵が出てこない");
+            var enemy = _battle.Field.Enemies[0];
+
+            // 倍率 1 では出ない。
+            fountain.ShowDefeated(enemy);
+            Assert.That((fountain.KillCoinCount, fountain.ActiveKillCoinCount), Is.EqualTo((0, 0)), "倍率 1 で金貨が出る");
+            yield return null;
+            Assert.That(fountain.SparkleCount, Is.EqualTo(0), "倍率 1 で所持金の表示がきらめく");
+
+            // 倍率 1.2 では1体につき2枚。
+            _battle.Field.Effects.AddCoin();
+            _battle.Field.Effects.AddCoin();
+            fountain.ShowDefeated(enemy);
+            Assert.That((fountain.KillCoinCount, fountain.ActiveKillCoinCount), Is.EqualTo((2, 2)), "倍率 1.2 で2枚出ない");
+            yield return null;
+            Assert.That(fountain.SparkleCount, Is.EqualTo(2), "倍率 1.2 で所持金の表示のきらめきが2つでない");
+
+            // 上限（1.5倍、1体5枚）で何体も倒しても、同時に出る金貨は上限まで。
+            for (var i = 0; i < 3; i++)
+            {
+                _battle.Field.Effects.AddCoin();
+            }
+
+            for (var i = 0; i < 20; i++)
+            {
+                fountain.ShowDefeated(enemy);
+            }
+
+            Assert.That((fountain.ActiveKillCoinCount, fountain.KillCoinCount), Is.EqualTo((fountain.MaxKillCoins, fountain.MaxKillCoins)),
+                "倒したときの金貨が同時の上限を超える");
+            yield return WaitForFountainEnd(fountain);
+            Assert.That(fountain.ActiveKillCoinCount, Is.EqualTo(0), "倒したときの金貨が残る");
         }
 
         // 赤7の爆発を待つ（待ち時間は slot_rules.csv の red_delay_seconds、戦闘の時間）。
@@ -548,6 +603,29 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             return count;
+        }
+
+        // コインの金貨が吸い込まれて倍率が上がるのを待つ（待ち時間は slot_rules.csv の coin_delay_seconds、戦闘の時間）。
+        private static IEnumerator WaitForCoinGain(CoinFountainEffect fountain, int gains)
+        {
+            var until = Time.realtimeSinceStartup + 5f;
+            while (fountain.GainCount == gains && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That(fountain.GainCount, Is.EqualTo(gains + 1), "コインの金貨が吸い込まれない");
+        }
+
+        private static IEnumerator WaitForFountainEnd(CoinFountainEffect fountain)
+        {
+            var until = Time.realtimeSinceStartup + 5f;
+            while (fountain.IsPlaying && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That((fountain.IsPlaying, fountain.ActiveCoinCount), Is.EqualTo((false, 0)), "コインの噴水の演出が終わらない");
         }
 
         private static IEnumerator WaitForBoard(SlotBoardEffect board)

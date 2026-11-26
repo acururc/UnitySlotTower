@@ -47,6 +47,9 @@ namespace UnitySlotTower.Core.Slot
         /// <summary>所持金の倍率の上限（倍率そのもの。1.5 なら最大 1.5 倍）。</summary>
         public double CoinCap { get; private set; }
 
+        /// <summary>コインが揃ってから所持金の倍率が上がる（金貨が所持金の表示に吸い込まれる）までの戦闘の秒数（spec 009 FR-003）。0 ならすぐ。</summary>
+        public double CoinDelaySeconds { get; private set; }
+
         public static SlotRules Load(CsvTable table)
         {
             var values = new KeyValueTable(table);
@@ -69,6 +72,7 @@ namespace UnitySlotTower.Core.Slot
                 BarDelaySeconds = values.GetDouble("bar_delay_seconds"),
                 CoinStep = values.GetDouble("coin_step"),
                 CoinCap = values.GetDouble("coin_cap"),
+                CoinDelaySeconds = values.GetDouble("coin_delay_seconds"),
             };
         }
     }
