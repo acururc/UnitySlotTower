@@ -2,7 +2,7 @@
 
 ## 現在の作業
 
-更新: 2026-11-23 Asia/Tokyo / 状態: **spec 008（エフェクトの改善: 当たりの衝撃・弾の尾・緑7の盤面全体の魔法陣・バーの足元の魔法陣）T1201〜T1206 実装・検証済み。T1207（ユーザーの Play 確認、spec 007 T1105 の確認も合わせる）待ち。**
+更新: 2026-11-26 Asia/Tokyo / 状態: **spec 007 完了（T1105 ユーザー確認 OK）。spec 008 は弾の尾・緑7の魔法陣・バーの魔法陣がユーザー確認 OK。当たりの衝撃だけ調整1（揺れなしで強める、[`tasks.md`](../../specs/008-effect-polish/tasks.md) T1207）を適用・検証済み（commit b0ac0e5）で再確認待ち。OK なら T1207 を閉じ、コインの演出（spec 009）の spec へ。下の spec 007 の記述は経緯として残す。**
 
 - spec 007: [`spec.md`](../../specs/007-bar-power/spec.md)（2026-11-23 承認、FR-001〜FR-007・AC-001〜AC-005）・[`plan.md`](../../specs/007-bar-power/plan.md)・[`tasks.md`](../../specs/007-bar-power/tasks.md)。流れ: 味方の足元に光の輪が縮まる（溜め、粒が吸い込まれる）→約1秒後に味方ごとに炎の闘気が爆発して弱く揺れ（ヒットストップなし）、攻撃力アップが始まる→効果の間は味方ごとに橙のオーラと立ちのぼる炎、攻撃ごとに火花→切れたら消える。
 - spec 007 で作ったもの: Core の `bar_delay_seconds`=1（`SlotRules`・`SlotEffects.BarDelaySteps`/`QueueAttack`/`IsAttackPending`・`GameDataValidator`）、`Battlefield.BarBurst`、`BattleController.BarBurst`・`UnitAttacked` の中継、`Runtime/Battle/BarPowerEffect.cs`、`Editor/Setup/BarPowerEffectSetup.cs`（メニュー `Build Bar Power Effect (spec 007)`、Game シーンに適用・保存済み、材質 `Art/VFX/Bar *.mat` 3個）、`SlotBoardEffect` からバーを外した。素材の追加なし。攻撃力の倍率の表示は待ちの間は ×1.0、爆発の瞬間から上がる。
@@ -13,7 +13,7 @@
 - そのほかの候補: 001 の M5（T501〜T505、002・003 に合わせて見直す）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。001 の T399・T429 はユーザーの指示（「テストプレイは終わったものとして」）で完了扱いでよい（tasks.md の更新はまだ）。
 - 素材の方針: AI が取るログイン不要の無料素材だけ（有料は使わない）。
 - ブランチ: main に直接コミットして origin へ push。main は core.autocrlf で CSV が CRLF になる。
-- Unity 接続: 2026-11-23 に停止を確認済み。Editor は開いたまま。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（実メモリ16GB）で、プロジェクトの問題ではない。
+- Unity 接続: 2026-11-26 に停止を確認済み（8080 閉）。PlayMode テストは Editor が非フォーカスだと極端に遅いので、ユーザーに前面に出してもらう。Editor は開いたまま。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（実メモリ16GB）で、プロジェクトの問題ではない。
 
 ### 作業の注意
 - テストの手順: refresh → 約25秒 → code execute で `scriptCompilationFailed` と `isCompiling` を確認 → `tests --async` を1回 → 同じ job_id を前景のループで poll（[`UNITY_AUTOMATION.md`](UNITY_AUTOMATION.md) の Tests 節）。PlayMode 全件は約4分。スクリプトは毎回 `$env:TEMP` などに作り直す。
