@@ -60,7 +60,7 @@ namespace UnitySlotTower.Editor.Setup
             var flash = R.Create(root.transform, "Flash", flashMaterial, layer, 128, false, ps =>
             {
                 var main = ps.main;
-                main.startLifetime = 0.15f;
+                main.startLifetime = 0.18f;
                 R.Fade(ps, Color.white, Color.white, 0.01f);
                 R.Grow(ps, 0.4f, 1.3f);
             });
@@ -69,23 +69,23 @@ namespace UnitySlotTower.Editor.Setup
             var ring = R.Create(root.transform, "Ring", ringMaterial, layer, 128, false, ps =>
             {
                 var main = ps.main;
-                main.startLifetime = 0.22f;
+                main.startLifetime = 0.35f;
                 R.Fade(ps, Color.white, Color.white, 0.01f);
-                R.Grow(ps, 0.3f, 1.4f);
+                R.Grow(ps, 0.25f, 1.5f);
             });
 
             // 火花: 当たった所から飛び散って落ちる。
             var sparks = R.Create(root.transform, "Sparks", sparkMaterial, layer, 512, false, ps =>
             {
                 var main = ps.main;
-                main.startLifetime = new ParticleSystem.MinMaxCurve(0.2f, 0.35f);
-                main.startSize = new ParticleSystem.MinMaxCurve(0.08f, 0.16f);
+                main.startLifetime = new ParticleSystem.MinMaxCurve(0.3f, 0.5f);
+                main.startSize = new ParticleSystem.MinMaxCurve(0.12f, 0.24f);
                 main.gravityModifier = 1f;
                 R.Fade(ps, Color.white, Color.white, 0.01f);
                 var renderer = ps.GetComponent<ParticleSystemRenderer>();
                 renderer.renderMode = ParticleSystemRenderMode.Stretch;
                 renderer.velocityScale = 0.05f;
-                renderer.lengthScale = 1.2f;
+                renderer.lengthScale = 2f;
             });
 
             var serialized = new SerializedObject(effect);

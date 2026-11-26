@@ -19,16 +19,16 @@ namespace UnitySlotTower.Battle
 
         [Header("大きさと数")]
         [Tooltip("閃光の大きさ（マス = 1）。")]
-        [SerializeField, Min(0f)] private float flashSize = 0.9f;
+        [SerializeField, Min(0f)] private float flashSize = 1.2f;
         [Tooltip("輪の大きさ（マス = 1）。")]
-        [SerializeField, Min(0f)] private float ringSize = 0.9f;
-        [SerializeField, Min(0)] private int sparksPerHit = 6;
+        [SerializeField, Min(0f)] private float ringSize = 1.8f;
+        [SerializeField, Min(0)] private int sparksPerHit = 14;
         [Tooltip("火花の速さ（ワールド/秒）。")]
-        [SerializeField] private Vector2 sparkSpeed = new Vector2(1.5f, 3f);
+        [SerializeField] private Vector2 sparkSpeed = new Vector2(2.5f, 5f);
 
         [Header("色")]
-        [SerializeField] private Color unitHitColor = new Color(1f, 0.9f, 0.55f, 1f);
-        [SerializeField] private Color enemyHitColor = new Color(1f, 0.3f, 0.25f, 1f);
+        [SerializeField] private Color unitHitColor = new Color(1f, 0.72f, 0.2f, 1f);
+        [SerializeField] private Color enemyHitColor = new Color(1f, 0.18f, 0.12f, 1f);
 
         /// <summary>衝撃を出した数（テスト用）。</summary>
         public int PlayCount { get; private set; }
