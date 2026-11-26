@@ -21,6 +21,8 @@ namespace UnitySlotTower.Battle
         [SerializeField] private UnitBarIcon[] icons;
         [Tooltip("光と玉の絵（丸）。")]
         [SerializeField] private Sprite glowSprite;
+        [Tooltip("二重・三重の揃いで、2本目以降の光をこれだけずつ大きくする（spec 011 FR-012）。")]
+        [SerializeField] private float multiHitGlowStep = 0.35f;
         [Tooltip("図柄の順（赤7・青7・緑7・黄7・バー・コイン）の光の色。")]
         [SerializeField] private Color[] symbolColors =
         {
@@ -113,11 +115,13 @@ namespace UnitySlotTower.Battle
             {
                 for (var i = 0; i < glows.Length; i++)
                 {
-                    cells[i] = cabinet.ReelCenterCell(i);
+                    cells[i] = cabinet.ReelCell(i, cabinet.LastAlignedRow);
                     var cell = LocalRect(cells[i]);
                     from[i] = cell.center;
                     cellHeight = cell.height;
-                    glows[i] = Take(color, cell.center, Vector2.one * Mathf.Max(cell.width, cell.height) * 1.2f);
+                    // 二重・三重は光を大きくする（spec 011 FR-012、仮の演出）。
+                    var multi = 1f + multiHitGlowStep * Mathf.Max(0, cabinet.LastAlignedIndex - 1);
+                    glows[i] = Take(color, cell.center, Vector2.one * Mathf.Max(cell.width, cell.height) * 1.2f * multi);
                 }
 
                 var to = target != null ? LocalRect(target).center : Vector2.zero;

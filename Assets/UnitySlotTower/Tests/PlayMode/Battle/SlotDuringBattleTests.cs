@@ -164,18 +164,27 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                     $"{spin + 1}回目: 回らないか、賭け枚数だけ減らない");
                 yield return WaitForReelsToStop();
 
-                if (_cabinet.Outcome is Core.Slot.SlotSymbol aligned)
+                // spec 011 FR-011: 揃う行は3本とも出目、それ以外の行は揃わない。
+                for (var row = -1; row <= 1; row++)
                 {
-                    Assert.That(new[] { reels[0].ShownChild(0), reels[1].ShownChild(0), reels[2].ShownChild(0) },
-                        Is.All.EqualTo((int)aligned), $"{spin + 1}回目: 中段が出目 {aligned} に揃っていない");
-                }
-                else
-                {
-                    for (var row = -1; row <= 1; row++)
+                    var hit = -1;
+                    foreach (var h in _cabinet.Hits)
                     {
-                        var a = reels[0].ShownChild(row);
-                        Assert.That(a == reels[1].ShownChild(row) && a == reels[2].ShownChild(row), Is.False,
-                            $"{spin + 1}回目: ハズレなのに {row} 段が揃っている");
+                        if (h.Row == row)
+                        {
+                            hit = (int)h.Symbol;
+                        }
+                    }
+
+                    var shown = new[] { reels[0].ShownChild(row), reels[1].ShownChild(row), reels[2].ShownChild(row) };
+                    if (hit >= 0)
+                    {
+                        Assert.That(shown, Is.All.EqualTo(hit), $"{spin + 1}回目: {row} 段が出目に揃っていない");
+                    }
+                    else
+                    {
+                        Assert.That(shown[0] == shown[1] && shown[1] == shown[2], Is.False,
+                            $"{spin + 1}回目: 揃っていない {row} 段が揃って見える");
                     }
                 }
             }

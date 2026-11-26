@@ -92,9 +92,9 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>
         /// 揃った図柄の効果をこの戦闘にすぐ出す（FR-112、<see cref="Battlefield.ApplySlot"/>）。
         /// </summary>
-        public void ApplySlot(SlotSymbol symbol)
+        public void ApplySlot(SlotSymbol symbol, int power = 1)
         {
-            Field.ApplySlot(symbol);
+            Field.ApplySlot(symbol, power);
         }
 
         /// <summary>

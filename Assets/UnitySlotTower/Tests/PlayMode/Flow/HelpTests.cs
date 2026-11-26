@@ -97,22 +97,22 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(help.OpenButton.gameObject.activeInHierarchy, Is.True, "一時停止中に「?」が出ない");
             help.OpenButton.onClick.Invoke();
             Assert.That(help.IsOpen, Is.True, "「?」で開かない");
-            // 上半分: 20パターンの内訳（個数×5%）と効果（plan 16.10、値は slot_rules.csv）。
-            Assert.That(Text(help, "missText"), Is.EqualTo("0%"), "ハズレ（0/20）");
+            // 上半分: ライン1本あたりの確率（spec 011 FR-022: ハズレ 1-0.6、図柄 0.6×個数/20）と効果（賭け1枚、値は slot_rules.csv）。
+            Assert.That(Text(help, "missText"), Is.EqualTo("40%"), "ハズレ（1-0.6）");
             var chances = (TMP_Text[])Field(help, "chanceTexts");
-            Assert.That(chances[(int)SlotSymbol.Red7].text, Is.EqualTo("15%"), "赤7（3/20）");
-            Assert.That(chances[(int)SlotSymbol.Coin].text, Is.EqualTo("20%"), "コイン（4/20）");
+            Assert.That(chances[(int)SlotSymbol.Red7].text, Is.EqualTo("9%"), "赤7（0.6×3/20）");
+            Assert.That(chances[(int)SlotSymbol.Coin].text, Is.EqualTo("12%"), "コイン（0.6×4/20）");
             var effects = (TMP_Text[])Field(help, "effectTexts");
             var caps = (TMP_Text[])Field(help, "capTexts");
             Assert.That((effects[(int)SlotSymbol.Bar].text, caps[(int)SlotSymbol.Bar].text), Is.EqualTo(("×2.0", "10")),
                 "バー: 攻撃力 ×2（10秒）");
             Assert.That((effects[(int)SlotSymbol.Coin].text, caps[(int)SlotSymbol.Coin].text), Is.EqualTo(("×1.1", "×1.5")),
                 "コイン: 所持金 ×1.1（上限 ×1.5）");
-            // T615: 色7は新しい効果（slot_rules.csv: 赤7 5、青7 3秒、緑7 0.5、黄7 1を5秒）。
-            Assert.That((effects[(int)SlotSymbol.Red7].text, caps[(int)SlotSymbol.Red7] == null), Is.EqualTo(("-5", true)), "赤7: 敵全員に5");
+            // spec 011: 赤7・黄7は最大HPの割合（slot_rules.csv: 赤7 20%、青7 3秒、緑7 0.5、黄7 4%を5秒）。
+            Assert.That((effects[(int)SlotSymbol.Red7].text, caps[(int)SlotSymbol.Red7] == null), Is.EqualTo(("-20%", true)), "赤7: 敵全員に最大HPの20%");
             Assert.That((effects[(int)SlotSymbol.Blue7].text, caps[(int)SlotSymbol.Blue7].text), Is.EqualTo(("×0", "3")), "青7: 3秒止まる");
             Assert.That((effects[(int)SlotSymbol.Green7].text, caps[(int)SlotSymbol.Green7] == null), Is.EqualTo(("+50%", true)), "緑7: HP 50%");
-            Assert.That((effects[(int)SlotSymbol.Yellow7].text, caps[(int)SlotSymbol.Yellow7].text), Is.EqualTo(("-1", "5")), "黄7: 毒1を5秒");
+            Assert.That((effects[(int)SlotSymbol.Yellow7].text, caps[(int)SlotSymbol.Yellow7].text), Is.EqualTo(("-4%", "5")), "黄7: 毒 最大HPの4%を5秒");
             var slotRows = help.transform.GetComponentsInChildren<Transform>(true);
             Assert.That(System.Linq.Enumerable.Any(slotRows, t => t.name == "Job Card" || (t.name == "Gauge" && t.parent.parent != null && t.parent.parent.name == "Slot Rows")),
                 Is.False, "スキルゲージの札と点が残っている");

@@ -466,8 +466,8 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Timed_Wave_Starting_Before_The_Previous_Ends_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            Assert.That(files[WaveSchedule.StageWavesFileName], Does.Contain("\n2,2,24\n"));
-            files[WaveSchedule.StageWavesFileName] = files[WaveSchedule.StageWavesFileName].Replace("\n2,2,24\n", "\n2,2,5\n");
+            Assert.That(files[WaveSchedule.StageWavesFileName], Does.Contain("\n2,2,24,0\n"));
+            files[WaveSchedule.StageWavesFileName] = files[WaveSchedule.StageWavesFileName].Replace("\n2,2,24,0\n", "\n2,2,5,0\n");
 
             var report = GameDataValidator.ValidateAll(files);
 
@@ -479,7 +479,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void First_Wave_With_A_Start_Delay_Is_An_Error()
         {
             var files = TablePaths.ReadAll();
-            files[WaveSchedule.StageWavesFileName] = files[WaveSchedule.StageWavesFileName].Replace("\n3,1,0\n", "\n3,1,4\n");
+            files[WaveSchedule.StageWavesFileName] = files[WaveSchedule.StageWavesFileName].Replace("\n3,1,0,0\n", "\n3,1,4,0\n");
 
             var report = GameDataValidator.ValidateAll(files);
 

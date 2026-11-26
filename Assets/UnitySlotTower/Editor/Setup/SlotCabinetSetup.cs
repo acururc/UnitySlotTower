@@ -191,6 +191,102 @@ namespace UnitySlotTower.Editor.Setup
             return frame.gameObject;
         }
 
+        private const string BetButtonName = "Bet Button";
+        private const string LineMarkName = "Line Mark";
+        private const string LeverHintName = "Lever Hint";
+        private static readonly string[] RowNames = { "Top", "Middle", "Bottom" };
+
+        /// <summary>
+        /// spec 011: BET ボタン（コインの絵1〜3枚）・有効ラインの印（左右に上・中・下）・見せ場のレバーの矢印を足し、筐体に結ぶ。
+        /// 旧の中段だけの印は隠す。何度実行しても同じ結果になる（前の部品は消して作り直す）。位置は仮置き。
+        /// </summary>
+        [MenuItem("Tools/UnitySlotTower/Setup/Update Slot Bet (spec 011)")]
+        private static void UpdateSlotBet()
+        {
+            var cabinet = Object.FindAnyObjectByType<SlotCabinet>(FindObjectsInactive.Include);
+            var slotArea = cabinet != null ? (RectTransform)cabinet.transform : null;
+            var window = slotArea != null ? slotArea.Find("Reel Window") as RectTransform : null;
+            if (window == null)
+            {
+                Debug.LogError("[SlotTower Setup] スロット筐体の Reel Window が見つからない。");
+                return;
+            }
+
+            LoadAssets();
+            for (var i = slotArea.childCount - 1; i >= 0; i--)
+            {
+                var child = slotArea.GetChild(i);
+                if (child.name == BetButtonName || child.name.StartsWith(LineMarkName) || child.name == LeverHintName)
+                {
+                    Object.DestroyImmediate(child.gameObject);
+                }
+                else if (child.name.StartsWith(PaylineName))
+                {
+                    child.gameObject.SetActive(false);
+                }
+            }
+
+            // BET ボタン: コイン表示の下。押すと 1→2→3→1。コインの絵は左から1〜3枚目。
+            var bet = CreateButton(BetButtonName, slotArea, new Vector2(0.76f, 0.07f), new Vector2(0.986f, 0.24f),
+                new Color(0.25f, 0.22f, 0.3f));
+            bet.GetComponent<Image>().sprite = _box;
+            bet.GetComponent<Image>().preserveAspect = false;
+            var coins = new Object[SlotMachine.MaxBet];
+            for (var i = 0; i < coins.Length; i++)
+            {
+                var left = 0.06f + i * 0.31f;
+                coins[i] = CreateImage($"Bet Coin {i + 1}", (RectTransform)bet.transform, new Vector2(left, 0.15f),
+                    new Vector2(left + 0.26f, 0.85f), new Color(1f, 0.82f, 0.2f), _knob, true).gameObject;
+            }
+
+            // 有効ラインの印: 窓の左右、上段・中段・下段の高さに三角（左の3つ、右の3つの順）。
+            var marks = new Object[SlotMachine.RowCount * 2];
+            var windowHeight = window.anchorMax.y - window.anchorMin.y;
+            var height = windowHeight * 0.06f;
+            for (var side = 0; side < 2; side++)
+            {
+                for (var r = 0; r < SlotMachine.RowCount; r++)
+                {
+                    var y = window.anchorMax.y - windowHeight * (r + 0.5f) / SlotMachine.RowCount;
+                    var edge = side == 0 ? window.anchorMin.x : window.anchorMax.x;
+                    var min = new Vector2(side == 0 ? edge - 0.035f : edge + 0.005f, y - height);
+                    var max = new Vector2(side == 0 ? edge - 0.005f : edge + 0.035f, y + height);
+                    var mark = CreateRect($"{LineMarkName} {RowNames[r]} {(side == 0 ? "Left" : "Right")}", slotArea, min, max)
+                        .gameObject.AddComponent<TriangleGraphic>();
+                    mark.color = new Color(1f, 1f, 1f, 0.12f);
+                    mark.raycastTarget = false;
+                    if (side == 1)
+                    {
+                        mark.rectTransform.localEulerAngles = new Vector3(0f, 0f, 180f);
+                    }
+
+                    marks[side * SlotMachine.RowCount + r] = mark;
+                }
+            }
+
+            // 見せ場の矢印: レバーの右から左を指す三角。
+            var leverRect = cabinet.LeverRect;
+            var hintMin = new Vector2(leverRect.anchorMax.x + 0.01f, Mathf.Lerp(leverRect.anchorMin.y, leverRect.anchorMax.y, 0.3f));
+            var hintMax = new Vector2(leverRect.anchorMax.x + 0.07f, Mathf.Lerp(leverRect.anchorMin.y, leverRect.anchorMax.y, 0.7f));
+            var hint = CreateRect(LeverHintName, slotArea, hintMin, hintMax).gameObject.AddComponent<TriangleGraphic>();
+            hint.color = new Color(1f, 0.85f, 0.2f);
+            hint.raycastTarget = false;
+            hint.rectTransform.localEulerAngles = new Vector3(0f, 0f, 180f);
+            hint.gameObject.SetActive(false);
+
+            var serialized = new SerializedObject(cabinet);
+            serialized.FindProperty("betButton").objectReferenceValue = bet;
+            SetArray(serialized.FindProperty("betCoins"), coins);
+            SetArray(serialized.FindProperty("lineMarks"), marks);
+            serialized.FindProperty("leverHint").objectReferenceValue = hint.gameObject;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            var scene = slotArea.gameObject.scene;
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log("[SlotTower Setup] BET ボタン・ラインの印・レバーの矢印を作った（spec 011）。");
+        }
+
         // 中段（有効ライン）の高さで、リール窓の左右から内向きの三角を出す。
         private static void CreatePaylineMarks(RectTransform slotArea, RectTransform window)
         {

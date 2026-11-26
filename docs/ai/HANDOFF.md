@@ -2,18 +2,19 @@
 
 ## 現在の作業
 
-更新: 2026-11-26 Asia/Tokyo / 状態: **sakurai スキルの全体評価（7項目）をすべて組み入れる作業中。spec 010（ゲームオーバーからステージをやり直す）は完了（T1405 ユーザー確認 OK）。次は spec 011（スロットの作り直し）の聞き取りから（`specs/011-...` はまだない。spec スキルで作る）。**
+更新: 2026-11-26 Asia/Tokyo / 状態: **sakurai スキルの全体評価（7項目）をすべて組み入れる作業中。spec 011（スロットの作り直し）は実装と自動検証まで完了、T1508 のユーザー確認待ち。確認 OK なら tasks.md を閉じて spec 012（味方ごとの強化）の聞き取りへ。**
 
+- spec 011: [`spec.md`](../../specs/011-slot-rework/spec.md)（承認済み、D1〜D8）・[`plan.md`](../../specs/011-slot-rework/plan.md)・[`tasks.md`](../../specs/011-slot-rework/tasks.md)。賭け1〜3枚＝有効ライン数（中→上→下）で強さも枚数倍、1ライン60%（`line_hit_rate`）、同じ図柄は2ラインに揃わない。3×3 の見た目は `SlotMachine` が決め、`SlotReelView.StopAt(top, middle, bottom)` が帯の3マスを置き換えて止める（固定の帯では二重・三重を作れないため）。赤7・毒は最大HPの割合（ボス0.5倍）。ステージ1のウェーブ5（`stage_waves.csv` の `slot_showcase`）を出し終わると `Battlefield.IsShowcaseHolding` で戦闘が止まり、`BattleController` がコイン補充・賭け3枚・レバー点滅・決め打ち `ShowcaseHits` を出し、最初の揃いで再開。Setup `Update Slot Bet (spec 011)`・`Update Help Bet (spec 011)` は実行済み（位置は仮置き）。PlayMode テストは乱数の細工をやめ `SlotCabinet.ForcedHits` で出目を固定する。
+- 最終検証（2026-11-26）: EditMode 601/601、PlayMode 成功72/失敗0/スキップ1（Explicit）、ハーネス 8/8。未確認: 見た目（BET ボタン・ライン印・矢印・早見表の説明の位置、文字あり版）と通しの手触り、コインの落ちる量（範囲外: 通しで数値だけ調整）。
 - 評価の7項目と spec の順（ユーザーが「すべて組み入れる、順番は任せる」と指示）: 010 やり直し（#5）→ 011 スロットの作り直し（#1 回すか迷いがない＝ハズレなし・全部プラス・コイン余り、#2 赤7/毒が固定ダメージで後半弱い、#7 ステージ1にスロットの見せ場）→ 012 味方ごとの強化（#3。ユーザー案: 職ごとに強化内容を変え、モデルや攻撃方法〔連射→ためて一撃など〕も変わる）→ 013 ステージと敵の変化（#4 ステージ5〜7が同じ構成、敵の尖り不足）→ 014 音（#6 音声ファイルが1つもない）。各 spec は聞き取り→承認→実装の順。
-- spec 010: [`spec.md`](../../specs/010-stage-retry/spec.md)・[`plan.md`](../../specs/010-stage-retry/plan.md)・[`tasks.md`](../../specs/010-stage-retry/tasks.md)。`RunState.RecordStageStart/RestoreStageStart`、`RunController.RetryStage`、`ResultScreen`（ゲームオーバーは このステージから・タイトルへ、クリアは もう一度・タイトルへ）、Setup `Update Result Screen (spec 010)`（実行済み）。同時に文字あり版の札の絵のはみ出しを修正（T1406、`TextModeLayoutSetup.BarDesignHeight`）。
-- 最終検証（2026-11-26）: EditMode 579/579、PlayMode 成功70/失敗0/Explicit 1、ハーネス 8/8、ユーザーの手動確認 OK。
+- spec 010（ステージのやり直し）は完了。
 - 気づいて未対応: 文字あり版で右上の「一時停止」の文字がボタンの下に少しはみ出す（ユーザーに伝え済み、指示待ち）。
 - spec 009 まで（出目の演出の作り直し 003〜009）は完了。そのほかの候補: 001 の M5（T501〜T505）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。001 の T399・T429 はユーザー指示で完了扱いでよい（tasks.md は未更新）。
 - 完了済み: spec 009・008・007・006・005・004・003・002。リザルトのボタンは本体の Image が透明で、見た目は子の `Skin`（`UiSkin`/`UiPanel`）が描く。Setup を再実行すると Inspector の調整値は初期値に戻る。
 - Setup をかけると Game.unity の差分が大きく見える（行の並べ替え）。行の集合で比べる。`PortraitScreenLayout`（ExecuteAlways）がカメラの表示範囲と CanvasScaler の match を Game ビューの大きさで書き換えるのは無害。
 - 素材の方針: AI が取るログイン不要の無料素材だけ（有料は使わない）。
 - ブランチ: main に直接コミットして origin へ push。main は core.autocrlf で CSV が CRLF になる。
-- Unity 接続: 2026-11-26 spec 010 の検証後に停止を確認済み（8080 閉）。PlayMode テストは Editor を前面に出してもらう。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（16GB）。
+- Unity 接続: 2026-11-26 spec 011 の検証後に停止を確認済み（8080 閉）。PlayMode テストは Editor を前面に出してもらう。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（16GB）。
 
 ### 作業の注意
 - テストの手順: refresh → 約25秒 → code execute で `scriptCompilationFailed` と `isCompiling` を確認 → `tests --async` を1回 → 同じ job_id を前景のループで poll（[`UNITY_AUTOMATION.md`](UNITY_AUTOMATION.md) の Tests 節）。PlayMode 全件は約4分。スクリプトは毎回 `$env:TEMP` などに作り直す。

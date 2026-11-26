@@ -8,6 +8,7 @@ using UnitySlotTower.Core.Slot;
 
 namespace UnitySlotTower.Tests.EditMode.Slot
 {
+    /// <summary>spec 011 AC-001・AC-002: 賭け枚数とライン抽選、見える図柄。</summary>
     public sealed class SlotMachineTests
     {
         private static readonly SlotSymbol[] AllSymbols =
@@ -15,59 +16,128 @@ namespace UnitySlotTower.Tests.EditMode.Slot
             SlotSymbol.Red7, SlotSymbol.Blue7, SlotSymbol.Green7, SlotSymbol.Yellow7, SlotSymbol.Bar, SlotSymbol.Coin,
         };
 
-        /// <summary>20パターンすべてが <paramref name="outcome"/>（null はハズレ）の台。</summary>
-        private static SlotMachine Machine(SlotSymbol? outcome, int coins = 30, ulong seed = 1) =>
-            Machine(Enumerable.Repeat(outcome, 20).ToArray(), new CoinWallet(coins), seed);
+        private static readonly SlotSymbol?[] EvenPatterns =
+            AllSymbols.SelectMany(s => Enumerable.Repeat((SlotSymbol?)s, 3)).Concat(new SlotSymbol?[] { null, null }).ToArray();
 
-        private static SlotMachine Machine(IReadOnlyList<SlotSymbol?> patterns, CoinWallet wallet, ulong seed = 1) =>
-            new SlotMachine(SlotTestRules.Reels(), patterns, wallet, 1, new SeededRandom(seed));
+        private static SlotMachine Machine(double hitRate = 0.6, int coins = 30, int bet = 1, ulong seed = 1,
+            IReadOnlyList<SlotSymbol?> patterns = null) =>
+            Machine(new CoinWallet(coins), hitRate, bet, seed, patterns);
+
+        private static SlotMachine Machine(CoinWallet wallet, double hitRate = 0.6, int bet = 1, ulong seed = 1,
+            IReadOnlyList<SlotSymbol?> patterns = null) =>
+            new SlotMachine(SlotTestRules.Reels(), patterns ?? EvenPatterns, wallet, new SeededRandom(seed), hitRate)
+            {
+                SelectedBet = bet,
+            };
 
         private static SlotSymbol[] Row(SlotMachine machine, int row) =>
             Enumerable.Range(0, SlotMachine.ReelCount).Select(reel => machine.Visible(reel, row)).ToArray();
 
-        private static bool Aligned(SlotSymbol[] row) => row.All(s => s == row[0]);
+        private static bool IsAligned(SlotMachine machine, int row)
+        {
+            var symbols = Row(machine, row);
+            return symbols.All(s => s == symbols[0]);
+        }
+
+        // 見える図柄が抽選結果と一致する（FR-011）: 揃う行は図柄どおり、それ以外の行は揃わない、各リールの縦は別々。
+        private static void AssertGridMatchesHits(SlotMachine machine)
+        {
+            for (var row = -1; row <= 1; row++)
+            {
+                var hit = machine.Hits.Where(h => h.Row == row).ToArray();
+                if (hit.Length == 1)
+                {
+                    Assert.That(Row(machine, row), Is.All.EqualTo(hit[0].Symbol), $"行 {row}");
+                }
+                else
+                {
+                    Assert.That(IsAligned(machine, row), Is.False, $"行 {row} が揃って見える");
+                }
+            }
+
+            for (var reel = 0; reel < SlotMachine.ReelCount; reel++)
+            {
+                var column = new[] { machine.Visible(reel, -1), machine.Visible(reel, 0), machine.Visible(reel, 1) };
+                Assert.That(column, Is.Unique, $"リール {reel} の縦");
+            }
+        }
 
         [Test]
-        [Description("AC-107: 回すとコインが1枚減る")]
-        public void Lever_Spends_The_Bet()
+        [Description("FR-001: BET は 1→2→3→1 と切り替わる")]
+        public void CycleBet_Goes_One_Two_Three_One()
+        {
+            var machine = Machine();
+            var seen = new List<int> { machine.SelectedBet };
+            for (var i = 0; i < 3; i++)
+            {
+                machine.CycleBet();
+                seen.Add(machine.SelectedBet);
+            }
+
+            Assert.That(seen, Is.EqualTo(new[] { 1, 2, 3, 1 }));
+        }
+
+        [Test]
+        [Description("FR-001: 回転中は賭け枚数を変えられない")]
+        public void Bet_Does_Not_Change_While_Spinning()
+        {
+            var machine = Machine(bet: 2);
+            machine.TryLever();
+            machine.CycleBet();
+            machine.SelectedBet = 3;
+
+            Assert.That(machine.SelectedBet, Is.EqualTo(2));
+        }
+
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        [Description("FR-003: レバーで賭け枚数ぶんのコインを払う")]
+        public void Lever_Spends_The_Bet(int bet)
         {
             var wallet = new CoinWallet(10);
-            var machine = Machine(new SlotSymbol?[] { null }, wallet);
+            var machine = Machine(wallet, bet: bet);
 
-            machine.TryLever();
-
-            Assert.That(wallet.Coins, Is.EqualTo(9));
+            Assert.That(machine.TryLever(), Is.EqualTo(LeverResult.Started));
+            Assert.That((wallet.Coins, machine.SpinBet), Is.EqualTo((10 - bet, bet)));
         }
 
-        [Test]
-        [Description("AC-107: コインが0枚だと回せず、コインは減らない")]
-        public void Lever_Without_Enough_Coins_Is_Rejected()
+        [TestCase(2)]
+        [TestCase(1)]
+        [Description("FR-003: コインが賭け枚数より少ないと、持っている枚数まで下げて払う（選んだ枚数は残る）")]
+        public void Short_Coins_Lower_The_Bet(int coins)
         {
-            var wallet = new CoinWallet(0);
-            var machine = Machine(new SlotSymbol?[] { null }, wallet);
+            var wallet = new CoinWallet(coins);
+            var machine = Machine(wallet, bet: 3);
 
-            var result = machine.TryLever();
-
-            Assert.That((result, wallet.Coins, machine.IsSpinning), Is.EqualTo((LeverResult.NotEnoughCoins, 0, false)));
+            Assert.That(machine.EffectiveBet, Is.EqualTo(coins));
+            machine.TryLever();
+            Assert.That((machine.SpinBet, wallet.Coins, machine.SelectedBet), Is.EqualTo((coins, 0, 3)));
         }
 
         [Test]
-        [Description("plan 16.3: 回転中のレバーは受け付けず、コインも減らない")]
+        [Description("FR-003: コインが0ならレバーは引けない")]
+        public void Lever_Without_Coins_Is_Rejected()
+        {
+            var machine = Machine(coins: 0);
+
+            Assert.That((machine.TryLever(), machine.IsSpinning), Is.EqualTo((LeverResult.NotEnoughCoins, false)));
+        }
+
+        [Test]
         public void Lever_While_Spinning_Is_Rejected()
         {
             var wallet = new CoinWallet(10);
-            var machine = Machine(new SlotSymbol?[] { null }, wallet);
+            var machine = Machine(wallet);
             machine.TryLever();
 
-            var result = machine.TryLever();
-
-            Assert.That((result, wallet.Coins), Is.EqualTo((LeverResult.Spinning, 9)));
+            Assert.That((machine.TryLever(), wallet.Coins), Is.EqualTo((LeverResult.Spinning, 9)));
         }
 
         [Test]
         public void Lever_Can_Be_Pulled_Again_After_Settle()
         {
-            var machine = Machine(SlotSymbol.Coin);
+            var machine = Machine();
             machine.TryLever();
             machine.Settle();
 
@@ -75,142 +145,136 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         }
 
         [Test]
-        [Description("AC-041: 揃いの出目は中段にその図柄が3つ並ぶ")]
-        public void Aligned_Outcome_Shows_Three_In_The_Middle([ValueSource(nameof(AllSymbols))] SlotSymbol symbol)
-        {
-            var machine = Machine(symbol);
-
-            machine.TryLever();
-
-            Assert.That(Row(machine, 0), Is.EqualTo(new[] { symbol, symbol, symbol }));
-        }
-
-        [Test]
-        [Description("AC-041: 当たりのとき上段・下段は揃わない")]
-        public void Aligned_Outcome_Does_Not_Align_Top_Or_Bottom([ValueSource(nameof(AllSymbols))] SlotSymbol symbol)
-        {
-            var machine = Machine(symbol);
-
-            machine.TryLever();
-
-            Assert.That((Aligned(Row(machine, -1)), Aligned(Row(machine, 1))), Is.EqualTo((false, false)));
-        }
-
-        [Test]
-        [Description("AC-041: ハズレはどの段（上・中・下）も揃わない（固定シードで500回）")]
-        public void Miss_Aligns_No_Row()
-        {
-            var machine = Machine((SlotSymbol?)null, coins: 1500);
-            var aligned = 0;
-            for (var i = 0; i < 500; i++)
-            {
-                machine.TryLever();
-                if (Aligned(Row(machine, -1)) || Aligned(Row(machine, 0)) || Aligned(Row(machine, 1)))
-                {
-                    aligned++;
-                }
-
-                machine.Settle();
-            }
-
-            Assert.That(aligned, Is.Zero);
-        }
-
-        [Test]
-        [Description("plan 16.3: ハズレの止まり方は1通りに決め打ちしない（500回で10通り以上）")]
-        public void Miss_Stops_Vary()
-        {
-            var machine = Machine((SlotSymbol?)null, coins: 1500);
-            var seen = new HashSet<(int, int, int)>();
-            for (var i = 0; i < 500; i++)
-            {
-                machine.TryLever();
-                seen.Add((machine.StopPosition(0), machine.StopPosition(1), machine.StopPosition(2)));
-                machine.Settle();
-            }
-
-            Assert.That(seen.Count, Is.GreaterThanOrEqualTo(10));
-        }
-
-        [Test]
-        public void Outcome_Is_The_Drawn_Pattern()
-        {
-            var machine = Machine(SlotSymbol.Green7);
-
-            machine.TryLever();
-
-            Assert.That(machine.Outcome, Is.EqualTo(SlotSymbol.Green7));
-        }
-
-        [Test]
-        [Description("FR-042: 止まった（Settle）ときに揃った図柄を通知する")]
-        public void Settle_Notifies_The_Aligned_Symbol()
-        {
-            var machine = Machine(SlotSymbol.Bar);
-            var aligned = new List<SlotSymbol>();
-            machine.Aligned += aligned.Add;
-            machine.TryLever();
-            var beforeSettle = aligned.Count;
-
-            machine.Settle();
-
-            Assert.That((beforeSettle, string.Join(",", aligned)), Is.EqualTo((0, "Bar")));
-        }
-
-        [Test]
-        public void Settle_After_A_Miss_Notifies_Nothing()
-        {
-            var machine = Machine((SlotSymbol?)null);
-            var count = 0;
-            machine.Aligned += _ => count++;
-            machine.TryLever();
-
-            machine.Settle();
-
-            Assert.That((count, machine.IsSpinning), Is.EqualTo((0, false)));
-        }
-
-        [Test]
         public void Settle_While_Not_Spinning_Throws()
         {
-            var machine = Machine(SlotSymbol.Coin);
-
-            Assert.Throws<InvalidOperationException>(() => machine.Settle());
+            Assert.Throws<InvalidOperationException>(() => Machine().Settle());
         }
 
-        [Test]
-        public void Lever_Continues_While_Coins_Last()
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        [Description("FR-010: 揃うのは有効ラインだけ（1枚=中段、2枚=＋上段、3枚=＋下段）")]
+        public void Hits_Only_On_Active_Lines(int bet)
         {
-            var wallet = new CoinWallet(100);
-            var machine = Machine(new SlotSymbol?[] { SlotSymbol.Red7 }, wallet);
+            var machine = Machine(hitRate: 1, coins: 300, bet: bet);
             for (var i = 0; i < 100; i++)
             {
-                Assert.That(machine.TryLever(), Is.EqualTo(LeverResult.Started));
-                machine.Settle();
-            }
-
-            Assert.That((wallet.Coins, machine.TryLever()), Is.EqualTo((0, LeverResult.NotEnoughCoins)));
-        }
-
-        [TestCase(SlotSymbol.Red7)]
-        [TestCase(null)]
-        public void Filter_Leaves_Only_The_Allowed_Pattern(SlotSymbol? allowed)
-        {
-            var machine = Machine(new SlotSymbol?[] { SlotSymbol.Blue7, allowed }, new CoinWallet(50));
-            for (var i = 0; i < 50; i++)
-            {
-                machine.TryLever(symbol => symbol != SlotSymbol.Blue7);
-                Assert.That(machine.Outcome, Is.EqualTo(allowed));
+                machine.TryLever();
+                Assert.That(machine.Hits.Select(h => h.Row), Is.EqualTo(SlotMachine.LineRows.Take(bet)));
                 machine.Settle();
             }
         }
 
         [Test]
-        public void Empty_Filter_Falls_Back_To_The_Table()
+        [Description("FR-010: 揃う確率0なら何も揃わない")]
+        public void Zero_Hit_Rate_Never_Hits()
         {
-            var machine = Machine(SlotSymbol.Coin);
-            Assert.That(machine.TryLever(_ => false), Is.EqualTo(LeverResult.Started));
-            Assert.That(machine.Outcome, Is.EqualTo(SlotSymbol.Coin));
+            var machine = Machine(hitRate: 0, coins: 300, bet: 3);
+            for (var i = 0; i < 100; i++)
+            {
+                machine.TryLever();
+                Assert.That(machine.Hits, Is.Empty);
+                machine.Settle();
+            }
+        }
+
+        [Test]
+        [Description("FR-010 / D3: 1回で同じ図柄が2ラインに揃わない")]
+        public void Same_Symbol_Never_Hits_Two_Lines()
+        {
+            var machine = Machine(hitRate: 1, coins: 900, bet: 3);
+            for (var i = 0; i < 300; i++)
+            {
+                machine.TryLever();
+                Assert.That(machine.Hits.Select(h => h.Symbol), Is.Unique);
+                machine.Settle();
+            }
+        }
+
+        [Test]
+        [Description("FR-010: 発動中の図柄（フィルタで外した図柄）は揃わない。候補が尽きたラインは揃わない")]
+        public void Filtered_Symbols_Do_Not_Hit_And_Lines_Without_Candidates_Miss()
+        {
+            var machine = Machine(hitRate: 1, coins: 300, bet: 3);
+            for (var i = 0; i < 100; i++)
+            {
+                machine.TryLever(s => s == SlotSymbol.Red7 || s == SlotSymbol.Coin);
+                Assert.That(machine.Hits.Select(h => h.Symbol), Is.EquivalentTo(new[] { SlotSymbol.Red7, SlotSymbol.Coin }));
+                Assert.That(machine.Hits.Select(h => h.Row), Is.EqualTo(new[] { 0, -1 }));
+                machine.Settle();
+            }
+        }
+
+        [Test]
+        [Description("FR-010: 抽選表にない図柄（個数0）は揃わない。ハズレの個数は使わない")]
+        public void Symbols_Without_Weight_Never_Hit()
+        {
+            var patterns = Enumerable.Repeat((SlotSymbol?)SlotSymbol.Bar, 5).Concat(Enumerable.Repeat((SlotSymbol?)null, 15)).ToArray();
+            var machine = Machine(hitRate: 1, coins: 50, bet: 1, patterns: patterns);
+            for (var i = 0; i < 50; i++)
+            {
+                machine.TryLever();
+                Assert.That(machine.Hits.Select(h => h.Symbol), Is.EqualTo(new[] { SlotSymbol.Bar }));
+                machine.Settle();
+            }
+        }
+
+        [TestCase(1, 0.0)]
+        [TestCase(1, 1.0)]
+        [TestCase(2, 0.6)]
+        [TestCase(3, 0.6)]
+        [TestCase(3, 1.0)]
+        [TestCase(3, 0.0)]
+        [Description("FR-011: 止まった図柄は抽選結果と一致する（無効ラインも揃って見えない）")]
+        public void Visible_Grid_Matches_Hits(int bet, double hitRate)
+        {
+            for (ulong seed = 1; seed <= 200; seed++)
+            {
+                var machine = Machine(hitRate: hitRate, coins: 3, bet: bet, seed: seed);
+                machine.TryLever();
+                AssertGridMatchesHits(machine);
+            }
+        }
+
+        [Test]
+        [Description("FR-012: Settle で揃ったラインを中段→上段→下段の順に通知する")]
+        public void Settle_Notifies_Hits_In_Line_Order()
+        {
+            var machine = Machine(hitRate: 1, bet: 3);
+            var notified = new List<SlotLineHit>();
+            machine.LineAligned += notified.Add;
+            machine.TryLever();
+            Assert.That(notified, Is.Empty);
+
+            machine.Settle();
+
+            Assert.That(notified.Select(h => h.Row), Is.EqualTo(new[] { 0, -1, 1 }));
+            Assert.That(notified, Is.EqualTo(machine.Hits));
+        }
+
+        [Test]
+        [Description("FR-032: 決め打ちは抽選せずその揃いにする（中→上→下の順に並べる）")]
+        public void Forced_Hits_Override_The_Draw()
+        {
+            var machine = Machine(hitRate: 0, coins: 3, bet: 3);
+            var forced = new[]
+            {
+                new SlotLineHit(1, SlotSymbol.Bar), new SlotLineHit(0, SlotSymbol.Red7), new SlotLineHit(-1, SlotSymbol.Blue7),
+            };
+
+            Assert.That(machine.TryLever(null, forced), Is.EqualTo(LeverResult.Started));
+
+            Assert.That(machine.Hits, Is.EqualTo(new[] { forced[1], forced[2], forced[0] }));
+            AssertGridMatchesHits(machine);
+        }
+
+        [Test]
+        public void Forced_Hits_Reject_Duplicates()
+        {
+            var machine = Machine(coins: 3, bet: 3);
+            var forced = new[] { new SlotLineHit(0, SlotSymbol.Red7), new SlotLineHit(-1, SlotSymbol.Red7) };
+
+            Assert.Throws<ArgumentException>(() => machine.TryLever(null, forced));
         }
 
         [Test]
@@ -220,7 +284,7 @@ namespace UnitySlotTower.Tests.EditMode.Slot
             var reels = SlotTestRules.Reels(SlotTestRules.PlanLeft, SlotTestRules.PlanLeft, SlotTestRules.PlanLeft);
 
             Assert.Throws<ArgumentException>(() =>
-                new SlotMachine(reels, new SlotSymbol?[] { null }, new CoinWallet(10), 3, new SeededRandom(1)));
+                new SlotMachine(reels, EvenPatterns, new CoinWallet(10), new SeededRandom(1), 0.6));
         }
     }
 }

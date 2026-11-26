@@ -90,11 +90,11 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return WaitForBarBurst(power, bursts);
 
             var tick = _battle.Field.Tick;
-            Assert.That(_battle.Field.Effects.AttackRate, Is.EqualTo(_cabinet.Rules.BarAttackRate).Within(1e-9));
+            Assert.That(_battle.Field.Effects.AttackRate, Is.EqualTo(1 + _cabinet.Rules.BarAttackStep).Within(1e-9));
             yield return null;
             yield return null;
 
-            Assert.That(rate.text, Is.EqualTo("×" + _cabinet.Rules.BarAttackRate.ToString("0.0",
+            Assert.That(rate.text, Is.EqualTo("×" + (1 + _cabinet.Rules.BarAttackStep).ToString("0.0",
                 System.Globalization.CultureInfo.InvariantCulture)));
             Assert.That(attack.GetComponent<CanvasGroup>().alpha, Is.EqualTo(1f));
 
@@ -150,6 +150,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                 Is.EqualTo((1, true, 0, barBursts, 1d)), "バーで輪が縮まらない・盤面全体の演出が出る・すぐ攻撃力が上がる");
             Assert.That(power.RingCount, Is.EqualTo(AliveUnits()), "味方の足元に輪が出ない");
             var tick = _battle.Field.Tick;
+            Select(null);
             yield return Tap(Key.Space);
             Assert.That(_cabinet.IsSpinning, Is.True, "演出中もレバーを引ける");
             yield return new WaitForSeconds(0.1f);
@@ -663,12 +664,12 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That(board.IsPlaying, Is.False, "盤面全体の演出が終わらない");
         }
 
-        private FixedRandom _random;
+        // 次に回すときの揃い（null はハズレ）。回すたびに決め打ちで渡す（spec 011 の ForcedHits）。
+        private SlotSymbol? _selected;
 
         private IEnumerator LoadGame()
         {
-            _random = new FixedRandom();
-            SlotCabinet.RandomOverride = _random;
+            SlotCabinet.RandomOverride = new SeededRandom(1);
             yield return SceneManager.LoadSceneAsync("Game");
             _battle = Object.FindAnyObjectByType<BattleController>();
             _cabinet = Object.FindAnyObjectByType<SlotCabinet>();
@@ -684,12 +685,13 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             _reels = _cabinet.GetComponentsInChildren<SlotReelView>();
         }
 
-        // 20パターンからその出目（null はハズレ）の番号を選ぶ。
+        // 次の回を中段のその出目（null はハズレ）にする。
         private void Select(SlotSymbol? outcome)
         {
-            var effects = _battle.Field.Effects;
-            _random.Index = _random.IndexOf(_cabinet, outcome, s => effects == null || effects.CanRoll(s));
-            Assert.That(_random.Index, Is.GreaterThanOrEqualTo(0), $"抽選表に {outcome?.ToString() ?? "ハズレ"} がない");
+            _selected = outcome;
+            _cabinet.ForcedHits = outcome.HasValue
+                ? new[] { new SlotLineHit(0, outcome.Value) }
+                : System.Array.Empty<SlotLineHit>();
         }
 
         private IEnumerator WaitForStop()
@@ -717,6 +719,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         // Space で回し、リールが自動で止まるまで実時間で待つ。
         private IEnumerator SpinAndStopAll()
         {
+            Select(_selected);
             yield return Tap(Key.Space);
             for (var i = 0; i < 180 && !_reels[0].IsSpinning; i++)
             {
@@ -739,39 +742,6 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             yield return null;
             InputSystem.QueueStateEvent(_keyboard, new KeyboardState());
             yield return null;
-        }
-
-        // 20パターンの Index 番目を選ぶ。
-        private sealed class FixedRandom : IRandom
-        {
-            public int Index;
-
-            // 発動中の出目は抽選から外れ、残りのパターンの中で数える（SlotMachine.TryLever の canAppear）。
-            public int IndexOf(SlotCabinet cabinet, SlotSymbol? outcome, System.Func<SlotSymbol, bool> canAppear = null)
-            {
-                var allowed = 0;
-                for (var i = 0; i < cabinet.Patterns.Count; i++)
-                {
-                    var pattern = cabinet.Patterns[i];
-                    if (pattern.HasValue && canAppear != null && !canAppear(pattern.Value))
-                    {
-                        continue;
-                    }
-
-                    if (pattern == outcome)
-                    {
-                        return allowed;
-                    }
-
-                    allowed++;
-                }
-
-                return -1;
-            }
-
-            public int NextInt(int minInclusive, int maxExclusive) => Index;
-
-            public double NextDouble() => 0.999;
         }
     }
 }

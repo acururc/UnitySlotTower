@@ -25,6 +25,9 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>出現時の HP。enemies.csv の max_hp にステージの倍率（T617）を掛けて四捨五入した値。</summary>
         public int MaxHp { get; }
 
+        /// <summary>ボスとして出た（waves.csv の is_boss）。赤7・毒のダメージを弱める（spec 011 FR-021）。</summary>
+        public bool IsBoss { get; internal set; }
+
         /// <summary>出現口から進んだ距離（マス）。</summary>
         public double Distance { get; private set; }
 

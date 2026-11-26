@@ -13,28 +13,57 @@ namespace UnitySlotTower.Core.Slot
         /// <summary>回転中（<see cref="SlotMachine.Settle"/> の前）。</summary>
         Spinning,
 
-        /// <summary>コインが掛け金未満。</summary>
+        /// <summary>コインが0。</summary>
         NotEnoughCoins,
     }
 
+    /// <summary>1本のラインの揃い（spec 011 FR-010）。row は上段 -1・中段 0・下段 1。</summary>
+    public readonly struct SlotLineHit
+    {
+        public SlotLineHit(int row, SlotSymbol symbol)
+        {
+            Row = row;
+            Symbol = symbol;
+        }
+
+        public int Row { get; }
+        public SlotSymbol Symbol { get; }
+
+        public override string ToString() => $"{Row}:{Symbol}";
+    }
+
     /// <summary>
-    /// 1台のスロット（FR-040・FR-041、plan 16.3）。レバーで掛け金を払い、許可されたパターンから出目を1つ一様に選んで3本の停止位置を決める。
-    /// 揃いはその図柄が中段に来る位置、ハズレはどの段（上・中・下）も揃わない組み合わせから一様に選ぶ。
-    /// 表示側が3本を止め終えたら <see cref="Settle"/> を呼び、揃った図柄を <see cref="Aligned"/> で通知する。
-    /// 一時停止中のレバーの拒否は表示側（Runtime）が受け持つ。
+    /// 1台のスロット（spec 011）。賭け枚数（1〜3）が有効ラインの数（中段→上段→下段の順）で、効果の強さの倍率にもなる。
+    /// レバーで賭け枚数ぶんのコインを払い（コインが足りなければ持っている枚数まで下げる、FR-003）、
+    /// 有効ラインごとに <c>line_hit_rate</c> で揃うかを決め、揃うラインには出せる図柄（発動中でなく、同じ回の別のラインで使っていない）を
+    /// 抽選表の個数を重みに選ぶ（FR-010）。見える3×3の図柄はこのクラスが決める: 揃う行は3本とも同じ図柄、揃わない行は3本がそろわず、
+    /// 各リールの縦3マスは別々の図柄（FR-011）。リールの帯（<see cref="Reels"/>）は回転中の見た目だけに使う。
+    /// 表示側が3本を止め終えたら <see cref="Settle"/> を呼び、揃ったラインを中段→上段→下段の順に通知する。
     /// </summary>
     public sealed class SlotMachine
     {
         public const int ReelCount = SlotReels.ReelCount;
+        public const int RowCount = 3;
+        public const int MinBet = 1;
+        public const int MaxBet = 3;
 
-        private readonly SlotSymbol?[] _patterns;
-        private readonly int[] _allowedIndices;
+        /// <summary>有効ラインの順（賭け1枚目が中段、2枚目が上段、3枚目が下段、spec 011 D2）。</summary>
+        public static readonly int[] LineRows = { 0, -1, 1 };
+
+        // 図柄の重み（抽選表の個数。ハズレの個数は使わない: 揃うかは line_hit_rate で決める）。
+        private readonly int[] _weights = new int[SlotSymbols.Count];
         private readonly CoinWallet _coins;
         private readonly IRandom _random;
-        private readonly List<int[]> _missStops = new List<int[]>();
-        private readonly int[] _stops = new int[ReelCount];
 
-        public SlotMachine(SlotReels reels, IReadOnlyList<SlotSymbol?> patterns, CoinWallet coins, int bet, IRandom random)
+        // [reel, row+1]
+        private readonly SlotSymbol[,] _grid = new SlotSymbol[ReelCount, RowCount];
+        private readonly List<SlotLineHit> _hits = new List<SlotLineHit>();
+        private readonly bool[] _used = new bool[SlotSymbols.Count];
+        private readonly bool[] _rowAligned = new bool[RowCount];
+        private readonly int[] _candidates = new int[SlotSymbols.Count];
+        private int _selectedBet = MinBet;
+
+        public SlotMachine(SlotReels reels, IReadOnlyList<SlotSymbol?> patterns, CoinWallet coins, IRandom random, double lineHitRate)
         {
             Reels = reels ?? throw new ArgumentNullException(nameof(reels));
             var problems = reels.Problems();
@@ -48,92 +77,156 @@ namespace UnitySlotTower.Core.Slot
                 throw new ArgumentException("抽選表が空", nameof(patterns));
             }
 
-            _allowedIndices = new int[patterns.Count];
-            _patterns = new SlotSymbol?[patterns.Count];
-            for (var i = 0; i < _patterns.Length; i++)
+            foreach (var pattern in patterns)
             {
-                _patterns[i] = patterns[i];
+                if (pattern.HasValue)
+                {
+                    _weights[(int)pattern.Value]++;
+                }
+            }
+
+            if (lineHitRate < 0 || lineHitRate > 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(lineHitRate), lineHitRate, "0〜1");
             }
 
             _coins = coins ?? throw new ArgumentNullException(nameof(coins));
             _random = random ?? throw new ArgumentNullException(nameof(random));
-            Bet = bet;
-            CollectMissStops();
+            LineHitRate = lineHitRate;
+
+            // 最初の見た目: 帯の先頭の3マス（表示側は自分の初期位置で描くので、テスト以外では使わない）。
+            for (var reel = 0; reel < ReelCount; reel++)
+            {
+                for (var row = -1; row <= 1; row++)
+                {
+                    _grid[reel, row + 1] = reels[reel].At(row + 1);
+                }
+            }
         }
 
         public SlotReels Reels { get; }
 
-        /// <summary>1回の掛け金。</summary>
-        public int Bet { get; }
+        /// <summary>有効ライン1本が揃う確率。</summary>
+        public double LineHitRate { get; }
+
+        /// <summary>プレイヤーが選んだ賭け枚数（1〜3）。</summary>
+        public int SelectedBet
+        {
+            get => _selectedBet;
+            set
+            {
+                if (value < MinBet || value > MaxBet)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "1〜3");
+                }
+
+                if (!IsSpinning)
+                {
+                    _selectedBet = value;
+                }
+            }
+        }
+
+        /// <summary>次のレバーで実際に賭ける枚数: 選んだ枚数を持っているコインまで下げる（最低1、FR-003）。</summary>
+        public int EffectiveBet => Math.Max(MinBet, Math.Min(_selectedBet, _coins.Coins));
+
+        /// <summary>直近のレバーで払った枚数（効果の強さの倍率）。</summary>
+        public int SpinBet { get; private set; } = MinBet;
 
         /// <summary>レバーから <see cref="Settle"/> まで true。</summary>
         public bool IsSpinning { get; private set; }
 
-        /// <summary>直近のレバーで決まった出目。揃う図柄、ハズレなら null。</summary>
-        public SlotSymbol? Outcome { get; private set; }
+        /// <summary>直近のレバーで揃うと決まったライン（中段→上段→下段の順）。</summary>
+        public IReadOnlyList<SlotLineHit> Hits => _hits;
 
-        /// <summary>止まったあとに揃った図柄を通知する（ハズレでは呼ばない）。</summary>
-        public event Action<SlotSymbol> Aligned;
+        /// <summary>止まったあとに揃ったラインを1本ずつ通知する（中段→上段→下段の順）。</summary>
+        public event Action<SlotLineHit> LineAligned;
 
-        /// <summary>リールの停止位置（中段のマス）。</summary>
-        public int StopPosition(int reel) => _stops[reel];
+        /// <summary>賭け枚数を 1→2→3→1 と切り替える。回転中は変えない（FR-001）。</summary>
+        public void CycleBet()
+        {
+            if (!IsSpinning)
+            {
+                _selectedBet = _selectedBet >= MaxBet ? MinBet : _selectedBet + 1;
+            }
+        }
 
         /// <summary>止まったときに見える図柄。row は上段 -1・中段 0・下段 1。</summary>
-        public SlotSymbol Visible(int reel, int row) => Reels[reel].At(_stops[reel] + row);
+        public SlotSymbol Visible(int reel, int row) => _grid[reel, row + 1];
 
-        /// <summary>出せるパターンから等確率で選ぶ。ハズレは常に候補とし、候補がなければ表全体から選ぶ。</summary>
-        public LeverResult TryLever(Func<SlotSymbol, bool> canAppear = null)
+        /// <summary>行 row がこの回の有効ラインか（賭け枚数で決まる）。</summary>
+        public static bool IsLineActive(int row, int bet)
+        {
+            for (var i = 0; i < bet && i < LineRows.Length; i++)
+            {
+                if (LineRows[i] == row)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// レバー。<paramref name="canAppear"/> が false の図柄は揃えない（発動中の図柄、E-11）。
+        /// <paramref name="forced"/> があれば抽選せずその揃いにする（ステージ1の見せ場、FR-032）。行と図柄はそれぞれ重ならないこと。
+        /// </summary>
+        public LeverResult TryLever(Func<SlotSymbol, bool> canAppear = null, IReadOnlyList<SlotLineHit> forced = null)
         {
             if (IsSpinning)
             {
                 return LeverResult.Spinning;
             }
 
-            if (_coins.Coins < Bet)
+            var bet = EffectiveBet;
+            if (_coins.Coins <= 0 || !_coins.TrySpend(bet))
             {
                 return LeverResult.NotEnoughCoins;
             }
 
-            var allowedCount = 0;
-            if (canAppear != null)
+            SpinBet = bet;
+            _hits.Clear();
+            Array.Clear(_used, 0, _used.Length);
+            if (forced != null)
             {
-                for (var i = 0; i < _patterns.Length; i++)
+                foreach (var hit in forced)
                 {
-                    var pattern = _patterns[i];
-                    if (!pattern.HasValue || canAppear(pattern.Value))
+                    if (hit.Row < -1 || hit.Row > 1 || _used[(int)hit.Symbol] || ContainsRow(hit.Row))
                     {
-                        _allowedIndices[allowedCount++] = i;
+                        throw new ArgumentException("決め打ちの行か図柄が重なっている", nameof(forced));
+                    }
+
+                    _used[(int)hit.Symbol] = true;
+                    _hits.Add(hit);
+                }
+
+                SortHits();
+            }
+            else
+            {
+                for (var line = 0; line < bet; line++)
+                {
+                    if (_random.NextDouble() >= LineHitRate)
+                    {
+                        continue;
+                    }
+
+                    var symbol = Draw(canAppear);
+                    if (symbol.HasValue)
+                    {
+                        _used[(int)symbol.Value] = true;
+                        _hits.Add(new SlotLineHit(LineRows[line], symbol.Value));
                     }
                 }
             }
 
-            if (!_coins.TrySpend(Bet))
-            {
-                return LeverResult.NotEnoughCoins;
-            }
-
-            var index = allowedCount == 0
-                ? _random.NextInt(0, _patterns.Length)
-                : _allowedIndices[_random.NextInt(0, allowedCount)];
-            Outcome = _patterns[index];
-            if (Outcome.HasValue)
-            {
-                for (var reel = 0; reel < ReelCount; reel++)
-                {
-                    _stops[reel] = Reels.PositionOf(reel, Outcome.Value);
-                }
-            }
-            else
-            {
-                var stops = _missStops[_random.NextInt(0, _missStops.Count)];
-                Array.Copy(stops, _stops, ReelCount);
-            }
-
+            FillGrid();
             IsSpinning = true;
             return LeverResult.Started;
         }
 
-        /// <summary>3本とも止まった（表示側）ときに呼ぶ。回転を終え、揃いなら <see cref="Aligned"/> を通知する。</summary>
+        /// <summary>3本とも止まった（表示側）ときに呼ぶ。回転を終え、揃ったラインを順に通知する。</summary>
         public void Settle()
         {
             if (!IsSpinning)
@@ -142,36 +235,119 @@ namespace UnitySlotTower.Core.Slot
             }
 
             IsSpinning = false;
-            if (Outcome.HasValue)
+            foreach (var hit in _hits)
             {
-                Aligned?.Invoke(Outcome.Value);
+                LineAligned?.Invoke(hit);
             }
         }
 
-        // ハズレの止まり方: 3本の停止位置の全組み合わせのうち、上・中・下のどの段も揃わないもの。
-        private void CollectMissStops()
+        private bool ContainsRow(int row)
         {
-            int length0 = Reels[0].Length, length1 = Reels[1].Length, length2 = Reels[2].Length;
-            for (var a = 0; a < length0; a++)
+            foreach (var hit in _hits)
             {
-                for (var b = 0; b < length1; b++)
+                if (hit.Row == row)
                 {
-                    for (var c = 0; c < length2; c++)
-                    {
-                        var aligned = false;
-                        for (var row = -1; row <= 1 && !aligned; row++)
-                        {
-                            var symbol = Reels[0].At(a + row);
-                            aligned = Reels[1].At(b + row) == symbol && Reels[2].At(c + row) == symbol;
-                        }
+                    return true;
+                }
+            }
 
-                        if (!aligned)
-                        {
-                            _missStops.Add(new[] { a, b, c });
-                        }
+            return false;
+        }
+
+        // 中段→上段→下段の順に並べる。
+        private void SortHits()
+        {
+            _hits.Sort((a, b) => Array.IndexOf(LineRows, a.Row).CompareTo(Array.IndexOf(LineRows, b.Row)));
+        }
+
+        // 出せる図柄から重みで1つ。なければ null（そのラインは揃わない）。
+        private SlotSymbol? Draw(Func<SlotSymbol, bool> canAppear)
+        {
+            var count = 0;
+            var total = 0;
+            for (var s = 0; s < SlotSymbols.Count; s++)
+            {
+                if (_weights[s] > 0 && !_used[s] && (canAppear == null || canAppear((SlotSymbol)s)))
+                {
+                    _candidates[count++] = s;
+                    total += _weights[s];
+                }
+            }
+
+            if (count == 0)
+            {
+                return null;
+            }
+
+            var pick = _random.NextInt(0, total);
+            for (var i = 0; i < count; i++)
+            {
+                pick -= _weights[_candidates[i]];
+                if (pick < 0)
+                {
+                    return (SlotSymbol)_candidates[i];
+                }
+            }
+
+            return (SlotSymbol)_candidates[count - 1];
+        }
+
+        // 揃う行を置き、残りのマスを「縦3マスは別々・揃わない行は3本がそろわない」で埋める。
+        private void FillGrid()
+        {
+            Array.Clear(_rowAligned, 0, _rowAligned.Length);
+            foreach (var hit in _hits)
+            {
+                _rowAligned[hit.Row + 1] = true;
+                for (var reel = 0; reel < ReelCount; reel++)
+                {
+                    _grid[reel, hit.Row + 1] = hit.Symbol;
+                }
+            }
+
+            for (var reel = 0; reel < ReelCount; reel++)
+            {
+                for (var r = 0; r < RowCount; r++)
+                {
+                    if (!_rowAligned[r])
+                    {
+                        _grid[reel, r] = PickFree(reel, r, null);
                     }
                 }
             }
+
+            for (var r = 0; r < RowCount; r++)
+            {
+                if (!_rowAligned[r] && _grid[0, r] == _grid[1, r] && _grid[1, r] == _grid[2, r])
+                {
+                    _grid[ReelCount - 1, r] = PickFree(ReelCount - 1, r, _grid[0, r]);
+                }
+            }
+        }
+
+        // リール reel の縦で、行 row 以外に使われていない図柄（avoid も除く）を一様に選ぶ。
+        private SlotSymbol PickFree(int reel, int row, SlotSymbol? avoid)
+        {
+            var count = 0;
+            for (var s = 0; s < SlotSymbols.Count; s++)
+            {
+                var free = avoid != (SlotSymbol)s;
+                for (var r = 0; r < RowCount && free; r++)
+                {
+                    // まだ埋めていない下の行は前回の値が残っているので、揃う行と上の行だけを見る。
+                    if (r != row && (_rowAligned[r] || r < row || avoid.HasValue))
+                    {
+                        free = _grid[reel, r] != (SlotSymbol)s;
+                    }
+                }
+
+                if (free)
+                {
+                    _candidates[count++] = s;
+                }
+            }
+
+            return (SlotSymbol)_candidates[_random.NextInt(0, count)];
         }
     }
 }

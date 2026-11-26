@@ -26,9 +26,11 @@ namespace UnitySlotTower.Core.Battle
 
         // 待っている赤7ごとの、ダメージが入るまでの残りステップ（spec 003 FR-005）。
         private readonly List<int> _redStrikes = new List<int>();
+        private readonly List<int> _redPowers = new List<int>();
 
         // 待っている緑7ごとの、回復するまでの残りステップ（spec 005 FR-002）。
         private readonly List<int> _greenHeals = new List<int>();
+        private readonly List<int> _greenPowers = new List<int>();
 
         /// <summary>全ウェーブを決めた時刻に出す（時刻が絶対の1ウェーブの表として扱う）。</summary>
         public Battlefield(WaveSchedule wave, UnitRanges ranges, int life, IRandom random, SlotEffects effects = null)
@@ -114,17 +116,23 @@ namespace UnitySlotTower.Core.Battle
         public int ArrivedCount { get; private set; }
 
         /// <summary>
-        /// 揃った出目の効果をすぐ出す（FR-112）。赤7は空中を含む全ての敵に防御を無視した固定ダメージ（倒した敵はドロップする）。
+        /// 揃った出目の効果をすぐ出す（FR-112）。強さは賭け枚数 <paramref name="power"/>（1〜3）倍（spec 011 FR-020）。
+        /// 赤7は空中を含む全ての敵に防御を無視した最大 HP の割合のダメージ（spec 011 FR-021、倒した敵はドロップする）。
         /// ただし赤7のダメージは <see cref="SlotEffects.RedDelaySteps"/> だけ戦闘を進めてから入る（spec 003 FR-005、息吹が爆発する瞬間）。
         /// 待っている間に出た敵にも当たり、ステージが先に終わって進めなくなれば入らない。
         /// 緑7は配置中の味方の HP を最大 HP × 率だけ回復（最大値で止め、ライフは回復しない）。回復は <see cref="SlotEffects.GreenDelaySteps"/>
         /// だけ戦闘を進めてから、その時点の味方に入る（spec 005 FR-002、光の柱が立つ瞬間）。青7・黄7・バーは時間の効果を始め、コインは倍率を上げる。
         /// </summary>
-        public void ApplySlot(SlotSymbol symbol)
+        public void ApplySlot(SlotSymbol symbol, int power = 1)
         {
             if (Effects == null)
             {
                 throw new InvalidOperationException("この戦闘には出目の効果がない。");
+            }
+
+            if (power < SlotMachine.MinBet || power > SlotMachine.MaxBet)
+            {
+                throw new ArgumentOutOfRangeException(nameof(power), power, "1〜3");
             }
 
             switch (symbol)
@@ -133,16 +141,17 @@ namespace UnitySlotTower.Core.Battle
                     if (Effects.RedDelaySteps > 0)
                     {
                         _redStrikes.Add(Effects.RedDelaySteps);
+                        _redPowers.Add(power);
                     }
                     else
                     {
-                        StrikeRed();
+                        StrikeRed(power);
                         RemoveDefeatedEnemies();
                     }
 
                     break;
                 case SlotSymbol.Blue7:
-                    if (Effects.QueueStop())
+                    if (Effects.QueueStop(power))
                     {
                         BlueFroze?.Invoke();
                     }
@@ -152,29 +161,30 @@ namespace UnitySlotTower.Core.Battle
                     if (Effects.GreenDelaySteps > 0)
                     {
                         _greenHeals.Add(Effects.GreenDelaySteps);
+                        _greenPowers.Add(power);
                     }
                     else
                     {
-                        HealGreen();
+                        HealGreen(power);
                     }
 
                     break;
                 case SlotSymbol.Yellow7:
-                    if (Effects.QueuePoison())
+                    if (Effects.QueuePoison(power))
                     {
                         YellowBurst?.Invoke();
                     }
 
                     break;
                 case SlotSymbol.Bar:
-                    if (Effects.QueueAttack())
+                    if (Effects.QueueAttack(power))
                     {
                         BarBurst?.Invoke();
                     }
 
                     break;
                 case SlotSymbol.Coin:
-                    if (Effects.QueueCoin())
+                    if (Effects.QueueCoin(power))
                     {
                         CoinGained?.Invoke();
                     }
@@ -213,13 +223,13 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>緑7の回復が入った（光の柱が立った、spec 005 FR-001）。回復した後に呼ぶ。待ちが 0 なら <see cref="ApplySlot"/> の中から呼ぶ。</summary>
         public event Action GreenHealed;
 
-        private void HealGreen()
+        private void HealGreen(int power)
         {
             foreach (var unit in _units)
             {
                 if (unit.IsAlive)
                 {
-                    unit.Heal((int)Math.Round(unit.MaxHp * Effects.GreenHealRate, MidpointRounding.AwayFromZero));
+                    unit.Heal((int)Math.Round(unit.MaxHp * Effects.GreenHealRate * power, MidpointRounding.AwayFromZero));
                 }
             }
 
@@ -233,15 +243,17 @@ namespace UnitySlotTower.Core.Battle
             {
                 if (--_greenHeals[i] <= 0)
                 {
+                    var power = _greenPowers[i];
                     _greenHeals.RemoveAt(i);
-                    HealGreen();
+                    _greenPowers.RemoveAt(i);
+                    HealGreen(power);
                 }
             }
         }
 
-        private void StrikeRed()
+        private void StrikeRed(int power)
         {
-            DamageAllEnemies(Effects.RedDamage);
+            DamageAllEnemies(Effects.RedHpRate(power));
             RedStruck?.Invoke();
         }
 
@@ -252,20 +264,25 @@ namespace UnitySlotTower.Core.Battle
             {
                 if (--_redStrikes[i] <= 0)
                 {
+                    var power = _redPowers[i];
                     _redStrikes.RemoveAt(i);
-                    StrikeRed();
+                    _redPowers.RemoveAt(i);
+                    StrikeRed(power);
                 }
             }
         }
 
-        /// <summary>生きている敵全員（空中を含む）に防御を無視した固定ダメージ。撃破とドロップは <see cref="RemoveDefeatedEnemies"/>。</summary>
-        private void DamageAllEnemies(int damage)
+        /// <summary>
+        /// 生きている敵全員（空中を含む）に防御を無視した最大 HP の割合のダメージ（ボスは弱める、最低1、spec 011 FR-021）。
+        /// 撃破とドロップは <see cref="RemoveDefeatedEnemies"/>。
+        /// </summary>
+        private void DamageAllEnemies(double hpRate)
         {
             foreach (var enemy in _enemies)
             {
                 if (enemy.IsAlive)
                 {
-                    enemy.TakeDamage(damage);
+                    enemy.TakeDamage(Effects.HpRateDamage(enemy, hpRate));
                 }
             }
         }
@@ -329,10 +346,11 @@ namespace UnitySlotTower.Core.Battle
         /// 1 ステップごとに 出現 → 移動（ゴール到着で退場・ライフ減少） → 敵の攻撃 → HP0 の味方の消滅 → 味方の行動
         /// → 毒 → 待っている赤7 → HP0 の敵の消滅（ドロップ） の順で処理し、出目の効果の残り時間を1ステップ減らす。
         /// 停止中（青7）は移動と敵の攻撃を飛ばす。ゲームオーバーになったら残りのステップは進めない。
+        /// 見せ場のウェーブ（<see cref="WaveDefinition.SlotShowcase"/>）を出し終わったステップの後は、<see cref="ReleaseShowcase"/> まで進めない（spec 011 FR-031）。
         /// </summary>
         public void Advance(int steps)
         {
-            for (var i = 0; i < steps && !IsGameOver; i++)
+            for (var i = 0; i < steps && !IsGameOver && !IsShowcaseHolding; i++)
             {
                 Spawn();
                 // 停止中の敵は進まず攻撃もしない（範囲攻撃と間隔の消化も止まる、E-27）。停止中に出た敵も止まる。
@@ -347,7 +365,7 @@ namespace UnitySlotTower.Core.Battle
                 // 毒は停止中も減る（E-27）。出目の効果の残り時間はここで1ステップ減る。
                 if (Effects != null && Effects.Step())
                 {
-                    DamageAllEnemies(Effects.PoisonDamage);
+                    DamageAllEnemies(Effects.PoisonHpRate);
                     PoisonTicked?.Invoke();
                 }
 
@@ -382,6 +400,39 @@ namespace UnitySlotTower.Core.Battle
                 StepGreenHeals();
                 RemoveDefeatedEnemies();
                 Tick++;
+                CheckShowcase();
+            }
+        }
+
+        /// <summary>見せ場のウェーブを出し終わり、レバーを待って戦闘を止めている（spec 011 FR-031）。</summary>
+        public bool IsShowcaseHolding { get; private set; }
+
+        /// <summary>この戦闘の見せ場がもう始まった（1戦闘に1回、FR-033）。</summary>
+        public bool ShowcaseStarted { get; private set; }
+
+        /// <summary>見せ場で戦闘を止めた。<see cref="Advance"/> の中から呼ぶ。</summary>
+        public event Action ShowcaseHeld;
+
+        /// <summary>見せ場の止まりを解いて戦闘を再開する（レバーを引いたとき）。止まっていなければ何もしない。</summary>
+        public void ReleaseShowcase() => IsShowcaseHolding = false;
+
+        private void CheckShowcase()
+        {
+            if (ShowcaseStarted || IsGameOver)
+            {
+                return;
+            }
+
+            var waves = Waves.Schedule.Waves;
+            for (var w = 0; w < waves.Count; w++)
+            {
+                if (waves[w].SlotShowcase && Waves.IsWaveEmitted(w))
+                {
+                    ShowcaseStarted = true;
+                    IsShowcaseHolding = true;
+                    ShowcaseHeld?.Invoke();
+                    return;
+                }
             }
         }
 
@@ -394,6 +445,7 @@ namespace UnitySlotTower.Core.Battle
                 _enemies.Add(new BattleEnemy(spawn.Enemy, spawn.Path, EnemyHpRate)
                 {
                     AreaCooldownSteps = StepsOf(spawn.Enemy.AreaInterval),
+                    IsBoss = spawn.IsBoss,
                 });
                 EnemySpawned?.Invoke(spawn.Path);
             }

@@ -9,16 +9,24 @@ namespace UnitySlotTower.Core.Battle
     /// 1つの戦闘の間だけ効く出目の効果（FR-112、plan 2.3）。停止（青7）・毒（黄7）・攻撃力（バー）は残りステップ数で持ち、
     /// <see cref="Battlefield.Advance"/> の中でだけ減る（倍速・スロー・一時停止に従う、E-26）。コインは所持金のドロップの倍率を上げる。
     /// 全体ダメージ（赤7）と回復（緑7）はその場の効果なので <see cref="Battlefield.ApplySlot"/> が直接出す。
+    /// 効果の強さは揃えたときの賭け枚数（power、1〜3）倍（spec 011 FR-020・D6）。
     /// 戦闘ごとに新しく作る（持ち越さない、E-16）。値は slot_rules.csv。
     /// </summary>
     public sealed class SlotEffects
     {
         private readonly SlotRules _rules;
         private readonly int _poisonTickSteps;
+        private readonly int _baseStopSteps;
         private int _poisonTickCount;
+        private int _poisonPower = 1;
+        private int _attackPower = 1;
+        private int _pendingStopPower = 1;
+        private int _pendingPoisonPower = 1;
+        private int _pendingAttackPower = 1;
 
-        // 金貨が吸い込まれるまでの残りステップ（揃うたびに1つ、spec 009 FR-003）。
+        // 金貨が吸い込まれるまでの残りステップと枚数（揃うたびに1つ、spec 009 FR-003）。
         private readonly List<int> _coinDelays = new List<int>();
+        private readonly List<int> _coinPowers = new List<int>();
 
         // 上限との比較で浮動小数の誤差を吸収する幅。
         private const double CapEpsilon = 1e-9;
@@ -26,7 +34,8 @@ namespace UnitySlotTower.Core.Battle
         public SlotEffects(SlotRules rules)
         {
             _rules = rules ?? throw new ArgumentNullException(nameof(rules));
-            StopSteps = StepsOf(rules.BlueStopSeconds);
+            _baseStopSteps = StepsOf(rules.BlueStopSeconds);
+            StopSteps = _baseStopSteps;
             PoisonSteps = StepsOf(rules.YellowPoisonSeconds);
             AttackSteps = StepsOf(rules.BarSeconds);
             RedDelaySteps = Math.Max(0, StepsOf(rules.RedDelaySeconds));
@@ -38,8 +47,8 @@ namespace UnitySlotTower.Core.Battle
             _poisonTickSteps = Math.Max(1, StepsOf(rules.YellowPoisonTickSeconds));
         }
 
-        /// <summary>停止の長さ（ステップ）。表示の円ゲージの分母。</summary>
-        public int StopSteps { get; }
+        /// <summary>今回（直近に始まった）停止の長さ（ステップ、賭け枚数倍）。表示の円ゲージの分母。</summary>
+        public int StopSteps { get; private set; }
 
         /// <summary>毒の長さ（ステップ）。</summary>
         public int PoisonSteps { get; }
@@ -90,45 +99,70 @@ namespace UnitySlotTower.Core.Battle
         public bool IsPoisoned => PoisonStepsLeft > 0;
         public bool IsAttackUp => AttackStepsLeft > 0;
 
-        /// <summary>コインが揃った回数（倍率に入った分）。</summary>
+        /// <summary>倍率に入ったコインの段数（揃えた賭け枚数の合計）。</summary>
         public int Coins { get; private set; }
 
         /// <summary>コインが揃ってから倍率が上がる（金貨が所持金の表示に吸い込まれる）までのステップ（spec 009 FR-003）。0 ならすぐ。</summary>
         public int CoinDelaySteps { get; }
 
-        /// <summary>揃って、金貨が吸い込まれるのを待っているコインの数（spec 009 FR-003）。</summary>
-        public int PendingCoins => _coinDelays.Count;
+        /// <summary>揃って、金貨が吸い込まれるのを待っているコインの段数（spec 009 FR-003）。</summary>
+        public int PendingCoins
+        {
+            get
+            {
+                var total = 0;
+                foreach (var power in _coinPowers)
+                {
+                    total += power;
+                }
 
-        /// <summary>攻撃力の倍率: バーの効果中は bar_attack_rate、それ以外は1。</summary>
-        public double AttackRate => IsAttackUp ? _rules.BarAttackRate : 1;
+                return total;
+            }
+        }
 
-        /// <summary>赤7の全体ダメージ（防御を無視した固定値）。</summary>
-        public int RedDamage => _rules.RedDamage;
+        /// <summary>攻撃力の倍率: バーの効果中は 1 + bar_attack_step × 賭け枚数、それ以外は1。</summary>
+        public double AttackRate => IsAttackUp ? AttackRateOf(_attackPower) : 1;
 
-        /// <summary>緑7の回復の率（最大 HP に掛ける）。</summary>
+        /// <summary>賭け枚数 power のバーの攻撃力の倍率。</summary>
+        public double AttackRateOf(int power) => Tidy(1 + _rules.BarAttackStep * power);
+
+        /// <summary>緑7の回復の率（最大 HP に掛ける、賭け1枚あたり）。</summary>
         public double GreenHealRate => _rules.GreenHealRate;
 
-        /// <summary>毒の1回のダメージ（防御を無視した固定値）。</summary>
-        public int PoisonDamage => _rules.YellowPoisonDamage;
+        /// <summary>毒のダメージの率（最大 HP に掛ける）。今の毒の賭け枚数込み。</summary>
+        public double PoisonHpRate => _rules.YellowHpRate * _poisonPower;
 
-        /// <summary>所持金のドロップの倍率: min(1 + coin_step × 回数, coin_cap)。</summary>
-        public double MoneyRate => Tidy(Math.Min(1 + _rules.CoinStep * Coins, _rules.CoinCap));
-
-        public void AddCoin() => Coins++;
+        /// <summary>赤7のダメージの率（最大 HP に掛ける）。</summary>
+        public double RedHpRate(int power) => _rules.RedHpRate * power;
 
         /// <summary>
-        /// コインが揃った: 待ちが 0 ならその場で倍率を上げて true、そうでなければ金貨が吸い込まれるまでの待ちを足して false（spec 009 FR-003）。
+        /// 最大 HP の割合のダメージ（spec 011 FR-021）: max(1, round(最大HP × 率 × (ボスなら boss_damage_rate)))。防御は無視する。
+        /// </summary>
+        public int HpRateDamage(BattleEnemy enemy, double rate)
+        {
+            var scaled = enemy.MaxHp * rate * (enemy.IsBoss ? _rules.BossDamageRate : 1);
+            return Math.Max(1, (int)Math.Round(scaled, MidpointRounding.AwayFromZero));
+        }
+
+        /// <summary>所持金のドロップの倍率: min(1 + coin_step × 段数, coin_cap)。</summary>
+        public double MoneyRate => Tidy(Math.Min(1 + _rules.CoinStep * Coins, _rules.CoinCap));
+
+        public void AddCoin(int power = 1) => Coins += power;
+
+        /// <summary>
+        /// コインが揃った: 待ちが 0 ならその場で倍率を賭け枚数段上げて true、そうでなければ金貨が吸い込まれるまでの待ちを足して false（spec 009 FR-003）。
         /// 待ちの間に揃った分は別々に待つ。
         /// </summary>
-        public bool QueueCoin()
+        public bool QueueCoin(int power = 1)
         {
             if (CoinDelaySteps <= 0)
             {
-                AddCoin();
+                AddCoin(power);
                 return true;
             }
 
             _coinDelays.Add(CoinDelaySteps);
+            _coinPowers.Add(power);
             return false;
         }
 
@@ -140,8 +174,9 @@ namespace UnitySlotTower.Core.Battle
             {
                 if (--_coinDelays[i] <= 0)
                 {
+                    AddCoin(_coinPowers[i]);
                     _coinDelays.RemoveAt(i);
-                    AddCoin();
+                    _coinPowers.RemoveAt(i);
                     gained++;
                 }
             }
@@ -149,21 +184,26 @@ namespace UnitySlotTower.Core.Battle
             return gained;
         }
 
-        /// <summary>停止を始める。効果中なら長さを最初に戻す（ふつうは抽選で外れるので起きない）。</summary>
-        public void StartStop() => StopStepsLeft = StopSteps;
+        /// <summary>停止を始める（長さは賭け枚数倍）。効果中なら長さを最初に戻す（ふつうは抽選で外れるので起きない）。</summary>
+        public void StartStop(int power = 1)
+        {
+            StopSteps = _baseStopSteps * power;
+            StopStepsLeft = StopSteps;
+        }
 
         /// <summary>
         /// 青7が揃った: 待ちが 0 ならその場で停止を始めて true、そうでなければ凍りつくまでの待ちを入れて false（spec 004 FR-003）。
         /// 待ち中にもう一度来たら待ちを最初に戻す（ふつうは抽選で外れるので起きない）。
         /// </summary>
-        public bool QueueStop()
+        public bool QueueStop(int power = 1)
         {
             if (BlueDelaySteps <= 0)
             {
-                StartStop();
+                StartStop(power);
                 return true;
             }
 
+            _pendingStopPower = power;
             StopDelayStepsLeft = BlueDelaySteps;
             return false;
         }
@@ -176,13 +216,14 @@ namespace UnitySlotTower.Core.Battle
                 return false;
             }
 
-            StartStop();
+            StartStop(_pendingStopPower);
             return true;
         }
 
-        /// <summary>毒を始める。最初のダメージは1間隔の後。</summary>
-        public void StartPoison()
+        /// <summary>毒を始める（ダメージは賭け枚数倍）。最初のダメージは1間隔の後。</summary>
+        public void StartPoison(int power = 1)
         {
+            _poisonPower = power;
             PoisonStepsLeft = PoisonSteps;
             _poisonTickCount = 0;
         }
@@ -191,14 +232,15 @@ namespace UnitySlotTower.Core.Battle
         /// 黄7が揃った: 待ちが 0 ならその場で毒を始めて true、そうでなければ沼が弾けるまでの待ちを入れて false（spec 006 FR-003）。
         /// 待ち中にもう一度来たら待ちを最初に戻す（ふつうは抽選で外れるので起きない）。
         /// </summary>
-        public bool QueuePoison()
+        public bool QueuePoison(int power = 1)
         {
             if (YellowDelaySteps <= 0)
             {
-                StartPoison();
+                StartPoison(power);
                 return true;
             }
 
+            _pendingPoisonPower = power;
             PoisonDelayStepsLeft = YellowDelaySteps;
             return false;
         }
@@ -211,24 +253,30 @@ namespace UnitySlotTower.Core.Battle
                 return false;
             }
 
-            StartPoison();
+            StartPoison(_pendingPoisonPower);
             return true;
         }
 
-        public void StartAttack() => AttackStepsLeft = AttackSteps;
+        /// <summary>攻撃力アップを始める（倍率は 1 + bar_attack_step × 賭け枚数）。</summary>
+        public void StartAttack(int power = 1)
+        {
+            _attackPower = power;
+            AttackStepsLeft = AttackSteps;
+        }
 
         /// <summary>
         /// バーが揃った: 待ちが 0 ならその場で攻撃力アップを始めて true、そうでなければ闘気が爆発するまでの待ちを入れて false（spec 007 FR-003）。
         /// 待ち中にもう一度来たら待ちを最初に戻す（ふつうは抽選で外れるので起きない）。
         /// </summary>
-        public bool QueueAttack()
+        public bool QueueAttack(int power = 1)
         {
             if (BarDelaySteps <= 0)
             {
-                StartAttack();
+                StartAttack(power);
                 return true;
             }
 
+            _pendingAttackPower = power;
             AttackDelayStepsLeft = BarDelaySteps;
             return false;
         }
@@ -241,7 +289,7 @@ namespace UnitySlotTower.Core.Battle
                 return false;
             }
 
-            StartAttack();
+            StartAttack(_pendingAttackPower);
             return true;
         }
 

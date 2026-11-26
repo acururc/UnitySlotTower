@@ -8,7 +8,7 @@ using UnitySlotTower.Tests.EditMode.Slot;
 namespace UnitySlotTower.Tests.EditMode.Battle
 {
     /// <summary>
-    /// 出目の効果（FR-112、AC-109 の Core 部分）。値は slot_rules.csv の仮値（赤5・青3秒・緑50%・黄 1秒ごとに1を5秒・バー×2を10秒・コイン +0.1 上限1.5）。
+    /// 出目の効果（FR-112、AC-109 の Core 部分）。値は slot_rules.csv の仮値（賭け1枚: 赤 最大HPの20%・青3秒・緑50%・黄 1秒ごとに最大HPの4%を5秒・バー×2を10秒・コイン +0.1 上限1.5、ボスは赤・黄が半分）。
     /// 地図と敵は <see cref="BattleFixtures"/>。1 ステップ = 1/60 秒。
     /// </summary>
     public sealed class SlotEffectsTests
@@ -34,7 +34,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("AC-109: 赤7は空中を含む全ての敵に、防御を無視した固定ダメージ")]
+        [Description("AC-109: 赤7は空中を含む全ての敵に、防御を無視した最大HPの20%のダメージ")]
         public void Red_Damages_All_Enemies_Including_Air_Ignoring_Defence()
         {
             var field = Create("0,melee,S1,g,0\n0,air,S2,a,0\n");
@@ -42,7 +42,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
             field.ApplySlot(SlotSymbol.Red7);
 
-            Assert.That((field.Enemies[0].Hp, field.Enemies[1].Hp), Is.EqualTo((1000 - 5, 600 - 5)));
+            Assert.That((field.Enemies[0].Hp, field.Enemies[1].Hp), Is.EqualTo((1000 - 200, 600 - 120)));
         }
 
         [Test]
@@ -79,7 +79,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             field.Advance(30);
 
             Assert.That((applied, before, at, field.Enemies[0].Hp, struck), Is.EqualTo(
-                ((1000, 1, 0), (1000, 1, 0), (995, 0, 1), 995, 1)));
+                ((1000, 1, 0), (1000, 1, 0), (800, 0, 1), 800, 1)));
         }
 
         [Test]
@@ -94,7 +94,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             field.Advance(60);
 
             Assert.That((idle, field.Enemies.Count, field.Enemies[0].Hp, field.Enemies[1].Hp),
-                Is.EqualTo((1000, 2, 995, 595)));
+                Is.EqualTo((1000, 2, 800, 480)));
         }
 
         [Test]
@@ -111,7 +111,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var first = field.Enemies[0].Hp;
             field.Advance(30);
 
-            Assert.That((first, field.Enemies[0].Hp, field.PendingRedStrikes), Is.EqualTo((995, 990, 0)));
+            Assert.That((first, field.Enemies[0].Hp, field.PendingRedStrikes), Is.EqualTo((800, 600, 0)));
         }
 
         [Test]
@@ -261,7 +261,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("AC-109: 黄7は1秒ごとに1ダメージを5秒（5回）。防御を無視し、切れた後は減らない")]
+        [Description("AC-109: 黄7は1秒ごとに最大HPの4%を5秒（5回）。防御を無視し、切れた後は減らない")]
         public void Yellow_Poisons_For_Its_Duration()
         {
             var field = Create("0,quaker,S1,g,0\n");
@@ -273,7 +273,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             var end = (field.Enemies[0].Hp, field.Effects.IsActive(SlotSymbol.Yellow7));
             field.Advance(300);
 
-            Assert.That((before, end, field.Enemies[0].Hp), Is.EqualTo((100000 - 4, (100000 - 5, false), 100000 - 5)));
+            Assert.That((before, end, field.Enemies[0].Hp), Is.EqualTo((100000 - 16000, (100000 - 20000, false), 100000 - 20000)));
         }
 
         [Test]
@@ -286,7 +286,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
 
             field.Advance(180);
 
-            Assert.That((field.Enemies[0].Hp, field.Enemies[0].Distance), Is.EqualTo((1000 - 3, 0.0)));
+            Assert.That((field.Enemies[0].Hp, field.Enemies[0].Distance), Is.EqualTo((1000 - 120, 0.0)));
         }
 
         [Test]
@@ -328,7 +328,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
             field.Advance(240);
 
             Assert.That((waiting, bursting, first, field.Enemies[0].Hp, ticks, field.Effects.IsPoisoned, burst),
-                Is.EqualTo(((100000, false, true, 0), (true, false, 1, 300), (100000 - 1, 1), 100000 - 5, 5, false, 1)));
+                Is.EqualTo(((100000, false, true, 0), (true, false, 1, 300), (100000 - 4000, 1), 100000 - 20000, 5, false, 1)));
         }
 
         [Test]

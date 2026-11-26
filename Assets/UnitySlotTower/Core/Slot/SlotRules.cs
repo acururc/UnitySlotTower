@@ -13,8 +13,8 @@ namespace UnitySlotTower.Core.Slot
         /// <summary>リールが1本止まってから次が止まるまでの秒数。</summary>
         public double StopIntervalSeconds { get; private set; }
 
-        /// <summary>赤7で敵全員に与えるダメージ。</summary>
-        public int RedDamage { get; private set; }
+        /// <summary>赤7で敵全員に与えるダメージの率（最大 HP に掛ける、賭け1枚あたり、spec 011 FR-021）。</summary>
+        public double RedHpRate { get; private set; }
 
         /// <summary>赤7が揃ってからダメージが入る（息吹が爆発する）までの戦闘の秒数（spec 003 FR-005）。0 ならすぐ。</summary>
         public double RedDelaySeconds { get; private set; }
@@ -28,14 +28,16 @@ namespace UnitySlotTower.Core.Slot
         /// <summary>緑7が揃ってから回復する（光の柱が立つ）までの戦闘の秒数（spec 005 FR-002）。0 ならすぐ。</summary>
         public double GreenDelaySeconds { get; private set; }
 
-        public int YellowPoisonDamage { get; private set; }
+        /// <summary>毒の1回のダメージの率（最大 HP に掛ける、賭け1枚あたり、spec 011 FR-021）。</summary>
+        public double YellowHpRate { get; private set; }
         public double YellowPoisonTickSeconds { get; private set; }
         public double YellowPoisonSeconds { get; private set; }
 
         /// <summary>黄7が揃ってから毒が始まる（毒の沼が弾ける）までの戦闘の秒数（spec 006 FR-003）。0 ならすぐ。</summary>
         public double YellowDelaySeconds { get; private set; }
 
-        public double BarAttackRate { get; private set; }
+        /// <summary>バーの攻撃力の倍率の上げ幅（倍率は 1 + 幅 × 賭け枚数、spec 011 D6）。</summary>
+        public double BarAttackStep { get; private set; }
         public double BarSeconds { get; private set; }
 
         /// <summary>バーが揃ってから攻撃力アップが始まる（闘気が爆発する）までの戦闘の秒数（spec 007 FR-003）。0 ならすぐ。</summary>
@@ -50,6 +52,18 @@ namespace UnitySlotTower.Core.Slot
         /// <summary>コインが揃ってから所持金の倍率が上がる（金貨が所持金の表示に吸い込まれる）までの戦闘の秒数（spec 009 FR-003）。0 ならすぐ。</summary>
         public double CoinDelaySeconds { get; private set; }
 
+        /// <summary>赤7・毒のボスへのダメージの倍率（spec 011 FR-021）。</summary>
+        public double BossDamageRate { get; private set; }
+
+        /// <summary>有効ライン1本が揃う確率（spec 011 FR-010）。</summary>
+        public double LineHitRate { get; private set; }
+
+        /// <summary>二重・三重のとき、揃ったラインの通知をずらす秒数（spec 011 FR-012、表示の時間）。</summary>
+        public double LineGapSeconds { get; private set; }
+
+        /// <summary>ステージ1の見せ場で補うコインの枚数（spec 011 FR-031）。</summary>
+        public int ShowcaseCoins { get; private set; }
+
         public static SlotRules Load(CsvTable table)
         {
             var values = new KeyValueTable(table);
@@ -57,22 +71,26 @@ namespace UnitySlotTower.Core.Slot
             {
                 FirstStopSeconds = values.GetDouble("first_stop_seconds"),
                 StopIntervalSeconds = values.GetDouble("stop_interval_seconds"),
-                RedDamage = values.GetInt("red_damage"),
+                RedHpRate = values.GetDouble("red_hp_rate"),
                 RedDelaySeconds = values.GetDouble("red_delay_seconds"),
                 BlueStopSeconds = values.GetDouble("blue_stop_seconds"),
                 BlueDelaySeconds = values.GetDouble("blue_delay_seconds"),
                 GreenHealRate = values.GetDouble("green_heal_rate"),
                 GreenDelaySeconds = values.GetDouble("green_delay_seconds"),
                 YellowDelaySeconds = values.GetDouble("yellow_delay_seconds"),
-                YellowPoisonDamage = values.GetInt("yellow_poison_damage"),
+                YellowHpRate = values.GetDouble("yellow_hp_rate"),
                 YellowPoisonTickSeconds = values.GetDouble("yellow_poison_tick_seconds"),
                 YellowPoisonSeconds = values.GetDouble("yellow_poison_seconds"),
-                BarAttackRate = values.GetDouble("bar_attack_rate"),
+                BarAttackStep = values.GetDouble("bar_attack_step"),
                 BarSeconds = values.GetDouble("bar_seconds"),
                 BarDelaySeconds = values.GetDouble("bar_delay_seconds"),
                 CoinStep = values.GetDouble("coin_step"),
                 CoinCap = values.GetDouble("coin_cap"),
                 CoinDelaySeconds = values.GetDouble("coin_delay_seconds"),
+                BossDamageRate = values.GetDouble("boss_damage_rate"),
+                LineHitRate = values.GetDouble("line_hit_rate"),
+                LineGapSeconds = values.GetDouble("line_gap_seconds"),
+                ShowcaseCoins = values.GetInt("showcase_coins"),
             };
         }
     }

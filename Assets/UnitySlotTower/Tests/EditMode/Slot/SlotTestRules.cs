@@ -14,18 +14,20 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         public const string PlanCenter = "red7 green7 bar blue7 coin yellow7";
         public const string PlanRight = "red7 bar yellow7 green7 blue7 coin";
 
-        public static SlotRules Create(int redDamage = 5, double blueStopSeconds = 3,
-            double greenHealRate = 0.5, int yellowPoisonDamage = 1, double yellowPoisonTickSeconds = 1,
-            double yellowPoisonSeconds = 5, double barAttackRate = 2, double barSeconds = 10,
+        public static SlotRules Create(double redHpRate = 0.2, double blueStopSeconds = 3,
+            double greenHealRate = 0.5, double yellowHpRate = 0.04, double yellowPoisonTickSeconds = 1,
+            double yellowPoisonSeconds = 5, double barAttackStep = 1, double barSeconds = 10,
             double coinStep = 0.1, double coinCap = 1.5, double redDelaySeconds = 0, double blueDelaySeconds = 0,
-            double greenDelaySeconds = 0, double yellowDelaySeconds = 0, double barDelaySeconds = 0, double coinDelaySeconds = 0) =>
+            double greenDelaySeconds = 0, double yellowDelaySeconds = 0, double barDelaySeconds = 0, double coinDelaySeconds = 0,
+            double bossDamageRate = 0.5, double lineHitRate = 0.6, double lineGapSeconds = 0.4, int showcaseCoins = 3) =>
             SlotRules.Load(CsvParser.Parse(SlotRules.FileName,
                 "key,value\nfirst_stop_seconds,1\nstop_interval_seconds,0.4\n" +
-                $"red_damage,{redDamage}\nred_delay_seconds,{N(redDelaySeconds)}\nblue_stop_seconds,{N(blueStopSeconds)}\nblue_delay_seconds,{N(blueDelaySeconds)}\ngreen_heal_rate,{N(greenHealRate)}\n" +
+                $"red_hp_rate,{N(redHpRate)}\nred_delay_seconds,{N(redDelaySeconds)}\nblue_stop_seconds,{N(blueStopSeconds)}\nblue_delay_seconds,{N(blueDelaySeconds)}\ngreen_heal_rate,{N(greenHealRate)}\n" +
                 $"green_delay_seconds,{N(greenDelaySeconds)}\nyellow_delay_seconds,{N(yellowDelaySeconds)}\n" +
-                $"yellow_poison_damage,{yellowPoisonDamage}\nyellow_poison_tick_seconds,{N(yellowPoisonTickSeconds)}\n" +
-                $"yellow_poison_seconds,{N(yellowPoisonSeconds)}\nbar_attack_rate,{N(barAttackRate)}\nbar_seconds,{N(barSeconds)}\nbar_delay_seconds,{N(barDelaySeconds)}\n" +
-                $"coin_step,{N(coinStep)}\ncoin_cap,{N(coinCap)}\ncoin_delay_seconds,{N(coinDelaySeconds)}\n"));
+                $"yellow_hp_rate,{N(yellowHpRate)}\nyellow_poison_tick_seconds,{N(yellowPoisonTickSeconds)}\n" +
+                $"yellow_poison_seconds,{N(yellowPoisonSeconds)}\nbar_attack_step,{N(barAttackStep)}\nbar_seconds,{N(barSeconds)}\nbar_delay_seconds,{N(barDelaySeconds)}\n" +
+                $"coin_step,{N(coinStep)}\ncoin_cap,{N(coinCap)}\ncoin_delay_seconds,{N(coinDelaySeconds)}\n" +
+                $"boss_damage_rate,{N(bossDamageRate)}\nline_hit_rate,{N(lineHitRate)}\nline_gap_seconds,{N(lineGapSeconds)}\nshowcase_coins,{showcaseCoins}\n"));
 
         /// <summary>3本の並び（図柄 ID を空白区切り）から slot_reels を作る。</summary>
         public static SlotReels Reels(string left = PlanLeft, string center = PlanCenter, string right = PlanRight) =>

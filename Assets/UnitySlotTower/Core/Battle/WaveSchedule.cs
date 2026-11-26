@@ -41,6 +41,9 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>前のウェーブの始まりから、決めた時刻で次が来るまでの秒数（stage_waves.csv、timed のときだけ使う）。</summary>
         public double StartAfter { get; internal set; }
 
+        /// <summary>ステージ1の見せ場のウェーブ（stage_waves.csv の slot_showcase、spec 011 FR-031）。出し終わると戦闘を止めてレバーを待つ。</summary>
+        public bool SlotShowcase { get; internal set; }
+
         /// <summary>時刻の早い順（同時刻は CSV の行順・群れの中の順）。</summary>
         public IReadOnlyList<WaveSpawn> Spawns => SpawnList;
     }
@@ -56,6 +59,7 @@ namespace UnitySlotTower.Core.Battle
 
         /// <summary>ウェーブの番号の列。なければ全行がウェーブ1。</summary>
         public const string WaveColumn = "wave";
+        public const string SlotShowcaseColumn = "slot_showcase";
 
         /// <summary>群れ（FR-034、plan 17.3）: 1行で count 体を interval 秒ごとに出す。列がなければ1体。</summary>
         public const string CountColumn = "count";
@@ -192,6 +196,7 @@ namespace UnitySlotTower.Core.Battle
                 }
 
                 wave.StartAfter = row.GetDouble("start_after");
+                wave.SlotShowcase = stageWaves.HasColumn(SlotShowcaseColumn) && row.GetBool(SlotShowcaseColumn);
                 listed.Add(number);
             }
 

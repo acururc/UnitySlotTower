@@ -199,18 +199,24 @@ namespace UnitySlotTower.Flow
         // 開くたびに今の値で書き直す（設定・強化段階は一時停止の前に変わっている）。
         private void Refresh()
         {
-            // 20パターンの内訳（plan 16.10）。% は個数×(100/合計)。
+            // ライン1本あたりの確率（spec 011 FR-022）: ハズレは 1-揃う確率、図柄は 揃う確率×重み/重みの合計（発動中の除外は考えない）。
             var patterns = slotCabinet.Patterns;
-            var counts = new int[SlotSymbols.Count + 1];
+            var hitRate = slotCabinet.Rules.LineHitRate;
+            var counts = new int[SlotSymbols.Count];
+            var total = 0;
             foreach (var outcome in patterns)
             {
-                counts[outcome.HasValue ? (int)outcome.Value : SlotSymbols.Count]++;
+                if (outcome.HasValue)
+                {
+                    counts[(int)outcome.Value]++;
+                    total++;
+                }
             }
 
-            missText.SetText("{0}%", Percent(counts[SlotSymbols.Count], patterns.Count));
+            missText.SetText("{0}%", PercentOf(1 - hitRate));
             for (var s = 0; s < SlotSymbols.Count; s++)
             {
-                chanceTexts[s].SetText("{0}%", Percent(counts[s], patterns.Count));
+                chanceTexts[s].SetText("{0}%", PercentOf(total > 0 ? hitRate * counts[s] / total : 0));
             }
 
             RefreshEffects();
@@ -245,8 +251,7 @@ namespace UnitySlotTower.Flow
             BuildGridsOnce();
         }
 
-        private static int Percent(int count, int total) =>
-            total > 0 ? (int)Math.Round(count * 100.0 / total, MidpointRounding.AwayFromZero) : 0;
+        private static int PercentOf(double rate) => (int)Math.Round(rate * 100, MidpointRounding.AwayFromZero);
 
         private static void SetCap(TMP_Text cap, int seconds)
         {
@@ -274,7 +279,7 @@ namespace UnitySlotTower.Flow
                 switch ((SlotSymbol)s)
                 {
                     case SlotSymbol.Red7:
-                        effect.SetText("-{0}", rules.RedDamage);
+                        effect.SetText("-{0}%", PercentOf(rules.RedHpRate));
                         break;
                     case SlotSymbol.Blue7:
                         effect.SetText("×0");
@@ -284,11 +289,11 @@ namespace UnitySlotTower.Flow
                         effect.SetText("+{0}%", (int)Math.Round(rules.GreenHealRate * 100, MidpointRounding.AwayFromZero));
                         break;
                     case SlotSymbol.Yellow7:
-                        effect.SetText("-{0}", rules.YellowPoisonDamage);
+                        effect.SetText("-{0}%", PercentOf(rules.YellowHpRate));
                         SetCap(cap, Seconds(rules.YellowPoisonSeconds));
                         break;
                     case SlotSymbol.Bar:
-                        effect.SetText("×{0:1}", (float)rules.BarAttackRate);
+                        effect.SetText("×{0:1}", (float)(1 + rules.BarAttackStep));
                         SetCap(cap, Seconds(rules.BarSeconds));
                         break;
                     case SlotSymbol.Coin:

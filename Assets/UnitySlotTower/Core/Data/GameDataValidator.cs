@@ -30,7 +30,7 @@ namespace UnitySlotTower.Core.Data
         {
             ColumnRule.Float("first_stop_seconds", 0, 60),
             ColumnRule.Float("stop_interval_seconds", 0, 60),
-            ColumnRule.Int("red_damage", 0, 100000),
+            ColumnRule.Float("red_hp_rate", 0, 10),
             ColumnRule.Float("red_delay_seconds", 0, 10),
             ColumnRule.Float("blue_stop_seconds", 0, 600),
             ColumnRule.Float("blue_delay_seconds", 0, 10),
@@ -39,13 +39,17 @@ namespace UnitySlotTower.Core.Data
             ColumnRule.Float("yellow_delay_seconds", 0, 10),
             ColumnRule.Float("bar_delay_seconds", 0, 10),
             ColumnRule.Float("coin_delay_seconds", 0, 10),
-            ColumnRule.Int("yellow_poison_damage", 0, 100000),
+            ColumnRule.Float("yellow_hp_rate", 0, 10),
             ColumnRule.Float("yellow_poison_tick_seconds", 0.01, 60),
             ColumnRule.Float("yellow_poison_seconds", 0, 600),
-            ColumnRule.Float("bar_attack_rate", 1, 10),
+            ColumnRule.Float("bar_attack_step", 0, 10),
             ColumnRule.Float("bar_seconds", 0, 600),
             ColumnRule.Float("coin_step", 0, 10),
             ColumnRule.Float("coin_cap", 1, 10),
+            ColumnRule.Float("boss_damage_rate", 0, 10),
+            ColumnRule.Float("line_hit_rate", 0, 1),
+            ColumnRule.Float("line_gap_seconds", 0, 10),
+            ColumnRule.Int("showcase_coins", 1, 1000),
         };
 
         // Schemas より前に置く（静的フィールドは書いた順に初期化される）。
@@ -113,7 +117,8 @@ namespace UnitySlotTower.Core.Data
             new TableSchema(WaveSchedule.StageWavesFileName, new[] { "stage", WaveSchedule.WaveColumn },
                 ColumnRule.Int("stage", 1, 99),
                 ColumnRule.Int(WaveSchedule.WaveColumn, 1, 99),
-                ColumnRule.Float("start_after", 0, 3600)),
+                ColumnRule.Float("start_after", 0, 3600),
+                ColumnRule.Bool(WaveSchedule.SlotShowcaseColumn)),
             new TableSchema("waves.csv", null,
                 ColumnRule.Int("stage", 1, 99),
                 ColumnRule.Int(WaveSchedule.WaveColumn, 1, 99),

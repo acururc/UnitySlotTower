@@ -269,6 +269,7 @@ namespace UnitySlotTower.Battle
                 Field.BarBurst -= OnBarBurst;
                 Field.UnitAttacked -= OnUnitAttacked;
                 Field.CoinGained -= OnCoinGained;
+                Field.ShowcaseHeld -= OnShowcaseHeld;
                 Field.EnemyDefeated -= OnEnemyDefeated;
             }
 
@@ -278,6 +279,7 @@ namespace UnitySlotTower.Battle
             {
                 slotCabinet.Aligned -= OnSlotAligned;
                 slotCabinet.OutcomeFilter = null;
+                slotCabinet.LeverPulled -= OnShowcaseLever;
             }
         }
 
@@ -313,6 +315,7 @@ namespace UnitySlotTower.Battle
                 Field.BarBurst -= OnBarBurst;
                 Field.UnitAttacked -= OnUnitAttacked;
                 Field.CoinGained -= OnCoinGained;
+                Field.ShowcaseHeld -= OnShowcaseHeld;
                 Field.EnemyDefeated -= OnEnemyDefeated;
             }
 
@@ -331,12 +334,14 @@ namespace UnitySlotTower.Battle
             Field.BarBurst += OnBarBurst;
             Field.UnitAttacked += OnUnitAttacked;
             Field.CoinGained += OnCoinGained;
+            Field.ShowcaseHeld += OnShowcaseHeld;
             Field.EnemyDefeated += OnEnemyDefeated;
             BaseFlashUntil = 0f;
             EdgeFlash.Hide();
             _victoryLeft = 0f;
             BattleSpeed = 1;
             _completionReported = false;
+            ResetShowcase();
             UpdateSlotLock();
             fieldView.Show(map);
             fieldView.Observe(Field);
@@ -351,8 +356,64 @@ namespace UnitySlotTower.Battle
             return isFinal ? RouteNodeKinds.Boss : RouteNodeKinds.Elite;
         }
 
-        // 揃った図柄の効果を戦闘へ渡す（FR-042）。
-        private void OnSlotAligned(SlotSymbol symbol) => Run?.ApplySlot(symbol);
+        // 揃った図柄の効果を、揃えた賭け枚数の強さで戦闘へ渡す（FR-042、spec 011 FR-020）。
+        // 見せ場で止めている戦闘は、最初の揃いで動かす（spec 011 FR-032）。
+        private void OnSlotAligned(SlotSymbol symbol)
+        {
+            if (Run == null)
+            {
+                return;
+            }
+
+            if (Field.IsShowcaseHolding && _showcaseLeverPulled)
+            {
+                Field.ReleaseShowcase();
+                _showcaseLeverPulled = false;
+            }
+
+            Run.ApplySlot(symbol, slotCabinet.LastAlignedPower);
+        }
+
+        /// <summary>ステージ1の見せ場の決め打ちの三重当たり（中段 赤7・上段 青7・下段 バー、spec 011 FR-032）。</summary>
+        public static readonly SlotLineHit[] ShowcaseHits =
+        {
+            new SlotLineHit(0, SlotSymbol.Red7), new SlotLineHit(-1, SlotSymbol.Blue7), new SlotLineHit(1, SlotSymbol.Bar),
+        };
+
+        private bool _showcaseLeverPulled;
+
+        // 見せ場のウェーブが出そろって戦闘が止まった（spec 011 FR-031）: コインを補い、賭けを3枚にし、レバーを示す。
+        private void OnShowcaseHeld()
+        {
+            var wallet = slotCabinet.Wallet;
+            var need = slotCabinet.Rules.ShowcaseCoins - wallet.Coins;
+            if (need > 0)
+            {
+                wallet.Add(need);
+            }
+
+            slotCabinet.SetBet(SlotMachine.MaxBet);
+            slotCabinet.ForcedHits = ShowcaseHits;
+            slotCabinet.LeverHighlighted = true;
+            slotCabinet.LeverPulled -= OnShowcaseLever;
+            slotCabinet.LeverPulled += OnShowcaseLever;
+        }
+
+        private void OnShowcaseLever()
+        {
+            slotCabinet.LeverPulled -= OnShowcaseLever;
+            slotCabinet.LeverHighlighted = false;
+            _showcaseLeverPulled = true;
+        }
+
+        // ステージを始め直したら見せ場の途中の状態を消す（やり直しで見せ場がもう一度起きる、FR-033）。
+        private void ResetShowcase()
+        {
+            slotCabinet.LeverPulled -= OnShowcaseLever;
+            slotCabinet.ForcedHits = null;
+            slotCabinet.LeverHighlighted = false;
+            _showcaseLeverPulled = false;
+        }
 
         private void Update()
         {

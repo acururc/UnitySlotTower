@@ -83,12 +83,12 @@ namespace UnitySlotTower.Tests.EditMode.Data
         {
             var patterns = SlotPatterns.Load(Parse(files, SlotPatterns.FileName));
             var reels = SlotReels.Load(Parse(files, SlotReels.FileName));
-            var machine = new SlotMachine(reels, patterns.Patterns, new CoinWallet(spins), 1, new SeededRandom(7));
+            var machine = new SlotMachine(reels, patterns.Patterns, new CoinWallet(spins), new SeededRandom(7), 0.6);
             var hits = 0;
             for (var i = 0; i < spins; i++)
             {
                 Assert.That(machine.TryLever(), Is.EqualTo(LeverResult.Started));
-                if (machine.Outcome == SlotSymbol.Red7)
+                if (machine.Hits.Any(h => h.Symbol == SlotSymbol.Red7))
                 {
                     hits++;
                 }
@@ -140,16 +140,16 @@ namespace UnitySlotTower.Tests.EditMode.Data
             var before = Red7Hits(TablePaths.ReadAll(), spins);
             var after = Red7Hits(changed, spins);
 
-            // 期待値は 15%（300回）→ 30%（600回）。シード固定なので結果は毎回同じ。
-            Assert.That(before, Is.InRange(200, 400), "変更前の red7 の回数");
-            Assert.That(after, Is.InRange(500, 700), "変更後の red7 の回数");
+            // 1ライン 60% × 重み: 期待値は 9%（180回）→ 18%（360回）。シード固定なので結果は毎回同じ。
+            Assert.That(before, Is.InRange(120, 240), "変更前の red7 の回数");
+            Assert.That(after, Is.InRange(280, 440), "変更後の red7 の回数");
         }
 
         [Test]
-        [Description("図柄効果: slot_rules.csv の bar_attack_rate")]
+        [Description("図柄効果: slot_rules.csv の bar_attack_step（倍率 1+幅×1枚）")]
         public void Bar_Effect_Follows_Slot_Rules_Csv()
         {
-            var changed = TablesWith(SlotRules.FileName, "value", "3", ("key", "bar_attack_rate"));
+            var changed = TablesWith(SlotRules.FileName, "value", "2", ("key", "bar_attack_step"));
 
             Assert.That((AttackRateAfterOneBar(TablePaths.ReadAll()), AttackRateAfterOneBar(changed)),
                 Is.EqualTo((2.0, 3.0)));

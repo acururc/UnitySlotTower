@@ -34,13 +34,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             "8,0,melee,S1,boss_a_g1,0\n8,3,melee,S1,boss_a_g1,0\n";
 
         private static string _waves;
-        private HitRandom _random;
-
         [SetUp]
         public void SetUp()
         {
-            _random = new HitRandom();
-            SlotCabinet.RandomOverride = _random;
+            SlotCabinet.RandomOverride = new Core.Simulation.SeededRandom(1);
             SceneManager.sceneLoaded += ReplaceWaves;
         }
 
@@ -71,16 +68,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
 
             // バーを揃えて操作バーに攻撃力の倍率を出す。
             var cabinet = Object.FindAnyObjectByType<SlotCabinet>();
-            _random.Index = -1;
-            for (var i = 0; i < cabinet.Patterns.Count && _random.Index < 0; i++)
-            {
-                if (cabinet.Patterns[i] == Core.Slot.SlotSymbol.Bar)
-                {
-                    _random.Index = i;
-                }
-            }
-
-            Assert.That(_random.Index, Is.GreaterThanOrEqualTo(0), "抽選表にバーがない");
+            cabinet.ForcedHits = new[] { new Core.Slot.SlotLineHit(0, Core.Slot.SlotSymbol.Bar) };
             yield return SpinAndStopAll(cabinet);
             yield return null;
             AssertNoLetters("戦闘（効果中）");
@@ -221,16 +209,6 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             typeof(BattleController)
                 .GetField("wavesTable", BindingFlags.Instance | BindingFlags.NonPublic)
                 .SetValue(battle, new TextAsset(_waves));
-        }
-
-        // 20パターンの Index 番目を選ぶ（ハズレのときの止まり方は Index 番目の組み合わせ）。
-        private sealed class HitRandom : IRandom
-        {
-            public int Index;
-
-            public int NextInt(int minInclusive, int maxExclusive) => Index;
-
-            public double NextDouble() => 0.999;
         }
     }
 }

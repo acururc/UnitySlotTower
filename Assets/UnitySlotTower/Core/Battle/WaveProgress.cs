@@ -50,6 +50,9 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>全ウェーブが始まり、すべて出し終わった。</summary>
         public bool IsFinished => StartedWaves == WaveCount && Unspawned == 0;
 
+        /// <summary>ウェーブ index（0始まり）が始まり、出現をすべて出し終わった。</summary>
+        public bool IsWaveEmitted(int index) => index < StartedWaves && _emitted[index] == Schedule.Waves[index].Spawns.Count;
+
         /// <summary>
         /// 1ステップ進める。<paramref name="enemiesOnField"/> はこのステップの始めに盤上にいる敵の数。
         /// 次のウェーブを始めるかを決めてから、時刻になった出現を <paramref name="due"/> に足す（ウェーブの順・出現の順）。
