@@ -49,6 +49,8 @@ namespace UnitySlotTower.Slot
         [SerializeField] private TMP_Text creditText;
         [Tooltip("BET ボタンの上のコインの絵（1〜3枚目）。次に賭ける枚数だけ表示する。")]
         [SerializeField] private GameObject[] betCoins = new GameObject[SlotMachine.MaxBet];
+        [Tooltip("BET ボタンの空きの丸の枠（1〜3枚目）。賭けていない場所だけ表示する。")]
+        [SerializeField] private GameObject[] betSlots = new GameObject[SlotMachine.MaxBet];
         [Tooltip("有効ラインの印（上段・中段・下段の順を左右など何組でも）。有効なラインだけ明るくする（spec 011 FR-002）。")]
         [SerializeField] private Graphic[] lineMarks = new Graphic[SlotMachine.RowCount * 2];
         [Tooltip("ステージ1の見せ場でレバーを指す矢印（spec 011 FR-031）。")]
@@ -402,6 +404,11 @@ namespace UnitySlotTower.Slot
                 if (betCoins[i] != null)
                 {
                     betCoins[i].SetActive(i < bet);
+                }
+
+                if (i < betSlots.Length && betSlots[i] != null)
+                {
+                    betSlots[i].SetActive(i >= bet);
                 }
             }
 

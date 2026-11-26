@@ -226,17 +226,28 @@ namespace UnitySlotTower.Editor.Setup
                 }
             }
 
-            // BET ボタン: コイン表示の下。押すと 1→2→3→1。コインの絵は左から1〜3枚目。
-            var bet = CreateButton(BetButtonName, slotArea, new Vector2(0.76f, 0.07f), new Vector2(0.986f, 0.24f),
-                new Color(0.25f, 0.22f, 0.3f));
+            // BET ボタン: レバーのすぐ右に同じ高さで（リールにかぶらない）。押すと 1→2→3→1。
+            // 左から1〜3枚目の場所に、賭けていない分は黄色くない丸の枠、賭けた分はその上にコインの絵を出す。
+            var leverRect = cabinet.LeverRect;
+            var bet = CreateButton(BetButtonName, slotArea, new Vector2(leverRect.anchorMax.x + 0.015f, leverRect.anchorMin.y),
+                new Vector2(leverRect.anchorMax.x + 0.2f, leverRect.anchorMax.y), new Color(0.25f, 0.22f, 0.3f));
             bet.GetComponent<Image>().sprite = _box;
+            bet.GetComponent<Image>().type = Image.Type.Sliced;
             bet.GetComponent<Image>().preserveAspect = false;
             var coins = new Object[SlotMachine.MaxBet];
+            var frames = new Object[SlotMachine.MaxBet];
             for (var i = 0; i < coins.Length; i++)
             {
-                var left = 0.06f + i * 0.31f;
-                coins[i] = CreateImage($"Bet Coin {i + 1}", (RectTransform)bet.transform, new Vector2(left, 0.15f),
-                    new Vector2(left + 0.26f, 0.85f), new Color(1f, 0.82f, 0.2f), _knob, true).gameObject;
+                var left = 0.05f + i * 0.31f;
+                var min = new Vector2(left, 0.15f);
+                var max = new Vector2(left + 0.28f, 0.85f);
+                // 丸の枠: 灰色の丸の内側をボタンの色でくり抜く。
+                var frame = CreateImage($"Bet Slot {i + 1}", (RectTransform)bet.transform, min, max, new Color(0.7f, 0.7f, 0.75f), _knob, true);
+                CreateImage("Hole", frame.rectTransform, new Vector2(0.14f, 0.14f), new Vector2(0.86f, 0.86f),
+                    new Color(0.25f, 0.22f, 0.3f), _knob, true);
+                frames[i] = frame.gameObject;
+                coins[i] = CreateImage($"Bet Coin {i + 1}", (RectTransform)bet.transform, min, max, new Color(1f, 0.82f, 0.2f), _knob, true)
+                    .gameObject;
             }
 
             // 有効ラインの印: 窓の左右、上段・中段・下段の高さに三角（左の3つ、右の3つの順）。
@@ -264,19 +275,20 @@ namespace UnitySlotTower.Editor.Setup
                 }
             }
 
-            // 見せ場の矢印: レバーの右から左を指す三角。
-            var leverRect = cabinet.LeverRect;
-            var hintMin = new Vector2(leverRect.anchorMax.x + 0.01f, Mathf.Lerp(leverRect.anchorMin.y, leverRect.anchorMax.y, 0.3f));
-            var hintMax = new Vector2(leverRect.anchorMax.x + 0.07f, Mathf.Lerp(leverRect.anchorMin.y, leverRect.anchorMax.y, 0.7f));
+            // 見せ場の矢印: レバーの下から上を指す三角（右は BET ボタン）。
+            var leverWidth = leverRect.anchorMax.x - leverRect.anchorMin.x;
+            var hintMin = new Vector2(leverRect.anchorMin.x + leverWidth * 0.3f, leverRect.anchorMin.y - 0.09f);
+            var hintMax = new Vector2(leverRect.anchorMin.x + leverWidth * 0.7f, leverRect.anchorMin.y - 0.01f);
             var hint = CreateRect(LeverHintName, slotArea, hintMin, hintMax).gameObject.AddComponent<TriangleGraphic>();
             hint.color = new Color(1f, 0.85f, 0.2f);
             hint.raycastTarget = false;
-            hint.rectTransform.localEulerAngles = new Vector3(0f, 0f, 180f);
+            hint.Pointing = TriangleGraphic.Direction.Up;
             hint.gameObject.SetActive(false);
 
             var serialized = new SerializedObject(cabinet);
             serialized.FindProperty("betButton").objectReferenceValue = bet;
             SetArray(serialized.FindProperty("betCoins"), coins);
+            SetArray(serialized.FindProperty("betSlots"), frames);
             SetArray(serialized.FindProperty("lineMarks"), marks);
             serialized.FindProperty("leverHint").objectReferenceValue = hint.gameObject;
             serialized.ApplyModifiedPropertiesWithoutUndo();
