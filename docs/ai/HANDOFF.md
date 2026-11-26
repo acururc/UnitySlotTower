@@ -2,17 +2,17 @@
 
 ## 現在の作業
 
-更新: 2026-11-26 Asia/Tokyo / 状態: **spec 009（コインの噴水と敵のドロップが表示へ飛ぶ演出）完了（ユーザー確認 OK）。出目の演出の作り直し（spec 003〜009）はすべて完了。次の作業は未定（ユーザーに聞く）。**
+更新: 2026-11-26 Asia/Tokyo / 状態: **sakurai スキルの全体評価（7項目）をすべて組み入れる作業中。1本目の spec 010（ゲームオーバーからステージをやり直す）は実装と自動テストまで完了、T1405 のユーザー確認待ち。**
 
-- spec 009: [`spec.md`](../../specs/009-coin-shower/spec.md)・[`plan.md`](../../specs/009-coin-shower/plan.md)・[`tasks.md`](../../specs/009-coin-shower/tasks.md)。中心は `Runtime/Battle/CoinFountainEffect.cs`（UI 層）と Setup `Build Coin Fountain Effect (spec 009)`。Core に `coin_delay_seconds`・`SlotEffects.QueueCoin`・`Battlefield.CoinGained`/`EnemyDefeated(enemy, money, coins)`。表示の遅れは `OperationBarStatus.MoneyHeldBack`・`SlotCabinet.CreditHeldBack`。
-- 同日の別件の修正: `UnitBarIcon` の料金は待ち時間中でもお金が足りなければ赤。
-- 最終検証（2026-11-26）: EditMode 576/576、PlayMode 成功69/失敗0/Explicit 1、ハーネス 8/8。
-- そのほかの候補: 001 の M5（T501〜T505、002・003 に合わせて見直す）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。001 の T399・T429 はユーザー指示で完了扱いでよい（tasks.md は未更新）。
-- 完了済み: spec 009・008・007・006・005・004・003・002。Setup を再実行すると Inspector の調整値は初期値に戻る。
+- 評価の7項目と spec の順（ユーザーが「すべて組み入れる、順番は任せる」と指示）: 010 やり直し（#5）→ 011 スロットの作り直し（#1 回すか迷いがない＝ハズレなし・全部プラス・コイン余り、#2 赤7/毒が固定ダメージで後半弱い、#7 ステージ1にスロットの見せ場）→ 012 味方ごとの強化（#3。ユーザー案: 職ごとに強化内容を変え、モデルや攻撃方法〔連射→ためて一撃など〕も変わる）→ 013 ステージと敵の変化（#4 ステージ5〜7が同じ構成、敵の尖り不足）→ 014 音（#6 音声ファイルが1つもない）。各 spec は聞き取り→承認→実装の順。
+- spec 010: [`spec.md`](../../specs/010-stage-retry/spec.md)・[`plan.md`](../../specs/010-stage-retry/plan.md)・[`tasks.md`](../../specs/010-stage-retry/tasks.md)。`RunState.RecordStageStart/RestoreStageStart`、`RunController.RetryStage`、`ResultScreen`（ゲームオーバー3ボタン／クリア2ボタン）、Setup `Update Result Screen (spec 010)`（実行済み）。
+- 最終検証（2026-11-26）: EditMode 579/579、PlayMode 成功70/失敗0/Explicit 1、ハーネス 8/8。
+- spec 009 まで（出目の演出の作り直し 003〜009）は完了。そのほかの候補: 001 の M5（T501〜T505）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。001 の T399・T429 はユーザー指示で完了扱いでよい（tasks.md は未更新）。
+- 完了済み: spec 009・008・007・006・005・004・003・002。リザルトのボタンは本体の Image が透明で、見た目は子の `Skin`（`UiSkin`/`UiPanel`）が描く。Setup を再実行すると Inspector の調整値は初期値に戻る。
 - Setup をかけると Game.unity の差分が大きく見える（行の並べ替え）。行の集合で比べる。`PortraitScreenLayout`（ExecuteAlways）がカメラの表示範囲と CanvasScaler の match を Game ビューの大きさで書き換えるのは無害。
 - 素材の方針: AI が取るログイン不要の無料素材だけ（有料は使わない）。
 - ブランチ: main に直接コミットして origin へ push。main は core.autocrlf で CSV が CRLF になる。
-- Unity 接続: 2026-11-26 に停止を確認済み（8080 閉）。PlayMode テストは Editor を前面に出してもらう。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（16GB）。
+- Unity 接続: 2026-11-26 spec 010 の検証後に停止を確認済み（8080 閉）。PlayMode テストは Editor を前面に出してもらう。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（16GB）。
 
 ### 作業の注意
 - テストの手順: refresh → 約25秒 → code execute で `scriptCompilationFailed` と `isCompiling` を確認 → `tests --async` を1回 → 同じ job_id を前景のループで poll（[`UNITY_AUTOMATION.md`](UNITY_AUTOMATION.md) の Tests 節）。PlayMode 全件は約4分。スクリプトは毎回 `$env:TEMP` などに作り直す。

@@ -66,8 +66,19 @@ namespace UnitySlotTower.Flow
             BeginStage();
         }
 
+        /// <summary>
+        /// ゲームオーバーから、いまのステージを始めからやり直す（spec 010 FR-201・FR-203）。ライフ・所持金・コイン・強化を
+        /// ステージ開始時の値に戻し、同じシーンでステージを始め直す。
+        /// </summary>
+        public void RetryStage()
+        {
+            State.RestoreStageStart();
+            BeginStage();
+        }
+
         private void BeginStage()
         {
+            State.RecordStageStart();
             battle.BeginStage(State);
             StageBegan?.Invoke(State.StageIndex);
         }

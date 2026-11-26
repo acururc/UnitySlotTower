@@ -110,8 +110,25 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 Is.EqualTo(("¥" + oldState.Money.Coins, oldState.Coins.Coins.ToString())), "所持金・コインの表示が違う");
             battle.SetPaused(true);
             Assert.That(battle.IsPaused, Is.False, "リザルト中に一時停止できてしまう");
+            Assert.That((result.StageRetryButton.gameObject.activeSelf, result.Selected), Is.EqualTo((true, 0)),
+                "spec 010 AC-203: ゲームオーバーで やり直し のボタンが出ない／最初に選ばれていない");
 
-            // AC-004: Enter（初期選択の ▶）でリトライ。ステージ・進行・ライフ・所持金・コインが初期状態に戻る。
+            // spec 010 AC-203: Enter（初期選択の やり直し）で、同じシーンのままステージ1の始めに戻る。
+            var nodes = battle.NodeCount;
+            yield return Press(Key.Enter, () => !result.IsOpen);
+            Assert.That((Object.FindAnyObjectByType<BattleController>() == battle, run.State == oldState, result.IsOpen),
+                Is.EqualTo((true, true, false)), "やり直しでシーンが読み込み直された／リザルトが閉じない");
+            Assert.That((battle.StageNumber, battle.NodeCount, battle.Field.Life, oldState.Money.Coins, oldState.Coins.Coins),
+                Is.EqualTo((1, nodes + 1, startLife, startMoney, startCoins)), "やり直しでステージ1の開始時に戻らない");
+
+            // もう一度負けて、→ で「最初から」を選んで Enter（AC-004 のリトライ）。
+            yield return PlayUntilFinished(battle);
+            yield return null;
+            Assert.That(result.IsOpen, Is.True, "2回目のゲームオーバーでリザルトが開かない");
+            yield return Press(Key.RightArrow, () => result.Selected == 1);
+            Assert.That(result.Selected, Is.EqualTo(1), "→ で「最初から」を選べない");
+
+            // AC-004: 最初から。ステージ・進行・ライフ・所持金・コインが初期状態に戻る。
             yield return Press(Key.Enter, () => SceneManager.GetActiveScene().name == GameSession.GameScene &&
                                                 Object.FindAnyObjectByType<BattleController>() != battle);
             yield return WaitForGame();
@@ -123,6 +140,63 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That((run.State.StageIndex, battle.StageNumber, battle.NodeCount, battle.Field.Life, run.State.Money.Coins, run.State.Coins.Coins),
                 Is.EqualTo((1, 1, 1, startLife, startMoney, startCoins)), "リトライで進行が初期化されない");
             Assert.That(result.IsOpen, Is.False, "リトライ後にリザルトが開いている");
+        }
+
+        // spec 010 用: ステージ1は近接1体（ゴールしてライフ9でクリア）、ステージ2で近接13体に負ける。
+        private const string LoseAtStageTwoWaves =
+            "stage,time,enemy_id,spawn,path_id,is_boss\n" +
+            "1,0,melee,S1,first_g1,0\n" +
+            "2,0,melee,S1,battle_a_g1,0\n2,1,melee,S1,battle_a_g1,0\n2,2,melee,S1,battle_a_g1,0\n2,3,melee,S1,battle_a_g1,0\n" +
+            "2,4,melee,S1,battle_a_g1,0\n2,5,melee,S1,battle_a_g1,0\n2,6,melee,S1,battle_a_g1,0\n2,7,melee,S1,battle_a_g1,0\n" +
+            "2,8,melee,S1,battle_a_g1,0\n2,9,melee,S1,battle_a_g1,0\n2,10,melee,S1,battle_a_g1,0\n2,11,melee,S1,battle_a_g1,0\n" +
+            "2,12,melee,S1,battle_a_g1,0\n";
+
+        [UnityTest]
+        [Description("spec 010 AC-202: ステージ2で負けて やり直し を選ぶと、ステージ2の開始時の値（ライフ・所持金・コイン・強化）で、" +
+                     "盤上に味方・敵がなく、コインの倍率が初期値のまま同じステージが始まる")]
+        public IEnumerator Retrying_Stage_Two_Restores_The_Stage_Start()
+        {
+            _waves = LoseAtStageTwoWaves;
+            GameSession.StartGame();
+            yield return WaitForGame();
+            var battle = Object.FindAnyObjectByType<BattleController>();
+            var run = Object.FindAnyObjectByType<RunController>();
+            var result = Object.FindAnyObjectByType<ResultScreen>();
+            var state = run.State;
+
+            // ステージ2が始まるまで早送り（ステージ1の1体はゴールに着く）。
+            Time.timeScale = 20f;
+            var limit = Time.realtimeSinceStartup + 60f;
+            while (battle.StageNumber < 2 && Time.realtimeSinceStartup < limit)
+            {
+                if (!battle.IsShowingVictory) Time.timeScale = 20f;
+                yield return null;
+            }
+
+            Time.timeScale = 1f;
+            Assert.That(battle.StageNumber, Is.EqualTo(2), "ステージ2へ進まない");
+            var start = (state.Life, state.Money.Coins, state.Coins.Coins, state.Upgrades.Level("sword"));
+            var total = battle.Run.RemainingEnemies;
+
+            // ステージ2の中で値を変える: 所持金を足して強化し、コインを使い、コインの倍率を上げる。
+            state.Money.Add(1000);
+            Assert.That(state.Upgrades.TryUpgrade("sword"), Is.EqualTo(UpgradeResult.Upgraded), "強化できない");
+            state.Coins.TrySpend(1);
+            battle.Run.ApplySlot(SlotSymbol.Coin);
+
+            yield return PlayUntilFinished(battle);
+            yield return null;
+            Assert.That((battle.Run.Phase, result.IsOpen, battle.StageNumber), Is.EqualTo((WavePhase.GameOver, true, 2)),
+                "ステージ2でゲームオーバーのリザルトが開かない");
+
+            result.StageRetryButton.onClick.Invoke();
+            yield return null;
+            Assert.That((result.IsOpen, battle.StageNumber, run.State == state), Is.EqualTo((false, 2, true)),
+                "やり直しでステージ2が同じ RunState のまま始まらない");
+            Assert.That((state.Life, state.Money.Coins, state.Coins.Coins, state.Upgrades.Level("sword")), Is.EqualTo(start),
+                "ライフ・所持金・コイン・強化がステージ2の開始時の値に戻らない");
+            Assert.That((battle.Field.Units.Count, battle.Field.Enemies.Count, battle.Run.RemainingEnemies, battle.Field.Effects.Coins),
+                Is.EqualTo((0, 0, total, 0)), "盤面・残りの敵の数・コインの倍率がステージの開始時と違う");
         }
 
         [UnityTest]

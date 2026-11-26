@@ -51,6 +51,19 @@ namespace UnitySlotTower.Core.Battle
             return _wallet.Coins < cost.Value ? UpgradeResult.NotEnoughCoins : UpgradeResult.Upgraded;
         }
 
+        /// <summary>いまの段階の写し（ステージのやり直し: spec 010 FR-201）。後の強化で変わらない。</summary>
+        public IReadOnlyDictionary<string, int> Snapshot() => new Dictionary<string, int>(_levels);
+
+        /// <summary><see cref="Snapshot"/> の段階に戻す。写しにない種類は段階1。</summary>
+        public void Restore(IReadOnlyDictionary<string, int> snapshot)
+        {
+            _levels.Clear();
+            foreach (var pair in snapshot)
+            {
+                _levels[pair.Key] = pair.Value;
+            }
+        }
+
         /// <summary>拒否したときは何も変えない（コイン・段階）。</summary>
         public UpgradeResult TryUpgrade(string unitId)
         {

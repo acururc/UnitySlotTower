@@ -34,6 +34,17 @@ namespace UnitySlotTower.Core.Economy
             return true;
         }
 
+        /// <summary>残高を指定の値にする（ステージのやり直し: spec 010 FR-201）。</summary>
+        public void Reset(int coins)
+        {
+            if (coins < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(coins), coins, "所持コインが負");
+            }
+
+            Coins = coins;
+        }
+
         public void Add(int amount)
         {
             if (amount < 0)

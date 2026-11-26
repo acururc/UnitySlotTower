@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Data;
 using UnitySlotTower.Core.Economy;
@@ -47,6 +48,49 @@ namespace UnitySlotTower.Core.Run
         public void AdvanceStage()
         {
             StageIndex++;
+        }
+
+        private StageStart? _stageStart;
+
+        // ステージ開始時の値（spec 010 FR-201）。
+        private readonly struct StageStart
+        {
+            public readonly int Life;
+            public readonly int Money;
+            public readonly int Coins;
+            public readonly IReadOnlyDictionary<string, int> Upgrades;
+
+            public StageStart(int life, int money, int coins, IReadOnlyDictionary<string, int> upgrades)
+            {
+                Life = life;
+                Money = money;
+                Coins = coins;
+                Upgrades = upgrades;
+            }
+        }
+
+        /// <summary>いまのライフ・所持金・コイン・強化を、このステージの開始時の値として記録する（spec 010 FR-201）。</summary>
+        public void RecordStageStart()
+        {
+            _stageStart = new StageStart(Life, Money.Coins, Coins.Coins, Upgrades.Snapshot());
+        }
+
+        /// <summary>
+        /// ライフ・所持金・コイン・強化を <see cref="RecordStageStart"/> の値に戻す。ステージ番号は変えない。何度戻しても同じ値。
+        /// 記録がなければ例外。
+        /// </summary>
+        public void RestoreStageStart()
+        {
+            if (_stageStart == null)
+            {
+                throw new InvalidOperationException("ステージ開始時の値が記録されていない");
+            }
+
+            var start = _stageStart.Value;
+            Life = start.Life;
+            Money.Reset(start.Money);
+            Coins.Reset(start.Coins);
+            Upgrades.Restore(start.Upgrades);
         }
 
         /// <summary>スロットの値。戦闘マスごとの <see cref="SlotEffects"/> もこれで作る。</summary>

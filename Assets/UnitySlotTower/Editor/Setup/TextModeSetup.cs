@@ -203,6 +203,17 @@ namespace UnitySlotTower.Editor.Setup
             LeftOf(Child(panel, "Coin Icon"), "coins", 48f);
             InsideBottom(Child(panel, "Retry Button"), "result_retry", 64f, 40f);
             InsideBottom(Child(panel, "Title Button"), "result_title", 64f, 40f);
+            var stageRetry = panel.Find("Stage Retry Button") as RectTransform;
+            if (stageRetry != null) InsideBottom(stageRetry, "result_stage_retry", 64f, 40f);
+        }
+
+        /// <summary>spec 010: リザルトの「このステージから」のボタンの名前（ResultScreenSetup の spec 010 の更新が呼ぶ）。</summary>
+        internal static void AddStageRetryLabel(RectTransform button)
+        {
+            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+            _table = AssetDatabase.LoadAssetAtPath<TextAsset>(TablePath);
+            _texts = UiTexts.Parse(_table.text);
+            InsideBottom(button, "result_stage_retry", 64f, 40f);
         }
 
         internal static void AddPauseLabels(RectTransform root, HelpScreen help)

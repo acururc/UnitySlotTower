@@ -185,6 +185,88 @@ namespace UnitySlotTower.Editor.Setup
             Debug.Log("[SlotTower Setup] リザルトを T350d の版にした。");
         }
 
+        /// <summary>
+        /// spec 010: ゲームオーバーで出す「このステージからやり直す」ボタン（緑の地に ▶ と旗）を足し、最初から のボタンに「1」を添える。
+        /// RunController・SlotCabinet とボタンを ResultScreen に結び、文字あり版の名前と位置も足す。既にボタンがあれば何もしない。
+        /// 横の並び（3つ／2つ）は ResultScreen が開くときに決める。
+        /// </summary>
+        [MenuItem("Tools/UnitySlotTower/Setup/Update Result Screen (spec 010)")]
+        private static void UpdateForStageRetry()
+        {
+            var screen = Object.FindAnyObjectByType<ResultScreen>(FindObjectsInactive.Include);
+            var run = Object.FindAnyObjectByType<RunController>(FindObjectsInactive.Include);
+            var cabinet = Object.FindAnyObjectByType<UnitySlotTower.Slot.SlotCabinet>(FindObjectsInactive.Include);
+            if (screen == null || run == null || cabinet == null)
+            {
+                Debug.LogError("[SlotTower Setup] リザルト / RunController / SlotCabinet が見つからない。");
+                return;
+            }
+
+            var serialized = new SerializedObject(screen);
+            if (serialized.FindProperty("stageRetryButton").objectReferenceValue != null)
+            {
+                Debug.LogWarning("[SlotTower Setup] リザルトは既に spec 010 の版のため変更しない。");
+                return;
+            }
+
+            var retry = (Button)serialized.FindProperty("retryButton").objectReferenceValue;
+            var area = (RectTransform)retry.transform.parent;
+            _knob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
+            _box = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontPath);
+
+            // 位置は仮（ResultScreen が開くときに3列の左へ置く）。最初から のボタンより手前に並べる。
+            var retryRect = (RectTransform)retry.transform;
+            var stageRetry = CreateButton("Stage Retry Button", area, retryRect.anchorMin, retryRect.anchorMax,
+                new Color(0.25f, 0.6f, 0.3f), 0f, out var stageRetryFrame);
+            stageRetry.transform.SetSiblingIndex(retry.transform.GetSiblingIndex());
+            var stageRetryRect = (RectTransform)stageRetry.transform;
+            var flag = CreateRect("Flag Mark", stageRetryRect, new Vector2(0.62f, 0.2f), new Vector2(0.82f, 0.8f));
+            CreateImage("Pole", flag, new Vector2(0.2f, 0f), new Vector2(0.3f, 1f), Color.white, null);
+            CreateRect("Flag", flag, new Vector2(0.3f, 0.5f), new Vector2(0.9f, 1f)).gameObject.AddComponent<TriangleGraphic>()
+                .color = new Color(0.9f, 0.25f, 0.3f);
+            stageRetry.gameObject.SetActive(false);
+            // 見た目は 最初から のボタンと同じ角を切った地と縁（UiSkin）。
+            var retrySkin = retryRect.Find(UiSkin.SkinName)?.GetComponent<UiPanel>();
+            if (retrySkin != null)
+            {
+                var skin = UiSkin.Apply(stageRetry.GetComponent<Image>(), retrySkin.color, UiStyle.PanelBorder);
+                EditorUtility.CopySerialized(retrySkin, skin);
+            }
+
+            // 最初から＝ステージ1へ: ▶ の右に「1」。
+            var one = CreateText("One Mark", retryRect, new Vector2(0.62f, 0.2f), new Vector2(0.82f, 0.8f), Color.white);
+            one.text = "1";
+            one.alignment = TextAlignmentOptions.Center;
+
+            serialized.FindProperty("run").objectReferenceValue = run;
+            serialized.FindProperty("slotCabinet").objectReferenceValue = cabinet;
+            serialized.FindProperty("stageRetryButton").objectReferenceValue = stageRetry;
+            serialized.FindProperty("stageRetryFrame").objectReferenceValue = stageRetryFrame;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            // 文字あり版: 三角と印は上に寄せ、下に名前（TextModeLayoutSetup.BuildResult・TextModeSetup.AddResultLabels と同じ形）。
+            foreach (var part in new[] { stageRetryRect.Find("Arrow"), flag, retryRect.Find("One Mark") })
+            {
+                var rect = (RectTransform)part;
+                var x = new Vector2(rect.anchorMin.x, rect.anchorMax.x);
+                TextModeLayoutSetup.Set(rect.gameObject, UnitySlotTower.Ui.TextModeLayout.Parts.Rect, s =>
+                {
+                    s.anchorMin = new Vector2(x.x, 0.36f);
+                    s.anchorMax = new Vector2(x.y, 0.92f);
+                    s.offsetMin = s.offsetMax = Vector2.zero;
+                    return s;
+                });
+            }
+
+            TextModeSetup.AddStageRetryLabel(stageRetryRect);
+
+            var scene = screen.gameObject.scene;
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log("[SlotTower Setup] リザルトを spec 010 の版にした（やり直しのボタン）。");
+        }
+
         // 行の位置（パネル内の比率）。上から 到達階・所持金・コイン。
         private readonly struct Row
         {

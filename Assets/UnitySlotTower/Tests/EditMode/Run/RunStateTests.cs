@@ -95,6 +95,57 @@ namespace UnitySlotTower.Tests.EditMode.Run
         }
 
         [Test]
+        [Description("spec 010 AC-201: やり直すとライフ・所持金・コイン・強化がステージ開始時の値に戻り、ステージ番号は変わらない")]
+        public void Restoring_The_Stage_Start_Returns_Life_Money_Coins_And_Upgrades()
+        {
+            var run = Create(coins: 7, money: 100, life: 10);
+            run.AdvanceStage();
+            run.Upgrades.TryUpgrade("sword");
+            run.LoseLife(2);
+            run.RecordStageStart();
+            var start = (run.Life, run.Money.Coins, run.Coins.Coins, run.Upgrades.Level("sword"), run.Upgrades.Level("tank"));
+
+            run.Upgrades.TryUpgrade("sword");
+            run.Upgrades.TryUpgrade("tank");
+            run.Money.Add(500);
+            run.Coins.TrySpend(3);
+            run.LoseLife(10);
+            run.RestoreStageStart();
+
+            Assert.That((run.Life, run.Money.Coins, run.Coins.Coins, run.Upgrades.Level("sword"), run.Upgrades.Level("tank")),
+                Is.EqualTo(start));
+            Assert.That((run.StageIndex, run.IsGameOver), Is.EqualTo((2, false)));
+        }
+
+        [Test]
+        [Description("spec 010 AC-201: 2回続けてやり直しても同じ開始時の値に戻る（記録は戻した後の変更で書き換わらない）")]
+        public void Restoring_Twice_Returns_The_Same_Values()
+        {
+            var run = Create(coins: 7, money: 100, life: 10);
+            run.RecordStageStart();
+            var start = (run.Life, run.Money.Coins, run.Coins.Coins, run.Upgrades.Level("sword"));
+
+            run.Upgrades.TryUpgrade("sword");
+            run.LoseLife(10);
+            run.RestoreStageStart();
+            run.Upgrades.TryUpgrade("sword");
+            run.Coins.TrySpend(7);
+            run.LoseLife(10);
+            run.RestoreStageStart();
+
+            Assert.That((run.Life, run.Money.Coins, run.Coins.Coins, run.Upgrades.Level("sword")), Is.EqualTo(start));
+        }
+
+        [Test]
+        [Description("spec 010: 記録する前に戻そうとすると例外")]
+        public void Restoring_Without_A_Record_Throws()
+        {
+            var run = Create();
+
+            Assert.That(run.RestoreStageStart, Throws.InvalidOperationException);
+        }
+
+        [Test]
         public void Losing_Some_Life_Keeps_The_Run_Going()
         {
             var run = Create(life: 10);
