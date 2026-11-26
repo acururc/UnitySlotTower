@@ -34,6 +34,7 @@ namespace UnitySlotTower.Editor.Setup
             }
 
             var coin = CoinFountainTextures.Coin();
+            var bill = CoinFountainTextures.Bill();
             var sparkle = CoinFountainTextures.Sparkle();
             var glow = CoinFountainTextures.Glow();
 
@@ -66,6 +67,7 @@ namespace UnitySlotTower.Editor.Setup
             serialized.FindProperty("status").objectReferenceValue = status;
             serialized.FindProperty("battleCamera").objectReferenceValue = camera;
             serialized.FindProperty("coinSprite").objectReferenceValue = coin;
+            serialized.FindProperty("billSprite").objectReferenceValue = bill;
             serialized.FindProperty("sparkleSprite").objectReferenceValue = sparkle;
             serialized.FindProperty("glowSprite").objectReferenceValue = glow;
             serialized.ApplyModifiedPropertiesWithoutUndo();
@@ -73,7 +75,7 @@ namespace UnitySlotTower.Editor.Setup
             var scene = root.gameObject.scene;
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
-            Debug.Log($"[SlotTower Setup] コインの噴水の演出の層を足した（spec 009、{root.name} の {rect.GetSiblingIndex()} 番目、絵 {(coin != null && sparkle != null && glow != null ? "3枚" : "不足")}）。");
+            Debug.Log($"[SlotTower Setup] コインの噴水の演出の層を足した（spec 009、{root.name} の {rect.GetSiblingIndex()} 番目、絵 {(coin != null && bill != null && sparkle != null && glow != null ? "4枚" : "不足")}）。");
         }
     }
 }

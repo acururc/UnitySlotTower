@@ -8,21 +8,30 @@ using UnitySlotTower.Slot;
 namespace UnitySlotTower.Battle
 {
     /// <summary>
-    /// コインの噴水の演出（spec 009 FR-001・FR-002・FR-005・FR-006、plan 2章）。金貨は筐体（下）→戦闘モニター（上）→所持金の表示（上端の帯）を
-    /// またぐので、<see cref="SlotAlignEffect"/> と同じ UI Canvas いっぱいの透明な層に UI の Image で描く。
-    /// 揃うと中段の真ん中のマスから金貨が噴き上がって戦闘カメラが弱く揺れ（ヒットストップなし）、金貨は回りながら降ってから所持金の表示へ吸い込まれる。
-    /// 最後の金貨は Core が倍率を上げる瞬間（<see cref="BattleController.CoinGained"/>、揃ってから coin_delay_seconds）に着き、そこで所持金の表示が弾む。
-    /// 倍率が 1 より上の間は、倒した敵（<see cref="BattleController.EnemyDefeated"/>）から小さい金貨が所持金の表示へ飛び、表示の周りがきらめく。
+    /// コインの噴水の演出と、倒した敵のドロップが表示へ飛ぶ演出（spec 009 FR-001・FR-002・FR-005・FR-006・FR-009、plan 2章・7章）。
+    /// 金貨は筐体（下）→戦闘モニター（上）→上端の帯をまたぐので、<see cref="SlotAlignEffect"/> と同じ UI Canvas いっぱいの透明な層に UI の Image で描く。
+    /// 揃うと中段の真ん中のマスから金貨が噴き上がって戦闘カメラが弱く揺れ（ヒットストップなし）、金貨は回りながら降ってからコインの倍率の表示へ吸い込まれる。
+    /// 最後の金貨は Core が倍率を上げる瞬間（<see cref="BattleController.CoinGained"/>、揃ってから coin_delay_seconds）に着き、そこで倍率の文字が弾む。
+    /// 倍率が 1 より上の間は倍率の表示の周りがきらめく。敵を倒すと（<see cref="BattleController.EnemyDefeated"/>）、落とした所持金は緑のお札が所持金の数字へ、
+    /// スロットコインは金色のコインが台のコインの数へ飛び、着いた瞬間にその分だけ数字が増えて弾む（飛んでいる間は表示に入れない）。
     /// 時間は戦闘の時間（Time.deltaTime）。部品はこの層の子に作って使い回す。絵は Setup（Build Coin Fountain Effect）が作る自作の PNG。
     /// </summary>
     public sealed class CoinFountainEffect : MonoBehaviour
     {
-        private const int MaxCoins = 128;
-        private const int MaxPuffs = 32;
+        private const int MaxCoins = 160;
+        private const int MaxPuffs = 48;
         private const int MaxSparkles = 5;
 
         // 待ちが 0 のとき（倍率はもう上がっている）に噴水を見せる長さ（秒）。
         private const float FallbackSeconds = 1.2f;
+
+        private const int KindFountain = 0;
+        private const int KindBill = 1;
+        private const int KindDropCoin = 2;
+
+        private const int PunchRate = 0;
+        private const int PunchMoney = 1;
+        private const int PunchCredit = 2;
 
         [SerializeField] private SlotCabinet cabinet;
         [SerializeField] private BattleController battle;
@@ -32,6 +41,8 @@ namespace UnitySlotTower.Battle
 
         [Header("絵（Setup が入れる）")]
         [SerializeField] private Sprite coinSprite;
+        [Tooltip("所持金のお札（MoneyIconArt と同じ緑）。")]
+        [SerializeField] private Sprite billSprite;
         [SerializeField] private Sprite sparkleSprite;
         [Tooltip("閃光と光の輪の絵（丸い光）。")]
         [SerializeField] private Sprite glowSprite;
@@ -56,29 +67,33 @@ namespace UnitySlotTower.Battle
         [Header("吸い込み")]
         [Tooltip("吸い込みが始まる時点（待ち時間に対する割合）。最後の金貨は待ち時間ちょうどに着く。")]
         [SerializeField, Range(0.1f, 0.9f)] private float absorbStart = 0.5f;
-        [Tooltip("1枚が所持金の表示まで飛ぶ時間（待ち時間に対する割合）。")]
+        [Tooltip("1枚が倍率の表示まで飛ぶ時間（待ち時間に対する割合）。")]
         [SerializeField, Range(0.05f, 0.5f)] private float absorbFlight = 0.33f;
         [Tooltip("飛ぶ道の膨らみ（距離に対する割合）。")]
         [SerializeField, Range(0f, 0.5f)] private float arc = 0.15f;
 
         [Header("山場（倍率が上がる瞬間）")]
         [SerializeField, Min(0.05f)] private float punchSeconds = 0.3f;
-        [SerializeField, Min(1f)] private float punchScale = 1.4f;
-        [Tooltip("光の輪の大きさ（所持金の数字の高さ = 1、始め → 終わり）と長さ（秒）。")]
+        [SerializeField, Min(1f)] private float punchScale = 1.5f;
+        [Tooltip("光の輪の大きさ（倍率の表示の高さ = 1、始め → 終わり）と長さ（秒）。")]
         [SerializeField] private Vector2 gainRingSize = new Vector2(1f, 5f);
         [SerializeField, Min(0.05f)] private float gainRingSeconds = 0.45f;
 
-        [Header("倒したとき")]
-        [Tooltip("同時に出ている、倒したときの金貨の上限（重くしない、FR-005）。")]
+        [Header("倒したとき（お札・コイン）")]
+        [Tooltip("同時に出ている、倒したときのお札とコインの合計の上限（重くしない、FR-005）。超えた分は飛ばさずすぐ表示に入れる。")]
         [SerializeField, Min(0)] private int maxKillCoins = 48;
-        [Tooltip("倒したときの金貨の大きさ（噴水の金貨に対する割合）。")]
+        [Tooltip("倒したときのお札・コインの大きさ（噴水の金貨に対する割合）。")]
         [SerializeField, Min(0f)] private float killCoinScale = 0.6f;
-        [Tooltip("飛び出してから所持金の表示へ向かうまで（秒）と、飛ぶ時間（秒）。")]
+        [Tooltip("飛び出してから表示へ向かうまで（秒）と、飛ぶ時間（秒）。")]
         [SerializeField, Min(0f)] private float killHopSeconds = 0.22f;
         [SerializeField, Min(0.05f)] private float killFlightSeconds = 0.45f;
+        [Tooltip("着いたときに数字を弾ませる時間（秒）と倍率。")]
+        [SerializeField, Min(0.05f)] private float arrivePunchSeconds = 0.15f;
+        [SerializeField, Min(1f)] private float arrivePunchScale = 1.2f;
+        [SerializeField] private Color billFlashColor = new Color(0.55f, 1f, 0.6f, 0.8f);
 
         [Header("きらめき")]
-        [Tooltip("所持金の表示の周りのきらめきの大きさ（所持金の数字の高さ = 1）と点滅の速さ（毎秒）。続く効果なので控えめに。")]
+        [Tooltip("倍率の表示の周りのきらめきの大きさ（倍率の表示の高さ = 1）と点滅の速さ（毎秒）。続く効果なので控えめに。")]
         [SerializeField, Min(0f)] private float sparkleSize = 0.6f;
         [SerializeField, Min(0f)] private float sparkleRate = 0.9f;
         [SerializeField] private Color sparkleColor = new Color(1f, 0.92f, 0.5f, 0.85f);
@@ -92,7 +107,8 @@ namespace UnitySlotTower.Battle
         {
             public Image Image;
             public bool Active;
-            public bool Kill;
+            public int Kind;
+            public int Amount;
             public bool Homing;
             public float Age;
             public float LaunchDelay;
@@ -119,54 +135,76 @@ namespace UnitySlotTower.Battle
             public Color Color;
         }
 
+        private struct Punch
+        {
+            public RectTransform Target;
+            public Vector3 Base;
+            public float Age;
+            public float Seconds;
+            public float Scale;
+        }
+
         private readonly Coin[] _coins = new Coin[MaxCoins];
         private readonly Puff[] _puffs = new Puff[MaxPuffs];
+        private readonly Punch[] _punches = new Punch[3];
         private readonly Image[] _sparkles = new Image[MaxSparkles];
+        private readonly Vector2[] _targets = new Vector2[3];
         private readonly Vector3[] _corners = new Vector3[4];
         private RectTransform _layer;
         private BattleCameraShake _shake;
         private int _activeCoins;
+        private int _activeFountainCoins;
         private int _activeKillCoins;
         private int _activePuffs;
         private int _sparkleCount;
-        private float _punchAge = -1f;
-        private Vector3 _punchBase;
-        private RectTransform _punchTarget;
 
         /// <summary>噴水を始めた回数（テスト用）。</summary>
         public int PlayCount { get; private set; }
 
-        /// <summary>倍率が上がって所持金の表示が弾んだ回数（テスト用）。</summary>
+        /// <summary>倍率が上がって倍率の表示が弾んだ回数（テスト用）。</summary>
         public int GainCount { get; private set; }
 
-        /// <summary>倒した敵から出した金貨の枚数の合計（テスト用）。</summary>
+        /// <summary>倒した敵から飛ばしたお札とコインの枚数の合計（テスト用）。</summary>
         public int KillCoinCount { get; private set; }
 
-        /// <summary>出ている金貨の数（噴水と倒したときの両方）。</summary>
+        /// <summary>倒した敵から飛ばしたお札の枚数の合計（テスト用）。</summary>
+        public int BillCount { get; private set; }
+
+        /// <summary>出ている金貨・お札の数（噴水と倒したときの両方）。</summary>
         public int ActiveCoinCount => _activeCoins;
 
-        /// <summary>出ている、倒したときの金貨の数。</summary>
+        /// <summary>出ている噴水の金貨の数。</summary>
+        public int ActiveFountainCoinCount => _activeFountainCoins;
+
+        /// <summary>出ている、倒したときのお札とコインの数。</summary>
         public int ActiveKillCoinCount => _activeKillCoins;
 
-        /// <summary>同時に出せる、倒したときの金貨の上限。</summary>
+        /// <summary>同時に出せる、倒したときのお札とコインの上限。</summary>
         public int MaxKillCoins => maxKillCoins;
 
-        /// <summary>出ている所持金の表示の周りのきらめきの数（倍率が 1 より上の間だけ 0 より大きい）。</summary>
+        /// <summary>出ている倍率の表示の周りのきらめきの数（倍率が 1 より上の間だけ 0 より大きい）。</summary>
         public int SparkleCount => _sparkleCount;
 
-        /// <summary>所持金の表示が弾んでいる。</summary>
-        public bool IsPunching => _punchAge >= 0f;
+        /// <summary>倍率の文字が弾んでいる。</summary>
+        public bool IsPunching => _punches[PunchRate].Age >= 0f && _punches[PunchRate].Target != null;
 
         /// <summary>カメラが揺れている。</summary>
         public bool IsShaking => _shake != null && _shake.IsShaking;
 
-        /// <summary>演出中か（金貨・閃光・弾み・揺れのどれか。続くきらめきは含めない）。</summary>
-        public bool IsPlaying => _activeCoins > 0 || _activePuffs > 0 || IsPunching || IsShaking;
+        /// <summary>噴水の演出中か（噴水の金貨・倍率の弾み・揺れ）。倒したときのお札とコインは含めない。</summary>
+        public bool IsFountainPlaying => _activeFountainCoins > 0 || IsPunching || IsShaking;
+
+        /// <summary>演出中か（金貨・お札・閃光・弾み・揺れのどれか。続くきらめきは含めない）。</summary>
+        public bool IsPlaying => _activeCoins > 0 || _activePuffs > 0 || AnyPunch() || IsShaking;
 
         private void Awake()
         {
             _layer = (RectTransform)transform;
             _shake = BattleCameraShake.Of(battleCamera);
+            for (var i = 0; i < _punches.Length; i++)
+            {
+                _punches[i].Age = -1f;
+            }
         }
 
         private void OnEnable()
@@ -174,7 +212,7 @@ namespace UnitySlotTower.Battle
             cabinet.Aligned += OnAligned;
             battle.CoinGained += OnGained;
             battle.EnemyDefeated += ShowDefeated;
-            battle.NodeBegan += OnNodeBegan;
+            battle.NodeBegan += Clear;
         }
 
         private void OnDisable()
@@ -182,12 +220,19 @@ namespace UnitySlotTower.Battle
             cabinet.Aligned -= OnAligned;
             battle.CoinGained -= OnGained;
             battle.EnemyDefeated -= ShowDefeated;
-            battle.NodeBegan -= OnNodeBegan;
-            EndPunch();
+            battle.NodeBegan -= Clear;
+            // シーンを離れるときは部品が先に消えていることがあるので、表示の持ち越しと数字の大きさだけ戻す。
+            for (var i = 0; i < _punches.Length; i++)
+            {
+                EndPunch(i);
+            }
+
+            status.MoneyHeldBack = 0;
+            cabinet.CreditHeldBack = 0;
         }
 
-        // 前のステージの金貨・閃光・きらめきを消す。
-        private void OnNodeBegan()
+        // 前のステージの金貨・お札・閃光・きらめきを消し、表示を実際の値にそろえる（FR-009）。
+        private void Clear()
         {
             for (var i = 0; i < MaxCoins; i++)
             {
@@ -199,8 +244,14 @@ namespace UnitySlotTower.Battle
                 ReleasePuff(i);
             }
 
+            for (var i = 0; i < _punches.Length; i++)
+            {
+                EndPunch(i);
+            }
+
             SetSparkles(0);
-            EndPunch();
+            status.MoneyHeldBack = 0;
+            cabinet.CreditHeldBack = 0;
         }
 
         private void OnAligned(SlotSymbol symbol)
@@ -239,7 +290,7 @@ namespace UnitySlotTower.Battle
                 var gravity = 2f * Mathf.Max(1f, apex.y - from.y) / (rise * rise);
                 // 吸い込みの順は打ち上げの順と同じ。最後の1枚が待ち時間ちょうどに着く。
                 var homeAt = Mathf.Lerp(homeStart, lastStart, u);
-                Spawn(false, from, new Vector2((apex.x - from.x) / rise, gravity * rise), gravity, launch, homeAt - launch, flight,
+                Spawn(KindFountain, 0, from, new Vector2((apex.x - from.x) / rise, gravity * rise), gravity, launch, homeAt - launch, flight,
                     size * Random.Range(0.8f, 1.2f));
             }
 
@@ -247,33 +298,23 @@ namespace UnitySlotTower.Battle
             _shake.Shake(shakeSeconds, shakeAmplitude);
         }
 
-        // Core が倍率を上げた: 所持金の表示を弾ませ、光の輪を広げる。
+        // Core が倍率を上げた: 倍率の文字を弾ませ、光の輪を広げる。
         private void OnGained()
         {
             GainCount++;
-            var target = status.MoneyRect;
-            var rect = LocalRect(target);
+            var rect = LocalRect(status.MoneyRateRect);
             AddPuff(rect.center, Vector2.one * rect.height * gainRingSize.x, Vector2.one * rect.height * gainRingSize.y, gainRingSeconds, flashColor);
-            if (_punchAge < 0f)
-            {
-                _punchTarget = target;
-                _punchBase = target.localScale;
-            }
-
-            _punchAge = 0f;
+            StartPunch(PunchRate, status.MoneyRateTextRect, punchSeconds, punchScale);
         }
 
-        /// <summary>倍率が 1 より上の間、倒した敵から小さい金貨を所持金の表示へ飛ばす（倍率が高いほど多い）。敵を倒した通知とテストから呼ぶ。</summary>
-        public void ShowDefeated(BattleEnemy enemy)
+        /// <summary>
+        /// 倒した敵の場所から、落とした所持金はお札（1 枚＋倍率で増える）を所持金の数字へ、スロットコインは枚数分のコインを台のコインの数へ飛ばす。
+        /// 飛んでいる分は表示に入れない（FR-009）。同時の上限を超えた分は飛ばさない。敵を倒した通知とテストから呼ぶ。
+        /// </summary>
+        public void ShowDefeated(BattleEnemy enemy, int money, int coins)
         {
             var effects = battle.Field?.Effects;
-            if (effects == null || fieldView.Map == null)
-            {
-                return;
-            }
-
-            var count = Mathf.RoundToInt((float)((effects.MoneyRate - 1d) * 10d));
-            if (count <= 0)
+            if (fieldView.Map == null || (money <= 0 && coins <= 0))
             {
                 return;
             }
@@ -281,25 +322,64 @@ namespace UnitySlotTower.Battle
             var from = ToLayer(fieldView.PositionToWorld(enemy.X, enemy.Y, enemy.Definition.IsAir) + Vector3.up * 0.3f);
             var size = LocalRect(cabinet.ReelCenterCell(1)).height * coinSize * killCoinScale;
             var gravity = size * 40f;
-            for (var i = 0; i < count && _activeKillCoins < maxKillCoins; i++)
+            var order = 0;
+            if (money > 0)
             {
-                var hop = new Vector2(Random.Range(-1f, 1f) * size * 4f, Random.Range(6f, 9f) * size);
-                if (Spawn(true, from, hop, gravity, 0f, killHopSeconds + i * 0.05f, killFlightSeconds, size))
+                var rate = effects?.MoneyRate ?? 1d;
+                var bills = 1 + Mathf.Max(0, Mathf.RoundToInt((float)((rate - 1d) * 10d)));
+                for (var i = 0; i < bills; i++)
                 {
-                    KillCoinCount++;
+                    // 所持金を枚数で分けて持たせる（端数は最初のお札）。
+                    var share = money / bills + (i == 0 ? money % bills : 0);
+                    if (share > 0 && SpawnDrop(KindBill, share, from, size, gravity, order++))
+                    {
+                        BillCount++;
+                        status.MoneyHeldBack += share;
+                    }
                 }
             }
+
+            for (var i = 0; i < coins; i++)
+            {
+                if (SpawnDrop(KindDropCoin, 1, from, size, gravity, order++))
+                {
+                    cabinet.CreditHeldBack += 1;
+                }
+            }
+        }
+
+        private bool SpawnDrop(int kind, int amount, Vector2 from, float size, float gravity, int order)
+        {
+            if (_activeKillCoins >= maxKillCoins)
+            {
+                return false;
+            }
+
+            var hop = new Vector2(Random.Range(-1f, 1f) * size * 4f, Random.Range(6f, 9f) * size);
+            if (!Spawn(kind, amount, from, hop, gravity, 0f, killHopSeconds + order * 0.05f, killFlightSeconds, size))
+            {
+                return false;
+            }
+
+            KillCoinCount++;
+            return true;
         }
 
         private void Update()
         {
             var dt = Time.deltaTime;
-            var to = _activeCoins > 0 ? LocalRect(status.MoneyRect).center : Vector2.zero;
+            if (_activeCoins > 0)
+            {
+                _targets[KindFountain] = LocalRect(status.MoneyRateRect).center;
+                _targets[KindBill] = LocalRect(status.MoneyRect).center;
+                _targets[KindDropCoin] = LocalRect(cabinet.CreditRect).center;
+            }
+
             for (var i = 0; i < MaxCoins; i++)
             {
                 if (_coins[i].Active)
                 {
-                    UpdateCoin(i, dt, to);
+                    UpdateCoin(i, dt);
                 }
             }
 
@@ -311,10 +391,13 @@ namespace UnitySlotTower.Battle
                 }
             }
 
-            UpdatePunch(dt);
+            for (var i = 0; i < _punches.Length; i++)
+            {
+                UpdatePunch(i, dt);
+            }
         }
 
-        private void UpdateCoin(int i, float dt, Vector2 to)
+        private void UpdateCoin(int i, float dt)
         {
             ref var coin = ref _coins[i];
             coin.Age += dt;
@@ -327,6 +410,7 @@ namespace UnitySlotTower.Battle
             }
 
             image.enabled = true;
+            var to = _targets[coin.Kind];
             var rect = image.rectTransform;
             Vector2 position;
             var scale = 1f;
@@ -345,10 +429,7 @@ namespace UnitySlotTower.Battle
                 var f = Mathf.Clamp01((t - coin.HomeAt) / coin.HomeSeconds);
                 if (f >= 1f)
                 {
-                    // 着いた: 小さくきらめいて消える。
-                    var tiny = coin.Size * 0.8f;
-                    AddPuff(to, Vector2.one * tiny, Vector2.one * tiny * 2.2f, 0.18f, flashColor);
-                    ReleaseCoin(i);
+                    Arrive(i, to);
                     return;
                 }
 
@@ -361,9 +442,36 @@ namespace UnitySlotTower.Battle
             }
 
             rect.anchoredPosition = position;
-            // 回っているように横幅を変える（真横でも少し残す）。
-            var width = Mathf.Max(0.12f, Mathf.Abs(Mathf.Cos(coin.SpinPhase + coin.SpinSpeed * t)));
-            rect.sizeDelta = new Vector2(coin.Size * width * scale, coin.Size * scale);
+            // 金貨は横に回り、お札は縦に裏返るように見せる（真横でも少し残す）。
+            var turn = Mathf.Max(0.12f, Mathf.Abs(Mathf.Cos(coin.SpinPhase + coin.SpinSpeed * t)));
+            rect.sizeDelta = coin.Kind == KindBill
+                ? new Vector2(coin.Size * 1.6f * scale, coin.Size * turn * scale)
+                : new Vector2(coin.Size * turn * scale, coin.Size * scale);
+        }
+
+        // 行き先に着いた: 小さくきらめき、お札とコインは持っていた分を表示に入れて数字を弾ませる。
+        private void Arrive(int i, Vector2 to)
+        {
+            ref var coin = ref _coins[i];
+            var tiny = coin.Size * 0.8f;
+            switch (coin.Kind)
+            {
+                case KindBill:
+                    status.MoneyHeldBack = Mathf.Max(0, status.MoneyHeldBack - coin.Amount);
+                    StartPunch(PunchMoney, status.MoneyRect, arrivePunchSeconds, arrivePunchScale);
+                    AddPuff(to, Vector2.one * tiny, Vector2.one * tiny * 2.2f, 0.18f, billFlashColor);
+                    break;
+                case KindDropCoin:
+                    cabinet.CreditHeldBack = Mathf.Max(0, cabinet.CreditHeldBack - coin.Amount);
+                    StartPunch(PunchCredit, cabinet.CreditRect, arrivePunchSeconds, arrivePunchScale);
+                    AddPuff(to, Vector2.one * tiny, Vector2.one * tiny * 2.2f, 0.18f, flashColor);
+                    break;
+                default:
+                    AddPuff(to, Vector2.one * tiny, Vector2.one * tiny * 2.2f, 0.18f, flashColor);
+                    break;
+            }
+
+            ReleaseCoin(i);
         }
 
         private void UpdatePuff(int i, float dt)
@@ -385,35 +493,66 @@ namespace UnitySlotTower.Battle
             puff.Image.color = color;
         }
 
-        private void UpdatePunch(float dt)
+        // 数字を一瞬大きくして戻す。弾んでいる最中にもう一度来たら、元の大きさは覚えたまま最初から弾ませる。
+        private void StartPunch(int slot, RectTransform target, float seconds, float scale)
         {
-            if (_punchAge < 0f)
+            ref var punch = ref _punches[slot];
+            if (punch.Age < 0f || punch.Target != target)
+            {
+                EndPunch(slot);
+                punch.Target = target;
+                punch.Base = target.localScale;
+            }
+
+            punch.Age = 0f;
+            punch.Seconds = seconds;
+            punch.Scale = scale;
+        }
+
+        private void UpdatePunch(int slot, float dt)
+        {
+            ref var punch = ref _punches[slot];
+            if (punch.Age < 0f)
             {
                 return;
             }
 
-            _punchAge += dt;
-            var p = _punchAge / punchSeconds;
-            if (p >= 1f || _punchTarget == null)
+            punch.Age += dt;
+            var p = punch.Age / punch.Seconds;
+            if (p >= 1f || punch.Target == null)
             {
-                EndPunch();
+                EndPunch(slot);
                 return;
             }
 
-            _punchTarget.localScale = _punchBase * (1f + (punchScale - 1f) * Mathf.Sin(Mathf.PI * p));
+            punch.Target.localScale = punch.Base * (1f + (punch.Scale - 1f) * Mathf.Sin(Mathf.PI * p));
         }
 
-        private void EndPunch()
+        private void EndPunch(int slot)
         {
-            if (_punchAge >= 0f && _punchTarget != null)
+            ref var punch = ref _punches[slot];
+            if (punch.Age >= 0f && punch.Target != null)
             {
-                _punchTarget.localScale = _punchBase;
+                punch.Target.localScale = punch.Base;
             }
 
-            _punchAge = -1f;
+            punch.Age = -1f;
         }
 
-        // 倍率が 1 より上の間、所持金の表示の周りにきらめきを置く（数は倍率に合わせて 1〜5）。
+        private bool AnyPunch()
+        {
+            for (var i = 0; i < _punches.Length; i++)
+            {
+                if (_punches[i].Age >= 0f)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // 倍率が 1 より上の間、倍率の表示の周りにきらめきを置く（数は倍率に合わせて 1〜5）。
         private void LateUpdate()
         {
             var effects = battle.Field?.Effects;
@@ -424,7 +563,7 @@ namespace UnitySlotTower.Battle
                 return;
             }
 
-            var rect = LocalRect(status.MoneyRect);
+            var rect = LocalRect(status.MoneyRateRect);
             var radius = new Vector2(rect.width * 0.6f + rect.height * 0.3f, rect.height * 0.8f);
             for (var i = 0; i < _sparkleCount; i++)
             {
@@ -467,7 +606,7 @@ namespace UnitySlotTower.Battle
             _sparkleCount = count;
         }
 
-        private bool Spawn(bool kill, Vector2 from, Vector2 velocity, float gravity, float launchDelay, float homeAt, float homeSeconds, float size)
+        private bool Spawn(int kind, int amount, Vector2 from, Vector2 velocity, float gravity, float launchDelay, float homeAt, float homeSeconds, float size)
         {
             for (var i = 0; i < MaxCoins; i++)
             {
@@ -482,8 +621,10 @@ namespace UnitySlotTower.Battle
                     coin.Image = NewImage("Coin", coinSprite);
                 }
 
+                coin.Image.sprite = kind == KindBill ? billSprite : coinSprite;
                 coin.Active = true;
-                coin.Kill = kill;
+                coin.Kind = kind;
+                coin.Amount = amount;
                 coin.Homing = false;
                 coin.Age = 0f;
                 coin.LaunchDelay = launchDelay;
@@ -503,7 +644,11 @@ namespace UnitySlotTower.Battle
                 coin.Image.enabled = launchDelay <= 0f;
                 coin.Image.gameObject.SetActive(true);
                 _activeCoins++;
-                if (kill)
+                if (kind == KindFountain)
+                {
+                    _activeFountainCoins++;
+                }
+                else
                 {
                     _activeKillCoins++;
                 }
@@ -525,7 +670,11 @@ namespace UnitySlotTower.Battle
             coin.Active = false;
             coin.Image.gameObject.SetActive(false);
             _activeCoins--;
-            if (coin.Kill)
+            if (coin.Kind == KindFountain)
+            {
+                _activeFountainCoins--;
+            }
+            else
             {
                 _activeKillCoins--;
             }

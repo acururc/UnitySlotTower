@@ -201,8 +201,8 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>コインの所持金の倍率が1段上がった（金貨が所持金の表示に吸い込まれた、spec 009 FR-003）。待ちが 0 なら <see cref="ApplySlot"/> の中から呼ぶ。</summary>
         public event Action CoinGained;
 
-        /// <summary>敵を倒した（spec 009 FR-005、倒した敵から金貨が飛ぶ）。ドロップを入れた後、リストから消す前に呼ぶ。全体ダメージ・毒で倒した敵も含む。</summary>
-        public event Action<BattleEnemy> EnemyDefeated;
+        /// <summary>敵を倒した（spec 009 FR-005、倒した敵からお札とコインが飛ぶ）。その敵が落とした所持金（倍率込み）とスロットコインを渡す。ドロップを入れた後、リストから消す前に呼ぶ。全体ダメージ・毒で倒した敵も含む。</summary>
+        public event Action<BattleEnemy, int, int> EnemyDefeated;
 
         /// <summary>毒のダメージが入った（spec 006 FR-004、オーラの点滅）。ダメージを入れた後、倒した敵を消す前に呼ぶ。</summary>
         public event Action PoisonTicked;
@@ -676,20 +676,24 @@ namespace UnitySlotTower.Core.Battle
                 }
 
                 var definition = enemy.Definition;
+                var coins = 0;
+                var gainedMoney = 0;
                 // コインと所持金は別々の抽選（FR-107、002 plan 2.4）。
                 if (_random.NextDouble() < definition.CoinRate)
                 {
-                    DroppedCoins += _random.NextInt(definition.CoinMin, definition.CoinMax + 1);
+                    coins = _random.NextInt(definition.CoinMin, definition.CoinMax + 1);
+                    DroppedCoins += coins;
                 }
 
                 if (_random.NextDouble() < definition.MoneyRate)
                 {
                     // 所持金だけにコインの倍率を掛ける（四捨五入、plan 16.2）。
                     var money = _random.NextInt(definition.MoneyMin, definition.MoneyMax + 1);
-                    DroppedMoney += Effects == null ? money : Effects.ApplyMoneyRate(money);
+                    gainedMoney = Effects == null ? money : Effects.ApplyMoneyRate(money);
+                    DroppedMoney += gainedMoney;
                 }
 
-                EnemyDefeated?.Invoke(enemy);
+                EnemyDefeated?.Invoke(enemy, gainedMoney, coins);
                 _enemies.RemoveAt(i);
             }
         }

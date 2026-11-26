@@ -70,6 +70,15 @@ namespace UnitySlotTower.Battle
         /// <summary>所持金の数字（コインの金貨の行き先: spec 009 FR-001・FR-005）。</summary>
         public RectTransform MoneyRect => moneyText.rectTransform;
 
+        /// <summary>コインの所持金倍率の文字（噴水の金貨が着いたときに弾ませる: spec 009 FR-001。枠は SlotAlignEffect が大きさを変える）。</summary>
+        public RectTransform MoneyRateTextRect => moneyRateText.rectTransform;
+
+        /// <summary>まだ表示に入れない所持金（飛んでいるお札の分、spec 009 FR-009）。表示は max(0, 所持金 − これ)。</summary>
+        public int MoneyHeldBack { get; set; }
+
+        /// <summary>いま表示している所持金（テスト用）。</summary>
+        public int ShownMoney => _shownMoney;
+
         /// <summary>青7の停止のアイコン（揃った時の演出の行き先: T611）。</summary>
         public RectTransform StopEffectRect => (RectTransform)stopEffectGroup.transform;
 
@@ -128,7 +137,7 @@ namespace UnitySlotTower.Battle
 
             SetNumber(lifeText, run.Field.Life, ref _shownLife);
             UpdateLifeFlash();
-            SetNumber(moneyText, run.Wallet.Coins, ref _shownMoney, NumericText.YenFormat);
+            SetNumber(moneyText, Mathf.Max(0, run.Wallet.Coins - MoneyHeldBack), ref _shownMoney, NumericText.YenFormat);
             SetNumber(remainingText, run.RemainingEnemies, ref _shownRemaining);
             SetNumber(speedText, battle.BattleSpeed, ref _shownSpeed, "×{0}");
             var boosts = run.Field.Effects;

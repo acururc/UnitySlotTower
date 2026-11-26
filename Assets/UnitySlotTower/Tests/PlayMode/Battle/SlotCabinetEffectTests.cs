@@ -167,33 +167,33 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That(status.AttackRateRect.localScale, Is.EqualTo(attackScale), "行き先の大きさが元に戻る");
 
             // コイン → 所持金の倍率。盤面全体の演出の代わりに台から金貨が噴き出して弱く揺れ、待ち時間の後に所持金の表示に吸い込まれて
-            // 倍率が上がり、表示が弾む（spec 009）。溜めの間に引いたレバーの揃いでコインが出ていることがあるので、ここからの回数と倍率で比べる。
+            // 倍率が上がり、倍率の文字が弾む（spec 009）。溜めの間に引いたレバーの揃いでコインが出ていることがあるので、ここからの回数と倍率で比べる。
             var fountain = Object.FindAnyObjectByType<CoinFountainEffect>();
             Assert.That(fountain, Is.Not.Null, "Game シーンにコインの噴水の演出がない（Build Coin Fountain Effect (spec 009)）");
             yield return WaitForBoard(board);
-            yield return WaitForFountainEnd(fountain);
+            yield return WaitForFountainOnly(fountain);
             var coinBoardCount = board.PlayCount;
             var fountainPlays = fountain.PlayCount;
             var gains = fountain.GainCount;
             var rate = _battle.Field.Effects.MoneyRate;
-            var moneyScale = status.MoneyRect.localScale;
+            var rateTextScale = status.MoneyRateTextRect.localScale;
             Select(SlotSymbol.Coin);
             yield return SpinAndStopAll();
             Assert.That((effect.LastSymbol, effect.LastTarget), Is.EqualTo(((SlotSymbol?)SlotSymbol.Coin, status.MoneyRateRect)));
             yield return null;
             Assert.That((fountain.PlayCount, board.PlayCount, fountain.GainCount, _battle.Field.Effects.MoneyRate),
                 Is.EqualTo((fountainPlays + 1, coinBoardCount, gains, rate)), "コインで噴水が出ない・盤面全体の演出が出る・すぐ倍率が上がる");
-            Assert.That((fountain.ActiveCoinCount > 0, fountain.IsShaking), Is.EqualTo((true, true)), "金貨が噴き出さない・揺れない");
+            Assert.That((fountain.ActiveFountainCoinCount > 0, fountain.IsShaking), Is.EqualTo((true, true)), "金貨が噴き出さない・揺れない");
             yield return WaitForCoinGain(fountain, gains);
 
             // 吸い込みの瞬間: 倍率が1段上がって表示が弾み、ヒットストップはしない（spec 009 FR-002・FR-003）。
             Assert.That((_battle.IsHitStopping, fountain.IsPunching, _battle.Field.Effects.MoneyRate),
                 Is.EqualTo((false, true, System.Math.Round(rate + 0.1, 6))), "吸い込みで弾まない・ヒットストップする・倍率が上がらない");
             yield return null;
-            Assert.That(fountain.SparkleCount, Is.GreaterThan(0), "倍率が上がっても所持金の表示がきらめかない");
-            yield return WaitForFountainEnd(fountain);
-            Assert.That((fountain.ActiveCoinCount, status.MoneyRect.localScale), Is.EqualTo((0, moneyScale)),
-                "噴水の金貨が残る・所持金の表示の大きさが戻らない");
+            Assert.That(fountain.SparkleCount, Is.GreaterThan(0), "倍率が上がっても倍率の表示がきらめかない");
+            yield return WaitForFountainOnly(fountain);
+            Assert.That((fountain.ActiveFountainCoinCount, status.MoneyRateTextRect.localScale), Is.EqualTo((0, rateTextScale)),
+                "噴水の金貨が残る・倍率の文字の大きさが戻らない");
             yield return WaitForEffect(effect);
 
             // 青7 → 停止のアイコン、黄7 → 毒のアイコン（T611、上端の帯）。発動中はアイコンが濃く、残り時間の円が出る。
@@ -417,12 +417,13 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        [Description("spec 009 AC-003: 倍率が上がっている間は倒した敵から倍率に応じた枚数の金貨が飛び、同時の上限を超えず、飛び終えると残らない。所持金の表示がきらめく")]
-        public IEnumerator Defeated_Enemies_Throw_Coins_Up_To_The_Limit()
+        [Description("spec 009 AC-003・AC-006: 倒した敵の所持金はお札（1枚＋倍率で増える）が所持金へ、コインは枚数分が台のコインの数へ飛び、着くまで表示に入らない。同時の上限を超えた分は飛ばさずすぐ表示に入る。倍率の表示がきらめく")]
+        public IEnumerator Defeated_Enemies_Throw_Bills_And_Coins_To_Their_Displays()
         {
             yield return LoadGame();
             var fountain = Object.FindAnyObjectByType<CoinFountainEffect>();
             Assert.That(fountain, Is.Not.Null, "Game シーンにコインの噴水の演出がない（Build Coin Fountain Effect (spec 009)）");
+            var status = Object.FindAnyObjectByType<OperationBarStatus>();
             var until = Time.realtimeSinceStartup + 10f;
             while (_battle.Field.Enemies.Count == 0 && Time.realtimeSinceStartup < until)
             {
@@ -431,22 +432,31 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             Assert.That(_battle.Field.Enemies.Count, Is.GreaterThan(0), "敵が出てこない");
             var enemy = _battle.Field.Enemies[0];
+            var money = _battle.Run.Wallet.Coins;
+            var credit = _cabinet.Wallet.Coins;
 
-            // 倍率 1 では出ない。
-            fountain.ShowDefeated(enemy);
-            Assert.That((fountain.KillCoinCount, fountain.ActiveKillCoinCount), Is.EqualTo((0, 0)), "倍率 1 で金貨が出る");
+            // 倍率 1: お札1枚とコイン2枚。飛んでいる間は表示に入らない（FR-009）。
+            fountain.ShowDefeated(enemy, 30, 2);
+            Assert.That((fountain.BillCount, fountain.KillCoinCount, status.MoneyHeldBack, _cabinet.CreditHeldBack), Is.EqualTo((1, 3, 30, 2)),
+                "倍率 1 でお札1枚・コイン2枚が飛ばない");
             yield return null;
-            Assert.That(fountain.SparkleCount, Is.EqualTo(0), "倍率 1 で所持金の表示がきらめく");
+            Assert.That((status.ShownMoney, _cabinet.ShownCredit, fountain.SparkleCount),
+                Is.EqualTo((Mathf.Max(0, money - 30), Mathf.Max(0, credit - 2), 0)), "飛んでいる分が表示に入っている・倍率 1 できらめく");
+            yield return WaitForFountainEnd(fountain);
+            yield return null;
+            Assert.That((status.MoneyHeldBack, _cabinet.CreditHeldBack, status.ShownMoney, _cabinet.ShownCredit),
+                Is.EqualTo((0, 0, money, credit)), "着いても表示が実際の値にそろわない");
 
-            // 倍率 1.2 では1体につき2枚。
+            // 倍率 1.2: お札は3枚に分かれる。倍率の表示のきらめきは2つ。
             _battle.Field.Effects.AddCoin();
             _battle.Field.Effects.AddCoin();
-            fountain.ShowDefeated(enemy);
-            Assert.That((fountain.KillCoinCount, fountain.ActiveKillCoinCount), Is.EqualTo((2, 2)), "倍率 1.2 で2枚出ない");
+            fountain.ShowDefeated(enemy, 30, 0);
+            Assert.That((fountain.BillCount, status.MoneyHeldBack), Is.EqualTo((4, 30)), "倍率 1.2 でお札が3枚にならない");
             yield return null;
-            Assert.That(fountain.SparkleCount, Is.EqualTo(2), "倍率 1.2 で所持金の表示のきらめきが2つでない");
+            Assert.That(fountain.SparkleCount, Is.EqualTo(2), "倍率 1.2 で倍率の表示のきらめきが2つでない");
+            yield return WaitForFountainEnd(fountain);
 
-            // 上限（1.5倍、1体5枚）で何体も倒しても、同時に出る金貨は上限まで。
+            // 上限（1.5倍、お札6枚）で何体も倒しても、同時に飛ぶのは上限まで。飛ばない分はすぐ表示に入る。
             for (var i = 0; i < 3; i++)
             {
                 _battle.Field.Effects.AddCoin();
@@ -454,13 +464,15 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             for (var i = 0; i < 20; i++)
             {
-                fountain.ShowDefeated(enemy);
+                fountain.ShowDefeated(enemy, 60, 1);
             }
 
-            Assert.That((fountain.ActiveKillCoinCount, fountain.KillCoinCount), Is.EqualTo((fountain.MaxKillCoins, fountain.MaxKillCoins)),
-                "倒したときの金貨が同時の上限を超える");
+            Assert.That(fountain.ActiveKillCoinCount, Is.EqualTo(fountain.MaxKillCoins), "倒したときのお札・コインが同時の上限を超える");
+            Assert.That((status.MoneyHeldBack < 20 * 60, _cabinet.CreditHeldBack < 20), Is.EqualTo((true, true)), "上限で飛ばない分まで表示から外している");
             yield return WaitForFountainEnd(fountain);
-            Assert.That(fountain.ActiveKillCoinCount, Is.EqualTo(0), "倒したときの金貨が残る");
+            yield return null;
+            Assert.That((fountain.ActiveKillCoinCount, status.MoneyHeldBack, _cabinet.CreditHeldBack, status.ShownMoney, _cabinet.ShownCredit),
+                Is.EqualTo((0, 0, 0, money, credit)), "お札・コインが残る・表示が実際の値にそろわない");
         }
 
         // 赤7の爆発を待つ（待ち時間は slot_rules.csv の red_delay_seconds、戦闘の時間）。
@@ -615,6 +627,18 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Assert.That(fountain.GainCount, Is.EqualTo(gains + 1), "コインの金貨が吸い込まれない");
+        }
+
+        // 噴水だけを待つ（倒した敵のお札・コインは待たない。戦闘が続いていると途切れないため）。
+        private static IEnumerator WaitForFountainOnly(CoinFountainEffect fountain)
+        {
+            var until = Time.realtimeSinceStartup + 5f;
+            while (fountain.IsFountainPlaying && Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+            }
+
+            Assert.That((fountain.IsFountainPlaying, fountain.ActiveFountainCoinCount), Is.EqualTo((false, 0)), "コインの噴水の演出が終わらない");
         }
 
         private static IEnumerator WaitForFountainEnd(CoinFountainEffect fountain)

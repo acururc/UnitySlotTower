@@ -678,17 +678,22 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("spec 009 FR-005: 倒した敵ごとに通知する（赤7で倒した敵も）")]
+        [Description("spec 009 FR-005: 倒した敵ごとに落とした所持金と一緒に通知する（赤7で倒した敵も）")]
         public void Defeated_Enemies_Are_Reported()
         {
             var field = Create("0,grunt,S1,g,0\n0,grunt,S1,g,0\n");
             field.Advance(1);
             var defeated = 0;
-            field.EnemyDefeated += enemy => defeated += enemy.IsAlive ? 100 : 1;
+            var money = 0;
+            field.EnemyDefeated += (enemy, gained, coins) =>
+            {
+                defeated += enemy.IsAlive ? 100 : 1;
+                money += gained;
+            };
 
             field.ApplySlot(SlotSymbol.Red7);
 
-            Assert.That((field.Enemies.Count, defeated), Is.EqualTo((0, 2)));
+            Assert.That((field.Enemies.Count, defeated, money, field.DroppedMoney), Is.EqualTo((0, 2, 60, 60)));
         }
 
         [Test]

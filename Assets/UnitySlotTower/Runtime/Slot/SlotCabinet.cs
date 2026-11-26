@@ -66,6 +66,15 @@ namespace UnitySlotTower.Slot
         /// <summary>所持コイン。Awake で作り、<see cref="UseWallet"/> でゲーム1回分の状態と共有する。</summary>
         public CoinWallet Wallet => _wallet;
 
+        /// <summary>まだ表示に入れないコイン（敵から飛んでいるコインの分、spec 009 FR-009）。表示は max(0, 所持コイン − これ)。</summary>
+        public int CreditHeldBack { get; set; }
+
+        /// <summary>いま表示している所持コイン（テスト用）。</summary>
+        public int ShownCredit => _shownCredit;
+
+        /// <summary>所持コインの数字（敵から飛ぶコインの行き先: spec 009 FR-005）。</summary>
+        public RectTransform CreditRect => creditText.rectTransform;
+
         /// <summary>true のあいだはレバーを受け付けない（一時停止中: FR-012）。</summary>
         public bool InputLocked { get; set; }
 
@@ -243,7 +252,7 @@ namespace UnitySlotTower.Slot
 
             var blink = now < _coinBlinkUntil && (int)(now * 10) % 2 == 0;
             coinIcon.enabled = !blink;
-            var credit = _wallet.Coins;
+            var credit = Mathf.Max(0, _wallet.Coins - CreditHeldBack);
             if (credit != _shownCredit)
             {
                 _shownCredit = credit;

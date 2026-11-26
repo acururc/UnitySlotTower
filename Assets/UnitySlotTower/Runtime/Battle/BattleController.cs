@@ -79,8 +79,8 @@ namespace UnitySlotTower.Battle
         /// <summary>コインの所持金の倍率が1段上がった（金貨が吸い込まれた、spec 009 FR-003）。戦闘のステップかレバーの結果の中から呼ばれる。</summary>
         public event Action CoinGained;
 
-        /// <summary>敵を倒した（spec 009 FR-005、倒した敵から金貨が飛ぶ）。戦闘のステップかレバーの結果の中から呼ばれる。</summary>
-        public event Action<BattleEnemy> EnemyDefeated;
+        /// <summary>敵を倒した（spec 009 FR-005、倒した敵からお札とコインが飛ぶ）。落とした所持金（倍率込み）とスロットコインも渡す。戦闘のステップかレバーの結果の中から呼ばれる。</summary>
+        public event Action<BattleEnemy, int, int> EnemyDefeated;
         public string NodeKind { get; private set; }
         public float BaseFlashUntil { get; private set; }
 
@@ -423,7 +423,7 @@ namespace UnitySlotTower.Battle
         // コインの金貨が吸い込まれた・敵を倒した（spec 009）: 表示へ知らせるだけ（ヒットストップなし、FR-002）。
         private void OnCoinGained() => CoinGained?.Invoke();
 
-        private void OnEnemyDefeated(BattleEnemy enemy) => EnemyDefeated?.Invoke(enemy);
+        private void OnEnemyDefeated(BattleEnemy enemy, int money, int coins) => EnemyDefeated?.Invoke(enemy, money, coins);
 
         private void OnPoisonTicked() => PoisonTicked?.Invoke();
 

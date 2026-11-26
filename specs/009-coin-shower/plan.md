@@ -38,3 +38,10 @@ Core: `SlotRules.cs`・`SlotEffects.cs`・`Battlefield.cs`・`GameDataValidator.
 
 ## 6. 検証
 AC-002 は EditMode（SlotEffectsTests にバーと同じ形で追加）。AC-003・AC-004 は PlayMode（`SlotCabinetEffectTests` に噴水の部品の後始末・同時の上限・きらめきの消え方を追加）。全テストとハーネス。AC-001 はユーザーの Play。
+
+## 7. 変更1（2026-11-26、spec D-06〜D-08・FR-009）
+- 噴水の行き先と弾み・きらめきはコインの倍率の表示。弾ませるのは倍率の文字（`moneyRateText`）にして、`SlotAlignEffect` が大きさを変える倍率の枠（`moneyRateGroup`）とぶつけない。`OperationBarStatus.MoneyRateTextRect`。
+- Core: `Battlefield.EnemyDefeated` を `(BattleEnemy, int money, int coins)` にして、その敵が落とした所持金（倍率込み）とスロットコインを渡す。
+- 倒したとき: 所持金 > 0 ならお札を `1 + round((倍率−1)×10)` 枚（所持金を枚数で分けて持たせる）、コイン > 0 なら金色のコインを枚数分。行き先はお札＝`OperationBarStatus.MoneyRect`、コイン＝`SlotCabinet.CreditRect`（台のコインの数）。同時の上限（48）はお札とコインの合計。
+- 表示の遅れ（FR-009）: `OperationBarStatus.MoneyHeldBack`・`SlotCabinet.CreditHeldBack` を足し、表示は `max(0, 実際 − 持ち越し)`。飛ばすときに持たせた分を足し、着いたら引いて数字を小さく弾ませる。上限で飛ばさない分は足さない。`NodeBegan` と無効化のときに 0 に戻す。
+- お札の絵は自作 PNG（`Art/VFX/Coin/Bill.png`、`MoneyIconArt` と同じ緑）。お札は縦に裏返るように、コインは横に回る。

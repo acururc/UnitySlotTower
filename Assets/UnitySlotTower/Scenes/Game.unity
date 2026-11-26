@@ -52912,7 +52912,7 @@ RectTransform:
   - {fileID: 1218902055}
   - {fileID: 1895011333}
   - {fileID: 773774397}
-  - {fileID: 845310980}
+  - {fileID: 1047083271}
   - {fileID: 1645850814}
   - {fileID: 1356511646}
   - {fileID: 540109306}
@@ -94821,87 +94821,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 844137972}
   m_CullTransparentMesh: 1
---- !u!1 &845310979
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 845310980}
-  - component: {fileID: 845310981}
-  m_Layer: 5
-  m_Name: Coin Fountain Effect
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &845310980
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 845310979}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 415374489}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &845310981
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 845310979}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b0b79f6b6704ccd488de7e87a89d17e8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnitySlotTower.Runtime::UnitySlotTower.Battle.CoinFountainEffect
-  cabinet: {fileID: 83309650}
-  battle: {fileID: 1813959776}
-  fieldView: {fileID: 1813959773}
-  status: {fileID: 1215967987}
-  battleCamera: {fileID: 163673590}
-  coinSprite: {fileID: 21300000, guid: bbf390ec2088bbc40a9edf75b5e495d1, type: 3}
-  sparkleSprite: {fileID: 21300000, guid: c55614c4dd1088c4a874d1c2786393e2, type: 3}
-  glowSprite: {fileID: 21300000, guid: 030d78367d017c545a1c6af25cdf3325, type: 3}
-  fountainCoins: 36
-  gushSeconds: 0.3
-  coinSize: 0.42
-  riseSeconds: {x: 0.5, y: 0.65}
-  apexHeight: {x: 0.45, y: 0.9}
-  spread: 0.85
-  spinTurns: {x: 1.5, y: 3}
-  launchFlashSize: 3.5
-  flashColor: {r: 1, g: 0.9, b: 0.45, a: 0.9}
-  absorbStart: 0.5
-  absorbFlight: 0.33
-  arc: 0.15
-  punchSeconds: 0.3
-  punchScale: 1.4
-  gainRingSize: {x: 1, y: 5}
-  gainRingSeconds: 0.45
-  maxKillCoins: 48
-  killCoinScale: 0.6
-  killHopSeconds: 0.22
-  killFlightSeconds: 0.45
-  sparkleSize: 0.6
-  sparkleRate: 0.9
-  sparkleColor: {r: 1, g: 0.92, b: 0.5, a: 0.85}
-  shakeSeconds: 0.2
-  shakeAmplitude: 0.06
 --- !u!1 &849331362
 GameObject:
   m_ObjectHideFlags: 0
@@ -118344,6 +118263,91 @@ MonoBehaviour:
   id: stat_block
   text: {fileID: 2087107637}
   background: {fileID: 0}
+--- !u!1 &1047083270
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1047083271}
+  - component: {fileID: 1047083272}
+  m_Layer: 5
+  m_Name: Coin Fountain Effect
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1047083271
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1047083270}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 415374489}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1047083272
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1047083270}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0b79f6b6704ccd488de7e87a89d17e8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnitySlotTower.Runtime::UnitySlotTower.Battle.CoinFountainEffect
+  cabinet: {fileID: 83309650}
+  battle: {fileID: 1813959776}
+  fieldView: {fileID: 1813959773}
+  status: {fileID: 1215967987}
+  battleCamera: {fileID: 163673590}
+  coinSprite: {fileID: 21300000, guid: bbf390ec2088bbc40a9edf75b5e495d1, type: 3}
+  billSprite: {fileID: 21300000, guid: a3057316aa2776448b5d8d8944a6b4a2, type: 3}
+  sparkleSprite: {fileID: 21300000, guid: c55614c4dd1088c4a874d1c2786393e2, type: 3}
+  glowSprite: {fileID: 21300000, guid: 030d78367d017c545a1c6af25cdf3325, type: 3}
+  fountainCoins: 36
+  gushSeconds: 0.3
+  coinSize: 0.42
+  riseSeconds: {x: 0.5, y: 0.65}
+  apexHeight: {x: 0.45, y: 0.9}
+  spread: 0.85
+  spinTurns: {x: 1.5, y: 3}
+  launchFlashSize: 3.5
+  flashColor: {r: 1, g: 0.9, b: 0.45, a: 0.9}
+  absorbStart: 0.5
+  absorbFlight: 0.33
+  arc: 0.15
+  punchSeconds: 0.3
+  punchScale: 1.5
+  gainRingSize: {x: 1, y: 5}
+  gainRingSeconds: 0.45
+  maxKillCoins: 48
+  killCoinScale: 0.6
+  killHopSeconds: 0.22
+  killFlightSeconds: 0.45
+  arrivePunchSeconds: 0.15
+  arrivePunchScale: 1.2
+  billFlashColor: {r: 0.55, g: 1, b: 0.6, a: 0.8}
+  sparkleSize: 0.6
+  sparkleRate: 0.9
+  sparkleColor: {r: 1, g: 0.92, b: 0.5, a: 0.85}
+  shakeSeconds: 0.2
+  shakeAmplitude: 0.06
 --- !u!1 &1048507879
 GameObject:
   m_ObjectHideFlags: 0

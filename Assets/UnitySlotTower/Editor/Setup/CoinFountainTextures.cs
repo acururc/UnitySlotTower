@@ -60,6 +60,42 @@ namespace UnitySlotTower.Editor.Setup
             return color;
         });
 
+        /// <summary>所持金のお札（横 1.6 : 縦 1 の角丸の四角、<see cref="UnitySlotTower.Ui.MoneyIconArt"/> と同じ緑、内側の枠と中央の丸）。絵は正方形で、上下に余白を残す。</summary>
+        internal static Sprite Bill() => Build("Bill", (x, y) =>
+        {
+            const float halfW = 0.96f;
+            const float halfH = halfW / 1.6f;
+            const float corner = 0.1f;
+            var dx = Mathf.Max(0f, Mathf.Abs(x) - (halfW - corner));
+            var dy = Mathf.Max(0f, Mathf.Abs(y) - (halfH - corner));
+            var outside = Mathf.Sqrt(dx * dx + dy * dy) - corner;
+            var edge = Mathf.Clamp01(-outside * Size * 0.5f + 0.5f);
+            if (edge <= 0f)
+            {
+                return Color.clear;
+            }
+
+            var bill = new Color(0.33f, 0.72f, 0.4f);
+            var mark = new Color(0.17f, 0.45f, 0.24f);
+            var light = Mathf.Clamp01(0.5f + 0.5f * (-0.4f * x + 0.9f * y / halfH));
+            var color = Color.Lerp(bill * 0.85f, Color.Lerp(bill, Color.white, 0.25f), light);
+            // 内側の枠（縁から少し内側の細い線）と中央の丸。
+            var inset = Mathf.Abs(outside + 0.09f);
+            if (inset < 0.02f)
+            {
+                color = Color.Lerp(color, mark, Mathf.Clamp01((0.02f - inset) * Size * 0.5f));
+            }
+
+            var r = Mathf.Sqrt(x * x + y * y);
+            if (r < 0.22f)
+            {
+                color = Color.Lerp(color, mark, Mathf.Clamp01((0.22f - r) * Size * 0.5f));
+            }
+
+            color.a = edge;
+            return color;
+        });
+
         internal static Sprite Sparkle() => Build("Sparkle", (x, y) =>
         {
             var ax = Mathf.Abs(x);

@@ -2,12 +2,12 @@
 
 ## 現在の作業
 
-更新: 2026-11-26 Asia/Tokyo / 状態: **spec 009（コインの噴水）実装・検証済み、ユーザーの Play 確認待ち（[`tasks.md`](../../specs/009-coin-shower/tasks.md) T1305）。spec 007・008 は完了。**
+更新: 2026-11-26 Asia/Tokyo / 状態: **spec 009（コインの噴水）変更1まで実装・検証済み、ユーザーの Play 確認待ち（[`tasks.md`](../../specs/009-coin-shower/tasks.md) T1307）。spec 007・008 は完了。**
 
-- spec 009: [`spec.md`](../../specs/009-coin-shower/spec.md)（2026-11-26 承認、FR-001〜FR-008・AC-001〜AC-005）・[`plan.md`](../../specs/009-coin-shower/plan.md)・[`tasks.md`](../../specs/009-coin-shower/tasks.md)。流れ: 中段の真ん中のマスから金貨が噴き上がる（弱い揺れ）→回りながら降る→所持金の数字へ吸い込まれ、最後の1枚が着く瞬間（`coin_delay_seconds`=1.5）に倍率が1段上がって数字が弾む→以後、倒した敵から倍率に応じた枚数（1〜5）の金貨が飛び、所持金の周りがきらめく（数は倍率に合わせて1〜5）。
-- 作ったもの: Core `SlotRules.CoinDelaySeconds`・`SlotEffects.QueueCoin`/`StepCoinDelay`/`PendingCoins`（待ちの分も上限の判定に入る）・`Battlefield.CoinGained`/`EnemyDefeated`、`BattleController` の中継、`OperationBarStatus.MoneyRect`、`Runtime/Battle/CoinFountainEffect.cs`（UI 層の Image、プール）、`Editor/Setup/CoinFountainTextures.cs`（自作 PNG 3枚 `Art/VFX/Coin/`）・`CoinFountainEffectSetup.cs`（メニュー `Build Coin Fountain Effect (spec 009)`、Game シーンに適用・保存済み）、`SlotBoardEffect` からコインを外した（もうどの出目も出さない）。
-- 検証（2026-11-26）: EditMode 576/576（新規7）、PlayMode 成功69/失敗0/Explicit 1（新規1）、ハーネス 8/8。ステージをまたいだきらめきの消え方はテストなし（倍率から決まるので戻る）。
-- 次の操作: ユーザーが Editor で Play してコインを確認（AC-001）。調整は `CoinFountainEffect` の初期値（枚数・高さ・吸い込みの割合・弾み・きらめき）を直して Setup を再適用。OK なら T1305 を閉じる。
+- spec 009: [`spec.md`](../../specs/009-coin-shower/spec.md)（2026-11-26 承認、FR-001〜FR-008・AC-001〜AC-005）・[`plan.md`](../../specs/009-coin-shower/plan.md)・[`tasks.md`](../../specs/009-coin-shower/tasks.md)。流れ: 中段の真ん中のマスから金貨が噴き上がる（弱い揺れ）→回りながら降る→コインの倍率の表示（×1.1）へ吸い込まれ、最後の1枚が着く瞬間（`coin_delay_seconds`=1.5）に倍率が1段上がって倍率の文字が弾む→倍率の表示の周りがきらめく（1〜5個）。変更1（同日承認）: 倒した敵の所持金は緑のお札（1枚＋倍率で増える、1.5倍で6枚）が所持金の数字へ、スロットコインは枚数分の金色のコインが台のコインの数へ飛び、着いた瞬間に数字が増えて弾む（`OperationBarStatus.MoneyHeldBack`・`SlotCabinet.CreditHeldBack` で表示だけ遅らせる。同時の上限48、超えた分はすぐ表示）。
+- 作ったもの: Core `SlotRules.CoinDelaySeconds`・`SlotEffects.QueueCoin`/`StepCoinDelay`/`PendingCoins`（待ちの分も上限の判定に入る）・`Battlefield.CoinGained`/`EnemyDefeated(enemy, money, coins)`、`BattleController` の中継、`OperationBarStatus.MoneyRect`、`Runtime/Battle/CoinFountainEffect.cs`（UI 層の Image、プール）、`Editor/Setup/CoinFountainTextures.cs`（自作 PNG 4枚（Coin・Bill・Sparkle・Coin Glow） `Art/VFX/Coin/`）・`CoinFountainEffectSetup.cs`（メニュー `Build Coin Fountain Effect (spec 009)`、Game シーンに適用・保存済み）、`SlotBoardEffect` からコインを外した（もうどの出目も出さない）。
+- 検証（2026-11-26、変更1の後）: EditMode 576/576、PlayMode 成功69/失敗0/Explicit 1、ハーネス 8/8。ステージをまたいだきらめき・表示のそろい方はテストなし（`NodeBegan` で持ち越しを0に戻す）。
+- 次の操作: ユーザーが Editor で Play して噴水の行き先と、敵からお札・コインが飛ぶのを確認（AC-001）。調整は `CoinFountainEffect` の初期値を直して Setup を再適用。OK なら T1307 を閉じて spec 009 完了。
 - そのほかの候補: 001 の M5（T501〜T505）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。001 の T399・T429 はユーザー指示で完了扱いでよい（tasks.md は未更新）。
 - 完了済み: spec 008・007・006・005・004・003・002。Setup を再実行すると Inspector の調整値は初期値に戻る。
 - Setup をかけると Game.unity の差分が大きく見える（行の並べ替え）。行の集合で比べる。`PortraitScreenLayout`（ExecuteAlways）がカメラの表示範囲と CanvasScaler の match を Game ビューの大きさで書き換えるのは無害。
