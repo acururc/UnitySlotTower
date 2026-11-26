@@ -17,6 +17,10 @@ namespace UnitySlotTower.Battle
         [SerializeField] private ParticleSystem ring;
         [SerializeField] private ParticleSystem sparks;
 
+        [Header("出す部品（2026-11-26 ユーザー指示で一旦閃光だけ）")]
+        [SerializeField] private bool showRing;
+        [SerializeField] private bool showSparks;
+
         [Header("大きさと数")]
         [Tooltip("閃光の大きさ（マス = 1）。")]
         [SerializeField, Min(0f)] private float flashSize = 1.2f;
@@ -55,14 +59,18 @@ namespace UnitySlotTower.Battle
                 rotation = Random.Range(0f, 360f),
                 applyShapeToPosition = false,
             }, 1);
-            ring.Emit(new ParticleSystem.EmitParams
+            if (showRing)
             {
-                position = at,
-                startSize = ringSize,
-                startColor = color,
-                applyShapeToPosition = false,
-            }, 1);
-            for (var i = 0; i < sparksPerHit; i++)
+                ring.Emit(new ParticleSystem.EmitParams
+                {
+                    position = at,
+                    startSize = ringSize,
+                    startColor = color,
+                    applyShapeToPosition = false,
+                }, 1);
+            }
+
+            for (var i = 0; showSparks && i < sparksPerHit; i++)
             {
                 var direction = Random.onUnitSphere;
                 direction.y = Mathf.Abs(direction.y) * 0.8f + 0.2f;
