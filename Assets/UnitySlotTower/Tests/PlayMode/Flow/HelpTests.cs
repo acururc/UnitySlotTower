@@ -97,33 +97,20 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             Assert.That(help.OpenButton.gameObject.activeInHierarchy, Is.True, "一時停止中に「?」が出ない");
             help.OpenButton.onClick.Invoke();
             Assert.That(help.IsOpen, Is.True, "「?」で開かない");
-            // 上半分: ライン1本あたりの確率（spec 011 FR-022: ハズレ 1-0.6、図柄 0.6×個数/20）と効果（賭け1枚、値は slot_rules.csv）。
-            Assert.That(Text(help, "missText"), Is.EqualTo("30%"), "ハズレ（1-0.7）");
-            var chances = (TMP_Text[])Field(help, "chanceTexts");
-            Assert.That(chances[(int)SlotSymbol.Red7].text, Is.EqualTo("10%"), "赤7（0.7×3/20 = 10.5% が浮動小数で 10.4999…）");
-            Assert.That(chances[(int)SlotSymbol.Coin].text, Is.EqualTo("14%"), "コイン（0.7×4/20）");
-            var effects = (TMP_Text[])Field(help, "effectTexts");
-            var caps = (TMP_Text[])Field(help, "capTexts");
-            Assert.That((effects[(int)SlotSymbol.Bar].text, caps[(int)SlotSymbol.Bar].text), Is.EqualTo(("×2.0", "10")),
-                "バー: 攻撃力 ×2（10秒）");
-            Assert.That((effects[(int)SlotSymbol.Coin].text, caps[(int)SlotSymbol.Coin].text), Is.EqualTo(("×1.1", "×1.5")),
-                "コイン: 所持金 ×1.1（上限 ×1.5）");
-            // spec 011: 赤7・黄7は最大HPの割合（slot_rules.csv: 赤7 20%、青7 3秒、緑7 0.5、黄7 4%を5秒）。
-            Assert.That((effects[(int)SlotSymbol.Red7].text, caps[(int)SlotSymbol.Red7] == null), Is.EqualTo(("-20%", true)), "赤7: 敵全員に最大HPの20%");
-            Assert.That((effects[(int)SlotSymbol.Blue7].text, caps[(int)SlotSymbol.Blue7].text), Is.EqualTo(("×0", "3")), "青7: 3秒止まる");
-            Assert.That((effects[(int)SlotSymbol.Green7].text, caps[(int)SlotSymbol.Green7] == null), Is.EqualTo(("+50%", true)), "緑7: HP 50%");
-            Assert.That((effects[(int)SlotSymbol.Yellow7].text, caps[(int)SlotSymbol.Yellow7].text), Is.EqualTo(("-4%", "5")), "黄7: 毒 最大HPの4%を5秒");
-            var slotRows = help.transform.GetComponentsInChildren<Transform>(true);
-            Assert.That(System.Linq.Enumerable.Any(slotRows, t => t.name == "Job Card" || (t.name == "Gauge" && t.parent.parent != null && t.parent.parent.name == "Slot Rows")),
-                Is.False, "スキルゲージの札と点が残っている");
+            // spec 016 FR-004: 数値は 青7・黄7・バーの秒数（slot_rules.csv: 3・5・10）と、味方のブロック・コスト・待ち秒数（units.csv）だけ。
+            var seconds = (TMP_Text[])Field(help, "secondsTexts");
+            Assert.That((seconds[(int)SlotSymbol.Blue7].text, seconds[(int)SlotSymbol.Yellow7].text, seconds[(int)SlotSymbol.Bar].text),
+                Is.EqualTo(("3", "5", "10")), "青7・黄7・バーの秒数");
+            Assert.That(seconds[(int)SlotSymbol.Red7] == null && seconds[(int)SlotSymbol.Green7] == null && seconds[(int)SlotSymbol.Coin] == null,
+                Is.True, "秒数のない図柄に数字がある");
             var rows = (HelpScreen.UnitRow[])Field(help, "unitRows");
+            Assert.That((rows[0].blockText.text, rows[0].costText.text, rows[0].cooldownText.text), Is.EqualTo(("3", "¥130", "20")), "タンク");
+            Assert.That((rows[3].blockText.text, rows[3].costText.text, rows[3].cooldownText.text), Is.EqualTo(("×", "¥150", "25")), "バッファー");
+            foreach (var name in new[] { "missText", "chanceTexts", "effectTexts", "capTexts" })
+            {
+                Assert.That(typeof(HelpScreen).GetField(name, BindingFlags.NonPublic | BindingFlags.Instance), Is.Null, $"{name} が残っている");
+            }
 
-            // 下半分: バッファーは攻撃の代わりに倍率。
-            var buffer = rows[3];
-            Assert.That((buffer.attackIcon.activeSelf, buffer.buffIcon.activeSelf, buffer.atkText.text),
-                Is.EqualTo((false, true, "×2.0")), "バッファーの行に倍率が出ない"); // T604: buff_rate 2.0
-            Assert.That((rows[0].attackIcon.activeSelf, rows[0].buffIcon.activeSelf), Is.EqualTo((true, false)));
-            Assert.That(System.Linq.Enumerable.Any(help.transform.GetComponentsInChildren<Transform>(true), t => t.name == "Skill Mark"), Is.False, "スキルの印が残っている");
             foreach (var text in help.GetComponentsInChildren<TMP_Text>(true))
             {
                 // 文字あり版のラベル（T352）は対象外。文字なし版では描かれないことだけ確かめる。
@@ -172,33 +159,97 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             void Check(HelpScreen.Page page)
             {
                 Assert.That(help.CurrentPage, Is.EqualTo(page));
-                Assert.That(((GameObject)Field(help, "slotPage")).activeInHierarchy, Is.EqualTo(page == HelpScreen.Page.Slot));
-                Assert.That(((GameObject)Field(help, "unitPage")).activeInHierarchy, Is.EqualTo(page == HelpScreen.Page.Units));
+                for (var p = 0; p < HelpScreen.PageCount; p++)
+                {
+                    var shown = help.PageRoot((HelpScreen.Page)p).activeInHierarchy;
+                    Assert.That(shown, Is.EqualTo(p == (int)page), $"{(HelpScreen.Page)p} の表示");
+                }
+
                 Assert.That(help.PreviousButton.gameObject.activeInHierarchy && help.NextButton.gameObject.activeInHierarchy, Is.True);
                 Assert.That(battle.IsPaused, Is.True);
                 Assert.That(Time.timeScale, Is.Zero);
             }
 
+            // spec 016 FR-001: 5ページ。最初は遊び方、タブで直接、◀ ▶ は端で反対の端へ回る。
             help.OpenButton.onClick.Invoke();
-            Check(HelpScreen.Page.Slot);
-            help.UnitTab.onClick.Invoke();
-            Check(HelpScreen.Page.Units);
-            help.PreviousButton.onClick.Invoke();
-            Check(HelpScreen.Page.Slot);
-            help.PreviousButton.onClick.Invoke();
-            Check(HelpScreen.Page.Units);
+            Check(HelpScreen.Page.Guide);
+            for (var p = 0; p < HelpScreen.PageCount; p++)
+            {
+                help.Tab((HelpScreen.Page)p).onClick.Invoke();
+                Check((HelpScreen.Page)p);
+            }
+
             help.NextButton.onClick.Invoke();
-            Check(HelpScreen.Page.Slot);
-            help.NextButton.onClick.Invoke();
+            Check(HelpScreen.Page.Guide);
+            help.PreviousButton.onClick.Invoke();
+            Check(HelpScreen.Page.Enemies);
+            help.PreviousButton.onClick.Invoke();
             Check(HelpScreen.Page.Units);
             help.CloseButton.onClick.Invoke();
             Assert.That(help.IsOpen, Is.False);
             Assert.That(Time.timeScale, Is.Zero);
             yield return null;
+            // 開き直すと前のページのまま。
             help.OpenButton.onClick.Invoke();
             Check(HelpScreen.Page.Units);
-            help.SlotTab.onClick.Invoke();
-            Check(HelpScreen.Page.Slot);
+            help.Tab(HelpScreen.Page.Bet).onClick.Invoke();
+            Check(HelpScreen.Page.Bet);
+        }
+
+        [UnityTest]
+        [Description("spec 016 FR-002: 各ページに動く図があり、一時停止中も実時間で動く。見えていないページの図は動かない")]
+        public IEnumerator Help_Demos_Move_While_Paused()
+        {
+            GameSession.StartGame();
+            BattleController battle = null;
+            for (var i = 0; i < 300 && (battle == null || battle.Run == null); i++)
+            {
+                yield return null;
+                if (SceneManager.GetActiveScene().name == GameSession.GameScene)
+                    battle = Object.FindAnyObjectByType<BattleController>();
+            }
+
+            Assert.That(battle?.Run, Is.Not.Null);
+            var help = Object.FindAnyObjectByType<HelpScreen>();
+            battle.SetPaused(true);
+            yield return null;
+            help.OpenButton.onClick.Invoke();
+            for (var p = 0; p < HelpScreen.PageCount; p++)
+            {
+                var page = (HelpScreen.Page)p;
+                help.Tab(page).onClick.Invoke();
+                var demos = help.PageRoot(page).GetComponentsInChildren<HelpDemo>();
+                Assert.That(demos.Length, Is.GreaterThan(0), $"{page} に動く図がない");
+                var before = Snapshot(demos);
+                var hidden = help.PageRoot((HelpScreen.Page)((p + 1) % HelpScreen.PageCount)).GetComponentsInChildren<HelpDemo>(true);
+                var hiddenBefore = Snapshot(hidden);
+                var start = Time.realtimeSinceStartup;
+                while (Time.realtimeSinceStartup - start < 0.6f)
+                {
+                    yield return null;
+                }
+
+                Assert.That(Time.timeScale, Is.Zero);
+                Assert.That(Snapshot(demos), Is.Not.EqualTo(before), $"{page} の図が一時停止中に動かない");
+                Assert.That(Snapshot(hidden), Is.EqualTo(hiddenBefore), "見えていないページの図が動いている");
+            }
+        }
+
+        // 図の中の動く部品の位置と色をまとめた値。
+        private static List<string> Snapshot(HelpDemo[] demos)
+        {
+            var values = new List<string>();
+            foreach (var demo in demos)
+            {
+                foreach (var track in demo.Tracks)
+                {
+                    if (track.target == null) continue;
+                    var alpha = track.graphic != null ? track.graphic.color.a : track.group != null ? track.group.alpha : 1f;
+                    values.Add($"{track.target.anchorMin}{track.target.anchorMax}{alpha:0.000}");
+                }
+            }
+
+            return values;
         }
 
         [UnityTest]

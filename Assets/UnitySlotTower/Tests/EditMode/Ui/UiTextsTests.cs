@@ -65,14 +65,15 @@ namespace UnitySlotTower.Tests.EditMode.Ui
             foreach (var row in units.Rows)
             {
                 Need("unit_" + row.Get("id"));
+                Need("help2_unit_" + row.Get("id"));
             }
 
             foreach (var symbol in SlotSymbols.Ids)
             {
-                Need("slot_" + symbol);
+                Need("help2_" + symbol);
             }
 
-            foreach (var id in new[] { "slot_miss", "detail_hp", "detail_atk", "detail_block", "battle_end" })
+            foreach (var id in new[] { "help2_seconds", "help2_bet_spin", "detail_hp", "detail_atk", "detail_block", "battle_end" })
             {
                 Need(id);
             }

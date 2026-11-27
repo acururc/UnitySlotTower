@@ -1,0 +1,8 @@
+# 016 早見表の作り直し — タスク
+
+- [x] T1901 (FR-002) Runtime `HelpDemo`（実時間でキーを補間する動く図。Track は RectTransform・Graphic・CanvasGroup） — 検証: コンパイル成功、PlayMode `HelpTests.Help_Demos_Move_While_Paused` 成功（2026-11-27）
+- [x] T1902 (FR-001・FR-004) `HelpScreen` を5ページ（`Page { Guide, Bet, Symbols, Units, Enemies }`、`Tab(page)`・`PageRoot(page)`、◀ ▶ は端で回る）・数値は FR-004 だけに直す — 検証: PlayMode `HelpTests` 4件成功（2026-11-27）
+- [x] T1903 (FR-003・FR-010〜FR-014) Setup `Build Help Pages (spec 016)`（`HelpRebuildSetup`）で5ページ・行・動く図（23個）・文字ありの文と配置を作る。`HelpPagesSetup`・`SlotBetHelpSetup` を削除し、`TextModeSetup.AddHelpLabels` は外枠だけ、`TextModeLayoutSetup` の早見表の配置は削除。ui_texts.csv の古い早見表の文言（stat_*・slot_*・help_tab_*・help_col_* など）を `help2_*` に置き換え — 検証: ハーネス 8/8（2026-11-27）
+- [x] T1904 Setup を Game シーンにかけて保存（Build Help Pages → Create Text Mode Font → scene save）。Build Text Mode Layout (T359) は早見表に関係しなくなったので再実行していない — 検証: code execute でページ5・動く図23、scene 保存済み
+- [x] T1905 (AC-001・AC-002) テスト: `HelpTests`（5ページ・数値・動く図）、`TextModeTests.Help_Pages_Keep_Text_Inside_And_Apart_In_Both_Modes`（新規: 文字ありの文のはみ出し・文字とアイコン/文字の重なり・文字なしで文が出ない）、`TextModeTests` の早見表部分、撮影5ページ×2版 — 検証（2026-11-27）: EditMode 633/633。PlayMode 78件中 失敗1・スキップ1（Explicit）。失敗は `Every_Screen_Shows_Japanese_Text_Large_Inside_And_Apart` で、帯のボタン（bar_pause・help_open・pause_home）の字 30 が下限 36 未満という内容だけ。前回のコミット 9809404（36→30）から出ている既存の失敗で、早見表の5ページには指摘なし。撮影 `Artifacts/Automation/Editor/t359/20261127-190313/*-help-*.png`
+- [ ] T1906 (AC-003) ユーザーが Editor で両方の版の早見表を見て確認する（絵・文の直しはこの中で） — 検証: ユーザーの報告

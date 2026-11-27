@@ -35,7 +35,6 @@ namespace UnitySlotTower.Editor.Setup
                 }
             }
 
-            HelpScreenSetup.RestyleUnits();
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             Debug.Log($"[T389] 中: {inside}, 単独: {standalone}");

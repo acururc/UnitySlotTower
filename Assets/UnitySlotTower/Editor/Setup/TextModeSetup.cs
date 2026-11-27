@@ -252,12 +252,11 @@ namespace UnitySlotTower.Editor.Setup
 
         internal static void AddHelpLabels(RectTransform root)
         {
-            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
-            _table = AssetDatabase.LoadAssetAtPath<TextAsset>(TablePath);
-            _texts = UiTexts.Parse(_table.text);
-            AddHelpLabels(root, CsvParser.Parse("units.csv", AssetDatabase.LoadAssetAtPath<TextAsset>(UnitsPath).text));
+            LoadTexts();
+            AddHelpLabels(root, null);
         }
 
+        // 早見表の外枠（? ボタン・見出し・閉じる）の名前。ページの中身の文は HelpRebuildSetup が作る（spec 016）。
         private static void AddHelpLabels(RectTransform root, CsvTable units)
         {
             var help = root.GetComponentInChildren<HelpScreen>(true);
@@ -269,59 +268,29 @@ namespace UnitySlotTower.Editor.Setup
             Label(Child(panel, "Mark"), "help_title", new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(8f, 0f), new Vector2(220f, 0f), 56f)
                 .Text.alignment = TextAlignmentOptions.Left;
             RightOf(Child(panel, "Close Button"), "help_close");
-
-            var slotPage = Child(panel, "Slot Page");
-            var unitPage = Child(panel, "Unit Page");
-            InsideBottom(Child(panel, "Page Tabs/Slot Tab"), "help_tab_slot", 54f, 40f);
-            InsideBottom(Child(panel, "Page Tabs/Unit Tab"), "help_tab_units", 54f, 40f);
-
-            // 表の見出し（48）と列の名前（36）。
-            HelpLine(slotPage, "help_slot_heading", 0.02f, 0.6f, TextModeLayoutSetup.HelpSlotHeadingY, 48f);
-            HelpLine(slotPage, "help_col_symbol", 0.005f, 0.09f, TextModeLayoutSetup.HelpSlotColumnsY, 36f, TextAlignmentOptions.Center);
-            HelpLine(slotPage, "help_col_chance", 0.09f, 0.18f, TextModeLayoutSetup.HelpSlotColumnsY, 36f, TextAlignmentOptions.Right);
-            HelpLine(slotPage, "help_col_effect", 0.215f, 0.99f, TextModeLayoutSetup.HelpSlotColumnsY, 36f);
-            HelpLine(unitPage, "help_units_heading", 0.02f, 0.6f, TextModeLayoutSetup.HelpUnitHeadingY, 48f);
-            HelpLine(unitPage, "help_col_job", 0.005f, TextModeLayoutSetup.HelpRangeLeft - 0.01f, TextModeLayoutSetup.HelpUnitColumnsY, 36f,
-                TextAlignmentOptions.Center);
-            HelpLine(unitPage, "help_col_range", TextModeLayoutSetup.HelpRangeLeft, TextModeLayoutSetup.HelpRangeRight,
-                TextModeLayoutSetup.HelpUnitColumnsY, 36f, TextAlignmentOptions.Center);
-            HelpLine(unitPage, "help_col_stats", TextModeLayoutSetup.HelpStatColumns[0], 0.99f, TextModeLayoutSetup.HelpUnitColumnsY, 36f);
-
-            string[] stats = { "hp", "atk", "def", "interval", "block", "cost", "cooldown" };
-            for (var i = 0; i < 4 && i < units.Rows.Count; i++)
-            {
-                var row = Child(unitPage, $"Unit {i + 1}");
-                var unitId = units.Rows[i].Get("id");
-                // 職名は本体の札の下（札の左右に 43 px はみ出す。札の大きさは TextModeLayoutSetup）。
-                Label(Child(row, "Body"), "unit_" + unitId, Vector2.zero, new Vector2(1f, 0f), new Vector2(-43f, -56f), new Vector2(43f, -4f), 40f);
-                for (var s = 0; s < stats.Length; s++)
-                {
-                    // 数値の名前は数字の左（数字の子なので左端を基準に置く。間の幅は列ごと）。
-                    var nameWidth = TextModeLayoutSetup.HelpStatNameWidth(s < 4 ? 0 : 1);
-                    Label(Child(row, stats[s]), "stat_" + stats[s], Vector2.zero, new Vector2(0f, 1f), new Vector2(-nameWidth - 6f, 0f),
-                        new Vector2(-6f, 0f), 36f).Text.alignment = TextAlignmentOptions.Left;
-                }
-            }
-
-            // 図柄の行の説明は効果の右（1行）。
-            var slotRows = Child(slotPage, HelpScreenSetup.SlotRowsName);
-            for (var i = 0; i < slotRows.childCount; i++)
-            {
-                var row = (RectTransform)slotRows.GetChild(i);
-                var id = "slot_" + row.name.ToLowerInvariant();
-                if (_texts.TryGet(id, out _))
-                {
-                    Label(row, id, new Vector2(TextModeLayoutSetup.HelpDescriptionLeft, 0f), new Vector2(0.99f, 1f), Vector2.zero, Vector2.zero, 36f)
-                        .Text.alignment = TextAlignmentOptions.Left;
-                }
-            }
         }
 
-        // 早見表の1行のラベル（panel の割合。y は (下端, 上端) の px）。
-        private static void HelpLine(RectTransform panel, string id, float left, float right, Vector2 y, float fontSize,
-            TextAlignmentOptions alignment = TextAlignmentOptions.Left) =>
-            Label(panel, id, new Vector2(left, y.x / 1920f), new Vector2(right, y.y / 1920f), Vector2.zero, Vector2.zero, fontSize)
-                .Text.alignment = alignment;
+        /// <summary>文字ありのフォントと文言表を読む（ほかの Setup からラベルを作る前に呼ぶ）。</summary>
+        internal static void LoadTexts()
+        {
+            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+            _table = AssetDatabase.LoadAssetAtPath<TextAsset>(TablePath);
+            _texts = UiTexts.Parse(_table.text);
+        }
+
+        /// <summary>spec 016: 早見表の文（parent の割合 anchorMin〜anchorMax に、左寄せで折り返す）。先に <see cref="LoadTexts"/>。</summary>
+        internal static TextModeLabel HelpText(RectTransform parent, string id, Vector2 anchorMin, Vector2 anchorMax, float fontSize,
+            TextAlignmentOptions alignment = TextAlignmentOptions.Left)
+        {
+            var label = Label(parent, id, anchorMin, anchorMax, Vector2.zero, Vector2.zero, fontSize);
+            label.Text.alignment = alignment;
+            label.Text.textWrappingMode = TextWrappingModes.Normal;
+            return label;
+        }
+
+        /// <summary>spec 016: 部品の下端の内側の名前（タブの名前など）。先に <see cref="LoadTexts"/>。</summary>
+        internal static TextModeLabel HelpInsideBottom(RectTransform target, string id, float height, float fontSize) =>
+            InsideBottom(target, id, height, fontSize);
 
         // --- 置き方 ---
 

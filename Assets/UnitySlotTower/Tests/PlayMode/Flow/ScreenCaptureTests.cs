@@ -149,9 +149,20 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             battle.SetPaused(true);
             var help = Object.FindAnyObjectByType<HelpScreen>();
             help.Open();
-            yield return Capture(prefix + "-help-slot");
-            help.UnitTab.onClick.Invoke();
-            yield return Capture(prefix + "-help-units");
+            for (var p = 0; p < HelpScreen.PageCount; p++)
+            {
+                var page = (HelpScreen.Page)p;
+                help.Tab(page).onClick.Invoke();
+                // 動く図が途中の姿になるよう、実時間で少し待つ（spec 016）。
+                var until = Time.realtimeSinceStartup + 0.8f;
+                while (Time.realtimeSinceStartup < until)
+                {
+                    yield return null;
+                }
+
+                yield return Capture(prefix + "-help-" + page.ToString().ToLowerInvariant());
+            }
+
             help.Close();
             battle.SetPaused(false);
 

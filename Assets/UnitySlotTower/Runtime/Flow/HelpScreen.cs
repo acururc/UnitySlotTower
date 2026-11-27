@@ -1,9 +1,9 @@
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using UnityEngine.Serialization;
 using UnityEngine.UI;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
@@ -15,12 +15,10 @@ using UnitySlotTower.Ui;
 namespace UnitySlotTower.Flow
 {
     /// <summary>
-    /// 一時停止中の説明（T404・T351、FR-012、plan 16.10）。一時停止中だけ「?」ボタンを出し、押すと早見表を開く。
-    /// 1ページ目はスロット: 全ステージ共通の20パターンの内訳（ハズレと図柄ごとの %＝個数×5）と効果（T615、spec 002 FR-112:
-    /// 赤7 → 敵全員にダメージ、青7 → 敵の動きが ×0〔秒数〕、緑7 → 味方の HP を回復〔%〕、黄7 → 毒のダメージ〔秒数〕、
-    /// バー → 攻撃力の倍率〔秒数〕、コイン → 所持金の倍率〔上限〕。値は slot_rules.csv）。
-    /// 2ページ目は味方: 本体の色、右向きの範囲図、現在の強化段階での HP・攻撃（バッファーは倍率）・防御・攻撃間隔・
-    /// ブロック数・コスト・待ち時間。
+    /// 一時停止中の早見表（T404・T351、spec 016）。一時停止中だけ「?」ボタンを出し、押すと開く。
+    /// ページは 遊び方・スロットの回し方・図柄の効果・味方・敵 の5つ（spec 016 FR-001）。タブと ◀ ▶（端で反対の端へ回る）で切り替える。
+    /// 数値は FR-004 の項目だけを開くたびに CSV の値で書く: 青7・黄7・バーの続く秒数、味方のブロック数・コスト・再配置の待ち秒数。
+    /// 範囲図は右向きで、本人のマスを本体の色に ▶ で示す。各行の動く図は <see cref="HelpDemo"/>。
     /// キーボードは ?（/）キーで開閉（一時停止していなければ一時停止して開く）。◀ で閉じる。再開すると閉じる。
     /// </summary>
     public sealed class HelpScreen : MonoBehaviour
@@ -35,19 +33,14 @@ namespace UnitySlotTower.Flow
             public RectTransform rangeArea;
             [Tooltip("範囲図で味方のいるマスの色（操作バーのアイコンと同じ色）。")]
             public Color bodyColor = Color.white;
-            [Tooltip("攻撃の味方で出すアイコン。")]
-            public GameObject attackIcon;
-            [Tooltip("バッファーで攻撃アイコンの代わりに出すアイコン（数字は倍率）。")]
-            [FormerlySerializedAs("healIcon")]
-            public GameObject buffIcon;
-            public TMP_Text hpText;
-            public TMP_Text atkText;
-            public TMP_Text defText;
-            public TMP_Text intervalText;
             public TMP_Text blockText;
             public TMP_Text costText;
             public TMP_Text cooldownText;
         }
+
+        public enum Page { Guide, Bet, Symbols, Units, Enemies }
+
+        public const int PageCount = 5;
 
         [SerializeField] private InputActionAsset inputActions;
         [SerializeField] private BattleController battle;
@@ -57,22 +50,14 @@ namespace UnitySlotTower.Flow
         [Tooltip("開いているあいだだけ表示する画面全体（背景で下の操作を遮る）。")]
         [SerializeField] private GameObject panel;
         [SerializeField] private Button closeButton;
-        public enum Page { Slot, Units }
-
-        [SerializeField] private GameObject slotPage;
-        [SerializeField] private GameObject unitPage;
-        [SerializeField] private Button slotTab;
-        [SerializeField] private Button unitTab;
+        [Tooltip("Page の順。")]
+        [SerializeField] private GameObject[] pages = new GameObject[PageCount];
+        [Tooltip("Page の順。")]
+        [SerializeField] private Button[] tabs = new Button[PageCount];
         [SerializeField] private Button previousButton;
         [SerializeField] private Button nextButton;
-        [SerializeField] private TMP_Text missText;
-        [Tooltip("図柄ごとの20パターン中の割合（SlotSymbol の順）。")]
-        [SerializeField] private TMP_Text[] chanceTexts = new TMP_Text[SlotSymbols.Count];
-        [Tooltip("図柄ごとの効果の数値（SlotSymbol の順）。")]
-        [SerializeField] private TMP_Text[] effectTexts = new TMP_Text[SlotSymbols.Count];
-        [Tooltip("効果の2つ目の数値（SlotSymbol の順。続く秒数か上限。ない図柄は null）。")]
-        [FormerlySerializedAs("secondsTexts")]
-        [SerializeField] private TMP_Text[] capTexts = new TMP_Text[SlotSymbols.Count];
+        [Tooltip("図柄ごとの続く秒数（SlotSymbol の順。秒数のない図柄は null）。")]
+        [SerializeField] private TMP_Text[] secondsTexts = new TMP_Text[SlotSymbols.Count];
         [Tooltip("units.csv の並び。")]
         [SerializeField] private UnitRow[] unitRows = Array.Empty<UnitRow>();
         [SerializeField] private Color rangeCellColor = new Color(1f, 0.6f, 0.15f);
@@ -82,6 +67,7 @@ namespace UnitySlotTower.Flow
         private bool ConfirmOpen => _quit != null && _quit.IsConfirmOpen;
         private InputAction _help;
         private bool _gridsBuilt;
+        private UnityAction[] _tabActions;
 
         /// <summary>早見表を開いているか。</summary>
         public bool IsOpen => panel.activeSelf;
@@ -89,32 +75,50 @@ namespace UnitySlotTower.Flow
         public Button OpenButton => openButton;
         public Button CloseButton => closeButton;
 
-        public Page CurrentPage { get; private set; } = Page.Slot;
-        public Button SlotTab => slotTab;
-        public Button UnitTab => unitTab;
+        public Page CurrentPage { get; private set; } = Page.Guide;
         public Button PreviousButton => previousButton;
         public Button NextButton => nextButton;
+
+        /// <summary>ページのタブ。</summary>
+        public Button Tab(Page page) => tabs[(int)page];
+
+        /// <summary>ページの中身。</summary>
+        public GameObject PageRoot(Page page) => pages[(int)page];
 
         public void ShowPage(Page page)
         {
             CurrentPage = page;
-            var slot = page == Page.Slot;
-            slotPage.SetActive(slot);
-            unitPage.SetActive(!slot);
-            slotTab.image.color = slot ? UiStyle.Ally : UiStyle.ButtonFill;
-            unitTab.image.color = slot ? UiStyle.ButtonFill : UiStyle.Ally;
+            for (var i = 0; i < pages.Length; i++)
+            {
+                var shown = i == (int)page;
+                if (pages[i] != null && pages[i].activeSelf != shown)
+                {
+                    pages[i].SetActive(shown);
+                }
+
+                if (i < tabs.Length && tabs[i] != null)
+                {
+                    tabs[i].image.color = shown ? UiStyle.Ally : UiStyle.ButtonFill;
+                }
+            }
+
             Deselect();
         }
 
-        private void ShowSlot() => ShowPage(Page.Slot);
-        private void ShowUnits() => ShowPage(Page.Units);
-        public void NextPage() => ShowPage(CurrentPage == Page.Slot ? Page.Units : Page.Slot);
-        public void PreviousPage() => NextPage();
+        public void NextPage() => ShowPage((Page)(((int)CurrentPage + 1) % PageCount));
+        public void PreviousPage() => ShowPage((Page)(((int)CurrentPage + PageCount - 1) % PageCount));
 
         private void Awake()
         {
             _quit = GetComponent<QuitToTitle>();
             _help = inputActions.FindActionMap(ActionMap, true).FindAction("Help", true);
+            _tabActions = new UnityAction[PageCount];
+            for (var i = 0; i < PageCount; i++)
+            {
+                var page = (Page)i;
+                _tabActions[i] = () => ShowPage(page);
+            }
+
             panel.SetActive(false);
             openButton.gameObject.SetActive(false);
         }
@@ -123,8 +127,11 @@ namespace UnitySlotTower.Flow
         {
             openButton.onClick.AddListener(Open);
             closeButton.onClick.AddListener(Close);
-            slotTab.onClick.AddListener(ShowSlot);
-            unitTab.onClick.AddListener(ShowUnits);
+            for (var i = 0; i < PageCount && i < tabs.Length; i++)
+            {
+                if (tabs[i] != null) tabs[i].onClick.AddListener(_tabActions[i]);
+            }
+
             previousButton.onClick.AddListener(PreviousPage);
             nextButton.onClick.AddListener(NextPage);
             _help.performed += OnHelpAction;
@@ -135,8 +142,11 @@ namespace UnitySlotTower.Flow
         {
             openButton.onClick.RemoveListener(Open);
             closeButton.onClick.RemoveListener(Close);
-            slotTab.onClick.RemoveListener(ShowSlot);
-            unitTab.onClick.RemoveListener(ShowUnits);
+            for (var i = 0; i < PageCount && i < tabs.Length; i++)
+            {
+                if (tabs[i] != null) tabs[i].onClick.RemoveListener(_tabActions[i]);
+            }
+
             previousButton.onClick.RemoveListener(PreviousPage);
             nextButton.onClick.RemoveListener(NextPage);
             _help.performed -= OnHelpAction;
@@ -196,53 +206,19 @@ namespace UnitySlotTower.Flow
             Open();
         }
 
-        // 開くたびに今の値で書き直す（設定・強化段階は一時停止の前に変わっている）。
+        // 開くたびに今の値で書き直す（FR-004 の項目だけ）。
         private void Refresh()
         {
-            // ライン1本あたりの確率（spec 011 FR-022）: ハズレは 1-揃う確率、図柄は 揃う確率×重み/重みの合計（発動中の除外は考えない）。
-            var patterns = slotCabinet.Patterns;
-            var hitRate = slotCabinet.Rules.LineHitRate;
-            var counts = new int[SlotSymbols.Count];
-            var total = 0;
-            foreach (var outcome in patterns)
-            {
-                if (outcome.HasValue)
-                {
-                    counts[(int)outcome.Value]++;
-                    total++;
-                }
-            }
-
-            missText.SetText("{0}%", PercentOf(1 - hitRate));
-            for (var s = 0; s < SlotSymbols.Count; s++)
-            {
-                chanceTexts[s].SetText("{0}%", PercentOf(total > 0 ? hitRate * counts[s] / total : 0));
-            }
-
-            RefreshEffects();
+            var rules = slotCabinet.Rules;
+            SetSeconds(SlotSymbol.Blue7, rules.BlueStopSeconds);
+            SetSeconds(SlotSymbol.Yellow7, rules.YellowPoisonSeconds);
+            SetSeconds(SlotSymbol.Bar, rules.BarSeconds);
 
             var units = battle.Units.All;
             for (var i = 0; i < unitRows.Length && i < units.Count; i++)
             {
                 var row = unitRows[i];
                 var unit = units[i];
-                var level = battle.Upgrades.Current(unit.Id);
-                // バッファーは攻撃しないので、攻撃の代わりに倍率を出す（倍率は強化で変わらない）。
-                var buffs = unit.Role == UnitRole.Buff;
-                row.attackIcon.SetActive(!buffs);
-                row.buffIcon.SetActive(buffs);
-                row.hpText.SetText("{0}", level.MaxHpOf(unit));
-                if (buffs)
-                {
-                    row.atkText.SetText("×{0:1}", (float)unit.BuffRate);
-                }
-                else
-                {
-                    row.atkText.SetText("{0}", level.AtkOf(unit));
-                }
-
-                row.defText.SetText("{0}", level.DefOf(unit));
-                row.intervalText.SetText("{0:1}", (float)unit.AttackInterval);
                 BlockText.Show(row.blockText, unit.Block);
                 row.costText.SetText(NumericText.YenFormat, unit.Cost);
                 row.cooldownText.SetText("{0}", (float)Math.Ceiling(unit.Cooldown));
@@ -251,56 +227,12 @@ namespace UnitySlotTower.Flow
             BuildGridsOnce();
         }
 
-        private static int PercentOf(double rate) => (int)Math.Round(rate * 100, MidpointRounding.AwayFromZero);
-
-        private static void SetCap(TMP_Text cap, int seconds)
+        private void SetSeconds(SlotSymbol symbol, double seconds)
         {
-            if (cap != null)
+            var index = (int)symbol;
+            if (index < secondsTexts.Length && secondsTexts[index] != null)
             {
-                cap.SetText("{0}", seconds);
-            }
-        }
-
-        private static int Seconds(double seconds) => (int)Math.Round(seconds, MidpointRounding.AwayFromZero);
-
-        // 効果の欄（T615）: 1つ目の数値は効果の強さ、2つ目は続く秒数（青7・黄7・バー）か上限（コイン）。
-        private void RefreshEffects()
-        {
-            var rules = slotCabinet.Rules;
-            for (var s = 0; s < SlotSymbols.Count; s++)
-            {
-                var effect = effectTexts[s];
-                var cap = s < capTexts.Length ? capTexts[s] : null;
-                if (effect == null)
-                {
-                    continue;
-                }
-
-                switch ((SlotSymbol)s)
-                {
-                    case SlotSymbol.Red7:
-                        effect.SetText("-{0}%", PercentOf(rules.RedHpRate));
-                        break;
-                    case SlotSymbol.Blue7:
-                        effect.SetText("×0");
-                        SetCap(cap, Seconds(rules.BlueStopSeconds));
-                        break;
-                    case SlotSymbol.Green7:
-                        effect.SetText("+{0}%", (int)Math.Round(rules.GreenHealRate * 100, MidpointRounding.AwayFromZero));
-                        break;
-                    case SlotSymbol.Yellow7:
-                        effect.SetText("-{0}%", PercentOf(rules.YellowHpRate));
-                        SetCap(cap, Seconds(rules.YellowPoisonSeconds));
-                        break;
-                    case SlotSymbol.Bar:
-                        effect.SetText("×{0:1}", (float)(1 + rules.BarAttackStep));
-                        SetCap(cap, Seconds(rules.BarSeconds));
-                        break;
-                    case SlotSymbol.Coin:
-                        effect.SetText("×{0:1}", (float)(1 + rules.CoinStep));
-                        if (cap != null) cap.SetText("×{0:1}", (float)rules.CoinCap);
-                        break;
-                }
+                secondsTexts[index].SetText("{0}", (int)Math.Round(seconds, MidpointRounding.AwayFromZero));
             }
         }
 

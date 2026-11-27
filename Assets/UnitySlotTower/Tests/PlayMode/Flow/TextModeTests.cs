@@ -101,13 +101,19 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             help.Open();
             yield return null;
             Assert.That(help.IsOpen, Is.True);
-            Assert.That(ShownIds(), Does.Contain("help_title").And.Contain("help_close").And.Contain("help_tab_slot")
-                .And.Contain("help_tab_units").And.Contain("slot_red7").And.Contain("help_slot_heading").And.Contain("help_col_chance"));
-            Assert.That(ShownIds(), Does.Not.Contain("help_units_heading"));
-            help.UnitTab.onClick.Invoke();
+            Assert.That(ShownIds(), Does.Contain("help_title").And.Contain("help_close").And.Contain("help2_tab_guide")
+                .And.Contain("help2_tab_enemies").And.Contain("help2_guide_base"));
+            Assert.That(ShownIds(), Does.Not.Contain("help2_red7"));
+            help.Tab(HelpScreen.Page.Symbols).onClick.Invoke();
             yield return null;
-            Assert.That(ShownIds(), Does.Contain("help_units_heading").And.Contain("help_col_range").And.Contain("stat_hp"));
-            Assert.That(ShownIds(), Does.Not.Contain("help_slot_heading"));
+            Assert.That(ShownIds(), Does.Contain("help2_red7").And.Contain("help2_seconds"));
+            Assert.That(ShownIds(), Does.Not.Contain("help2_guide_base"));
+            help.Tab(HelpScreen.Page.Units).onClick.Invoke();
+            yield return null;
+            Assert.That(ShownIds(), Does.Contain("help2_unit_tank").And.Contain("help2_unit_buffer"));
+            help.Tab(HelpScreen.Page.Enemies).onClick.Invoke();
+            yield return null;
+            Assert.That(ShownIds(), Does.Contain("help2_enemy_melee").And.Contain("help2_enemy_final_boss"));
             help.CloseButton.onClick.Invoke();
             yield return null;
             Assert.That((help.IsOpen, help.OpenButton.gameObject.activeInHierarchy, ShownIds().Contains("help_open")),
@@ -184,10 +190,13 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var help = Object.FindAnyObjectByType<HelpScreen>();
             help.Open();
             yield return Settle();
-            Readable("早見表 スロット", problems);
-            help.UnitTab.onClick.Invoke();
-            yield return Settle();
-            Readable("早見表 味方", problems);
+            for (var p = 0; p < HelpScreen.PageCount; p++)
+            {
+                help.Tab((HelpScreen.Page)p).onClick.Invoke();
+                yield return Settle();
+                Readable("早見表 " + (HelpScreen.Page)p, problems);
+            }
+
             help.Close();
             battle.SetPaused(false);
 
@@ -226,6 +235,99 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             }
             Assert.That(shown, Is.GreaterThan(0), $"{screen}: 表示中のラベルがない");
         }
+
+        [UnityTest]
+        [Description("spec 016 AC-002: 早見表の全ページで、文字ありの文ははみ出さず、文・数字はアイコン・ほかの文字と重ならない（両方の版）。文字なしでは文が出ない")]
+        public IEnumerator Help_Pages_Keep_Text_Inside_And_Apart_In_Both_Modes()
+        {
+            var battle = default(BattleController);
+            yield return LoadGame(b => battle = b);
+            battle.SetPaused(true);
+            var help = Object.FindAnyObjectByType<HelpScreen>();
+            help.Open();
+            var problems = new List<string>();
+            foreach (var textMode in new[] { false, true })
+            {
+                GameSession.SetTextMode(textMode);
+                for (var p = 0; p < HelpScreen.PageCount; p++)
+                {
+                    var page = (HelpScreen.Page)p;
+                    help.Tab(page).onClick.Invoke();
+                    yield return null;
+                    yield return null;
+                    Canvas.ForceUpdateCanvases();
+                    var name = $"{(textMode ? "文字あり" : "文字なし")} {page}";
+                    var root = help.PageRoot(page).transform;
+                    var sentences = 0;
+                    foreach (var label in root.GetComponentsInChildren<TextModeLabel>())
+                    {
+                        if (!label.IsShown) continue;
+                        sentences++;
+                        if (label.Text.isTextOverflowing) problems.Add($"{name}: {label.Id} がはみ出す");
+                    }
+
+                    if (textMode ? sentences == 0 : sentences > 0) problems.Add($"{name}: 文の数 {sentences}");
+                    // タブの名前も見る（タブの中の絵と重ならない）。
+                    CheckApart(name, root, problems);
+                    CheckApart(name + " タブ", help.Tab(page).transform.parent, problems);
+                }
+            }
+
+            GameSession.SetTextMode(false);
+            help.Close();
+            battle.SetPaused(false);
+            Assert.That(problems, Is.Empty, string.Join("\n", problems));
+        }
+
+        // within の中で、描かれている文字（動く図の中は除く）が、ほかの絵・文字と重ならない。親子の関係にあるものは比べない。
+        private static void CheckApart(string screen, Transform within, List<string> problems)
+        {
+            var texts = new List<(Graphic graphic, Rect rect)>();
+            var others = new List<(Graphic graphic, Rect rect)>();
+            foreach (var graphic in within.GetComponentsInChildren<Graphic>())
+            {
+                if (!graphic.enabled || graphic.color.a <= 0.01f || graphic.GetComponentInParent<HelpDemo>() != null || graphic.name == "Divider")
+                {
+                    continue;
+                }
+
+                if (graphic is TMPro.TMP_Text text)
+                {
+                    if (string.IsNullOrEmpty(text.text)) continue;
+                    var bounds = text.textBounds;
+                    var min = text.transform.TransformPoint(bounds.min);
+                    var max = text.transform.TransformPoint(bounds.max);
+                    texts.Add((graphic, Rect.MinMaxRect(min.x, min.y, max.x, max.y)));
+                }
+                else
+                {
+                    var corners = new Vector3[4];
+                    graphic.rectTransform.GetWorldCorners(corners);
+                    others.Add((graphic, Rect.MinMaxRect(corners[0].x, corners[0].y, corners[2].x, corners[2].y)));
+                }
+            }
+
+            others.AddRange(texts);
+            foreach (var (text, rect) in texts)
+            {
+                foreach (var (other, otherRect) in others)
+                {
+                    if (other == text || text.transform.IsChildOf(other.transform) || other.transform.IsChildOf(text.transform))
+                    {
+                        continue;
+                    }
+
+                    var overlapX = Mathf.Min(rect.xMax, otherRect.xMax) - Mathf.Max(rect.xMin, otherRect.xMin);
+                    var overlapY = Mathf.Min(rect.yMax, otherRect.yMax) - Mathf.Max(rect.yMin, otherRect.yMin);
+                    if (overlapX > 1f && overlapY > 1f)
+                    {
+                        problems.Add($"{screen}: {Path(text.transform)}「{((TMPro.TMP_Text)text).text}」が {Path(other.transform)} と重なる");
+                    }
+                }
+            }
+        }
+
+        private static string Path(Transform t) => t.parent != null ? t.parent.name + "/" + t.name : t.name;
 
         private static void Readable(string screen, List<string> problems) =>
             Assert.That(TextReadability.Collect(screen, problems), Is.GreaterThan(0), $"{screen}: 表示中の日本語のテキストが見つからない");

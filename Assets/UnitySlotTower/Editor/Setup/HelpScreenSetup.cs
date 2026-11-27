@@ -15,14 +15,13 @@ namespace UnitySlotTower.Editor.Setup
     /// <summary>
     /// Game シーンに一時停止中の説明（T404）を組む一回限りの手順。Portrait Root のリザルトの手前に置き、BattleController と筐体に結ぶ。
     /// 既にあれば何もしない。以後の変更は Editor でシーンを直接編集する。
-    /// 「?」ボタンは戦闘の右下（操作バーの一時停止ボタンの上）。早見表はスロット（確率・効果）と味方4種（範囲図と数値）の2ページ。
+    /// 「?」ボタンは戦闘の右下（操作バーの一時停止ボタンの上）。早見表の中身（5ページ）は HelpRebuildSetup（spec 016）。
     /// </summary>
     internal static class HelpScreenSetup
     {
         private const string FontPath = "Assets/UnitySlotTower/Art/Fonts/NumericOnly SDF.asset";
         private const string InputActionsPath = "Assets/InputSystem_Actions.inputactions";
         private const string RootName = "Help";
-        private const int UnitCount = 4;
 
         // 基準 1440×1920 で正方形にするための、高さに対する幅の比。
         private const float Square = 1920f / 1440f;
@@ -31,12 +30,7 @@ namespace UnitySlotTower.Editor.Setup
         private static readonly Color PanelColor = UiStyle.ScreenFill;
         private static readonly Color ButtonColor = UiStyle.ButtonFill;
         private static readonly Color HelpColor = new Color(0.2f, 0.45f, 0.85f);
-        private static readonly Color DimColor = new Color(0.6f, 0.6f, 0.65f);
-        private static readonly Color DarkColor = UiStyle.SectionFill;
-        // 職の影絵（暗めの色）が沈まないよう、札の地は明るめの灰色（T389）。
-        private static readonly Color JobCardColor = new Color(0.42f, 0.44f, 0.5f, 1f);
 
-        private static Sprite _knob;
         private static Sprite _box;
         private static TMP_FontAsset _font;
 
@@ -98,7 +92,7 @@ namespace UnitySlotTower.Editor.Setup
             header.text = "?";
             header.alignment = TextAlignmentOptions.Center;
 
-            HelpPagesSetup.BuildPages(area, bar, serialized);
+            // ページの中身は spec 016 の HelpRebuildSetup（設定を書いた後に作る）。
 
             serialized.FindProperty("inputActions").objectReferenceValue =
                 AssetDatabase.LoadAssetAtPath<InputActionAsset>(InputActionsPath);
@@ -108,7 +102,7 @@ namespace UnitySlotTower.Editor.Setup
             serialized.FindProperty("panel").objectReferenceValue = panel.gameObject;
             serialized.FindProperty("closeButton").objectReferenceValue = close;
             serialized.ApplyModifiedPropertiesWithoutUndo();
-            RestyleUnits();
+            HelpRebuildSetup.Build(screen, bar);
 
             // 実行時は一時停止すると「?」が出る。シーンの編集の邪魔にならないよう閉じて保存する。
             open.gameObject.SetActive(false);
@@ -119,310 +113,10 @@ namespace UnitySlotTower.Editor.Setup
             Debug.Log("[SlotTower Setup] 説明画面を作成した。");
         }
 
-        /// <summary>スロットページの行をまとめる親の名前。作り直すときはこれを消す。</summary>
-        internal const string SlotRowsName = "Slot Rows";
-
         internal static void LoadAssets()
         {
-            _knob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
             _box = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
             _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontPath);
-        }
-
-        // スロット（T351、plan 16.10）: 1行目はハズレ（暗い枠に赤い×）、続いて6図柄。各行は 図柄・20パターン中の %・▶・効果。
-        // 効果（T615）: 効果の印と数値、続く秒数のある効果は時計と秒数、コインは上限の印と上限。
-        // 赤7 → 爆発と敵「-5」、青7 → 氷の中の敵「×0」と時計「3」、緑7 → HP「+50%」、黄7 → 毒の敵「-1」と時計「5」、
-        // バー → 攻撃の印「×2.0」と時計「10」、コイン → コイン「×1.1」と上限の印「×1.5」。数値は実行時（HelpScreen）。
-        internal static void BuildSlot(RectTransform panel, SerializedObject serialized, float top = 0.92f, float height = 0.05f)
-        {
-            var area = CreateRect(SlotRowsName, panel, Vector2.zero, Vector2.one);
-            var miss = Row(area, "Miss", top, height);
-            var missIcon = CreateImage("Icon", miss, new Vector2(0.06f, 0.08f), new Vector2(0.06f + 0.84f * height * Square, 0.92f),
-                DarkColor, _box);
-            missIcon.type = Image.Type.Sliced;
-            var cross = CreateText("Cross", missIcon.rectTransform, new Vector2(0.1f, 0.1f), new Vector2(0.9f, 0.9f),
-                new Color(0.95f, 0.2f, 0.2f));
-            cross.text = "×";
-            cross.alignment = TextAlignmentOptions.Center;
-            serialized.FindProperty("missText").objectReferenceValue = Chance(miss, height);
-
-            var chances = serialized.FindProperty("chanceTexts");
-            var effects = serialized.FindProperty("effectTexts");
-            var caps = serialized.FindProperty("capTexts");
-            chances.arraySize = effects.arraySize = caps.arraySize = SlotSymbols.Count;
-            for (var s = 0; s < SlotSymbols.Count; s++)
-            {
-                var symbol = (SlotSymbol)s;
-                var row = Row(area, SlotSymbols.Ids[s], top - (s + 1) * height, height);
-                // リールのコマと同じく明るい札の上に描く（BAR の黒い帯が暗い背景に沈まないように）。
-                var card = CreateImage("Icon", row, new Vector2(0.06f, 0.04f), new Vector2(0.06f + 0.92f * height * Square, 0.96f),
-                    new Color(0.92f, 0.92f, 0.95f), _box);
-                card.type = Image.Type.Sliced;
-                var icon = CreateRect("Symbol", card.rectTransform, new Vector2(0.08f, 0.08f), new Vector2(0.92f, 0.92f));
-                SlotSymbolArt.Create(symbol, icon);
-                chances.GetArrayElementAtIndex(s).objectReferenceValue = Chance(row, height);
-                var arrow = CreateRect("Arrow", row, new Vector2(0.36f, 0.3f), new Vector2(0.39f, 0.7f));
-                arrow.gameObject.AddComponent<TriangleGraphic>().color = DimColor;
-
-                var iconWidth = 0.72f * height * Square;
-                var iconMin = new Vector2(0.43f, 0.14f);
-                var iconMax = new Vector2(0.43f + iconWidth, 0.86f);
-                caps.GetArrayElementAtIndex(s).objectReferenceValue = null;
-                var effectIcon = CreateRect(EffectIconName, row, iconMin, iconMax);
-                switch (symbol)
-                {
-                    case SlotSymbol.Red7:
-                        BlastIcon(effectIcon);
-                        break;
-                    case SlotSymbol.Blue7:
-                        EnemyIcon(effectIcon, IceColor);
-                        break;
-                    case SlotSymbol.Green7:
-                        HpIcon(effectIcon);
-                        break;
-                    case SlotSymbol.Yellow7:
-                        EnemyIcon(effectIcon, PoisonColor);
-                        break;
-                    case SlotSymbol.Bar:
-                        AttackIcon(effectIcon);
-                        break;
-                    case SlotSymbol.Coin:
-                        CreateImage("Coin", effectIcon, Vector2.zero, Vector2.one, SlotSymbolArt.CoinColor, _knob).preserveAspect = true;
-                        break;
-                }
-
-                effects.GetArrayElementAtIndex(s).objectReferenceValue =
-                    CreateText("Effect", row, new Vector2(0.44f + iconWidth, 0.05f), new Vector2(0.7f, 0.95f), Color.white);
-
-                // 2つ目: 続く秒数（時計）か上限（上限の印）。ない図柄は作らない。
-                var timed = symbol == SlotSymbol.Blue7 || symbol == SlotSymbol.Yellow7 || symbol == SlotSymbol.Bar;
-                if (timed || symbol == SlotSymbol.Coin)
-                {
-                    var capIcon = CreateRect(CapIconName, row, new Vector2(0.73f, 0.14f), new Vector2(0.73f + iconWidth, 0.86f));
-                    if (timed)
-                        Clock(capIcon, Vector2.zero, Vector2.one);
-                    else
-                        CapIcon(capIcon);
-                    caps.GetArrayElementAtIndex(s).objectReferenceValue =
-                        CreateText("Cap", row, new Vector2(0.74f + iconWidth, 0.05f), new Vector2(0.97f, 0.95f), Color.white);
-                }
-            }
-        }
-
-        /// <summary>図柄の行の効果の印と、2つ目の数値の印（時計か上限）の名前（TextModeLayoutSetup が位置を決める）。</summary>
-        internal const string EffectIconName = "Effect Icon";
-        internal const string CapIconName = "Cap Icon";
-
-        private static readonly Color IceColor = new Color(0.55f, 0.85f, 1f);
-        private static readonly Color PoisonColor = new Color(0.7f, 0.9f, 0.2f);
-
-        // 敵: 色の丸（氷・毒）の中に赤い ◀。
-        private static void EnemyIcon(RectTransform parent, Color aura)
-        {
-            CreateImage("Aura", parent, Vector2.zero, Vector2.one, aura, _knob).preserveAspect = true;
-            var enemy = CreateRect("Enemy", parent, new Vector2(0.22f, 0.25f), new Vector2(0.78f, 0.75f));
-            enemy.localEulerAngles = new Vector3(0f, 0f, 180f);
-            var triangle = enemy.gameObject.AddComponent<TriangleGraphic>();
-            triangle.color = new Color(0.9f, 0.3f, 0.3f);
-            triangle.raycastTarget = false;
-        }
-
-        // 爆発: 橙の丸を2つ重ね、中に赤い ◀（敵）。
-        private static void BlastIcon(RectTransform parent)
-        {
-            CreateImage("Burst", parent, Vector2.zero, Vector2.one, new Color(1f, 0.55f, 0.15f), _knob).preserveAspect = true;
-            CreateImage("Core", parent, new Vector2(0.15f, 0.15f), new Vector2(0.85f, 0.85f), new Color(1f, 0.85f, 0.3f), _knob)
-                .preserveAspect = true;
-            var enemy = CreateRect("Enemy", parent, new Vector2(0.25f, 0.28f), new Vector2(0.75f, 0.72f));
-            enemy.localEulerAngles = new Vector3(0f, 0f, 180f);
-            var triangle = enemy.gameObject.AddComponent<TriangleGraphic>();
-            triangle.color = new Color(0.85f, 0.2f, 0.2f);
-            triangle.raycastTarget = false;
-        }
-
-        // 上限: 上に白い横棒、その下に上向きの ▲（ここまでしか上がらない）。
-        private static void CapIcon(RectTransform parent)
-        {
-            CreateImage("Lid", parent, new Vector2(0.05f, 0.82f), new Vector2(0.95f, 0.98f), Color.white, null);
-            var up = CreateRect("Up", parent, new Vector2(0.15f, 0f), new Vector2(0.85f, 0.72f));
-            up.localEulerAngles = new Vector3(0f, 0f, 90f);
-            var triangle = up.gameObject.AddComponent<TriangleGraphic>();
-            triangle.color = DimColor;
-            triangle.raycastTarget = false;
-        }
-
-        // バッファーの倍率: 緑の ▲（味方の攻撃を上げる）。
-        internal static void BuffIcon(RectTransform parent)
-        {
-            var up = CreateRect("Up", parent, new Vector2(0.1f, 0.1f), new Vector2(0.9f, 0.9f));
-            up.localEulerAngles = new Vector3(0f, 0f, 90f);
-            var triangle = up.gameObject.AddComponent<TriangleGraphic>();
-            triangle.color = SlotSymbolArt.HealColor;
-            triangle.raycastTarget = false;
-        }
-
-        // 攻撃のアイコン枠に、バッファーのときだけ出すアイコンを重ねる。
-        internal static void AddBuffIcon(RectTransform atkIcon, SerializedProperty element)
-        {
-            var buff = CreateRect("Buff Icon", atkIcon, Vector2.zero, Vector2.one);
-            BuffIcon(buff);
-            element.FindPropertyRelative("buffIcon").objectReferenceValue = buff.gameObject;
-            buff.gameObject.SetActive(false);
-        }
-
-        /// <summary>味方の行の本体の札の位置（スキルの印の上）。</summary>
-        internal static void PlaceBody(RectTransform body, float height)
-        {
-            body.anchorMin = new Vector2(0.04f, 0.36f);
-            body.anchorMax = new Vector2(0.04f + 0.6f * height * Square, 0.96f);
-            body.offsetMin = body.offsetMax = Vector2.zero;
-        }
-
-        private static RectTransform Row(RectTransform area, string name, float top, float height) =>
-            CreateRect(name, area, new Vector2(0f, top - height), new Vector2(1f, top));
-
-        private static TextMeshProUGUI Chance(RectTransform row, float height)
-        {
-            var text = CreateText("Chance", row, new Vector2(0.07f + 0.92f * height * Square, 0.05f), new Vector2(0.34f, 0.95f), Color.white);
-            text.alignment = TextAlignmentOptions.Right;
-            return text;
-        }
-
-        internal const float UnitRowHeight = 0.13f;
-
-        // 味方: 本体の色の札とスキルの印、範囲図（実行時に作る）、左列に HP・攻撃（バッファーは倍率）・防御・攻撃間隔、
-        // 右列にブロック・コスト・待ち時間。
-        internal static void BuildUnits(RectTransform area, Transform bar, SerializedObject serialized,
-            float top = 0.54f, float height = UnitRowHeight)
-        {
-            var rows = serialized.FindProperty("unitRows");
-            rows.arraySize = UnitCount;
-            for (var i = 0; i < UnitCount; i++)
-            {
-                var row = Row(area, $"Unit {i + 1}", top - i * height, height);
-                var icon = bar.Find($"Unit Icon {i + 1}");
-                var body = icon == null ? null : icon.GetComponent<Image>();
-                var color = body != null ? body.color : Color.white;
-                var card = CreateImage("Body", row, Vector2.zero, Vector2.one, color, _box);
-                card.type = Image.Type.Sliced;
-                PlaceBody(card.rectTransform, height);
-                var rangeArea = CreateRect("Range", row, new Vector2(0.065f + 0.6f * height * Square, 0.06f), new Vector2(0.45f, 0.94f));
-
-                var element = rows.GetArrayElementAtIndex(i);
-                element.FindPropertyRelative("rangeArea").objectReferenceValue = rangeArea;
-                element.FindPropertyRelative("bodyColor").colorValue = color;
-
-                var line = 1f / 4f;
-                Stat(row, element, "hpText", 0.5f, 3, line, HpIcon);
-                var atk = Stat(row, element, "atkText", 0.5f, 2, line, AttackIcon);
-                element.FindPropertyRelative("attackIcon").objectReferenceValue = atk.gameObject;
-                AddBuffIcon((RectTransform)atk.parent, element);
-                Stat(row, element, "defText", 0.5f, 1, line, DefenseIcon);
-                Stat(row, element, "intervalText", 0.5f, 0, line, (parent) => Clock(parent, Vector2.zero, Vector2.one));
-                Stat(row, element, "blockText", 0.75f, 3, line, BlockIcon);
-                Stat(row, element, "costText", 0.75f, 2, line, (parent) =>
-                    CreateImage("Coin", parent, Vector2.zero, Vector2.one, SlotSymbolArt.CoinColor, _knob));
-                Stat(row, element, "cooldownText", 0.75f, 1, line, CooldownIcon);
-            }
-        }
-
-        // Existing scenes and new setup use the same card art. Layout is left intact.
-        internal static void RestyleUnits()
-        {
-            var looks = UnitLooks.Read();
-            foreach (var help in Object.FindObjectsByType<HelpScreen>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-            {
-                if (help.gameObject.scene != UnityEngine.SceneManagement.SceneManager.GetActiveScene()) continue;
-                var serialized = new SerializedObject(help);
-                var panel = serialized.FindProperty("panel").objectReferenceValue as GameObject;
-                if (panel == null) continue;
-                for (var i = 0; i < looks.Count; i++)
-                {
-                    var parent = panel.transform.Find("Unit Page");
-                    if (parent == null) parent = panel.transform;
-                    var body = parent.Find($"Unit {i + 1}/Body");
-                    if (body == null) continue;
-                    var card = body.GetComponent<Image>();
-                    if (card == null) continue;
-                    BuildJobArt(card, looks[i]);
-                }
-            }
-        }
-
-        private static void BuildJobArt(Image card, UnitLooks.Look look)
-        {
-            card.color = JobCardColor;
-            card.sprite = null;
-            var art = card.transform.Find("Job Art") as RectTransform;
-            if (art == null) art = CreateRect("Job Art", card.rectTransform, Vector2.zero, Vector2.one);
-            UnitLooks.BuildShape(art, look);
-        }
-
-        // 数値1つ: 正方形のアイコン枠（中身は draw で描く）と右の数字。line は下から数えた行。戻り値はアイコンの中身の最初の子。
-        private static Transform Stat(RectTransform row, SerializedProperty element, string property, float x, int line,
-            float lineHeight, System.Action<RectTransform> draw)
-        {
-            var y = line * lineHeight;
-            var iconWidth = 0.7f * lineHeight * (row.anchorMax.y - row.anchorMin.y) * Square;
-            var icon = CreateRect(property.Replace("Text", " Icon"), row, new Vector2(x, y + 0.15f * lineHeight),
-                new Vector2(x + iconWidth, y + 0.85f * lineHeight));
-            var content = CreateRect("Content", icon, Vector2.zero, Vector2.one);
-            draw(content);
-            var text = CreateText(property.Replace("Text", ""), row, new Vector2(x + iconWidth + 0.01f, y),
-                new Vector2(x + 0.24f, y + lineHeight), Color.white);
-            element.FindPropertyRelative(property).objectReferenceValue = text;
-            return content;
-        }
-
-        // HP: 暗い枠に緑のゲージ。
-        private static void HpIcon(RectTransform parent)
-        {
-            CreateImage("Frame", parent, new Vector2(0f, 0.2f), new Vector2(1f, 0.8f), DimColor, null);
-            CreateImage("Fill", parent, new Vector2(0.1f, 0.32f), new Vector2(0.72f, 0.68f), new Color(0.3f, 0.85f, 0.35f), null);
-        }
-
-        // 攻撃: 赤い ▶。
-        private static void AttackIcon(RectTransform parent)
-        {
-            var triangle = CreateRect("Triangle", parent, new Vector2(0.1f, 0.1f), new Vector2(0.9f, 0.9f))
-                .gameObject.AddComponent<TriangleGraphic>();
-            triangle.color = SlotSymbolArt.AttackColor;
-            triangle.raycastTarget = false;
-        }
-
-        // 防御: 青い盾（外枠と明るい内側）。
-        private static void DefenseIcon(RectTransform parent)
-        {
-            CreateImage("Outer", parent, new Vector2(0.1f, 0f), new Vector2(0.9f, 1f), new Color(0.25f, 0.45f, 0.9f), _box)
-                .type = Image.Type.Sliced;
-            CreateImage("Inner", parent, new Vector2(0.3f, 0.25f), new Vector2(0.7f, 0.75f), new Color(0.6f, 0.75f, 1f), null);
-        }
-
-        // ブロック数: 灰色の壁と、それに当たって止まる赤い ◀（敵）。
-        private static void BlockIcon(RectTransform parent)
-        {
-            CreateImage("Wall", parent, new Vector2(0.05f, 0f), new Vector2(0.35f, 1f), DimColor, null);
-            var enemy = CreateRect("Enemy", parent, new Vector2(0.42f, 0.2f), new Vector2(1f, 0.8f));
-            enemy.localEulerAngles = new Vector3(0f, 0f, 180f);
-            var triangle = enemy.gameObject.AddComponent<TriangleGraphic>();
-            triangle.color = new Color(0.9f, 0.3f, 0.3f);
-            triangle.raycastTarget = false;
-        }
-
-        // 待ち時間: 操作バーのゲージと同じく、明るい札の下を暗く覆う。
-        private static void CooldownIcon(RectTransform parent)
-        {
-            CreateImage("Card", parent, new Vector2(0.15f, 0f), new Vector2(0.85f, 1f), DimColor, null);
-            CreateImage("Gauge", parent, new Vector2(0.15f, 0f), new Vector2(0.85f, 0.6f), new Color(0f, 0f, 0f, 0.6f), null);
-        }
-
-        // 時計: 白い円に濃い針2本。
-        private static void Clock(RectTransform parent, Vector2 anchorMin, Vector2 anchorMax)
-        {
-            var face = CreateImage("Clock", parent, anchorMin, anchorMax, Color.white, _knob);
-            face.preserveAspect = true;
-            CreateImage("Hand Up", face.rectTransform, new Vector2(0.45f, 0.48f), new Vector2(0.55f, 0.85f), DarkColor, null);
-            CreateImage("Hand Right", face.rectTransform, new Vector2(0.48f, 0.45f), new Vector2(0.78f, 0.55f), DarkColor, null);
         }
 
         internal static Button CreateButton(string name, RectTransform parent, Vector2 anchorMin, Vector2 anchorMax, Color color)
