@@ -17,6 +17,7 @@
 - Unity 接続: 2026-11-27 T1808 の検証後に停止を確認済み（8080 閉、Editor は開いたまま）。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（16GB）。
 ### 作業の注意
 - テストの手順: refresh → 約25秒 → code execute で `scriptCompilationFailed` と `isCompiling` を確認 → `tests --async` を1回 → 同じ job_id を前景のループで poll（[`UNITY_AUTOMATION.md`](UNITY_AUTOMATION.md) の Tests 節）。PlayMode 全件は約4分。スクリプトは毎回 `$env:TEMP` などに作り直す。
+- 入力のテストは SetUp で実機のマウス・キーボードを止める。SetUp が失敗すると TearDown が走らず Editor の Game ビューを触れなくなる（2026-11-27 に発生）。`PlayModeTestSetup` の OneTimeTearDown で戻すようにした。それでも触れなければ code execute で `InputSystem.devices` を見て `EnableDevice`・`Test Keyboard*` を `RemoveDevice`。
 - PlayMode の実行中に Play を止めて打ち切ると、ジョブが `tests_running` のまま残り、Editor の再起動まで新しいテストを流せない。止めずに最後まで待つ。
 - `editor refresh` はラッパーが「invalid JSON」で失敗扱いにするが、refresh 自体は効いている（CLI が JSON の前に文字を出すため）。ラッパーが失敗すると出力が捨てられる。原因を見るときは `.tools/unity-mcp/Scripts/python.exe -B scripts/unity/unity_mcp_runner.py ...` を直接呼ぶ。
 - 実データを読むテスト（`TablePaths`）は数値の調整で落ちる。CSV を変えたら `Get("melee")` などの期待値を grep で探して一緒に直す。
