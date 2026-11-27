@@ -60,7 +60,7 @@ Select the target instance before operating. Wrapper selects UnitySlotTower; dis
 Check `summary.total`, `passed`, `failed`. Zero tests verifies the execution path, not feature behavior.
 
 ### このPCで分かっている注意点（2026-10〜11 の実績）
-- 手順は1本のスクリプトにまとめ、scratchpad に毎回作り直す（引数 `-Mode`）: refresh → 約25秒待つ → Console の `error CS` を確認（あれば止める。古いアセンブリのまま全件成功に見えるため）→ `tests --async` を1回だけ → 同じ job_id で `poll-test --failed-only` をループ。開始出力の job_id を取りこぼさない（二重送信の前例あり）。EditMode 全体は約75秒。
+- 手順は1本のスクリプトにまとめ、scratchpad に毎回作り直す（引数 `-Mode`）: refresh → 約25秒待つ → code execute で `scriptCompilationFailed` と `isCompiling` を確認（失敗なら止める。古いアセンブリのまま全件成功に見えるため）→ `tests --async` を1回だけ → 同じ job_id で `poll-test --failed-only` をループ。開始出力の job_id を取りこぼさない（二重送信の前例あり）。EditMode 全体は約75秒。
 - CLI はテスト失敗・poll 中・`editor refresh` 成功時でも exit 1 を返すことがある。`try {} catch {}` で包み、出力の最初の `{` から JSON として読む。見る所は `result.data.status`・`result.data.progress.failures_so_far`（失敗時 `result.data.result` は null）・成功時 `result.data.result.summary`。PowerShell で `Json (try {...})` は構文エラー、`$(try {...})` と書く。
 - `editor console` が0件しか返さないことがある。コンパイル確認は code execute で `EditorUtility.scriptCompilationFailed` と型の有無を見る。`--stacktrace` でもスタックが返らないことがある。
 - `code execute` は codedom（古い C#）: ローカル関数不可、`UnityEngine.Object` と書く、Runtime の型は名前で参照できないので `GetType().FullName` で探す（名前空間は `UnitySlotTower.Battle` 等、`.Runtime.` は付かない）。

@@ -10,7 +10,7 @@ description: UnitySlotTowerのコード・アセット・パッケージ・設�
 1. コード・アセット・依存関係・設定・エージェント設定を変更したら `pwsh -NoProfile -File scripts/harness/Test-ProjectHarness.ps1` を実行する。失敗は原因を直すか、既存のユーザー変更によるものと確認して明記する。
 2. UnityのC#、アセット、`Packages/`、`ProjectSettings/` を変更した場合だけ `docs/ai/UNITY_CHECKS.md` の該当節を読む。
 3. コンパイル・Console・テスト・シーン確認が必要なら `docs/ai/UNITY_AUTOMATION.md` に従い、`scripts/unity/Invoke-UnityMcp.ps1` で対象インスタンスとsceneを確認してから行う。
-   - コンパイル確認: `editor console --type error --count 10`（リコンパイル後に再接続を待つ）
+   - コンパイル確認: リコンパイル後に再接続を待ち、`code execute` で `EditorUtility.scriptCompilationFailed` と `isCompiling` を見る（`editor console` は0件を返すことがある。`UNITY_AUTOMATION.md` の Tests 節）
    - テスト: `editor tests --mode EditMode --async` → `editor poll-test <job_id> --wait 5 --failed-only`（失敗・スキップの詳細だけ返す）。`summary.total/passed/failed` を報告し、0件を機能検証と呼ばない。
    - 表示に関わる変更は実画像を保存して開く。成功メッセージだけで判断しない。
 4. Windowsプレイヤーの挙動に関わる場合だけ `Build-UnityPlayer.ps1` → `Test-UnityPlayer.ps1 -ShowWindow` を使い、ジョブ最終状態・終了コード・画像を確認する。

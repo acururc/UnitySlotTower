@@ -17,7 +17,7 @@ Unity project at repository root (created 2026-10-26). This is an index of confi
 | Unity automation | MCP for Unity 10.2.0 package + pinned Python CLI/server in `.tools/unity-mcp` (Python 3.12); 127.0.0.1:8080; `UNITY_AUTOMATION.md`. Read-only connection check passed on 6000.6.7f1 (2026-10-26) |
 | Build | `scripts/unity/Build-UnityPlayer.ps1` (Windows 64-bit Development) → `Builds/Windows/`; player built and run in this project. Distribution target undecided |
 | Spec workflow | Lightweight: `SPEC_WORKFLOW.md`, `specs/NNN-name/` |
-| 戦闘の表示と操作 | 開始時は全経路、群れの出始めはその道だけを矢印で示す。本拠地到達時は画面の縁が赤く光る。弓と遠距離の敵の弾は表示専用で使い回す。スロットが揃うと出目ごとの盤面全体の演出（仮置き、本番の絵は M5）。一時停止中の帯から早見表（スロット・味方の2ページ）とタイトルに戻る確認を開く（001 plan 19章、002 plan 3章） |
+| 戦闘の表示と操作 | 開始時は全経路、群れの出始めはその道だけを矢印で示す。本拠地到達時は画面の縁が赤く光る。弓と遠距離の敵の弾は表示専用で使い回す。スロットが揃うと出目ごとの盤面全体の演出（仮置き、本番の絵は M5）。一時停止中の帯から早見表（遊び方・回し方・図柄・味方・敵の5ページ、動く図つき。`specs/016-help-rework/`）とタイトルに戻る確認を開く（001 plan 19章、002 plan 3章） |
 | Game data | 数値の正本は `Assets/UnitySlotTower/Data/Tables/` の CSV（ステージは `stages.csv`・`stage_waves.csv`・`waves.csv`、効果は `slot_rules.csv`）。`Core/Data/GameDataValidator` と EditMode `TableValidationTests` で検証。数値は小さい桁（最低ダメージ1、攻撃0の職は攻撃しない）。ステージとマップ: 1 `first`、2〜3 `battle_a/b`、4 `elite_a`（中ボス）、5 `battle_c`、6 `battle_d`（2方向）、7 `battle_e`（本拠地2つで共通ライフ）、8 `boss_a`。002 plan 4章の値は仮置きで、通しプレイ（T617）で調整 |
 | Harness | `scripts/harness/Test-ProjectHarness.ps1` (required files, JSON, Unity version, .meta pairs, whitespace, secret patterns) |
 
