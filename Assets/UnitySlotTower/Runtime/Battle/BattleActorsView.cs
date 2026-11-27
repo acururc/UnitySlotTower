@@ -57,6 +57,12 @@ namespace UnitySlotTower.Battle
         [SerializeField] private Color gaugeBackColor = new Color(0.05f, 0.05f, 0.06f);
         [SerializeField] private Color unitGaugeColor = UiStyle.Ally;
         [SerializeField] private Color enemyGaugeColor = UiStyle.Danger;
+        [Tooltip("深度を見ずに最前面に描く材質（HpGauge.shader、spec 015 FR-042）。空なら体と同じ材質。")]
+        [SerializeField] private Material gaugeMaterial;
+
+        // ゲージと頭の間、ゲージの中身を背景より手前に出す距離（ワールド）。
+        private const float GaugeLift = 0.06f;
+        private const float FillForward = 0.05f;
 
         [Header("Shots")]
         [Tooltip("弓の矢と遠距離の敵の弾（FR-082、見た目だけ）。飛ぶ時間は攻撃の間隔の 1/3 とこの値の短い方（戦闘の時間で進む）。")]
@@ -119,7 +125,7 @@ namespace UnitySlotTower.Battle
             public float Center;
             public Transform Gauge;
             public Transform Fill;
-            public float BodyBottom;
+            public float BodyTop;
             public int Hp = -1;
             public int Seen;
             public Renderer Body;
@@ -446,7 +452,7 @@ namespace UnitySlotTower.Battle
             nose.localScale = new Vector3(0.15f, 0.15f, 0.3f);
             nose.localPosition = new Vector3(0f, height * 0.5f, look.size.z * 0.5f + 0.1f);
 
-            var actor = CreateActor(root, 0f, unitGaugeColor, body, look.color);
+            var actor = CreateActor(root, height, unitGaugeColor, body, look.color);
             actor.Center = height * 0.5f;
             return actor;
         }
@@ -487,38 +493,40 @@ namespace UnitySlotTower.Battle
                 var shadow = CreatePrimitive(PrimitiveType.Cylinder, "Shadow", root, shadowColor);
                 shadow.localScale = new Vector3(size * 0.9f, 0.005f, size * 0.9f);
                 shadow.localPosition = Vector3.down * (lift.magnitude - 0.01f);
-                return CreateActor(root, -size * 0.5f, enemyGaugeColor, body, color);
+                return CreateActor(root, size * 0.5f, enemyGaugeColor, body, color);
             }
 
             var height = BodyHeight(shape, scale.y);
             body.localPosition = Vector3.up * (height * 0.5f);
             if (definition.RangedDamageRate < 1)
             {
-                // 遠距離に強い敵（重装、FR-075）は手前に大きな盾を持たせて見分けられるようにする。
+                // 遠距離に強い敵（重装、FR-075）は体の横に盾を持たせて見分けられるようにする。
+                // 体より低く細い板にし、HP ゲージや体を覆う大きな四角に見えないようにする（spec 015 FR-043）。
                 var shield = CreatePrimitive(PrimitiveType.Cube, "Shield", root, shieldColor);
-                shield.localScale = new Vector3(size * 1.2f, height * 0.95f, size * 0.18f);
-                shield.localPosition = new Vector3(0, height * 0.5f, -size * 0.6f);
+                shield.localScale = new Vector3(size * 0.16f, height * 0.7f, size * 0.85f);
+                shield.localPosition = new Vector3(-size * 0.62f, height * 0.4f, 0f);
             }
-            var groundActor = CreateActor(root, 0f, enemyGaugeColor, body, color);
+            var groundActor = CreateActor(root, height, enemyGaugeColor, body, color);
             groundActor.Center = height * 0.5f;
             return groundActor;
         }
 
-        /// <summary>体の下端のすぐ下に HP ゲージを付ける。空中の敵は浮いた体を基準にする。</summary>
-        private Actor CreateActor(Transform root, float bottom, Color fillColor, Transform body, Color bodyColor)
+        /// <summary>体の上端のすぐ上に HP ゲージを付ける（spec 015 FR-042）。空中の敵は浮いた体を基準にする。深度を見ない材質で最前面に描く。</summary>
+        private Actor CreateActor(Transform root, float top, Color fillColor, Transform body, Color bodyColor)
         {
             var gauge = new GameObject("HP Gauge").transform;
             gauge.SetParent(root, false);
-            gauge.localPosition = Vector3.up * (bottom - gaugeSize.y * 0.5f - 0.04f);
-
+            gauge.localPosition = Vector3.up * (top + gaugeSize.y * 0.5f + GaugeLift);
 
             var back = CreatePrimitive(PrimitiveType.Quad, "Back", gauge, gaugeBackColor);
             back.localScale = new Vector3(gaugeSize.x + 0.04f, gaugeSize.y + 0.04f, 1f);
             var fill = CreatePrimitive(PrimitiveType.Quad, "Fill", gauge, fillColor);
             fill.localScale = new Vector3(gaugeSize.x, gaugeSize.y, 1f);
-            // Quad の表は -z 側。カメラの向きに揃えたとき背景より手前に出す。
-            fill.localPosition = new Vector3(0f, 0f, -0.01f);
-            return new Actor { Root = root, Gauge = gauge, Fill = fill, BodyBottom = bottom,
+            // Quad の表は -z 側。カメラの向きに揃えたとき背景より手前に出す（Overlay の列は遠い順に描く）。
+            fill.localPosition = new Vector3(0f, 0f, -FillForward);
+            UseGaugeMaterial(back);
+            UseGaugeMaterial(fill);
+            return new Actor { Root = root, Gauge = gauge, Fill = fill, BodyTop = top,
                 Body = body.GetComponent<Renderer>(), BodyColor = bodyColor };
         }
 
@@ -539,9 +547,9 @@ namespace UnitySlotTower.Battle
             {
                 var cameraTransform = battleCamera.transform;
                 actor.Gauge.rotation = cameraTransform.rotation;
-                // Screen-down from the feet, with a small camera-facing offset to clear the ground.
-                actor.Gauge.position = actor.Root.TransformPoint(Vector3.up * actor.BodyBottom)
-                    - cameraTransform.up * (gaugeSize.y * 0.5f + 0.04f)
+                // 頭の上から画面の上へ少し離し、カメラ寄りに置く（材質は深度を見ないので隠れない）。
+                actor.Gauge.position = actor.Root.TransformPoint(Vector3.up * actor.BodyTop)
+                    + cameraTransform.up * (gaugeSize.y * 0.5f + GaugeLift)
                     - cameraTransform.forward * 0.12f;
             }
 
@@ -554,7 +562,7 @@ namespace UnitySlotTower.Battle
             var ratio = maxHp > 0 ? Mathf.Clamp01((float)hp / maxHp) : 0f;
             var width = gaugeSize.x * ratio;
             actor.Fill.localScale = new Vector3(width, gaugeSize.y, 1f);
-            actor.Fill.localPosition = new Vector3((width - gaugeSize.x) * 0.5f, 0f, -0.01f);
+            actor.Fill.localPosition = new Vector3((width - gaugeSize.x) * 0.5f, 0f, -FillForward);
         }
 
         private UnitLook LookOf(string id)
@@ -595,6 +603,19 @@ namespace UnitySlotTower.Battle
             var group = new GameObject(name).transform;
             group.SetParent(transform, false);
             return group;
+        }
+
+        private void UseGaugeMaterial(Transform part)
+        {
+            if (gaugeMaterial == null)
+            {
+                return;
+            }
+
+            var gaugeRenderer = part.GetComponent<Renderer>();
+            gaugeRenderer.sharedMaterial = gaugeMaterial;
+            gaugeRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            gaugeRenderer.receiveShadows = false;
         }
 
         private Transform CreatePrimitive(PrimitiveType shape, string name, Transform parent, Color color)

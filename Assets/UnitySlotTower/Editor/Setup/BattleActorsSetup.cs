@@ -41,5 +41,40 @@ namespace UnitySlotTower.Editor.Setup
             EditorSceneManager.SaveScene(field.gameObject.scene);
             Debug.Log("[SlotTower Setup] 味方と敵の表示を作成した。");
         }
+
+        private const string GaugeShaderPath = "Assets/UnitySlotTower/Art/Materials/HpGauge.shader";
+        private const string GaugeMaterialPath = "Assets/UnitySlotTower/Art/Materials/HP Gauge.mat";
+
+        /// <summary>spec 015 FR-042: HP ゲージを最前面に描く材質を作り（あれば使い回す）、表示に結ぶ。何度実行してもよい。</summary>
+        [MenuItem("Tools/UnitySlotTower/Setup/HP Gauge Material (spec 015)")]
+        private static void UseGaugeMaterial()
+        {
+            var view = Object.FindAnyObjectByType<BattleActorsView>(FindObjectsInactive.Include);
+            var shader = AssetDatabase.LoadAssetAtPath<Shader>(GaugeShaderPath);
+            if (view == null || shader == null)
+            {
+                Debug.LogError("[SlotTower Setup] BattleActorsView か HpGauge.shader が見つからない。");
+                return;
+            }
+
+            var material = AssetDatabase.LoadAssetAtPath<Material>(GaugeMaterialPath);
+            if (material == null)
+            {
+                material = new Material(shader) { name = "HP Gauge" };
+                AssetDatabase.CreateAsset(material, GaugeMaterialPath);
+            }
+
+            material.shader = shader;
+            material.enableInstancing = true;
+            EditorUtility.SetDirty(material);
+            AssetDatabase.SaveAssets();
+
+            var serialized = new SerializedObject(view);
+            serialized.FindProperty("gaugeMaterial").objectReferenceValue = material;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorSceneManager.MarkSceneDirty(view.gameObject.scene);
+            EditorSceneManager.SaveScene(view.gameObject.scene);
+            Debug.Log("[SlotTower Setup] HP ゲージの材質を結んだ（spec 015）。");
+        }
     }
 }

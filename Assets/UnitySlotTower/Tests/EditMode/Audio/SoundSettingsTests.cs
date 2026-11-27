@@ -18,7 +18,7 @@ namespace UnitySlotTower.Tests.EditMode.Audio
         {
             var settings = new SoundSettings(new MemoryStore());
 
-            Assert.That((settings.Bgm, settings.Se), Is.EqualTo((0.7f, 0.8f)));
+            Assert.That((settings.Bgm, settings.Se), Is.EqualTo((0.5f, 0.5f)));
         }
 
         [Test]

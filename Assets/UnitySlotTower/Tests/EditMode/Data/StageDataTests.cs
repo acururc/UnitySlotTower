@@ -48,19 +48,19 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("FR-103: ステージ1は 1体 → 2体 → 3体 → 長め（6体以上）、最後に見せ場の大群（spec 011 FR-030、10体以上）")]
+        [Description("FR-103: ステージ1は最初に見せ場の群れ（spec 015 FR-001、8体）、続いて 1体 → 2体 → 3体 → 長め（6体以上）")]
         public void Stage_1_Waves_Grow_One_Two_Three_Then_Long()
         {
             var counts = Schedule(1).Waves.Select(w => w.Spawns.Count).ToArray();
 
-            Assert.That((counts.Length, counts[0], counts[1], counts[2], counts[3] >= 6, counts[4] >= 10), Is.EqualTo((5, 1, 2, 3, true, true)));
+            Assert.That((counts.Length, counts[0], counts[1], counts[2], counts[3], counts[4] >= 6), Is.EqualTo((5, 8, 1, 2, 3, true)));
         }
 
         [Test]
-        [Description("FR-103: ステージ1のウェーブ2の2体は同時に来る（間隔1秒未満）")]
+        [Description("FR-103: ステージ1の2体のウェーブ（spec 015 でウェーブ3）は同時に来る（間隔1秒未満）")]
         public void Stage_1_Second_Wave_Comes_Together()
         {
-            var spawns = Schedule(1).Waves[1].Spawns;
+            var spawns = Schedule(1).Waves[2].Spawns;
 
             Assert.That(spawns[1].Time - spawns[0].Time, Is.LessThan(1));
         }

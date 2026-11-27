@@ -9,11 +9,11 @@ namespace UnitySlotTower.Core.Audio
         void Set(string key, float value);
     }
 
-    /// <summary>BGM と効果音の音量（0〜1、spec 014 FR-006）。</summary>
+    /// <summary>BGM と効果音の音量（0〜1、spec 014 FR-006）。初期値はどちらも真ん中（spec 015 FR-020）。</summary>
     public sealed class SoundSettings
     {
-        public const float DefaultBgm = 0.7f;
-        public const float DefaultSe = 0.8f;
+        public const float DefaultBgm = 0.5f;
+        public const float DefaultSe = 0.5f;
         public const string BgmKey = "sound.bgm";
         public const string SeKey = "sound.se";
 

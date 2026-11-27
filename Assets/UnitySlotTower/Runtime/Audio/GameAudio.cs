@@ -42,6 +42,9 @@ namespace UnitySlotTower
         /// <summary>効果音を鳴らす。鳴らしたら true。</summary>
         public static bool Play(SoundId id) => Instance != null ? Instance.PlaySe(id) : NotifyOnly(id);
 
+        /// <summary>高さ（pitch、1 が元の高さ）を変えて鳴らす（spec 015 FR-023 の揃いの n 本目）。</summary>
+        public static bool Play(SoundId id, float pitch) => Instance != null ? Instance.PlaySe(id, false, pitch) : NotifyOnly(id);
+
         public static void PlayBgm(BgmTrack track)
         {
             if (Instance != null) Instance.ChangeBgm(track);
@@ -118,7 +121,7 @@ namespace UnitySlotTower
         }
 
         /// <summary>効果音を鳴らす（一時停止中・割り当てなし・同時数の上限なら鳴らさない）。</summary>
-        public bool PlaySe(SoundId id, bool evenIfPaused = false)
+        public bool PlaySe(SoundId id, bool evenIfPaused = false, float pitch = 1f)
         {
             Requested?.Invoke(id);
             EnsureInitialized();
@@ -136,6 +139,7 @@ namespace UnitySlotTower
             var source = FreeSource();
             source.clip = clip;
             source.volume = entry.volume * Settings.Se;
+            source.pitch = pitch;
             source.Play();
             return true;
         }

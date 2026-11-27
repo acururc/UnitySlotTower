@@ -199,7 +199,14 @@ namespace UnitySlotTower
             if (hits == 0) GameAudio.Play(SoundId.Miss);
         }
 
-        private static void OnAligned(SlotSymbol symbol) => GameAudio.Play(SoundId.LineHit);
+        // 揃いの電子音に上昇音を重ね、同じ回転の2本目・3本目ほど高くする（spec 015 FR-023、全音ずつ）。
+        private void OnAligned(SlotSymbol symbol)
+        {
+            var index = slotCabinet != null ? Mathf.Clamp(slotCabinet.LastAlignedIndex, 1, 3) : 1;
+            var pitch = Mathf.Pow(2f, (index - 1) * 2f / 12f);
+            GameAudio.Play(SoundId.LineHit, pitch);
+            GameAudio.Play(SoundId.LineFanfare, pitch);
+        }
 
         private static void OnRed() => GameAudio.Play(SoundId.Red7);
         private static void OnBlue() => GameAudio.Play(SoundId.Blue7);

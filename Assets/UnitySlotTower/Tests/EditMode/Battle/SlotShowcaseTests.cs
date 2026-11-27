@@ -77,8 +77,8 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
-        [Description("FR-030: 正本のステージ1はウェーブ5が見せ場で、ほかのステージに見せ場はない")]
-        public void Project_Stage_One_Wave_Five_Is_The_Only_Showcase()
+        [Description("spec 015 FR-001: 正本のステージ1はウェーブ1が見せ場で、ほかのステージに見せ場はない")]
+        public void Project_Stage_One_Wave_One_Is_The_Only_Showcase()
         {
             var stageWaves = CsvParser.Parse(WaveSchedule.StageWavesFileName,
                 System.IO.File.ReadAllText(System.IO.Path.Combine(TablePaths.Root, WaveSchedule.StageWavesFileName)));
@@ -88,7 +88,7 @@ namespace UnitySlotTower.Tests.EditMode.Battle
                 if (row.GetBool(WaveSchedule.SlotShowcaseColumn))
                 {
                     showcases++;
-                    Assert.That((row.GetInt("stage"), row.GetInt(WaveSchedule.WaveColumn)), Is.EqualTo((1, 5)));
+                    Assert.That((row.GetInt("stage"), row.GetInt(WaveSchedule.WaveColumn)), Is.EqualTo((1, 1)));
                 }
             }
 

@@ -201,10 +201,18 @@ namespace UnitySlotTower.Editor.Setup
         /// </summary>
         private static void BuildCabinetLabels(RectTransform cabinet)
         {
-            // レバー（x 40〜230・y 604〜708）: レバーの右に2行（x 310〜640）。
+            // レバー（x 40〜230・y 604〜708）: レバーの右の BET ボタン（spec 011）のさらに右（重ならないように、spec 015 FR-040）。
             var lever = Child(cabinet, "Lever Button");
+            var bet = cabinet.Find("Bet Button") as RectTransform;
+            var gap = 10f;
+            if (bet != null)
+            {
+                // BET ボタンの右端までの距離（筐体の幅に対するアンカーの差を px に直す）。
+                gap = (bet.anchorMax.x - lever.anchorMax.x) * cabinet.rect.width + 16f;
+            }
+
             SetLabel(Child(lever, "Text Label cabinet_lever"), new Vector2(1f, 0f), Vector2.one,
-                new Vector2(10f, 0f), new Vector2(340f, 0f), CabinetFont);
+                new Vector2(gap, 0f), new Vector2(gap + 340f, 0f), CabinetFont);
 
             // コインの名前は出さない（2026-11-23 ユーザー: 「コイン（2枚で1回）」はいらない、T614）。前に作った札があれば消す。
             var oldCredit = cabinet.Find("Credit/Text Label cabinet_credit");
@@ -275,7 +283,18 @@ namespace UnitySlotTower.Editor.Setup
             var icon = Child(bar, $"Unit Icon {slot + 1}");
             SetRect(icon, new Vector2((left + 12f) / width, iconBottom / barHeight), new Vector2((left + 150f) / width, iconTop / barHeight));
             var name = FindLabel(icon, "unit_");
-            SetLabel(name, Vector2.zero, Vector2.zero, new Vector2(0f, 18f - iconBottom), new Vector2(292f, 74f - iconBottom), CardFont);
+            SetLabel(name, Vector2.zero, Vector2.zero, new Vector2(0f, 22f - iconBottom), new Vector2(292f, 78f - iconBottom), CardFont);
+            // 状態の線（BattleHudRestyleSetup、札の y 20〜28 px）が職名を横切るので、文字あり版は札の下端へ下げる（spec 015 FR-041）。
+            var strip = bar.parent.Find($"Card Frame {slot + 1}/State Strip") as RectTransform
+                ?? bar.Find($"Card Frame {slot + 1}/State Strip") as RectTransform;
+            if (strip != null)
+            {
+                SetRect(strip, Vector2.zero, Vector2.zero, new Vector2(12f, 3f), new Vector2(184f, 9f));
+            }
+            else
+            {
+                Debug.LogWarning($"[SlotTower Setup] Card Frame {slot + 1}/State Strip が見つからない。");
+            }
 
             var upgrade = Child(bar, $"Upgrade Icon {slot + 1}");
             SetRect(upgrade, new Vector2((left + 158f) / width, iconBottom / barHeight), new Vector2((left + 330f) / width, 152f / barHeight)); // T614 で右へ広げた（旧 304、中身が 0.88 倍）

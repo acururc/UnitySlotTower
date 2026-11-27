@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnitySlotTower.Battle;
 using UnitySlotTower.Core.Battle;
+using UnitySlotTower.Slot;
 
 namespace UnitySlotTower.Tests.PlayMode
 {
@@ -41,6 +42,26 @@ namespace UnitySlotTower.Tests.PlayMode
                 .SetValue(battle, new TextAsset(ShortWaves));
         }
 
+        /// <summary>
+        /// ステージ1の見せ場（spec 015 FR-001、ウェーブ1で止まってレバーを待つ）を飛ばす。早送りで終わらせるテスト用。
+        /// 筐体の決め打ちとレバーの点滅も消す（次のステージの開始でも消える）。
+        /// </summary>
+        public static void SkipShowcase(BattleController battle)
+        {
+            if (battle.Field == null || !battle.Field.IsShowcaseHolding)
+            {
+                return;
+            }
+
+            battle.Field.ReleaseShowcase();
+            var cabinet = Object.FindAnyObjectByType<SlotCabinet>();
+            if (cabinet != null)
+            {
+                cabinet.ForcedHits = null;
+                cabinet.LeverHighlighted = false;
+            }
+        }
+
         public static IEnumerator WaitForVictory(BattleController battle)
         {
             var limit = Time.realtimeSinceStartup + BattlePresentationTiming.VictoryBand + 3f;
@@ -74,6 +95,7 @@ namespace UnitySlotTower.Tests.PlayMode
             var limit = Time.realtimeSinceStartup + seconds;
             while (battle.Run == run && !battle.IsFinished && Time.realtimeSinceStartup < limit)
             {
+                SkipShowcase(battle);
                 yield return null;
             }
 
@@ -91,6 +113,7 @@ namespace UnitySlotTower.Tests.PlayMode
             while (run.Phase != WavePhase.Completed && run.Phase != WavePhase.GameOver &&
                    Time.realtimeSinceStartup < limit)
             {
+                SkipShowcase(battle);
                 yield return null;
             }
 

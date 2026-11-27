@@ -48,6 +48,8 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         {
             _runInBackground = Application.runInBackground;
             Application.runInBackground = true;
+            // 見せ場の暗幕と案内も撮る（PlayModeTestSetup の既定では飛ばす）。
+            BattleController.SkipShowcase = false;
             _folder = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Artifacts", "Automation", "Editor", "t359",
                 DateTime.Now.ToString("yyyyMMdd-HHmmss")));
             Directory.CreateDirectory(_folder);
@@ -59,6 +61,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
         {
             GameSession.SetTextMode(false);
             Time.timeScale = 1f;
+            BattleController.SkipShowcase = true;
             Application.runInBackground = _runInBackground;
             Debug.Log($"[ScreenCapture] {_folder}");
         }
@@ -87,6 +90,15 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             yield return Capture(prefix + "-game");
             // 配置中の置けるマスの緑とカーソル（T612、AC-111）。開始の演出の後、カーソルは中央の行の左から最初の置けるマスに置く。
             yield return StageTestUtil.WaitForIntro(battle);
+            // ステージ1の見せ場（spec 015 FR-004）: ウェーブ1が出そろって止まり、暗幕・矢印・案内が出たところ（敵の HP ゲージも写る）。
+            var showcaseLimit = Time.realtimeSinceStartup + 15f;
+            while (!battle.Field.IsShowcaseHolding && Time.realtimeSinceStartup < showcaseLimit)
+            {
+                yield return null;
+            }
+
+            yield return Capture(prefix + "-showcase", 0.3f);
+            StageTestUtil.SkipShowcase(battle);
             var deployment = battle.Deployment;
             var map = Object.FindAnyObjectByType<BattleFieldView>().Map;
             // T617: 開始時の所持金100ではタンク（130）を選べないので足す。
@@ -149,6 +161,7 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             var limit = Time.realtimeSinceStartup + 30f;
             while (battle.StageNumber == 1 && battle.Run.Phase != WavePhase.GameOver && Time.realtimeSinceStartup < limit)
             {
+                StageTestUtil.SkipShowcase(battle);
                 yield return null;
             }
 

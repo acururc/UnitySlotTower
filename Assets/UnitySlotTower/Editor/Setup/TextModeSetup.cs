@@ -241,6 +241,15 @@ namespace UnitySlotTower.Editor.Setup
             Above(Child(effects, "Poison Effect"), "bar_poison", 40f, 32f);
         }
 
+        /// <summary>spec 015 FR-004: 見せ場の案内「レバーを引こう！」（ShowcaseGuideSetup が作る親いっぱいに大きく）。</summary>
+        internal static TextModeLabel AddShowcaseLabel(RectTransform parent, float fontSize)
+        {
+            _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+            _table = AssetDatabase.LoadAssetAtPath<TextAsset>(TablePath);
+            _texts = UiTexts.Parse(_table.text);
+            return Label(parent, "showcase_lever", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, fontSize);
+        }
+
         internal static void AddHelpLabels(RectTransform root)
         {
             _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);

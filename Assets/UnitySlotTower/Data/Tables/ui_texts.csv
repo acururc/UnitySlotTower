@@ -23,6 +23,7 @@ bar_money_rate,獲得金
 bar_stop,停止
 bar_poison,毒
 cabinet_lever,レバー（Space）
+showcase_lever,レバーを引こう！
 cabinet_fixed,回数固定
 node_first,最初の戦闘
 node_battle,戦闘

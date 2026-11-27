@@ -98,10 +98,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
             help.OpenButton.onClick.Invoke();
             Assert.That(help.IsOpen, Is.True, "「?」で開かない");
             // 上半分: ライン1本あたりの確率（spec 011 FR-022: ハズレ 1-0.6、図柄 0.6×個数/20）と効果（賭け1枚、値は slot_rules.csv）。
-            Assert.That(Text(help, "missText"), Is.EqualTo("40%"), "ハズレ（1-0.6）");
+            Assert.That(Text(help, "missText"), Is.EqualTo("30%"), "ハズレ（1-0.7）");
             var chances = (TMP_Text[])Field(help, "chanceTexts");
-            Assert.That(chances[(int)SlotSymbol.Red7].text, Is.EqualTo("9%"), "赤7（0.6×3/20）");
-            Assert.That(chances[(int)SlotSymbol.Coin].text, Is.EqualTo("12%"), "コイン（0.6×4/20）");
+            Assert.That(chances[(int)SlotSymbol.Red7].text, Is.EqualTo("10%"), "赤7（0.7×3/20 = 10.5% が浮動小数で 10.4999…）");
+            Assert.That(chances[(int)SlotSymbol.Coin].text, Is.EqualTo("14%"), "コイン（0.7×4/20）");
             var effects = (TMP_Text[])Field(help, "effectTexts");
             var caps = (TMP_Text[])Field(help, "capTexts");
             Assert.That((effects[(int)SlotSymbol.Bar].text, caps[(int)SlotSymbol.Bar].text), Is.EqualTo(("×2.0", "10")),

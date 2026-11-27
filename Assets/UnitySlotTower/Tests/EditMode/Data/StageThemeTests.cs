@@ -5,7 +5,7 @@ using UnitySlotTower.Core.Data;
 
 namespace UnitySlotTower.Tests.EditMode.Data
 {
-    /// <summary>spec 013: ステージ5〜7の主役の敵（実データ）。</summary>
+    /// <summary>spec 013: ステージ5〜7の主役の敵、spec 015: ステージ4の分かれ道・ステージ5の飛行の弱め・ステージ6の序盤（実データ）。</summary>
     public sealed class StageThemeTests
     {
         private sealed class Group
@@ -48,6 +48,50 @@ namespace UnitySlotTower.Tests.EditMode.Data
                 .GroupBy(g => g.Wave)
                 .Max(w => w.Sum(g => g.Count));
             Assert.That(swarm, Is.GreaterThanOrEqualTo(6));
+        }
+
+        [Test]
+        [Description("spec 015 FR-031: ステージ5の飛行は1回3体まで、同じウェーブの次の飛行まで6秒以上あく")]
+        public void Stage_5_Air_Comes_In_Small_Spaced_Groups()
+        {
+            var air = Groups(5).Where(g => g.Enemy == "air").ToList();
+            Assert.That(air.All(g => g.Count <= 3), Is.True, "飛行の群れが4体以上");
+            foreach (var wave in air.GroupBy(g => g.Wave))
+            {
+                var times = wave.Select(g => g.Time).OrderBy(t => t).ToArray();
+                for (var i = 1; i < times.Length; i++)
+                {
+                    Assert.That(times[i] - times[i - 1], Is.GreaterThanOrEqualTo(6), $"wave {wave.Key}");
+                }
+            }
+        }
+
+        [Test]
+        [Description("spec 015 FR-032: ステージ6のウェーブ1・2は両側が同時に来ない（反対側は遅れて来る）")]
+        public void Stage_6_Opening_Waves_Stagger_The_Two_Sides()
+        {
+            var groups = Groups(6).Where(g => g.Enemy == "melee" && g.Wave <= 2).ToList();
+            foreach (var wave in groups.GroupBy(g => g.Wave))
+            {
+                var left = wave.Where(g => g.Path == "battle_d_g1").Min(g => g.Time);
+                var right = wave.Where(g => g.Path == "battle_d_g2").Min(g => g.Time);
+                Assert.That(System.Math.Abs(left - right), Is.GreaterThanOrEqualTo(6), $"wave {wave.Key}");
+            }
+        }
+
+        [Test]
+        [Description("spec 015 FR-030: ステージ4は出現口1つから上下2本に分かれる道（両方を使い、中ボスがいる）。ステージ3（出現口2つ）と形が違う")]
+        public void Stage_4_Splits_One_Spawn_Into_Two_Roads()
+        {
+            var rows = CsvParser.Parse("waves.csv", TablePaths.ReadAll()["waves.csv"]).Rows.Where(r => r.GetInt("stage") == 4).ToList();
+            Assert.That(rows.Select(r => r.Get("spawn")).Distinct(), Is.EqualTo(new[] { "S1" }));
+            var paths = rows.Select(r => r.Get("path_id")).Distinct().ToList();
+            Assert.That(paths, Does.Contain("elite_a_g1").And.Contain("elite_a_g2"));
+            Assert.That(rows.Any(r => r.Get("enemy_id") == "mid_boss"), Is.True);
+
+            string Map(string id) => System.IO.File.ReadAllText(System.IO.Path.Combine(TablePaths.Root, "maps", id + ".csv"));
+            int Spawns(string map) => map.Split(',', '\n', '\r').Count(cell => cell.StartsWith("S"));
+            Assert.That((Spawns(Map("elite_a")), Spawns(Map("battle_b"))), Is.EqualTo((1, 2)));
         }
 
         [Test]

@@ -374,17 +374,32 @@ namespace UnitySlotTower.Battle
             Run.ApplySlot(symbol, slotCabinet.LastAlignedPower);
         }
 
-        /// <summary>ステージ1の見せ場の決め打ちの三重当たり（中段 赤7・上段 青7・下段 バー、spec 011 FR-032）。</summary>
+        /// <summary>ステージ1の見せ場の決め打ちの三重当たり（中段 赤7・上段 青7・下段 黄7、spec 015 FR-002）。</summary>
         public static readonly SlotLineHit[] ShowcaseHits =
         {
-            new SlotLineHit(0, SlotSymbol.Red7), new SlotLineHit(-1, SlotSymbol.Blue7), new SlotLineHit(1, SlotSymbol.Bar),
+            new SlotLineHit(0, SlotSymbol.Red7), new SlotLineHit(-1, SlotSymbol.Blue7), new SlotLineHit(1, SlotSymbol.Yellow7),
         };
 
         private bool _showcaseLeverPulled;
 
+        /// <summary>
+        /// テスト用: ステージ1の見せ場（spec 015 FR-001）で止めずにそのまま進める。PlayMode テストは既定で true にし、
+        /// 見せ場を見るテストだけ false にする。Play のたびに false へ戻す（ドメインの再読み込みを切っているため）。
+        /// </summary>
+        public static bool SkipShowcase { get; set; }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetSkipShowcase() => SkipShowcase = false;
+
         // 見せ場のウェーブが出そろって戦闘が止まった（spec 011 FR-031）: コインを補い、賭けを3枚にし、レバーを示す。
         private void OnShowcaseHeld()
         {
+            if (SkipShowcase)
+            {
+                Field.ReleaseShowcase();
+                return;
+            }
+
             var wallet = slotCabinet.Wallet;
             var need = slotCabinet.Rules.ShowcaseCoins - wallet.Coins;
             if (need > 0)
@@ -404,12 +419,28 @@ namespace UnitySlotTower.Battle
             slotCabinet.LeverPulled -= OnShowcaseLever;
             slotCabinet.LeverHighlighted = false;
             _showcaseLeverPulled = true;
+            _showcaseBetReset = true;
+        }
+
+        private bool _showcaseBetReset;
+
+        // 見せ場の回転（揃いの通知まで）が終わったら賭けを1枚に戻す（spec 015 FR-003）。回転中の SetBet は効かないので待つ。
+        private void ResetBetAfterShowcase()
+        {
+            if (!_showcaseBetReset || slotCabinet.IsSpinning)
+            {
+                return;
+            }
+
+            _showcaseBetReset = false;
+            slotCabinet.SetBet(SlotMachine.MinBet);
         }
 
         // ステージを始め直したら見せ場の途中の状態を消す（やり直しで見せ場がもう一度起きる、FR-033）。
         private void ResetShowcase()
         {
             slotCabinet.LeverPulled -= OnShowcaseLever;
+            _showcaseBetReset = false;
             slotCabinet.ForcedHits = null;
             slotCabinet.LeverHighlighted = false;
             _showcaseLeverPulled = false;
@@ -422,6 +453,7 @@ namespace UnitySlotTower.Battle
                 return;
             }
 
+            ResetBetAfterShowcase();
             if (IsShowingVictory)
             {
                 _victoryLeft = Mathf.Max(0f, _victoryLeft - Time.unscaledDeltaTime);

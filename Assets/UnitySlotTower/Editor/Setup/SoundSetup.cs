@@ -31,12 +31,13 @@ namespace UnitySlotTower.Editor.Setup
         // 出来事 → ファイル（Se フォルダ）・音量・同時数の上限。名前だけで選んだので AC-003 で聞いて直す。
         private static readonly (SoundId id, string[] files, float volume, int maxVoices)[] Sounds =
         {
-            (SoundId.Bet, new[] { "casino_chip-lay-1" }, 0.8f, 2),
-            (SoundId.Lever, new[] { "rpg_metalLatch" }, 1f, 1),
-            (SoundId.ReelSpin, new[] { "interface_scroll_002" }, 0.5f, 1),
-            (SoundId.ReelStop, new[] { "impact_impactPlate_light_000" }, 0.8f, 3),
-            (SoundId.LineHit, new[] { "interface_confirmation_002" }, 1f, 3),
-            (SoundId.Miss, new[] { "interface_minimize_003" }, 0.6f, 1),
+            (SoundId.Bet, new[] { "synth_bet" }, 0.6f, 2),
+            (SoundId.Lever, new[] { "synth_lever" }, 0.8f, 1),
+            (SoundId.ReelSpin, new[] { "synth_reel_loop" }, 0.9f, 1),
+            (SoundId.ReelStop, new[] { "synth_reel_stop" }, 0.8f, 3),
+            (SoundId.LineHit, new[] { "synth_line_hit" }, 0.9f, 3),
+            (SoundId.LineFanfare, new[] { "synth_line_fanfare" }, 0.6f, 3),
+            (SoundId.Miss, new[] { "synth_miss" }, 0.6f, 1),
             (SoundId.Red7, new[] { "scifi_explosionCrunch_000" }, 1f, 2),
             (SoundId.Blue7, new[] { "impact_impactGlass_heavy_000" }, 1f, 2),
             (SoundId.Green7, new[] { "digital_powerUp3" }, 1f, 2),
@@ -50,9 +51,9 @@ namespace UnitySlotTower.Editor.Setup
             (SoundId.EnemyDefeat, new[] { "impact_impactPunch_heavy_000", "impact_impactPunch_heavy_001", "impact_impactPunch_heavy_002" }, 0.7f, 3),
             (SoundId.BossDefeat, new[] { "scifi_lowFrequency_explosion_000" }, 1f, 1),
             (SoundId.BaseHit, new[] { "impact_impactMetal_heavy_000" }, 1f, 2),
-            (SoundId.WaveStart, new[] { "jingles_jingles_HIT03" }, 0.8f, 1),
+            (SoundId.WaveStart, new[] { "jingles_jingles_HIT03" }, 0.35f, 1),
             (SoundId.BossAppear, new[] { "impact_impactBell_heavy_000" }, 1f, 1),
-            (SoundId.Victory, new[] { "jingles_jingles_NES00" }, 1f, 1),
+            (SoundId.Victory, new[] { "synth_victory" }, 0.9f, 1),
             (SoundId.Defeat, new[] { "jingles_jingles_NES13" }, 1f, 1),
             (SoundId.Button, new[] { "interface_click_002" }, 0.7f, 2),
             (SoundId.Reject, new[] { "interface_error_004" }, 0.8f, 1),
@@ -61,9 +62,9 @@ namespace UnitySlotTower.Editor.Setup
 
         private static readonly (BgmTrack track, string file, float volume)[] Bgms =
         {
-            (BgmTrack.Title, "junkala_stage_select", 0.8f),
-            (BgmTrack.Battle, "junkala_stage_1", 0.8f),
-            (BgmTrack.Boss, "junkala_boss_fight", 0.8f),
+            (BgmTrack.Title, "junkala_stage_select", 0.5f),
+            (BgmTrack.Battle, "junkala_stage_1", 0.5f),
+            (BgmTrack.Boss, "junkala_boss_fight", 0.5f),
         };
 
         [MenuItem("Tools/UnitySlotTower/Setup/Sound (spec 014)")]
@@ -98,7 +99,8 @@ namespace UnitySlotTower.Editor.Setup
                 var bgm = path.StartsWith(BgmFolder + "/");
                 var settings = importer.defaultSampleSettings;
                 settings.loadType = bgm ? AudioClipLoadType.Streaming : AudioClipLoadType.DecompressOnLoad;
-                settings.compressionFormat = AudioCompressionFormat.Vorbis;
+                // 合成音（spec 015、scripts/audio/synth_sounds.py）は小さく、ループの継ぎ目を崩さないよう PCM のまま。
+                settings.compressionFormat = path.Contains("/synth_") ? AudioCompressionFormat.PCM : AudioCompressionFormat.Vorbis;
                 settings.quality = bgm ? 0.6f : 0.8f;
                 settings.preloadAudioData = !bgm;
                 importer.defaultSampleSettings = settings;
@@ -117,7 +119,8 @@ namespace UnitySlotTower.Editor.Setup
                 var clips = new List<AudioClip>();
                 foreach (var file in files)
                 {
-                    var clip = AssetDatabase.LoadAssetAtPath<AudioClip>($"{SeFolder}/{file}.ogg");
+                    var clip = AssetDatabase.LoadAssetAtPath<AudioClip>($"{SeFolder}/{file}.ogg")
+                        ?? AssetDatabase.LoadAssetAtPath<AudioClip>($"{SeFolder}/{file}.wav");
                     if (clip == null) missing.Add(file);
                     else clips.Add(clip);
                 }

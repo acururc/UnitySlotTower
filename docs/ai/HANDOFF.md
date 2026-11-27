@@ -2,21 +2,18 @@
 
 ## 現在の作業
 
-更新: 2026-11-27 Asia/Tokyo / 状態: **sakurai スキルの全体評価（7項目）をすべて組み入れる作業中。spec 014（音）を実装し、T1701〜T1706 完了（[`spec.md`](../../specs/014-sound/spec.md) 承認済み 2026-11-27・[`plan.md`](../../specs/014-sound/plan.md)・[`tasks.md`](../../specs/014-sound/tasks.md)）。残りはユーザー確認の2つ: spec 014 T1707（Editor でタイトルから通しで聞き、音の差し替え）と spec 013 T1602（ステージ5〜7を通しで遊び数値を調整、ユーザーが「テストは後で」と後回し）。spec 012（味方ごとの強化）はユーザー指示で保留（D1 一本道まで決定、[`spec.md`](../../specs/012-unit-upgrades/spec.md)）。**
+更新: 2026-11-27 Asia/Tokyo / 状態: **spec 015（テストプレイの指摘への対応）を実装し、T1801〜T1806 完了（[`spec.md`](../../specs/015-playtest-fixes/spec.md) 承認済み 2026-11-27・[`plan.md`](../../specs/015-playtest-fixes/plan.md)・[`tasks.md`](../../specs/015-playtest-fixes/tasks.md)）。残りは T1807（ユーザーが Editor で通しで確認）。spec 014 T1707 と spec 013 T1602 はこのテストプレイで済み、指摘は spec 015 に入れた。spec 012（味方ごとの強化）はユーザー指示で保留。**
 
-- spec 014（音）: 素材はすべて CC0（Kenney の効果音集、Juhani Junkala「Chiptune Adventures」の3曲）。元の zip と展開物は `Artifacts/audio-src/`（git 外）にあり、差し替え候補はそこから選ぶ。出来事→音の表は `Editor/Setup/SoundSetup.cs` が正本で、メニュー `Tools/UnitySlotTower/Setup/Sound (spec 014)` が取り込み設定・`Audio/SoundCatalog.asset`・Title/Game への配置（Game Audio・UI Button Sounds・Battle Sound・Sound Volume）をやり直す（何度でも可）。音は名前だけで選んだので T1707 で差し替えが出る見込み。敗北のジングル（NES13）・リール回転（scroll_002 のループ）は特に未確認。音量パネルの位置は仮置き（タイトル下部、一時停止中は盤面上部）。`GameAudio` は DontDestroyOnLoad の1つだけ、テストは `GameAudio.Requested`/`BgmRequested` を数える。
-- 最終検証（2026-11-27）: EditMode 620/620、PlayMode 成功75/失敗0/スキップ1（Explicit）、ハーネス 8/8。実際の音はまだ誰も聞いていない。
-- spec 013: T1601 完了（ステージ5〜7、`StageThemeTests`）。spec 011・010 は完了。
-- 評価の7項目と spec の順（ユーザーが「すべて組み入れる、順番は任せる」と指示）: 010 やり直し（#5）→ 011 スロットの作り直し（#1 回すか迷いがない＝ハズレなし・全部プラス・コイン余り、#2 赤7/毒が固定ダメージで後半弱い、#7 ステージ1にスロットの見せ場）→ 012 味方ごとの強化（#3。ユーザー案: 職ごとに強化内容を変え、モデルや攻撃方法〔連射→ためて一撃など〕も変わる）→ 013 ステージと敵の変化（#4 ステージ5〜7が同じ構成、敵の尖り不足）→ 014 音（#6 音声ファイルが1つもない）。各 spec は聞き取り→承認→実装の順。
-- spec 010（ステージのやり直し）は完了。
-- 気づいて未対応: 文字あり版で右上の「一時停止」の文字がボタンの下に少しはみ出す（ユーザーに伝え済み、指示待ち）。
-- spec 009 まで（出目の演出の作り直し 003〜009）は完了。そのほかの候補: 001 の M5（T501〜T505）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。001 の T399・T429 はユーザー指示で完了扱いでよい（tasks.md は未更新）。
-- 完了済み: spec 009・008・007・006・005・004・003・002。リザルトのボタンは本体の Image が透明で、見た目は子の `Skin`（`UiSkin`/`UiPanel`）が描く。Setup を再実行すると Inspector の調整値は初期値に戻る。
-- Setup をかけると Game.unity の差分が大きく見える（行の並べ替え）。行の集合で比べる。`PortraitScreenLayout`（ExecuteAlways）がカメラの表示範囲と CanvasScaler の match を Game ビューの大きさで書き換えるのは無害。
-- 素材の方針: AI が取るログイン不要の無料素材だけ（有料は使わない）。
+- spec 015 の中身: 見せ場をステージ1のウェーブ1（中央レーンに近接8体）へ移し、決め打ちは 赤7・青7・黄7、終わると賭け1枚。止めている間は `SlotShowcaseGuide`（Portrait Root の最後の子、暗幕4枚・レバーの上の矢印・文字あり版の案内）。当たり率 0.7。音はスロット系とクリアを `scripts/audio/synth_sounds.py` の合成音に（再生成は `.tools/unity-mcp/Scripts/python.exe -I scripts/audio/synth_sounds.py` の後に Setup `Sound (spec 014)`）、音量の初期値 0.5・BGM 0.5。ステージ4は `elite_a` を分かれ道に作り直し、5は飛行を3体ずつに、6は序盤を時間差に。HP ゲージは頭の上で `HpGauge.shader`（深度を見ない）、重装の盾は横の細い板。
+- Setup（何度でも可）: `Showcase Guide (spec 015)`・`HP Gauge Material (spec 015)`・`Build Text Mode Layout (T359)`・`Create Text Mode Font (T352)`（ui_texts.csv に字を足したら必要）。
+- PlayMode テストは `PlayModeTestSetup`（SetUpFixture）が `BattleController.SkipShowcase = true` にして見せ場を飛ばす。見せ場を見るテスト（`SlotBetShowcaseTests` の Showcase、`ScreenCaptureTests`）だけ false。早送りでステージを終わらせるテストは `StageTestUtil.SkipShowcase` も使える。
+- 最終検証（2026-11-27）: EditMode 623/623、PlayMode 成功75/失敗0/スキップ1（Explicit）、ハーネス 8/8。撮影 `Artifacts/Automation/Editor/t359/20261127-115936/`。半透明の暗幕は撮影では薄く写るので濃さは Editor で見る。音はまだ誰も聞いていない。
+- ユーザーが前に音量スライダーを動かしていれば PlayerPrefs の値が優先され、初期値 0.5 は効かない（伝え済み）。
+- 気づいて未対応: 文字あり版で右上の「一時停止」の文字がボタンの下に少しはみ出す（ユーザーに伝え済み、指示待ち）。そのほかの候補: 001 の M5（T501〜T505）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。
+- Setup をかけると Game.unity・Title.unity の差分が大きく見える（行の並べ替え）。`PortraitScreenLayout`（ExecuteAlways）がカメラの表示範囲を書き換えるのは無害。Setup を再実行すると Inspector の調整値は初期値に戻る。
+- 素材の方針: AI が取るログイン不要の無料素材だけ（有料は使わない）。Kenney などの元素材は `Artifacts/audio-src/`（git 外）。
 - ブランチ: main に直接コミットして origin へ push。main は core.autocrlf で CSV が CRLF になる。
-- Unity 接続: 2026-11-27 spec 014 の検証後に停止を確認済み（8080 閉、Editor は開いたまま）。PlayMode テストは今回は前面に出さずに通った。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（16GB）。
-
+- Unity 接続: 2026-11-27 spec 015 の検証後に停止を確認済み（8080 閉、Editor は開いたまま）。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（16GB）。
 ### 作業の注意
 - テストの手順: refresh → 約25秒 → code execute で `scriptCompilationFailed` と `isCompiling` を確認 → `tests --async` を1回 → 同じ job_id を前景のループで poll（[`UNITY_AUTOMATION.md`](UNITY_AUTOMATION.md) の Tests 節）。PlayMode 全件は約4分。スクリプトは毎回 `$env:TEMP` などに作り直す。
 - PlayMode の実行中に Play を止めて打ち切ると、ジョブが `tests_running` のまま残り、Editor の再起動まで新しいテストを流せない。止めずに最後まで待つ。

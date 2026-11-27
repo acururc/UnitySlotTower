@@ -1,0 +1,9 @@
+# tasks: テストプレイの指摘への対応（spec 015）
+
+- [x] T1801 (FR-001〜FR-003, FR-010) ステージ1のウェーブと見せ場の移動（ウェーブ1 = 中央レーンに近接8体。ステージ1は中央レーン以外から出せない検証規則があるため1レーン）、決め打ち 赤7・青7・黄7、見せ場の後に賭け1枚（回転と揃いの通知が終わってから `SetBet(1)`）、`line_hit_rate` 0.7 — 検証: EditMode `SlotShowcaseTests`・`StageDataTests`、PlayMode `SlotBetShowcaseTests`（群れの全滅・賭け1枚を確認）・`HelpTests`（30%・10%・14%）。2026-11-27 成功
+- [x] T1802 (FR-004) `SlotShowcaseGuide`（暗幕4枚・矢印・案内「レバーを引こう！」）と Setup `Showcase Guide (spec 015)`、レバーの点滅 0.12→0.3、`Create Text Mode Font (T352)` で字形を追加 — 検証: PlayMode `SlotBetShowcaseTests`（出し入れ・上の暗幕の下端が筐体の上端）。撮影 `t359/20261127-115936/*-showcase.png` で矢印と案内の位置を確認（半透明の暗幕は撮影では薄く写る）
+- [x] T1803 (FR-020〜FR-024) 合成の電子音（`scripts/audio/synth_sounds.py` → `Audio/Se/synth_*.wav`、PCM）・音量の初期値 0.5・BGM 0.5・ウェーブ開始 0.35・揃いに `LineFanfare` を重ね n 本目ほど全音ずつ高く — 検証: EditMode `SoundSettingsTests`、PlayMode `SoundEventTests`。Setup `Sound (spec 014)` 再実行でカタログを確認。2026-11-27 成功。聞こえ方は未確認（T1807）
+- [x] T1804 (FR-030〜FR-032) ステージ4のマップと経路・ウェーブ、ステージ5・6のウェーブ — 検証: EditMode `StageThemeTests`（7件、新規3件）・`TableValidationTests`・`StageDataTests`。2026-11-27 EditMode 623/623 成功。ステージ4のウェーブ2の開始は検証規則（前のウェーブの最後の出現より後）で 28 秒、ステージ5は「ステージ3以上の敵数」（`Later_Stages_Have_More_Enemies`）を守るためウェーブ3に飛行3体を足し、最後の近接3体を外した（飛行 27/50）
+- [x] T1805 (FR-040〜FR-043) 文字あり版のレバーの札を BET ボタンの右へ、札の状態線（State Strip）を文字あり版だけ札の下端へ（`Build Text Mode Layout (T359)` 再実行）、HP ゲージを頭の上・深度を見ない `HpGauge.shader`（Setup `HP Gauge Material (spec 015)`）、重装の盾を体の横の細い板に — 検証: 撮影 `t359/20261127-115936/text-game.png`・`text-showcase.png` で重なりなしを確認。HP ゲージと盾の見え方はユーザー確認（T1807）
+- [x] T1806 (AC-007) 全件 — 2026-11-27: EditMode 623/623、PlayMode 成功75/失敗0/スキップ1（以前からの Explicit）、ハーネス 8/8。PlayMode は `PlayModeTestSetup`（SetUpFixture）で見せ場を既定で飛ばす（`BattleController.SkipShowcase`、Play のたびに false へ戻る）
+- [ ] T1807 (AC-002, AC-004〜AC-006) ユーザーが Editor で通しで確認: 見せ場の暗幕・矢印・案内、音（電子音・クリアのファンファーレ・音量）、ステージ4〜6の手ごたえ、HP ゲージと重装の盾、文字あり版の札

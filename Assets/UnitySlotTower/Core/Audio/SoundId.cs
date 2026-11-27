@@ -34,6 +34,9 @@ namespace UnitySlotTower.Core.Audio
         Button,
         Reject,
         CoinGet,
+
+        // spec 015 FR-023: 揃いに重ねる上昇音（既存の番号を変えないよう末尾に足す）。
+        LineFanfare,
     }
 
     /// <summary>BGM（spec 014 FR-004）。</summary>

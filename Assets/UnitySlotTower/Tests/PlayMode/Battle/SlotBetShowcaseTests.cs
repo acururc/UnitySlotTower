@@ -18,13 +18,14 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
     /// <summary>spec 011 AC-001（BET ボタン）・AC-005（ステージ1の見せ場）の PlayMode 部分。</summary>
     public sealed class SlotBetShowcaseTests
     {
-        // ステージ1: ウェーブ1は近接1体、ウェーブ5（見せ場、stage_waves.csv の slot_showcase）は近接3体。ほかのステージは1体。
+        // ステージ1: ウェーブ1（見せ場、stage_waves.csv の slot_showcase）は近接3体、ウェーブ2は近接1体。ほかのステージは1体。
         private const string ShowcaseWaves =
             "stage,wave,time,enemy_id,spawn,path_id,is_boss,count,interval\n" +
-            "1,1,0,melee,S2,first_g2,0,1,0\n1,5,0,melee,S2,first_g2,0,3,0.3\n" +
+            "1,1,0,melee,S2,first_g2,0,3,0.3\n1,2,0,melee,S2,first_g2,0,1,0\n" +
             "2,1,0,melee,S1,battle_a_g1,0,1,0\n3,1,0,melee,S1,battle_b_g1,0,1,0\n4,1,0,melee,S1,elite_a_g1,0,1,0\n" +
             "5,1,0,melee,S1,battle_c_g1,0,1,0\n6,1,0,melee,S1,battle_d_g1,0,1,0\n7,1,0,melee,S1,battle_e_g1,0,1,0\n" +
             "8,1,0,melee,S1,boss_a_g1,0,1,0\n";
+
 
         private Keyboard _keyboard;
         private readonly List<InputDevice> _disabled = new List<InputDevice>();
@@ -59,6 +60,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             _keyboard = InputSystem.AddDevice<Keyboard>("Test Keyboard");
             SlotCabinet.RandomOverride = new SeededRandom(3);
+            // 見せ場は PlayMode テストの既定で飛ばす（PlayModeTestSetup）。見せ場のテストだけ起こす。
+            BattleController.SkipShowcase = !TestContext.CurrentContext.Test.MethodName.StartsWith("Showcase");
             SceneManager.sceneLoaded += UseShowcaseWaves;
             yield return SceneManager.LoadSceneAsync("Game");
             _battle = Object.FindAnyObjectByType<BattleController>();
@@ -77,6 +80,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         {
             SceneManager.sceneLoaded -= UseShowcaseWaves;
             SlotCabinet.RandomOverride = null;
+            BattleController.SkipShowcase = true;
             Time.timeScale = 1f;
             InputSystem.RemoveDevice(_keyboard);
             foreach (var device in _disabled)
@@ -98,6 +102,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
                 typeof(BattleController)
                     .GetField("wavesTable", BindingFlags.Instance | BindingFlags.NonPublic)
                     .SetValue(battle, new TextAsset(ShowcaseWaves));
+
             }
         }
 
@@ -158,7 +163,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        [Description("spec 011 AC-005: ウェーブ5が出そろうと盤面が止まり、コイン3枚・賭け3枚・レバーの点滅。引くと三重当たりで動き出し、大群に効く")]
+        [Description("spec 015 AC-001/AC-002: ウェーブ1が出そろうと盤面が止まり、コイン3枚・賭け3枚・レバーの点滅・暗幕と矢印。引くと赤7・青7・黄7で動き出し、群れが全滅し、賭けが1枚に戻る")]
         public IEnumerator Showcase_Holds_Until_The_Lever_Then_Triple_Hit_Strikes()
         {
             _cabinet.Wallet.Reset(0);
@@ -170,33 +175,49 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             }
 
             Time.timeScale = 1f;
-            Assert.That(_battle.Field.IsShowcaseHolding, Is.True, "ウェーブ5で止まらない");
+            Assert.That(_battle.Field.IsShowcaseHolding, Is.True, "ウェーブ1で止まらない");
+            Assert.That(_battle.Field.Waves.StartedWaves, Is.EqualTo(1), "見せ場がウェーブ1でない");
             yield return null;
             Assert.That((_cabinet.LeverHighlighted, _cabinet.Bet, _cabinet.Wallet.Coins >= 3, _battle.Field.Enemies.Count),
-                Is.EqualTo((true, 3, true, 3)), "見せ場の準備（点滅・賭け3枚・コイン3枚・大群が場にいる）");
+                Is.EqualTo((true, 3, true, 3)), "見せ場の準備（点滅・賭け3枚・コイン3枚・群れが場にいる）");
+            var guide = Object.FindAnyObjectByType<SlotShowcaseGuide>();
+            Assert.That(guide, Is.Not.Null, "見せ場の案内がない（Setup の Showcase Guide (spec 015)）");
+            Assert.That(guide.IsShown, Is.True, "止めている間に暗幕と矢印が出ない（spec 015 FR-004）");
+            yield return null;
+            var shades = (RectTransform[])typeof(SlotShowcaseGuide).GetField("shades", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(guide);
+            var top = shades[0];
+            Assert.That((top.gameObject.activeInHierarchy, top.sizeDelta.y > 100f, top.GetComponent<Image>().color.a > 0.5f),
+                Is.EqualTo((true, true, true)), "筐体の上（戦闘フィールド）が暗幕で覆われない");
+            var cabinetCorners = new Vector3[4];
+            ((RectTransform)_cabinet.transform).GetWorldCorners(cabinetCorners);
+            var topCorners = new Vector3[4];
+            top.GetWorldCorners(topCorners);
+            Assert.That(topCorners[0].y, Is.EqualTo(cabinetCorners[1].y).Within(1f), "上の暗幕の下端が筐体の上端に合わない");
 
             var tick = _battle.Field.Tick;
-            var hp = _battle.Field.Enemies[0].Hp;
             yield return new WaitForSeconds(0.5f);
             Assert.That(_battle.Field.Tick, Is.EqualTo(tick), "止まっている間に戦闘が進む");
 
             yield return Tap(Key.Space);
             Assert.That(_cabinet.LeverHighlighted, Is.False, "引いても点滅が止まらない");
+            yield return null;
+            Assert.That(guide.IsShown, Is.False, "引いても暗幕と矢印が消えない");
             yield return WaitForStop();
-            Assert.That(_cabinet.Hits, Is.EqualTo(BattleController.ShowcaseHits), "決め打ちの三重当たりでない");
+            Assert.That(_cabinet.Hits, Is.EqualTo(BattleController.ShowcaseHits), "決め打ちの三重当たり（赤7・青7・黄7）でない");
             Assert.That(_battle.Field.IsShowcaseHolding, Is.False, "揃っても動き出さない");
+            yield return null;
+            Assert.That(_cabinet.SelectedBet, Is.EqualTo(1), "見せ場の後に賭けが1枚に戻らない（spec 015 FR-003）");
 
-            var until = Time.realtimeSinceStartup + 5f;
-            while (_battle.Field.Enemies.Count > 0 && _battle.Field.Enemies[0].Hp == hp && Time.realtimeSinceStartup < until)
+            // 赤7 60%＋毒 12%×5回（賭け3枚）で群れが全滅する（spec 015 FR-002）。
+            Time.timeScale = 3f;
+            var until = Time.realtimeSinceStartup + 10f;
+            while (_battle.Field.Enemies.Count > 0 && Time.realtimeSinceStartup < until)
             {
                 yield return null;
             }
 
-            var effects = _battle.Field.Effects;
-            Assert.That(_battle.Field.Enemies.Count == 0 || _battle.Field.Enemies[0].Hp <= hp - (int)(hp * 0.6 * 0.99), Is.True,
-                "赤7（3枚）が大群に入らない");
-            Assert.That((effects.IsStopped || effects.IsStopPending, effects.IsAttackUp || effects.IsAttackPending),
-                Is.EqualTo((true, true)), "青7・バーが発動しない");
+            Time.timeScale = 1f;
+            Assert.That(_battle.Field.Enemies.Count, Is.EqualTo(0), "三重当たりで群れが全滅しない");
         }
     }
 }
