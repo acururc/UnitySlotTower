@@ -2,6 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using UnitySlotTower.Core.Audio;
 using UnitySlotTower.Core.Battle;
 using UnitySlotTower.Core.Slot;
 using UnitySlotTower.Core.Ui;
@@ -126,6 +127,11 @@ namespace UnitySlotTower.Battle
             {
                 _rejectUntil = Time.unscaledTime + rejectSeconds;
                 _rejectMoney = result == SummonResult.NotEnoughCoins;
+                GameAudio.Play(SoundId.Reject);
+            }
+            else
+            {
+                GameAudio.Play(SoundId.Button);
             }
         }
 

@@ -31,6 +31,9 @@ namespace UnitySlotTower.Flow
             SelectStart();
         }
 
+        // タイトルの BGM（spec 014 FR-004）。GameAudio の Awake の後に呼ぶため Start で。
+        private void Start() => GameAudio.PlayBgm(Core.Audio.BgmTrack.Title);
+
         // 背景をクリックすると選択が外れてキーボードで操作できなくなるので、▶ を選び直す。
         private void Update()
         {

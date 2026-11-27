@@ -4,6 +4,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
 using UnityEngine.Serialization;
+using UnitySlotTower.Core.Audio;
 using UnitySlotTower.Core.Battle;
 
 namespace UnitySlotTower.Battle
@@ -147,6 +148,13 @@ namespace UnitySlotTower.Battle
             return deployment.Upgrade(battle.Units.All[slot].Id);
         }
 
+        // 向きを決めて置く。置けたら配置音、置けなかったら拒否音（spec 014 FR-002, FR-003）。
+        private void ConfirmPlacement()
+        {
+            var result = battle.Deployment.Confirm();
+            GameAudio.Play(result == SummonResult.Summoned ? SoundId.Place : SoundId.Reject);
+        }
+
         /// <summary>選んでいる味方を撤退させる（FR-025）。</summary>
         public void RetreatSelected()
         {
@@ -240,11 +248,11 @@ namespace UnitySlotTower.Battle
 
             if (deployment.Phase == DeployPhase.ChoosingCell)
             {
-                deployment.ChooseCell();
+                if (!deployment.ChooseCell()) GameAudio.Play(SoundId.Reject);
             }
             else if (deployment.Phase == DeployPhase.ChoosingFacing)
             {
-                deployment.Confirm();
+                ConfirmPlacement();
             }
         }
 
@@ -332,7 +340,7 @@ namespace UnitySlotTower.Battle
                 if (TryGetFacing(pointer, out var clicked))
                 {
                     deployment.SetFacing(clicked);
-                    deployment.Confirm();
+                    ConfirmPlacement();
                 }
                 else
                 {
@@ -353,7 +361,7 @@ namespace UnitySlotTower.Battle
             else if (deployment.Phase == DeployPhase.ChoosingCell && TryGetCell(pointer, out var dropped))
             {
                 deployment.SetCursor(dropped);
-                deployment.ChooseCell();
+                if (!deployment.ChooseCell()) GameAudio.Play(SoundId.Reject);
             }
         }
 

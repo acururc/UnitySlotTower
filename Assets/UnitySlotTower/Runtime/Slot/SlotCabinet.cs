@@ -75,6 +75,7 @@ namespace UnitySlotTower.Slot
 
         // 回転中の各リールを止める時刻。止める指示を出したら null。
         private readonly double?[] _stopAt = new double?[SlotMachine.ReelCount];
+        private readonly bool[] _stopPending = new bool[SlotMachine.ReelCount];
 
         // 止まった後、まだ通知していない揃いと次の通知の時刻。
         private readonly Queue<SlotLineHit> _pendingHits = new Queue<SlotLineHit>();
@@ -128,6 +129,18 @@ namespace UnitySlotTower.Slot
 
         /// <summary>レバーで回し始めた（コインを払った）ときに通知する。</summary>
         public event Action LeverPulled;
+
+        /// <summary>コインが足りずレバーを引けなかった（spec 014 FR-003 の拒否音）。</summary>
+        public event Action LeverRefused;
+
+        /// <summary>BET ボタンで賭け枚数が変わった（spec 014 FR-001）。</summary>
+        public event Action BetChanged;
+
+        /// <summary>リールが1本止まった（0 始まりの番号、spec 014 FR-001）。</summary>
+        public event Action<int> ReelStopped;
+
+        /// <summary>3本とも止まって出目が決まった。揃ったライン数を渡す（0 ならハズレ、spec 014 FR-001）。揃いの通知より前に呼ぶ。</summary>
+        public event Action<int> Settled;
 
         /// <summary>回転中か、止まった後の揃いをまだ通知し終えていない。</summary>
         public bool IsSpinning => _machine != null && (_machine.IsSpinning || AnyReelSpinning() || _pendingHits.Count > 0);
@@ -215,6 +228,7 @@ namespace UnitySlotTower.Slot
 
             _machine.CycleBet();
             _selectedBet = _machine.SelectedBet;
+            BetChanged?.Invoke();
         }
 
         private void Awake()
@@ -332,6 +346,7 @@ namespace UnitySlotTower.Slot
                     break;
                 case LeverResult.NotEnoughCoins:
                     _coinBlinkUntil = now + CoinBlinkSeconds;
+                    LeverRefused?.Invoke();
                     break;
             }
         }
@@ -348,6 +363,13 @@ namespace UnitySlotTower.Slot
                     {
                         reels[i].StopAt(_machine.Visible(i, -1), _machine.Visible(i, 0), _machine.Visible(i, 1));
                         _stopAt[i] = null;
+                        _stopPending[i] = true;
+                    }
+
+                    if (_stopPending[i] && !reels[i].IsSpinning)
+                    {
+                        _stopPending[i] = false;
+                        ReelStopped?.Invoke(i);
                     }
 
                     allIssued &= !_stopAt[i].HasValue;
@@ -357,6 +379,7 @@ namespace UnitySlotTower.Slot
                 {
                     _machine.Settle();
                     _nextHitAt = now;
+                    Settled?.Invoke(_pendingHits.Count);
                 }
             }
 

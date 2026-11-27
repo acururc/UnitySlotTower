@@ -1,0 +1,163 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5435fbf36baf4c14aa2e62d4f576fa14, type: 3}
+  m_Name: SoundCatalog
+  m_EditorClassIdentifier: UnitySlotTower.Runtime::UnitySlotTower.SoundCatalog
+  sounds:
+  - id: 0
+    clips:
+    - {fileID: 8300000, guid: 9e8b41227471a0f42bebedda105f6029, type: 3}
+    volume: 0.8
+    maxVoices: 2
+  - id: 1
+    clips:
+    - {fileID: 8300000, guid: 7cee71c53b36d31419241fa66ff5abff, type: 3}
+    volume: 1
+    maxVoices: 1
+  - id: 2
+    clips:
+    - {fileID: 8300000, guid: d4fe3354524aaa74894a28f482276f6a, type: 3}
+    volume: 0.5
+    maxVoices: 1
+  - id: 3
+    clips:
+    - {fileID: 8300000, guid: 4f0b48e43ff63c74f80382d623ed2f66, type: 3}
+    volume: 0.8
+    maxVoices: 3
+  - id: 4
+    clips:
+    - {fileID: 8300000, guid: 97fcbd6e8309eb846a85bb384f68a63b, type: 3}
+    volume: 1
+    maxVoices: 3
+  - id: 5
+    clips:
+    - {fileID: 8300000, guid: d1faf1f50513cda46a6f1cf7357f282f, type: 3}
+    volume: 0.6
+    maxVoices: 1
+  - id: 6
+    clips:
+    - {fileID: 8300000, guid: 1fb55e7d6804a534f9d62ece93933ee0, type: 3}
+    volume: 1
+    maxVoices: 2
+  - id: 7
+    clips:
+    - {fileID: 8300000, guid: 298357a9c33716e4bb75f31f5258680e, type: 3}
+    volume: 1
+    maxVoices: 2
+  - id: 8
+    clips:
+    - {fileID: 8300000, guid: 70322776612ba254bb5e794f670d70d3, type: 3}
+    volume: 1
+    maxVoices: 2
+  - id: 9
+    clips:
+    - {fileID: 8300000, guid: f198e4c531786b64a9d70d77a3f8e0d6, type: 3}
+    volume: 1
+    maxVoices: 2
+  - id: 10
+    clips:
+    - {fileID: 8300000, guid: 016cb21a0275a0345a9c2ed1661fac0f, type: 3}
+    volume: 1
+    maxVoices: 2
+  - id: 11
+    clips:
+    - {fileID: 8300000, guid: 79e63a34872136f4ab5f8476650295d2, type: 3}
+    volume: 1
+    maxVoices: 2
+  - id: 12
+    clips:
+    - {fileID: 8300000, guid: ec806bab9f628a944b29c228528ac423, type: 3}
+    volume: 1
+    maxVoices: 2
+  - id: 13
+    clips:
+    - {fileID: 8300000, guid: 9c4f3461a22c16f4998332b57e686816, type: 3}
+    - {fileID: 8300000, guid: 9f7ed391808eb304cb272fc560485400, type: 3}
+    volume: 0.6
+    maxVoices: 3
+  - id: 14
+    clips:
+    - {fileID: 8300000, guid: addb88c512546b443a4991a06189ccff, type: 3}
+    - {fileID: 8300000, guid: faa889866a012d54a8d7564fe966d332, type: 3}
+    volume: 0.6
+    maxVoices: 3
+  - id: 15
+    clips:
+    - {fileID: 8300000, guid: 3f21462193ac36b428cc5b74bdf01235, type: 3}
+    - {fileID: 8300000, guid: 299265a9dce677141a037e3fb13c9145, type: 3}
+    - {fileID: 8300000, guid: 42538900cdd98834395e9305be3975f9, type: 3}
+    volume: 0.5
+    maxVoices: 4
+  - id: 16
+    clips:
+    - {fileID: 8300000, guid: 3c6551fbaee54d9488c85ad5d6ccf75e, type: 3}
+    - {fileID: 8300000, guid: a826d2ef20227dc4f85da9396627f296, type: 3}
+    - {fileID: 8300000, guid: 470e8518a06e3f346a2cf6e6504fd36d, type: 3}
+    volume: 0.7
+    maxVoices: 3
+  - id: 17
+    clips:
+    - {fileID: 8300000, guid: 73adb09ead2d3e142bc37422d6fc0707, type: 3}
+    volume: 1
+    maxVoices: 1
+  - id: 18
+    clips:
+    - {fileID: 8300000, guid: eff20235a1f3af74598729da3f1a62eb, type: 3}
+    volume: 1
+    maxVoices: 2
+  - id: 19
+    clips:
+    - {fileID: 8300000, guid: 4285a5a982ff0474082d60a6c7f45958, type: 3}
+    volume: 0.8
+    maxVoices: 1
+  - id: 20
+    clips:
+    - {fileID: 8300000, guid: 4bd0210374ef4814f92a63179d5d266e, type: 3}
+    volume: 1
+    maxVoices: 1
+  - id: 21
+    clips:
+    - {fileID: 8300000, guid: 42849cdea5b03ad4fa9bace438a1a0a5, type: 3}
+    volume: 1
+    maxVoices: 1
+  - id: 22
+    clips:
+    - {fileID: 8300000, guid: 69c0c0271c738bf4f94c81738db2d7e3, type: 3}
+    volume: 1
+    maxVoices: 1
+  - id: 23
+    clips:
+    - {fileID: 8300000, guid: af5048b9e60477f4ea79815a251d44f0, type: 3}
+    volume: 0.7
+    maxVoices: 2
+  - id: 24
+    clips:
+    - {fileID: 8300000, guid: d4d1f139cb770ae4e9eeb5921b88ef30, type: 3}
+    volume: 0.8
+    maxVoices: 1
+  - id: 25
+    clips:
+    - {fileID: 8300000, guid: 911073b9db2901643b826b98f974d27a, type: 3}
+    - {fileID: 8300000, guid: a3787f466bbd5d94bb33f62a5e746952, type: 3}
+    - {fileID: 8300000, guid: 3d27edebde9ca7745b5705a0d6942054, type: 3}
+    volume: 0.5
+    maxVoices: 3
+  bgms:
+  - track: 1
+    clip: {fileID: 8300000, guid: b7a266e0acfffa24184f42411010106a, type: 3}
+    volume: 0.8
+  - track: 2
+    clip: {fileID: 8300000, guid: f85ee5c70bd82214fb764e12aed78ac8, type: 3}
+    volume: 0.8
+  - track: 3
+    clip: {fileID: 8300000, guid: d530b3e883b1031439fdf596a48fb660, type: 3}
+    volume: 0.8

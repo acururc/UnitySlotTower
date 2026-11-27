@@ -2,10 +2,11 @@
 
 ## 現在の作業
 
-更新: 2026-11-26 Asia/Tokyo / 状態: **sakurai スキルの全体評価（7項目）をすべて組み入れる作業中。spec 011 完了（T1508 は調整1のあとユーザー確認 OK）。spec 012（味方ごとの強化）はユーザー指示で保留（D1 一本道まで決定、[`spec.md`](../../specs/012-unit-upgrades/spec.md)）。spec 013（ステージと敵の変化）の [`spec.md`](../../specs/013-stage-enemy-variety/spec.md) は承認済み（2026-11-26）。T1601 完了（`waves.csv`・`stage_waves.csv` のステージ5〜7、新規 `Tests/EditMode/Data/StageThemeTests.cs`。既存規則「群れ3〜5体・重装は近接の群れの直後に1体」に合わせた。2026-11-27 EditMode 605/605、ハーネス 8/8）。次: T1602 ユーザーが Editor でステージ5〜7を通しで確認し数値を調整。その後 spec 014（音）の聞き取り。**
+更新: 2026-11-27 Asia/Tokyo / 状態: **sakurai スキルの全体評価（7項目）をすべて組み入れる作業中。spec 014（音）を実装し、T1701〜T1706 完了（[`spec.md`](../../specs/014-sound/spec.md) 承認済み 2026-11-27・[`plan.md`](../../specs/014-sound/plan.md)・[`tasks.md`](../../specs/014-sound/tasks.md)）。残りはユーザー確認の2つ: spec 014 T1707（Editor でタイトルから通しで聞き、音の差し替え）と spec 013 T1602（ステージ5〜7を通しで遊び数値を調整、ユーザーが「テストは後で」と後回し）。spec 012（味方ごとの強化）はユーザー指示で保留（D1 一本道まで決定、[`spec.md`](../../specs/012-unit-upgrades/spec.md)）。**
 
-- spec 011（完了）: [`spec.md`](../../specs/011-slot-rework/spec.md)（承認済み、D1〜D8）・[`plan.md`](../../specs/011-slot-rework/plan.md)・[`tasks.md`](../../specs/011-slot-rework/tasks.md)。賭け1〜3枚＝有効ライン数（中→上→下）で強さも枚数倍、1ライン60%（`line_hit_rate`）、同じ図柄は2ラインに揃わない。3×3 の見た目は `SlotMachine` が決め、`SlotReelView.StopAt(top, middle, bottom)` が帯の3マスを置き換えて止める（固定の帯では二重・三重を作れないため）。赤7・毒は最大HPの割合（ボス0.5倍）。ステージ1のウェーブ5（`stage_waves.csv` の `slot_showcase`）を出し終わると `Battlefield.IsShowcaseHolding` で戦闘が止まり、`BattleController` がコイン補充・賭け3枚・レバー点滅・決め打ち `ShowcaseHits` を出し、最初の揃いで再開。Setup `Update Slot Bet (spec 011)`・`Update Help Bet (spec 011)` は実行済み（位置は仮置き）。PlayMode テストは乱数の細工をやめ `SlotCabinet.ForcedHits` で出目を固定する。
-- 最終検証（2026-11-26）: EditMode 601/601、PlayMode 成功72/失敗0/スキップ1（Explicit）、ハーネス 8/8。調整1（`33e0b2f`: BET をレバー横、未賭けコインは空リング、レバーのヒントを下）のあとユーザーが見た目と通しを確認 OK。コインの落ちる量は範囲外（通しで数値だけ調整）。
+- spec 014（音）: 素材はすべて CC0（Kenney の効果音集、Juhani Junkala「Chiptune Adventures」の3曲）。元の zip と展開物は `Artifacts/audio-src/`（git 外）にあり、差し替え候補はそこから選ぶ。出来事→音の表は `Editor/Setup/SoundSetup.cs` が正本で、メニュー `Tools/UnitySlotTower/Setup/Sound (spec 014)` が取り込み設定・`Audio/SoundCatalog.asset`・Title/Game への配置（Game Audio・UI Button Sounds・Battle Sound・Sound Volume）をやり直す（何度でも可）。音は名前だけで選んだので T1707 で差し替えが出る見込み。敗北のジングル（NES13）・リール回転（scroll_002 のループ）は特に未確認。音量パネルの位置は仮置き（タイトル下部、一時停止中は盤面上部）。`GameAudio` は DontDestroyOnLoad の1つだけ、テストは `GameAudio.Requested`/`BgmRequested` を数える。
+- 最終検証（2026-11-27）: EditMode 620/620、PlayMode 成功75/失敗0/スキップ1（Explicit）、ハーネス 8/8。実際の音はまだ誰も聞いていない。
+- spec 013: T1601 完了（ステージ5〜7、`StageThemeTests`）。spec 011・010 は完了。
 - 評価の7項目と spec の順（ユーザーが「すべて組み入れる、順番は任せる」と指示）: 010 やり直し（#5）→ 011 スロットの作り直し（#1 回すか迷いがない＝ハズレなし・全部プラス・コイン余り、#2 赤7/毒が固定ダメージで後半弱い、#7 ステージ1にスロットの見せ場）→ 012 味方ごとの強化（#3。ユーザー案: 職ごとに強化内容を変え、モデルや攻撃方法〔連射→ためて一撃など〕も変わる）→ 013 ステージと敵の変化（#4 ステージ5〜7が同じ構成、敵の尖り不足）→ 014 音（#6 音声ファイルが1つもない）。各 spec は聞き取り→承認→実装の順。
 - spec 010（ステージのやり直し）は完了。
 - 気づいて未対応: 文字あり版で右上の「一時停止」の文字がボタンの下に少しはみ出す（ユーザーに伝え済み、指示待ち）。
@@ -14,7 +15,7 @@
 - Setup をかけると Game.unity の差分が大きく見える（行の並べ替え）。行の集合で比べる。`PortraitScreenLayout`（ExecuteAlways）がカメラの表示範囲と CanvasScaler の match を Game ビューの大きさで書き換えるのは無害。
 - 素材の方針: AI が取るログイン不要の無料素材だけ（有料は使わない）。
 - ブランチ: main に直接コミットして origin へ push。main は core.autocrlf で CSV が CRLF になる。
-- Unity 接続: 2026-11-27 spec 013 の検証後に停止を確認済み（8080 閉）。PlayMode テストは Editor を前面に出してもらう。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（16GB）。
+- Unity 接続: 2026-11-27 spec 014 の検証後に停止を確認済み（8080 閉、Editor は開いたまま）。PlayMode テストは今回は前面に出さずに通った。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（16GB）。
 
 ### 作業の注意
 - テストの手順: refresh → 約25秒 → code execute で `scriptCompilationFailed` と `isCompiling` を確認 → `tests --async` を1回 → 同じ job_id を前景のループで poll（[`UNITY_AUTOMATION.md`](UNITY_AUTOMATION.md) の Tests 節）。PlayMode 全件は約4分。スクリプトは毎回 `$env:TEMP` などに作り直す。
