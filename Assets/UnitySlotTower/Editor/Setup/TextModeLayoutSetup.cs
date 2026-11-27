@@ -247,6 +247,8 @@ namespace UnitySlotTower.Editor.Setup
 
         private const float BandFont = 36f;
         private const float ButtonFont = 36f;
+        // 帯のボタン（一時停止・?・ホーム）の名前は下から 2〜46 px の箱に入る。36 の字（箱 約52 px）は帯の下へはみ出すので小さくする。
+        private const float BandButtonFont = 30f;
         private const float CardFont = 40f;
 
         /// <summary>
@@ -433,7 +435,7 @@ namespace UnitySlotTower.Editor.Setup
         {
             SetRect(button, new Vector2(left, ValueBottom), new Vector2(right, NameTop));
             SetLabel(Child(button, "Text Label " + id), Vector2.zero, new Vector2(1f, 0f), new Vector2(0f, 2f), new Vector2(0f, 46f),
-                ButtonFont);
+                BandButtonFont);
         }
 
         private static void SetRect(RectTransform target, Vector2 anchorMin, Vector2 anchorMax) =>

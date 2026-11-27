@@ -10,11 +10,12 @@
 - PlayMode テストは `PlayModeTestSetup`（SetUpFixture）が `BattleController.SkipShowcase = true` にして見せ場を飛ばす。見せ場を見るテスト（`SlotBetShowcaseTests` の Showcase、`ScreenCaptureTests`）だけ false。早送りでステージを終わらせるテストは `StageTestUtil.SkipShowcase` も使える（`Battlefield.DisableShowcase`、配置の禁止も外す）。見せ場を飛ばすと正本の24体がそのまま本拠地に入り、ステージ1の序盤でゲームオーバーになる。演出を見る `SlotCabinetEffectTests` は以前の出だし（中央に8体）の表を差し込む。
 - 最終検証（2026-11-27、T1808 後）: EditMode 633/633、PlayMode 成功75/失敗0/スキップ1（Explicit）、ハーネス 8/8。T1808 の見た目（3レーンの群れ・置けない間の札・カーソル）は撮影していない（T1807 でユーザーが確認）。前回の撮影 `Artifacts/Automation/Editor/t359/20261127-115936/`。半透明の暗幕は撮影では薄く写るので濃さは Editor で見る。音はまだ誰も聞いていない。
 - ユーザーが前に音量スライダーを動かしていれば PlayerPrefs の値が優先され、初期値 0.5 は効かない（伝え済み）。
-- 気づいて未対応: 文字あり版で右上の「一時停止」の文字がボタンの下に少しはみ出す（ユーザーに伝え済み、指示待ち）。そのほかの候補: 001 の M5（T501〜T505）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。
+- 2026-11-27 済: 文字あり版の帯のボタン（一時停止・?・ホーム）の名前を 36→30（`TextModeLayoutSetup.BandButtonFont`、Setup `Build Text Mode Layout (T359)` 再実行）。撮影 `Artifacts/Automation/Editor/t359/20261127-180721/text-placing.png` で一時停止が枠に収まるのを確認。一時停止中の ?・ホームは撮影に写らず未確認。次の候補: 001 の M5（T501〜T505）、本番の 3D 台モデルの差し替え（`Cabinet Model`）。spec 012 は保留。
+- 撮影メニュー（Capture Screens）は PlayMode テストとして走り、シーンが dirty だと保存ダイアログで止まる（「Don't Save」で続行）。撮影の前に保存済みシーンを開き直す。
 - Setup をかけると Game.unity・Title.unity の差分が大きく見える（行の並べ替え）。`PortraitScreenLayout`（ExecuteAlways）がカメラの表示範囲を書き換えるのは無害。Setup を再実行すると Inspector の調整値は初期値に戻る。
 - 素材の方針: AI が取るログイン不要の無料素材だけ（有料は使わない）。Kenney などの元素材は `Artifacts/audio-src/`（git 外）。
 - ブランチ: main に直接コミットして origin へ push。main は core.autocrlf で CSV が CRLF になる。
-- Unity 接続: 2026-11-27 T1808 の検証後に停止を確認済み（8080 閉、Editor は開いたまま）。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（16GB）。
+- Unity 接続: 2026-11-27 帯のボタンの字の修正後に停止を確認済み（8080 閉、Editor は開いたまま）。ユーザーが Play 中のことがあるので、Unity 操作の前に isPlaying を確認する。Editor が重いのは PC のメモリ不足（16GB）。
 ### 作業の注意
 - テストの手順: refresh → 約25秒 → code execute で `scriptCompilationFailed` と `isCompiling` を確認 → `tests --async` を1回 → 同じ job_id を前景のループで poll（[`UNITY_AUTOMATION.md`](UNITY_AUTOMATION.md) の Tests 節）。PlayMode 全件は約4分。スクリプトは毎回 `$env:TEMP` などに作り直す。
 - 入力のテストは SetUp で実機のマウス・キーボードを止める。SetUp が失敗すると TearDown が走らず Editor の Game ビューを触れなくなる（2026-11-27 に発生）。`PlayModeTestSetup` の OneTimeTearDown で戻すようにした。それでも触れなければ code execute で `InputSystem.devices` を見て `EnableDevice`・`Test Keyboard*` を `RemoveDevice`。
