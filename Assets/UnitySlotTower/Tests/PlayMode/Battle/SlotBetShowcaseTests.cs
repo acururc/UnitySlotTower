@@ -167,6 +167,13 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         [Description("spec 015 AC-001/AC-002/AC-008: ウェーブ1（3レーン）が出そろうと盤面が止まり、賭け3枚・レバーの点滅・暗幕と矢印。見せ場の間は置けない。コイン0でも引けて減らない。赤7・青7・黄7で群れが全滅し、お金は増えず、青7と黄7の効果が消え、置けるようになり、賭けが1枚に戻る")]
         public IEnumerator Showcase_Holds_Until_The_Lever_Then_Triple_Hit_Strikes()
         {
+            // 見せ場が始まるまではレバーも BET も効かない（spec 015 FR-009）。
+            _cabinet.Wallet.Reset(5);
+            var bet = _cabinet.SelectedBet;
+            yield return Tap(Key.Space);
+            BetButton().onClick.Invoke();
+            Assert.That((_battle.Field.ShowcaseStarted, _cabinet.InputLocked, _cabinet.IsSpinning, _cabinet.Wallet.Coins, _cabinet.SelectedBet),
+                Is.EqualTo((false, true, false, 5, bet)), "見せ場の前にスロットを回せる・賭けを変えられる");
             _cabinet.Wallet.Reset(0);
             Time.timeScale = 10f;
             var limit = Time.realtimeSinceStartup + 60f;

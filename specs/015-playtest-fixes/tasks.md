@@ -7,4 +7,5 @@
 - [x] T1805 (FR-040〜FR-043) 文字あり版のレバーの札を BET ボタンの右へ、札の状態線（State Strip）を文字あり版だけ札の下端へ（`Build Text Mode Layout (T359)` 再実行）、HP ゲージを頭の上・深度を見ない `HpGauge.shader`（Setup `HP Gauge Material (spec 015)`）、重装の盾を体の横の細い板に — 検証: 撮影 `t359/20261127-115936/text-game.png`・`text-showcase.png` で重なりなしを確認。HP ゲージと盾の見え方はユーザー確認（T1807）
 - [x] T1806 (AC-007) 全件 — 2026-11-27: EditMode 623/623、PlayMode 成功75/失敗0/スキップ1（以前からの Explicit）、ハーネス 8/8。PlayMode は `PlayModeTestSetup`（SetUpFixture）で見せ場を既定で飛ばす（`BattleController.SkipShowcase`、Play のたびに false へ戻る）
 - [x] T1808 (FR-001, FR-005〜FR-008, AC-008, AC-009) 見せ場の群れを3レーン・各8体、群れはお金を落とさない・見せ場の1回はコインを使わない、見せ場が終わるまで配置不可、全滅で青7・黄7を消す、マウスで選んだときカーソルを中央に出さない — 検証: EditMode `SlotShowcaseTests`・`UnitDeploymentTests`・`SlotMachineTests`・`StageDataTests`・`TableValidationTests`、PlayMode `SlotBetShowcaseTests`
+- [x] T1809 (FR-009) 見せ場の前はスロットの入力を止める（`BattleController.IsSlotInputBlocked` に見せ場前を足す）— 検証: PlayMode `SlotBetShowcaseTests`
 - [ ] T1807 (AC-002, AC-004〜AC-006) ユーザーが Editor で通しで確認: 見せ場の暗幕・矢印・案内、音（電子音・クリアのファンファーレ・音量）、ステージ4〜6の手ごたえ、HP ゲージと重装の盾、文字あり版の札

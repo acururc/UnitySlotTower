@@ -251,7 +251,10 @@ namespace UnitySlotTower.Battle
             }
         }
 
-        private bool IsSlotInputBlocked => IsPaused || IsFinished || IsInIntro || IsShowingVictory;
+        // ステージ1の見せ場が始まる（群れが出そろって止まる）までは回せない（spec 015 FR-009）。
+        private bool IsSlotInputBlocked => IsPaused || IsFinished || IsInIntro || IsShowingVictory || IsBeforeShowcase;
+
+        private bool IsBeforeShowcase => Field != null && Field.HasShowcase && !Field.ShowcaseStarted;
 
         private void OnDestroy()
         {
