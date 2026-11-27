@@ -401,7 +401,67 @@ namespace UnitySlotTower.Core.Battle
                 RemoveDefeatedEnemies();
                 Tick++;
                 CheckShowcase();
+                CheckShowcaseEnd();
             }
+        }
+
+        private bool _showcaseDisabled;
+        private int _hasShowcase = -1;
+
+        /// <summary>このステージに見せ場のウェーブがある（無効にされていない）。</summary>
+        public bool HasShowcase
+        {
+            get
+            {
+                if (_hasShowcase < 0)
+                {
+                    _hasShowcase = 0;
+                    foreach (var wave in Waves.Schedule.Waves)
+                    {
+                        if (wave.SlotShowcase) _hasShowcase = 1;
+                    }
+                }
+
+                return _hasShowcase == 1 && !_showcaseDisabled;
+            }
+        }
+
+        /// <summary>見せ場が終わった（止まりが解け、見せ場の群れが全滅した、spec 015 FR-006）。</summary>
+        public bool ShowcaseFinished { get; private set; }
+
+        /// <summary>見せ場がまだ終わっていない（この間はキャラを置けない、spec 015 FR-006）。</summary>
+        public bool IsShowcasePending => HasShowcase && !ShowcaseFinished;
+
+        /// <summary>見せ場の群れが全滅し、青7と黄7の効果を消した（spec 015 FR-007）。<see cref="Advance"/> の中から呼ぶ。</summary>
+        public event Action ShowcaseEnded;
+
+        /// <summary>この戦闘の見せ場を起こさない（止めない・配置も止めない・見せ場の群れは普通の敵として扱う）。テスト用（BattleController.SkipShowcase）。</summary>
+        public void DisableShowcase()
+        {
+            _showcaseDisabled = true;
+            ShowcaseStarted = true;
+            ShowcaseFinished = true;
+            IsShowcaseHolding = false;
+        }
+
+        private void CheckShowcaseEnd()
+        {
+            if (ShowcaseFinished || !ShowcaseStarted || IsShowcaseHolding)
+            {
+                return;
+            }
+
+            foreach (var enemy in _enemies)
+            {
+                if (enemy.FromShowcase)
+                {
+                    return;
+                }
+            }
+
+            ShowcaseFinished = true;
+            Effects?.ClearStopAndPoison();
+            ShowcaseEnded?.Invoke();
         }
 
         /// <summary>見せ場のウェーブを出し終わり、レバーを待って戦闘を止めている（spec 011 FR-031）。</summary>
@@ -442,10 +502,13 @@ namespace UnitySlotTower.Core.Battle
             Waves.Step(_enemies.Count, _due);
             foreach (var spawn in _due)
             {
+                var showcase = Waves.Schedule.FindWave(spawn.Wave)?.SlotShowcase == true;
                 _enemies.Add(new BattleEnemy(spawn.Enemy, spawn.Path, EnemyHpRate)
                 {
                     AreaCooldownSteps = StepsOf(spawn.Enemy.AreaInterval),
                     IsBoss = spawn.IsBoss,
+                    FromShowcase = showcase && !_showcaseDisabled,
+
                 });
                 EnemySpawned?.Invoke(spawn.Path);
             }
@@ -730,14 +793,14 @@ namespace UnitySlotTower.Core.Battle
                 var definition = enemy.Definition;
                 var coins = 0;
                 var gainedMoney = 0;
-                // コインと所持金は別々の抽選（FR-107、002 plan 2.4）。
-                if (_random.NextDouble() < definition.CoinRate)
+                // コインと所持金は別々の抽選（FR-107、002 plan 2.4）。見せ場の群れは落とさない（spec 015 FR-005）。
+                if (!enemy.FromShowcase && _random.NextDouble() < definition.CoinRate)
                 {
                     coins = _random.NextInt(definition.CoinMin, definition.CoinMax + 1);
                     DroppedCoins += coins;
                 }
 
-                if (_random.NextDouble() < definition.MoneyRate)
+                if (!enemy.FromShowcase && _random.NextDouble() < definition.MoneyRate)
                 {
                     // 所持金だけにコインの倍率を掛ける（四捨五入、plan 16.2）。
                     var money = _random.NextInt(definition.MoneyMin, definition.MoneyMax + 1);

@@ -108,7 +108,7 @@ namespace UnitySlotTower.Battle
         {
             if (eventData.button == PointerEventData.InputButton.Left)
             {
-                placementInput.SelectSlot(slot);
+                placementInput.SelectSlot(slot, byPointer: true);
                 ShowRejectIfUnavailable();
             }
         }

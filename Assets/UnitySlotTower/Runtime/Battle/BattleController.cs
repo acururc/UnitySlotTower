@@ -342,6 +342,11 @@ namespace UnitySlotTower.Battle
             BattleSpeed = 1;
             _completionReported = false;
             ResetShowcase();
+            if (SkipShowcase)
+            {
+                Field.DisableShowcase();
+            }
+
             UpdateSlotLock();
             fieldView.Show(map);
             fieldView.Observe(Field);
@@ -391,7 +396,7 @@ namespace UnitySlotTower.Battle
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetSkipShowcase() => SkipShowcase = false;
 
-        // 見せ場のウェーブが出そろって戦闘が止まった（spec 011 FR-031）: コインを補い、賭けを3枚にし、レバーを示す。
+        // 見せ場のウェーブが出そろって戦闘が止まった（spec 011 FR-031）: 賭けを3枚にし、コインを使わない1回にして、レバーを示す（spec 015 FR-001）。
         private void OnShowcaseHeld()
         {
             if (SkipShowcase)
@@ -400,14 +405,8 @@ namespace UnitySlotTower.Battle
                 return;
             }
 
-            var wallet = slotCabinet.Wallet;
-            var need = slotCabinet.Rules.ShowcaseCoins - wallet.Coins;
-            if (need > 0)
-            {
-                wallet.Add(need);
-            }
-
             slotCabinet.SetBet(SlotMachine.MaxBet);
+            slotCabinet.FreeSpin = true;
             slotCabinet.ForcedHits = ShowcaseHits;
             slotCabinet.LeverHighlighted = true;
             slotCabinet.LeverPulled -= OnShowcaseLever;
@@ -441,6 +440,7 @@ namespace UnitySlotTower.Battle
         {
             slotCabinet.LeverPulled -= OnShowcaseLever;
             _showcaseBetReset = false;
+            slotCabinet.FreeSpin = false;
             slotCabinet.ForcedHits = null;
             slotCabinet.LeverHighlighted = false;
             _showcaseLeverPulled = false;

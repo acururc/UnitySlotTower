@@ -44,20 +44,21 @@ namespace UnitySlotTower.Tests.PlayMode
 
         /// <summary>
         /// ステージ1の見せ場（spec 015 FR-001、ウェーブ1で止まってレバーを待つ）を飛ばす。早送りで終わらせるテスト用。
-        /// 筐体の決め打ちとレバーの点滅も消す（次のステージの開始でも消える）。
+        /// 筐体の決め打ち・コインを使わない1回・レバーの点滅も消し、キャラを置けるようにする（spec 015 FR-006）。
         /// </summary>
         public static void SkipShowcase(BattleController battle)
         {
-            if (battle.Field == null || !battle.Field.IsShowcaseHolding)
+            if (battle.Field == null || !battle.Field.IsShowcasePending)
             {
                 return;
             }
 
-            battle.Field.ReleaseShowcase();
+            battle.Field.DisableShowcase();
             var cabinet = Object.FindAnyObjectByType<SlotCabinet>();
             if (cabinet != null)
             {
                 cabinet.ForcedHits = null;
+                cabinet.FreeSpin = false;
                 cabinet.LeverHighlighted = false;
             }
         }

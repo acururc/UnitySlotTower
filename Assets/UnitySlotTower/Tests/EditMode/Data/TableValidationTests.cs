@@ -278,6 +278,18 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
+        [Description("spec 015 FR-001: ステージ1でも見せ場のウェーブ（slot_showcase）は中央のレーン以外から出てよい")]
+        public void Stage_1_Showcase_Wave_Off_The_Center_Lane_Is_Allowed()
+        {
+            var files = TablePaths.ReadAll();
+            files["waves.csv"] += "1,1,5,melee,S1,first_g1,0,3,1\n";
+
+            var report = GameDataValidator.ValidateAll(files);
+
+            Assert.That(report.Errors.Where(e => e.File == "waves.csv"), Is.Empty);
+        }
+
+        [Test]
         [Description("FR-034: 中央のレーン以外から出てよいのはステージ1以外")]
         public void Later_Stage_Enemy_Off_The_Center_Lane_Is_Allowed()
         {

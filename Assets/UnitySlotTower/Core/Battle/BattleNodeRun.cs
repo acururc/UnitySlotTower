@@ -53,7 +53,11 @@ namespace UnitySlotTower.Core.Battle
                 EnemyHpRate = stage.EnemyHpRate,
             };
             Summoner = new UnitSummoner(units, Wallet, config.DeployLimit, config.RetreatRefundRate,
-                state.FreeSummons);
+                state.FreeSummons)
+            {
+                // ステージ1の見せ場が終わるまでキャラを置けない（spec 015 FR-006）。
+                Lock = () => Field.IsShowcasePending,
+            };
             Deployment = new UnitDeployment(Map, units, ranges, Summoner, Field, Upgrades);
         }
 

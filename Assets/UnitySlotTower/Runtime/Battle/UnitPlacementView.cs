@@ -63,7 +63,8 @@ namespace UnitySlotTower.Battle
         {
             var active = deployment.Phase != DeployPhase.Idle;
             // 向きを選ぶ間のカーソルは決めたマス（置ける）にある。マスを選ぶ間は置けるマスの上だけ出す。
-            _cursor.gameObject.SetActive(active && deployment.CanPlace(deployment.Cursor));
+            // マウスで選んでポインターが戦場の外の間は出さない（spec 015 FR-008）。
+            _cursor.gameObject.SetActive(active && deployment.HasCursor && deployment.CanPlace(deployment.Cursor));
             _arrow.gameObject.SetActive(deployment.Phase == DeployPhase.ChoosingFacing);
             var rangeCount = 0;
             if (active)

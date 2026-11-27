@@ -149,7 +149,17 @@ namespace UnitySlotTower.Slot
         public int SpinCount { get; private set; }
 
         /// <summary>レバーを引ける（コインが1枚以上ある）。</summary>
-        public bool CanLever => _wallet != null && _wallet.Coins >= SlotMachine.MinBet;
+        public bool CanLever => _wallet != null && (_wallet.Coins >= SlotMachine.MinBet || FreeSpin);
+
+        /// <summary>次のレバーはコインを使わない（ステージ1の見せ場、spec 015 FR-001）。回転が始まると false に戻る。</summary>
+        public bool FreeSpin
+        {
+            get => _machine != null && _machine.NextSpinFree;
+            set
+            {
+                if (_machine != null) _machine.NextSpinFree = value;
+            }
+        }
 
         /// <summary>出してよい図柄（発動中の図柄を外す）。null なら全部。</summary>
         public Func<SlotSymbol, bool> OutcomeFilter { get; set; }

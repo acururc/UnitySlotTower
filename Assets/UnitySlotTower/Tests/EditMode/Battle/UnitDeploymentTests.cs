@@ -66,6 +66,60 @@ namespace UnitySlotTower.Tests.EditMode.Battle
         }
 
         [Test]
+        [Description("spec 015 FR-008, AC-009: マウスで選んでポインターが戦場の外なら、置く場所を出さずマスも決められない。戦場に入るとそのマス")]
+        public void Pointer_Selection_Outside_The_Field_Has_No_Cursor_Until_Hovered()
+        {
+            var deployment = Create();
+
+            deployment.SelectAt("tank", null);
+
+            Assert.That((deployment.Phase, deployment.HasCursor, deployment.ChooseCell()), Is.EqualTo((DeployPhase.ChoosingCell, false, false)));
+            deployment.SetCursor(new GridPoint(1, 0));
+            Assert.That((deployment.HasCursor, deployment.Cursor, deployment.ChooseCell()), Is.EqualTo((true, new GridPoint(1, 0), true)));
+        }
+
+        [Test]
+        [Description("spec 015 FR-008, AC-009: マウスで選んだときはポインターの下のマスにカーソルを置く（中央にしない）")]
+        public void Pointer_Selection_Puts_The_Cursor_Under_The_Pointer()
+        {
+            var deployment = Create();
+
+            deployment.SelectAt("tank", new GridPoint(1, 0));
+
+            Assert.That((deployment.HasCursor, deployment.Cursor), Is.EqualTo((true, new GridPoint(1, 0))));
+        }
+
+        [Test]
+        [Description("spec 015 FR-008, AC-009: マウスで選んで置く場所が無いとき、矢印キーの最初の1回は中央に出すだけ。キーボードで選び直すと中央から")]
+        public void Arrow_After_Pointer_Selection_Shows_The_Center_First()
+        {
+            var deployment = Create();
+            deployment.SelectAt("tank", null);
+
+            deployment.MoveCursor(1, 0);
+
+            Assert.That((deployment.HasCursor, deployment.Cursor), Is.EqualTo((true, new GridPoint(2, 1))));
+            deployment.Cancel();
+            deployment.SelectAt("tank", null);
+            deployment.Select("sword");
+            Assert.That((deployment.HasCursor, deployment.Cursor), Is.EqualTo((true, new GridPoint(2, 1))));
+        }
+
+        [Test]
+        [Description("spec 015 FR-006: 召喚が止められている間（見せ場の途中）は選べない")]
+        public void Selection_Is_Rejected_While_Locked()
+        {
+            var deployment = Create();
+            var locked = true;
+            _summoner.Lock = () => locked;
+
+            Assert.That((deployment.Select("tank"), deployment.SelectAt("tank", new GridPoint(1, 0)), deployment.Phase),
+                Is.EqualTo((SummonResult.Locked, SummonResult.Locked, DeployPhase.Idle)));
+            locked = false;
+            Assert.That(deployment.Select("tank"), Is.EqualTo(SummonResult.Summoned));
+        }
+
+        [Test]
         public void Cursor_Moves_With_Arrows_And_Stays_Inside_The_Map()
         {
             var deployment = Create();

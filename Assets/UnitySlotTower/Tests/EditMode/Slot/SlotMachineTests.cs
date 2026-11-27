@@ -125,6 +125,20 @@ namespace UnitySlotTower.Tests.EditMode.Slot
         }
 
         [Test]
+        [Description("spec 015 FR-001: コインを使わない1回はコイン0でも選んだ枚数で引け、コインは減らず、次からは普通に払う")]
+        public void Free_Spin_Uses_No_Coins_Once()
+        {
+            var wallet = new CoinWallet(0);
+            var machine = Machine(wallet, bet: 3);
+            machine.NextSpinFree = true;
+
+            Assert.That((machine.TryLever(), machine.SpinBet, wallet.Coins, machine.NextSpinFree),
+                Is.EqualTo((LeverResult.Started, 3, 0, false)));
+            machine.Settle();
+            Assert.That(machine.TryLever(), Is.EqualTo(LeverResult.NotEnoughCoins));
+        }
+
+        [Test]
         public void Lever_While_Spinning_Is_Rejected()
         {
             var wallet = new CoinWallet(10);

@@ -257,6 +257,16 @@ namespace UnitySlotTower.Core.Battle
             return true;
         }
 
+        /// <summary>青7の停止と黄7の毒を、発動待ちも含めて消す（spec 015 FR-007: 見せ場の群れが全滅したとき）。</summary>
+        public void ClearStopAndPoison()
+        {
+            StopStepsLeft = 0;
+            StopDelayStepsLeft = 0;
+            PoisonStepsLeft = 0;
+            PoisonDelayStepsLeft = 0;
+            _poisonTickCount = 0;
+        }
+
         /// <summary>攻撃力アップを始める（倍率は 1 + bar_attack_step × 賭け枚数）。</summary>
         public void StartAttack(int power = 1)
         {

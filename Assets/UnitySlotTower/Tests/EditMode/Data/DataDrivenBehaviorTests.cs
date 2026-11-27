@@ -111,7 +111,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
             var map = BattleMap.Load("first", files[BattleMap.MapFileName("first")], Parse(files, "map_paths.csv"));
             var enemies = EnemyTable.Load(Parse(files, EnemyTable.FileName));
             var schedule = WaveSchedule.Load(Parse(files, WaveSchedule.FileName), 1, map, enemies);
-            return schedule.Spawns.Single(s => s.Wave == 1 && s.Time == 0).Enemy.Id;
+            return schedule.Spawns.Single(s => s.Wave == 1 && s.Time == 0 && s.Path.Id == "first_g1").Enemy.Id;
         }
 
         [Test]
@@ -160,7 +160,7 @@ namespace UnitySlotTower.Tests.EditMode.Data
         public void Enemy_Spawn_Follows_Waves_Csv()
         {
             var changed = TablesWith(WaveSchedule.FileName, "enemy_id", "ranged",
-                ("stage", "1"), ("wave", "1"), ("time", "0"));
+                ("stage", "1"), ("wave", "1"), ("time", "0"), ("path_id", "first_g1"));
 
             Assert.That((FirstSpawnEnemy(TablePaths.ReadAll()), FirstSpawnEnemy(changed)),
                 Is.EqualTo(("melee", "ranged")));

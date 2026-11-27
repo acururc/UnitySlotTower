@@ -22,3 +22,12 @@
 - Setup の再実行で Inspector の調整値が初期値に戻る（既知）。
 - 合成音は狙いの形（上がる和音・ループ）は保証できるが、好みはユーザーの試聴で決まる。
 - 見せ場の群れが3つの効果で全滅しない数値だと、配置前に本拠地まで来る。PlayMode テストで全滅を確かめる。
+
+## 2回目のテストプレイの変更（FR-001 変更、FR-005〜FR-008）
+
+- 群れ: `waves.csv` のステージ1 ウェーブ1を S1/S2/S3 の3レーンに近接8体ずつ（0.55 秒おき）。`GameDataValidator.ValidateCenterLane` は見せ場のウェーブを飛ばす。
+- お金: 見せ場のウェーブから出た敵に `BattleEnemy.FromShowcase` を付け、`Battlefield.RemoveDefeatedEnemies` でコイン・所持金の抽選をしない。見せ場の1回は `SlotMachine.NextSpinFree`（`SlotCabinet.FreeSpin`）でコインを使わない。コインの補充はやめる（`showcase_coins` は使わなくなる）。
+- 配置の止め: `Battlefield.IsShowcasePending`（見せ場があり、群れが全滅していない）を `UnitSummoner.Lock` に渡し、`SummonResult.Locked` を返す。札は選べない表示（Blocked）と断りの音。
+- 効果の後片付け: 止まりが解けた後、場に `FromShowcase` の敵がいなくなったら `SlotEffects.ClearStopAndPoison()` と `ShowcaseEnded`。本拠地に着いて消えた場合も終わる。
+- カーソル: `UnitDeployment.SelectAt(unitId, cell?)` と `HasCursor`。札のクリック・ドラッグは `SelectSlot(slot, byPointer: true)` でポインターの下のマス（戦場の外なら null）。`HasCursor` が false の間はカーソルを出さず `ChooseCell` も失敗。矢印キーの最初の1回で中央に出す。
+- テスト用: `Battlefield.DisableShowcase()`（`BattleController.SkipShowcase` と `StageTestUtil.SkipShowcase` から）で止めない・配置も止めない。

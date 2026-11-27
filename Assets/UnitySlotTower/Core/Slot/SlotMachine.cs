@@ -128,7 +128,10 @@ namespace UnitySlotTower.Core.Slot
         }
 
         /// <summary>次のレバーで実際に賭ける枚数: 選んだ枚数を持っているコインまで下げる（最低1、FR-003）。</summary>
-        public int EffectiveBet => Math.Max(MinBet, Math.Min(_selectedBet, _coins.Coins));
+        public int EffectiveBet => NextSpinFree ? _selectedBet : Math.Max(MinBet, Math.Min(_selectedBet, _coins.Coins));
+
+        /// <summary>次のレバーはコインを使わない（選んだ枚数のまま、コイン0枚でも引ける。ステージ1の見せ場、spec 015 FR-001）。回転が始まると false に戻る。</summary>
+        public bool NextSpinFree { get; set; }
 
         /// <summary>直近のレバーで払った枚数（効果の強さの倍率）。</summary>
         public int SpinBet { get; private set; } = MinBet;
@@ -180,7 +183,11 @@ namespace UnitySlotTower.Core.Slot
             }
 
             var bet = EffectiveBet;
-            if (_coins.Coins <= 0 || !_coins.TrySpend(bet))
+            if (NextSpinFree)
+            {
+                NextSpinFree = false;
+            }
+            else if (_coins.Coins <= 0 || !_coins.TrySpend(bet))
             {
                 return LeverResult.NotEnoughCoins;
             }

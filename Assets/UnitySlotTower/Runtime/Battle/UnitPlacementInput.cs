@@ -105,9 +105,10 @@ namespace UnitySlotTower.Battle
 
         /// <summary>
         /// 操作バーの slot 番目（0 始まり、units.csv の並び）の味方を選ぶ。選択中の味方をもう一度選ぶと選択をやめる。
-        /// 召喚できない（コイン不足・配置上限・待ち時間）ときは何も選ばない。
+        /// 召喚できない（コイン不足・配置上限・待ち時間・見せ場の途中）ときは何も選ばない。
+        /// <paramref name="byPointer"/> ならカーソルを中央に置かず、ポインターの下のマスに置く（戦場の外なら置く場所を出さない、spec 015 FR-008）。
         /// </summary>
-        public void SelectSlot(int slot)
+        public void SelectSlot(int slot, bool byPointer = false)
         {
             var deployment = battle.Deployment;
             if (deployment == null || battle.IsInputBlocked || slot < 0 || slot >= battle.Units.All.Count)
@@ -127,7 +128,10 @@ namespace UnitySlotTower.Battle
                 return;
             }
 
-            if (deployment.Select(unitId) == SummonResult.Summoned)
+            var result = byPointer
+                ? deployment.SelectAt(unitId, TryGetCell(_point.ReadValue<Vector2>(), out var cell) ? cell : (GridPoint?)null)
+                : deployment.Select(unitId);
+            if (result == SummonResult.Summoned)
             {
                 SelectedUnit = null;
             }

@@ -431,7 +431,7 @@ namespace UnitySlotTower.Core.Data
                     ValidateStageBoss(stage, schedule, waves, report);
                     if (stage.Number == 1)
                     {
-                        ValidateCenterLane(waves, stage.Number, map, report);
+                        ValidateCenterLane(waves, stage.Number, map, schedule, report);
                         foreach (var row in waves.Rows)
                         {
                             if (row.GetInt("stage") == stage.Number && row.Get("enemy_id") == "heavy")
@@ -574,12 +574,21 @@ namespace UnitySlotTower.Core.Data
             }
         }
 
-        /// <summary>ステージ1の敵は中央のレーン（出現口がマップの中央の行にある道）からだけ出る（FR-034, D-80）。</summary>
-        private static void ValidateCenterLane(CsvTable waves, int stage, BattleMap map, ValidationReport report)
+        /// <summary>
+        /// ステージ1の敵は中央のレーン（出現口がマップの中央の行にある道）からだけ出る（FR-034, D-80）。
+        /// 見せ場のウェーブ（stage_waves.csv の slot_showcase）は3レーンすべてから来てよい（spec 015 FR-001）。
+        /// </summary>
+        private static void ValidateCenterLane(CsvTable waves, int stage, BattleMap map, WaveSchedule schedule, ValidationReport report)
         {
             foreach (var row in waves.Rows)
             {
                 if (row.GetInt("stage") != stage)
+                {
+                    continue;
+                }
+
+                var wave = waves.HasColumn(WaveSchedule.WaveColumn) ? schedule.FindWave(row.GetInt(WaveSchedule.WaveColumn)) : null;
+                if (wave != null && wave.SlotShowcase)
                 {
                     continue;
                 }

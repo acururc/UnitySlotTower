@@ -18,10 +18,11 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
     /// <summary>spec 011 AC-001（BET ボタン）・AC-005（ステージ1の見せ場）の PlayMode 部分。</summary>
     public sealed class SlotBetShowcaseTests
     {
-        // ステージ1: ウェーブ1（見せ場、stage_waves.csv の slot_showcase）は近接3体、ウェーブ2は近接1体。ほかのステージは1体。
+        // ステージ1: ウェーブ1（見せ場、stage_waves.csv の slot_showcase）は3レーンから近接2体ずつ、ウェーブ2は近接1体。ほかのステージは1体。
         private const string ShowcaseWaves =
             "stage,wave,time,enemy_id,spawn,path_id,is_boss,count,interval\n" +
-            "1,1,0,melee,S2,first_g2,0,3,0.3\n1,2,0,melee,S2,first_g2,0,1,0\n" +
+            "1,1,0,melee,S1,first_g1,0,2,0.3\n1,1,0,melee,S2,first_g2,0,2,0.3\n1,1,0,melee,S3,first_g3,0,2,0.3\n" +
+            "1,2,0,melee,S2,first_g2,0,1,0\n" +
             "2,1,0,melee,S1,battle_a_g1,0,1,0\n3,1,0,melee,S1,battle_b_g1,0,1,0\n4,1,0,melee,S1,elite_a_g1,0,1,0\n" +
             "5,1,0,melee,S1,battle_c_g1,0,1,0\n6,1,0,melee,S1,battle_d_g1,0,1,0\n7,1,0,melee,S1,battle_e_g1,0,1,0\n" +
             "8,1,0,melee,S1,boss_a_g1,0,1,0\n";
@@ -163,7 +164,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        [Description("spec 015 AC-001/AC-002: ウェーブ1が出そろうと盤面が止まり、コイン3枚・賭け3枚・レバーの点滅・暗幕と矢印。引くと赤7・青7・黄7で動き出し、群れが全滅し、賭けが1枚に戻る")]
+        [Description("spec 015 AC-001/AC-002/AC-008: ウェーブ1（3レーン）が出そろうと盤面が止まり、賭け3枚・レバーの点滅・暗幕と矢印。見せ場の間は置けない。コイン0でも引けて減らない。赤7・青7・黄7で群れが全滅し、お金は増えず、青7と黄7の効果が消え、置けるようになり、賭けが1枚に戻る")]
         public IEnumerator Showcase_Holds_Until_The_Lever_Then_Triple_Hit_Strikes()
         {
             _cabinet.Wallet.Reset(0);
@@ -178,8 +179,19 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That(_battle.Field.IsShowcaseHolding, Is.True, "ウェーブ1で止まらない");
             Assert.That(_battle.Field.Waves.StartedWaves, Is.EqualTo(1), "見せ場がウェーブ1でない");
             yield return null;
-            Assert.That((_cabinet.LeverHighlighted, _cabinet.Bet, _cabinet.Wallet.Coins >= 3, _battle.Field.Enemies.Count),
-                Is.EqualTo((true, 3, true, 3)), "見せ場の準備（点滅・賭け3枚・コイン3枚・群れが場にいる）");
+            Assert.That((_cabinet.LeverHighlighted, _cabinet.Bet, _cabinet.Wallet.Coins, _battle.Field.Enemies.Count),
+                Is.EqualTo((true, 3, 0, 6)), "見せ場の準備（点滅・賭け3枚・コインは補わない・群れが場にいる）");
+            var lanes = new HashSet<string>();
+            foreach (var enemy in _battle.Field.Enemies)
+            {
+                lanes.Add(enemy.Path.Id);
+            }
+
+            Assert.That(lanes, Is.EquivalentTo(new[] { "first_g1", "first_g2", "first_g3" }), "群れが3レーンから来ない（spec 015 FR-001）");
+            var unitId = _battle.Units.All[0].Id;
+            Assert.That(_battle.Deployment.Select(unitId), Is.EqualTo(UnitySlotTower.Core.Battle.SummonResult.Locked),
+                "見せ場の間に置ける（spec 015 FR-006）");
+            var money = _battle.Wallet.Coins;
             var guide = Object.FindAnyObjectByType<SlotShowcaseGuide>();
             Assert.That(guide, Is.Not.Null, "見せ場の案内がない（Setup の Showcase Guide (spec 015)）");
             Assert.That(guide.IsShown, Is.True, "止めている間に暗幕と矢印が出ない（spec 015 FR-004）");
@@ -199,6 +211,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
             Assert.That(_battle.Field.Tick, Is.EqualTo(tick), "止まっている間に戦闘が進む");
 
             yield return Tap(Key.Space);
+            Assert.That((_cabinet.IsSpinning, _cabinet.SpinBet, _cabinet.Wallet.Coins), Is.EqualTo((true, 3, 0)),
+                "コイン0で賭け3枚の見せ場が引けない、またはコインが減った（spec 015 FR-001）");
             Assert.That(_cabinet.LeverHighlighted, Is.False, "引いても点滅が止まらない");
             yield return null;
             Assert.That(guide.IsShown, Is.False, "引いても暗幕と矢印が消えない");
@@ -218,6 +232,14 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
 
             Time.timeScale = 1f;
             Assert.That(_battle.Field.Enemies.Count, Is.EqualTo(0), "三重当たりで群れが全滅しない");
+            yield return null;
+            var effects = _battle.Field.Effects;
+            Assert.That((_battle.Field.ShowcaseFinished, effects.IsStopped, effects.IsStopPending, effects.IsPoisoned, effects.IsPoisonPending),
+                Is.EqualTo((true, false, false, false, false)), "群れの全滅で青7と黄7の効果が消えない（spec 015 FR-007）");
+            Assert.That((_battle.Wallet.Coins, _cabinet.Wallet.Coins), Is.EqualTo((money, 0)), "見せ場の群れがお金を落とした（spec 015 FR-005）");
+            _battle.Wallet.Add(_battle.Units.All[0].Cost);
+            Assert.That(_battle.Deployment.Select(unitId), Is.EqualTo(UnitySlotTower.Core.Battle.SummonResult.Summoned),
+                "見せ場が終わっても置けない（spec 015 FR-006）");
         }
     }
 }

@@ -28,6 +28,9 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>ボスとして出た（waves.csv の is_boss）。赤7・毒のダメージを弱める（spec 011 FR-021）。</summary>
         public bool IsBoss { get; internal set; }
 
+        /// <summary>ステージ1の見せ場の群れ（spec 015 FR-005）。倒しても所持金もコインも落とさない。</summary>
+        public bool FromShowcase { get; internal set; }
+
         /// <summary>出現口から進んだ距離（マス）。</summary>
         public double Distance { get; private set; }
 

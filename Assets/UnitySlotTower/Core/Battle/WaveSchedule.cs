@@ -210,7 +210,7 @@ namespace UnitySlotTower.Core.Battle
             }
         }
 
-        private WaveDefinition FindWave(int number)
+        internal WaveDefinition FindWave(int number)
         {
             foreach (var wave in _waves)
             {

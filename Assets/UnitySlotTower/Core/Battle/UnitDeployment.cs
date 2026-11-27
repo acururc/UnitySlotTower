@@ -51,11 +51,16 @@ namespace UnitySlotTower.Core.Battle
 
         public GridPoint Cursor { get; private set; }
 
+        /// <summary>
+        /// カーソル（置く場所）が決まっている。マウスで選んでポインターが戦場の外にある間は false で、置く場所を出さずマスも決められない（spec 015 FR-008）。
+        /// </summary>
+        public bool HasCursor { get; private set; }
+
         public Facing Facing { get; private set; }
 
         /// <summary>
         /// 召喚できる味方ならマス選びを始める（どの段階からでも選び直せる）。召喚できなければ何も変えず理由を返す。
-        /// カーソルは最初だけマップ中央に置き、以後は前回の位置を引き継ぐ。
+        /// カーソルは最初だけマップ中央に置き、以後は前回の位置を引き継ぐ（キーボードで選んだとき）。
         /// </summary>
         public SummonResult Select(string unitId)
         {
@@ -65,16 +70,50 @@ namespace UnitySlotTower.Core.Battle
                 return result;
             }
 
+            PlaceCursorIfNeeded();
+            HasCursor = true;
+            Begin(unitId);
+            return result;
+        }
+
+        /// <summary>
+        /// マウスで選んだとき: カーソルを中央に置かず、<paramref name="cell"/>（ポインターの下のマス、無ければ null）に置く。
+        /// null かマップ外なら置く場所を出さずに待つ（spec 015 FR-008）。
+        /// </summary>
+        public SummonResult SelectAt(string unitId, GridPoint? cell)
+        {
+            var result = _summoner.Check(unitId);
+            if (result != SummonResult.Summoned)
+            {
+                return result;
+            }
+
+            Begin(unitId);
+            HasCursor = false;
+            if (cell.HasValue && _map.Contains(cell.Value))
+            {
+                Cursor = cell.Value;
+                _cursorPlaced = true;
+                HasCursor = true;
+            }
+
+            return result;
+        }
+
+        private void PlaceCursorIfNeeded()
+        {
             if (!_cursorPlaced)
             {
                 Cursor = new GridPoint(_map.Width / 2, _map.Height / 2);
                 _cursorPlaced = true;
             }
+        }
 
+        private void Begin(string unitId)
+        {
             Selected = _units.Get(unitId);
             Phase = DeployPhase.ChoosingCell;
             Facing = Facing.Right;
-            return result;
         }
 
         /// <summary>
@@ -82,7 +121,13 @@ namespace UnitySlotTower.Core.Battle
         /// </summary>
         public void MoveCursor(int dx, int dy)
         {
-            if (Phase == DeployPhase.ChoosingCell)
+            if (Phase == DeployPhase.ChoosingCell && !HasCursor)
+            {
+                // マウスで選んで置く場所が出ていなければ、最初の1回は今の位置（最初は中央）に出すだけ。
+                PlaceCursorIfNeeded();
+                HasCursor = true;
+            }
+            else if (Phase == DeployPhase.ChoosingCell)
             {
                 SetCursor(new GridPoint(Clamp(Cursor.X + dx, _map.Width), Clamp(Cursor.Y + dy, _map.Height)));
             }
@@ -98,6 +143,8 @@ namespace UnitySlotTower.Core.Battle
             if (Phase == DeployPhase.ChoosingCell && _map.Contains(cell))
             {
                 Cursor = cell;
+                _cursorPlaced = true;
+                HasCursor = true;
             }
         }
 
@@ -123,7 +170,7 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>カーソルのマスに決めて向き選びへ進む。置けないマスなら false でそのまま。</summary>
         public bool ChooseCell()
         {
-            if (Phase != DeployPhase.ChoosingCell || !CanPlace(Cursor))
+            if (Phase != DeployPhase.ChoosingCell || !HasCursor || !CanPlace(Cursor))
             {
                 return false;
             }

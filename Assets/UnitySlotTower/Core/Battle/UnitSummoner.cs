@@ -11,6 +11,9 @@ namespace UnitySlotTower.Core.Battle
         CoolingDown,
         DeployLimitReached,
         NotEnoughCoins,
+
+        /// <summary>いまは置けない（ステージ1の見せ場が終わるまで、spec 015 FR-006）。</summary>
+        Locked,
     }
 
     /// <summary>
@@ -50,6 +53,9 @@ namespace UnitySlotTower.Core.Battle
             }
         }
 
+        /// <summary>true を返す間は召喚させない（<see cref="SummonResult.Locked"/>、spec 015 FR-006 の見せ場）。</summary>
+        public Func<bool> Lock { get; set; }
+
         /// <summary>フィールド上の味方の総数。</summary>
         public int DeployedCount { get; private set; }
 
@@ -62,6 +68,11 @@ namespace UnitySlotTower.Core.Battle
         /// <summary>いま召喚できるかだけを調べる（何も変えない）。召喚できるなら <see cref="SummonResult.Summoned"/>。</summary>
         public SummonResult Check(string unitId)
         {
+            if (Lock != null && Lock())
+            {
+                return SummonResult.Locked;
+            }
+
             var unit = _units.Get(unitId);
             var free = FreeSummons > 0;
             if (!free && _cooldownSteps[_indices[unitId]] > 0)

@@ -48,12 +48,24 @@ namespace UnitySlotTower.Tests.EditMode.Data
         }
 
         [Test]
-        [Description("FR-103: ステージ1は最初に見せ場の群れ（spec 015 FR-001、8体）、続いて 1体 → 2体 → 3体 → 長め（6体以上）")]
+        [Description("FR-103: ステージ1は最初に見せ場の群れ（spec 015 FR-001、3レーンから8体ずつ）、続いて 1体 → 2体 → 3体 → 長め（6体以上）")]
         public void Stage_1_Waves_Grow_One_Two_Three_Then_Long()
         {
             var counts = Schedule(1).Waves.Select(w => w.Spawns.Count).ToArray();
 
-            Assert.That((counts.Length, counts[0], counts[1], counts[2], counts[3], counts[4] >= 6), Is.EqualTo((5, 8, 1, 2, 3, true)));
+            Assert.That((counts.Length, counts[0], counts[1], counts[2], counts[3], counts[4] >= 6), Is.EqualTo((5, 24, 1, 2, 3, true)));
+        }
+
+        [Test]
+        [Description("spec 015 FR-001, AC-008: ステージ1の見せ場の群れは3レーンすべてから同じ数ずつ来る。2体目以降は中央のレーンだけ")]
+        public void Stage_1_Showcase_Comes_From_All_Three_Lanes()
+        {
+            var waves = Schedule(1).Waves;
+
+            Assert.That(waves[0].SlotShowcase, Is.True);
+            Assert.That(waves[0].Spawns.GroupBy(s => s.Path.Id).Select(g => g.Key + ":" + g.Count()).OrderBy(k => k),
+                Is.EqualTo(new[] { "first_g1:8", "first_g2:8", "first_g3:8" }));
+            Assert.That(waves.Skip(1).SelectMany(w => w.Spawns).Select(s => s.Path.Id).Distinct(), Is.EqualTo(new[] { "first_g2" }));
         }
 
         [Test]

@@ -28,6 +28,27 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         private SlotCabinet _cabinet;
         private SlotReelView[] _reels;
 
+        // ステージ1は spec 015 の2回目より前の出だし（中央のレーンに近接8体、見せ場は PlayModeTestSetup で飛ばす）。
+        // 正本のウェーブ1（3レーン・24体）は見せ場の三重当たりで全滅する前提で、飛ばすと演出の途中でゲームオーバーになる。
+        private const string OpeningWaves =
+            "stage,wave,time,enemy_id,spawn,path_id,is_boss,count,interval\n" +
+            "1,1,0,melee,S2,first_g2,0,8,0.4\n1,2,0,melee,S2,first_g2,0,1,0\n1,3,0,melee,S2,first_g2,0,2,0.6\n" +
+            "1,4,0,melee,S2,first_g2,0,3,1.5\n1,5,0,melee,S2,first_g2,0,4,2.5\n1,5,11,ranged,S2,first_g2,0,2,3\n" +
+            "2,1,0,melee,S1,battle_a_g1,0,1,0\n3,1,0,melee,S1,battle_b_g1,0,1,0\n4,1,0,melee,S1,elite_a_g1,0,1,0\n" +
+            "5,1,0,melee,S1,battle_c_g1,0,1,0\n6,1,0,melee,S1,battle_d_g1,0,1,0\n7,1,0,melee,S1,battle_e_g1,0,1,0\n" +
+            "8,1,0,melee,S1,boss_a_g1,0,1,0\n";
+
+        private static void UseOpeningWaves(Scene scene, LoadSceneMode mode)
+        {
+            var battle = Object.FindAnyObjectByType<BattleController>();
+            if (battle != null)
+            {
+                typeof(BattleController)
+                    .GetField("wavesTable", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    .SetValue(battle, new TextAsset(OpeningWaves));
+            }
+        }
+
         [SetUp]
         public void SetUp()
         {
@@ -58,6 +79,7 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         [TearDown]
         public void TearDown()
         {
+            SceneManager.sceneLoaded -= UseOpeningWaves;
             SlotCabinet.RandomOverride = null;
             InputSystem.RemoveDevice(_keyboard);
             foreach (var device in _disabled)
@@ -670,6 +692,8 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         private IEnumerator LoadGame()
         {
             SlotCabinet.RandomOverride = new SeededRandom(1);
+            SceneManager.sceneLoaded -= UseOpeningWaves;
+            SceneManager.sceneLoaded += UseOpeningWaves;
             yield return SceneManager.LoadSceneAsync("Game");
             _battle = Object.FindAnyObjectByType<BattleController>();
             _cabinet = Object.FindAnyObjectByType<SlotCabinet>();
