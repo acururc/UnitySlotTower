@@ -370,26 +370,22 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        [Description("AC-053: 札と向き選びと詳細の板にブロック数（止めない職は ×）が出る。スキルのゲージと絵はない（AC-112）")]
-        public IEnumerator Block_Count_Shows_On_Cards_Facing_And_Detail()
+        [Description("AC-053: 札と詳細の板にブロック数（止めない職は ×）が出る。向き選びの間はブロック数の印を出さない（2026-11-27）。スキルのゲージと絵はない（AC-112）")]
+        public IEnumerator Block_Count_Shows_On_Cards_And_Detail()
         {
             var tankBlock = _battle.Units.Get("tank").Block.ToString();
             Assert.That((Text(GameObject.Find("Card Frame 1").transform, "Block/Value"),
                     Text(GameObject.Find("Card Frame 3").transform, "Block/Value")),
                 Is.EqualTo((tankBlock, "×")), "札のブロック数（弓は止めないので ×）");
             Assert.That(GameObject.Find("Skill Gauge 1"), Is.Null, "スキルゲージが残っている");
+            Assert.That(GameObject.Find("Placement Block"), Is.Null, "向き選びのブロック数の印が残っている");
 
-            var badge = Object.FindAnyObjectByType<PlacementBlockBadge>();
             yield return Tap(Key.Digit1);
             var target = FirstPlaceableCell();
             yield return MoveCursorTo(target);
-            Assert.That(badge.IsShown, Is.False, "マスを選んでいる間は出さない");
+            yield return Tap(Key.Enter);
             yield return Tap(Key.Enter);
             yield return null;
-            Assert.That((badge.IsShown, badge.Value), Is.EqualTo((true, tankBlock)), "向きを選ぶ間にブロック数が出る");
-            yield return Tap(Key.Enter);
-            yield return null;
-            Assert.That(badge.IsShown, Is.False, "置いたら消える");
 
             yield return MouseAt(CellScreen(target), false);
             yield return MouseAt(CellScreen(target), true);
@@ -401,7 +397,31 @@ namespace UnitySlotTower.Tests.PlayMode.Battle
         }
 
         [UnityTest]
-        [Description("T355: 戦闘中に召喚すると待ち時間の残り秒数がアイコンに出て、待ち時間中に押すと選ばれずに赤く光る")]
+        [Description("2026-11-27: 向きを選ぶ間だけマスの右上に × が出て、押すと置かずに配置をやめる（味方の選びも外れる）")]
+        public IEnumerator Cancel_Button_Shows_While_Choosing_Facing_And_Stops_Placement()
+        {
+            var cancel = Object.FindAnyObjectByType<PlacementCancelButton>();
+            var coins = _battle.Wallet.Coins;
+            yield return Tap(Key.Digit1);
+            var target = FirstPlaceableCell();
+            yield return MoveCursorTo(target);
+            Assert.That(cancel.IsShown, Is.False, "マスを選んでいる間は出さない");
+            yield return Tap(Key.Enter);
+            yield return null;
+            Assert.That(cancel.IsShown, Is.True, "向きを選ぶ間に × が出る");
+            var screen = RectTransformUtility.WorldToScreenPoint(null, cancel.Button.transform.position);
+            var cell = CellScreen(target);
+            Assert.That((screen.x > cell.x, screen.y > cell.y), Is.EqualTo((true, true)), "× がマスの右上にない");
+
+            yield return Click(cancel.Button.transform);
+            yield return null;
+            Assert.That((_battle.Deployment.Phase, _battle.Deployment.Selected, _battle.Field.Units.Count, _battle.Wallet.Coins),
+                Is.EqualTo((DeployPhase.Idle, (UnitDefinition)null, 0, coins)), "× で置かずに選びが外れ、お金も減らない");
+            Assert.That(cancel.IsShown, Is.False, "やめたら消える");
+        }
+
+        [UnityTest]
+        [Description("T355:戦闘中に召喚すると待ち時間の残り秒数がアイコンに出て、待ち時間中に押すと選ばれずに赤く光る")]
         public IEnumerator Cooldown_Shows_Seconds_And_Clicking_During_It_Flashes_Instead_Of_Selecting()
         {
             var icon = GameObject.Find("Unit Icon 1").GetComponent<UnitBarIcon>();

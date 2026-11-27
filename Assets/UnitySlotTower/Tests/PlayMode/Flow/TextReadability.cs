@@ -15,6 +15,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
     {
         public const float MinimumSize = 36f;
 
+        // 状態の帯のボタン（一時停止・早見表・タイトル）は帯に収めるため 30 まで（2026-11-27 ユーザー承認、コミット 9809404）。
+        public const float BandButtonMinimumSize = 30f;
+        private static readonly string[] BandButtonIds = { "bar_pause", "help_open", "pause_home" };
+
         // 字の大きさの丸め、画面の端と重なりの判定の余裕（基準解像度の px）。
         private const float SizeTolerance = 0.01f;
         private const float EdgeTolerance = 1f;
@@ -52,9 +56,10 @@ namespace UnitySlotTower.Tests.PlayMode.Flow
                 }
 
                 var size = text.fontSize * text.transform.lossyScale.y / root.lossyScale.y;
-                if (size < MinimumSize - SizeTolerance)
+                var minimum = label != null && System.Array.IndexOf(BandButtonIds, label.Id) >= 0 ? BandButtonMinimumSize : MinimumSize;
+                if (size < minimum - SizeTolerance)
                 {
-                    problems.Add($"{screen}: {Name(text)} の字が {size:0.#}（{MinimumSize} 未満）");
+                    problems.Add($"{screen}: {Name(text)} の字が {size:0.#}（{minimum} 未満）");
                 }
 
                 var area = new Rect(-PortraitLayout.ReferenceWidth / 2f - EdgeTolerance, -PortraitLayout.ReferenceHeight / 2f - EdgeTolerance,

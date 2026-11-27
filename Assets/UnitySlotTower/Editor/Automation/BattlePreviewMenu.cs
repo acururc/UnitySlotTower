@@ -94,7 +94,7 @@ namespace UnitySlotTower.Editor.Automation
             Debug.Log($"[BattlePreview] card states coins={battle.Wallet.Coins} selected={battle.Field.Units[0].Definition.Id}");
         }
 
-        /// <summary>向きを選んでいる所（ブロック数の印）を撮る下ごしらえ（T385）。一時停止を解き、最初の職を選んで置けるマスで向き選びにする。</summary>
+        /// <summary>向きを選んでいる所（2026-11-27 からは × のボタン）を撮る下ごしらえ（T385）。一時停止を解き、最初の職を選んで置けるマスで向き選びにする。</summary>
         [MenuItem("Tools/UnitySlotTower/Automation/Stage Facing Badge (T385)")]
         private static void StageFacingBadge()
         {

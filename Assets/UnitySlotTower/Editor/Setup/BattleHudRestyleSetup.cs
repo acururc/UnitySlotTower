@@ -64,8 +64,8 @@ namespace UnitySlotTower.Editor.Setup
 
             // 撤退は選んだ味方の詳細の板へ（T384）。
             UnitDetailSetup.Build(root, (RectTransform)status.transform, bar, _font);
-            // 向きを選んでいる間のブロック数の印（T385）。
-            PlacementBadgeSetup.Build(root, bar);
+            // 向きを選んでいる間の × のボタン（T385 のブロック数の印を置き換え、2026-11-27）。
+            PlacementCancelSetup.Build(root);
 
             RestyleActors();
             // UiPanel は CanvasRenderer がないと描かれない（RequireComponent を足す前に作ったものを補う）。

@@ -330,7 +330,9 @@ namespace UnitySlotTower.Battle
             {
                 deployment.SetCursor(hovered);
             }
-            else if (pointerMoved && deployment.Phase == DeployPhase.ChoosingFacing && TryGetFacing(pointer, out var facing))
+            // 向き選びの × のボタン（PlacementCancelButton）へ動かす間に向きが変わらないよう、ボタンの上では追わない。
+            else if (pointerMoved && deployment.Phase == DeployPhase.ChoosingFacing && IsFieldPress(pointer)
+                && TryGetFacing(pointer, out var facing))
             {
                 deployment.SetFacing(facing);
             }
@@ -385,7 +387,7 @@ namespace UnitySlotTower.Battle
 
         /// <summary>
         /// 戦闘フィールドの上のクリックか。いちばん上の UI の当たりがボタンならボタンの操作として扱う
-        /// （文字あり版では状態の帯のボタンが戦闘フィールドに重なる、plan 16.13）。押した瞬間だけ呼ぶ。
+        /// （文字あり版では状態の帯のボタンが戦闘フィールドに重なる、plan 16.13）。押した瞬間と、向き選びでポインターが動いたときだけ呼ぶ。
         /// </summary>
         private bool IsFieldPress(Vector2 pointer)
         {
