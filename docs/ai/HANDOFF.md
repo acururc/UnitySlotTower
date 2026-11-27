@@ -2,7 +2,7 @@
 
 ## 現在の作業
 
-更新: 2026-11-27 Asia/Tokyo / 状態: **spec 015（テストプレイの指摘への対応）を実装し、T1801〜T1806、2回目のテストプレイの T1808・T1809（見せ場の前はスロットも回せない）完了（[`spec.md`](../../specs/015-playtest-fixes/spec.md) 承認済み 2026-11-27・[`plan.md`](../../specs/015-playtest-fixes/plan.md)・[`tasks.md`](../../specs/015-playtest-fixes/tasks.md)）。残りは T1807（ユーザーが Editor で通しで確認）。spec 014 T1707 と spec 013 T1602 はこのテストプレイで済み、指摘は spec 015 に入れた。spec 012（味方ごとの強化）はユーザー指示で保留。**
+更新: 2026-11-27 Asia/Tokyo / 状態: **spec 015（テストプレイの指摘への対応）は全タスク完了。T1807 はユーザーが確認テスト完了と報告（2026-11-27、追加の指摘なし）（[`spec.md`](../../specs/015-playtest-fixes/spec.md)・[`tasks.md`](../../specs/015-playtest-fixes/tasks.md)）。spec 014 T1707・spec 013 T1602 もこのテストプレイで済みとして tasks を閉じた。進行中の作業なし、次の作業はユーザーの指示待ち。spec 012（味方ごとの強化）はユーザー指示で保留。**
 
 - spec 015 の中身: 見せ場をステージ1のウェーブ1（T1808 で3レーンに近接8体ずつ・計24体）へ移し、決め打ちは 赤7・青7・黄7、終わると賭け1枚。止めている間は `SlotShowcaseGuide`（Portrait Root の最後の子、暗幕4枚・レバーの上の矢印・文字あり版の案内）。当たり率 0.7。音はスロット系とクリアを `scripts/audio/synth_sounds.py` の合成音に（再生成は `.tools/unity-mcp/Scripts/python.exe -I scripts/audio/synth_sounds.py` の後に Setup `Sound (spec 014)`）、音量の初期値 0.5・BGM 0.5。ステージ4は `elite_a` を分かれ道に作り直し、5は飛行を3体ずつに、6は序盤を時間差に。HP ゲージは頭の上で `HpGauge.shader`（深度を見ない）、重装の盾は横の細い板。
 - T1808（2回目のテストプレイ、FR-005〜FR-008）: 見せ場の群れはお金を落とさない（`BattleEnemy.FromShowcase`）、見せ場の1回はコインを使わない（`SlotMachine.NextSpinFree`）、群れが全滅するまで配置不可（`UnitSummoner.Lock` → `SummonResult.Locked`）、全滅で青7・黄7を消す（`SlotEffects.ClearStopAndPoison`）、札をマウスで選ぶとカーソルを中央に出さない（`UnitDeployment.SelectAt`・`HasCursor`）。
