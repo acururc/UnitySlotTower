@@ -2,10 +2,10 @@
 
 ## 現在の作業
 
-更新: 2026-11-27 Asia/Tokyo / 状態: **spec 016 早見表の作り直し（[`spec.md`](../../specs/016-help-rework/spec.md)・[`plan.md`](../../specs/016-help-rework/plan.md)・[`tasks.md`](../../specs/016-help-rework/tasks.md)、2026-11-27 承認）は T1901〜T1905 完了、T1906（ユーザーの Editor 確認、AC-003）待ち。spec 015 は完了。spec 012 はユーザー指示で保留。**
+更新: 2026-11-27 Asia/Tokyo / 状態: **spec 016 早見表の作り直し（[`spec.md`](../../specs/016-help-rework/spec.md)・[`tasks.md`](../../specs/016-help-rework/tasks.md)）は全タスク完了（T1906 はユーザー判断で終了。文字なし版は伝わりにくいとの指摘あり、今は直さない）。進行中の作業なし。spec 012 はユーザー指示で保留。**
 - **ユーザーのメモ（2026-11-27）: spec 016 の次に直すのは「キャラの配置キャンセル」。中身はまだ聞いていない（着手時に聞き取る）。**
 - spec 016 の中身: 早見表は5ページ（遊び方・回し方・図柄・味方・敵）。各行に動く図（`Runtime/Flow/HelpDemo.cs`、実時間で動くキー補間、舞台は RectMask2D で切り抜く）。数値は 青7・黄7・バーの秒数と味方のブロック・コスト・待ち秒数だけ。文字ありは右の列を上に縮めて下に文（6行のページは1行24字まで、ほかは2行）。作るのは Setup `Build Help Pages (spec 016)`（`Editor/Setup/HelpRebuildSetup.cs`、何度でも可、外枠は残す）。文言は ui_texts.csv の `help2_*`、変えたら `Create Text Mode Font (T352)` も。動く図の絵は仮（盤面の見た目に合わせた図形、味方は青・敵は赤の台）。
-- 検証（2026-11-27）: EditMode 633/633、ハーネス 8/8、PlayMode 78件で失敗1・スキップ1（Explicit）。失敗は `TextModeTests.Every_Screen_Shows_Japanese_Text_Large_Inside_And_Apart` で、帯のボタン（一時停止・早見表・タイトル）の字 30 が下限 36 未満。前のコミット 9809404（36→30）から出ていた既存の失敗で、早見表とは無関係（ユーザーに報告済み、直し方は未定）。撮影 `Artifacts/Automation/Editor/t359/20261127-190313/*-help-*.png`。
+- 検証（2026-11-27）: EditMode 633/633、ハーネス 8/8、PlayMode 78件で失敗1・スキップ1（Explicit）。失敗は `TextModeTests.Every_Screen_Shows_Japanese_Text_Large_Inside_And_Apart` で、帯のボタン（一時停止・早見表・タイトル）の字 30 が下限 36 未満。前のコミット 9809404（36→30）から出ていた既存の失敗で、早見表とは無関係（ユーザーに報告済み、直し方は未回答: 帯のボタンだけ下限を30にするか、36に戻して幅で収めるか）。撮影 `Artifacts/Automation/Editor/t359/20261127-190313/*-help-*.png`。
 - Setup（何度でも可）: `Build Help Pages (spec 016)`・`Showcase Guide (spec 015)`・`HP Gauge Material (spec 015)`・`Build Text Mode Layout (T359)`（早見表には触れなくなった）・`Create Text Mode Font (T352)`（ui_texts.csv に字を足したら必要）。
 - PlayMode テストは `PlayModeTestSetup`（SetUpFixture）が `BattleController.SkipShowcase = true` にして見せ場を飛ばす。見せ場を見るテスト（`SlotBetShowcaseTests` の Showcase、`ScreenCaptureTests`）だけ false。早送りでステージを終わらせるテストは `StageTestUtil.SkipShowcase` も使える。
 - ユーザーが前に音量スライダーを動かしていれば PlayerPrefs の値が優先され、初期値 0.5 は効かない（伝え済み）。音はまだ誰も聞いていない。
